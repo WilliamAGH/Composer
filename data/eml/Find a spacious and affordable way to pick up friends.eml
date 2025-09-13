@@ -1,0 +1,2822 @@
+Delivered-To: ashd2002@gmail.com
+Received: by 2002:a05:7110:4a84:b0:272:d97f:b54a with SMTP id cd4csp2779869geb;
+        Wed, 10 Sep 2025 12:05:04 -0700 (PDT)
+X-Google-Smtp-Source: AGHT+IF1QJx7d2GmZlby0rSwJzYBiUTSnopmyXsRkqco2PQE9793gTaaoVGAgh2iwwiEz3GW62tL
+X-Received: by 2002:a05:6e02:1a69:b0:3ed:eab:439a with SMTP id e9e14a558f8ab-3fd82164022mr258044415ab.12.1757531104459;
+        Wed, 10 Sep 2025 12:05:04 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1757531104; cv=none;
+        d=google.com; s=arc-20240605;
+        b=j5LlydRNwdRO/CjhdMiyPqg+ITQHdLDnTrB71h5OEd4uyx73impkXkGLBlbfTO8mjM
+         sK6VuEb2Cmxt9wunGLMisCUhDjkwNE5PLcvu8io0GWkigGNb9m15HjWfSBR5aXolpXM5
+         f5W5GLFHj37HY68iHutFgS6wkXAKZovi2fKSoGUc+X5Px7miknPhb2qjMQBPUquYvyd+
+         jx7T1C305P8TwFQyT3D2WnFWIJSV8dNg/GB+N3ODZgA2aCU27eR4orn8NjXtjKg7Wvsr
+         SKC/pwo0A4+XfaWee4n/ZB2rGt/PnsF9yAIHJ/X/2gcCPcVEaiJ0wDDlfHFdfUWfLI0G
+         3S4Q==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=to:date:reply-to:list-unsubscribe-post:message-id:subject
+         :list-unsubscribe:from:list-id:content-transfer-encoding
+         :mime-version:dkim-signature:dkim-signature;
+        bh=20P2++hMeG57FPzufXlYE6yTP6A2tnQoedUcdtKQ47Y=;
+        fh=VuVUZG8yLvxQk4eQqcyGBgSkARd92SFlUD8MXxtCOA8=;
+        b=aWY+Cp5zp8lypUgOmPz/1/IJ8Oqc2aKPTRK3wLuovF2Apv3gLmOFDIXegDnejRl4ZQ
+         B0S/6j6GWDt/gNsUyOfWC4ei+itshNcecMZatucmxq7+rlHm3ujoovNBdtOVnUaohbkw
+         D6ItRAXO/gCUHmyW47KjRHzfwHgvvlgBj/QhqaRDr2vJTV/WKTf3VBS0grqIZ4qACZnM
+         sWzXFMDhk/KYhlal4bDOZyeFkhR95je4T3m26m9iyWFsnV3ax2pSU1j1uRZQBe52GkZi
+         lI07a2qtZuFqzuURMxNNgXrqK3sQoYbzz16uMzkWKY61iNjmCtBtoHrxFCC18hVsSBiM
+         FXHw==;
+        dara=google.com
+ARC-Authentication-Results: i=1; mx.google.com;
+       dkim=pass header.i=@uber.com header.s=s1 header.b=xbx0bMuy;
+       dkim=pass header.i=@sendgrid.info header.s=smtpapi header.b=EfY76YNw;
+       spf=pass (google.com: domain of bounces+4468541-2d24-ashd2002=gmail.com@em.uber.com designates 167.89.42.140 as permitted sender) smtp.mailfrom="bounces+4468541-2d24-ashd2002=gmail.com@em.uber.com";
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=uber.com
+Return-Path: <bounces+4468541-2d24-ashd2002=gmail.com@em.uber.com>
+Received: from o18.email.uber.com (o18.email.uber.com. [167.89.42.140])
+        by mx.google.com with ESMTPS id e9e14a558f8ab-41c982c2a69si1252885ab.208.2025.09.10.12.05.04
+        for <ashd2002@gmail.com>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 10 Sep 2025 12:05:04 -0700 (PDT)
+Received-SPF: pass (google.com: domain of bounces+4468541-2d24-ashd2002=gmail.com@em.uber.com designates 167.89.42.140 as permitted sender) client-ip=167.89.42.140;
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@uber.com header.s=s1 header.b=xbx0bMuy;
+       dkim=pass header.i=@sendgrid.info header.s=smtpapi header.b=EfY76YNw;
+       spf=pass (google.com: domain of bounces+4468541-2d24-ashd2002=gmail.com@em.uber.com designates 167.89.42.140 as permitted sender) smtp.mailfrom="bounces+4468541-2d24-ashd2002=gmail.com@em.uber.com";
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=uber.com
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=uber.com;
+	h=mime-version:content-transfer-encoding:list-id:from:list-unsubscribe:
+	content-type:subject:list-unsubscribe-post:reply-to:date:to:cc:content-type:date:
+	feedback-id:from:subject:to;
+	s=s1; bh=20P2++hMeG57FPzufXlYE6yTP6A2tnQoedUcdtKQ47Y=;
+	b=xbx0bMuyGymuvP8Omqmt/uV130VwocpBOxElbmg0gHJ/GZuqv1x17/DGjLvp/wQSpCHX
+	dM5WPuqYZ3VjNSePec16Sy4XO18RyZ2UFcCyUOH+FFWBoyO2iv6rW/Nb6vkWPSc/uHXZjv
+	ep2wz/Uc0DBGTGuupLjNC/DZRzK0Tz1wCYsX6MKFwsVuh4tD3JqwPKMvLSD5NPIwOLNMvp
+	jLB2R4dqdHHwNYN9McHmoGDpaMsjn8+e8v6gItMuw/BmYKWXquWAAXNhRYQVfz5EFUe6YN
+	N1rNpD0TOULQ1oT6GCWml78jLmCwT6EsjQ55je9F32SzFHL3PtiSi1CXz44GUdqg==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=sendgrid.info;
+	h=mime-version:content-transfer-encoding:list-id:from:list-unsubscribe:
+	content-type:subject:list-unsubscribe-post:reply-to:date:to:cc:content-type:date:
+	feedback-id:from:subject:to;
+	s=smtpapi; bh=20P2++hMeG57FPzufXlYE6yTP6A2tnQoedUcdtKQ47Y=;
+	b=EfY76YNwZftADps6TbppLbrhIcUtsczqYhdPj3lMrBCXBuIwnfiEmHJ/ehzR5/+fExLm
+	yC7BcefQ/V5cmt4zCRTykZ22bRzYJYuVEnc3cWTjuPuznFNrlXGiF1Kk/ngxEWSE9/wAl9
+	L1FhU6Wt4KEgSSAHn2Pv13eB/fy2jdy1M=
+Received: by recvd-67f5964c58-9xs8s with SMTP id recvd-67f5964c58-9xs8s-1-68C1CBDF-1FE
+	2025-09-10 19:05:03.884618768 +0000 UTC m=+8475623.762286954
+Received: from localhost (unknown)
+	by geopod-ismtpd-2 (SG) with ESMTP
+	id hfF9ZksJT4iCJC0ldlUV_g
+	for <ashd2002@gmail.com>;
+	Wed, 10 Sep 2025 19:05:03.736 +0000 (UTC)
+MIME-Version: 1.0
+Content-Transfer-Encoding: quoted-printable
+List-Id: <ride.4110240136.uber.com>
+From: Uber <uber@uber.com>
+X-Uber-Id: 94dc4ef1-caa8-333a-bd6e-24b3511e189f
+List-Unsubscribe: 
+ =?us-ascii?Q?=3Chttps=3A=2F=2Fpostmaster=2Euber=2Ecom=2Funsubscribe=2F=3Fp=3Dpostmaster=5Furl=5Fukm?=
+ =?us-ascii?Q?s%3A10%3A5%3A%3A%3AAAAAQwE%2BbRQ7JPnQWI?=
+ =?us-ascii?Q?Vjl%2FxoQjAJs7aeSAgg6tupsUBSDHGKxqZ7CFV?=
+ =?us-ascii?Q?HLFp%2Bl5xdWooNays2fzuvXHTNCyFYJvTQ0Z6g?=
+ =?us-ascii?Q?reFXBO4weU14Qfuwai%2FH6HgFPj5BsxTCtkOzf?=
+ =?us-ascii?Q?AtvcoDCOzdPIgbpPNo49ZPWGSYzdob78jE4MTdV?=
+ =?us-ascii?Q?IEKZnm0eCijInxT3Q6HNMvak%2F0eDhmSdpvd4x?=
+ =?us-ascii?Q?3akmTNEg3P9s8zxUy0bTxYEBYjVL%2BVto%2F38?=
+ =?us-ascii?Q?%2FnU3w9aweC5wPAEI4etaBQX3mmyBt8XtcI8f%?=
+ =?us-ascii?Q?2BUs18vY3j9YyB9tOv9lyB86Jdk%2FcLiNX8FaB?=
+ =?us-ascii?Q?eZ1k3sBBwWEnzYc7%2F5FomJ0lowyemUeH5rYbE?=
+ =?us-ascii?Q?zYRTnfO5s84fEBqX%2BTuG3y3sTQlw%2FDGOqn0?=
+ =?us-ascii?Q?0%2FrnI2w0XkT78lOI11Ko%2B5HnZG5YiWqHrBP?=
+ =?us-ascii?Q?o5w5tKUmMIwAzKcCAWQMzWaeBbMPRFmVu07K7Wf?=
+ =?us-ascii?Q?WhRK%2B1GiL2RSuAMd1JYM2npFogY5aGTM%2Bpx?=
+ =?us-ascii?Q?jYZaUmj5vJA%3A&message=5Fuuid=3D94dc4ef1-ca?=
+ =?us-ascii?Q?a8-333a-bd6e-24b3511e189f=3E?=
+Content-Type: text/html; charset=utf-8
+Subject: Find a spacious and affordable way to pick up friends
+Message-Id: <94dc4ef1-caa8-333a-bd6e-24b3511e189f@mail.uber.com>
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
+Reply-To: no-reply@replies.uber.com
+Date: Wed, 10 Sep 2025 19:05:03 +0000 (UTC)
+X-SG-EID: 
+ =?us-ascii?Q?u001=2EVTllVn0weeW9N=2Fy8CNQmb9nRYOBPGucjeAhFacKByP7SWKydiRf875h5C?=
+ =?us-ascii?Q?LHnCHN7oJ4f9wLBnP9juXbv1=2F8SsunHXYYJ7NTR?=
+ =?us-ascii?Q?JOGZlPfipz8bSH1fck+kTRXabfjf6jzlgwZ69tf?=
+ =?us-ascii?Q?PNL1QMUCGoAdBpFZbbzKsQ02G20Y3iLZUrGlZjD?=
+ =?us-ascii?Q?F1TFub3r3YWqqrL61+hr24AUk1cbRj=2FH7b46tTw?=
+ =?us-ascii?Q?25WtneVQ9Vh+RbMeVI2Mm0=3D?=
+X-SG-ID: 
+ =?us-ascii?Q?u001=2ESdBcvi+Evd=2FbQef8eZF3BgrE3abZt6u90OBdgr4FV0NcBa3xu03RhyRaQ?=
+ =?us-ascii?Q?VuD9vv6yxBuh=2FskonUXx4VpFWGbjKuTHEo74anF?=
+ =?us-ascii?Q?5Cdx1=2FpUKwTNArpsNDBDmFJBninyqzMnClVh6zH?=
+ =?us-ascii?Q?c5wLLDQy1uetH4dpHzVXLdKDE5p0clpdscIwp4Z?=
+ =?us-ascii?Q?b6R2mMn67aVOqEwwX6CaBsRLrks=2Fc2ZBnDVegH=2F?=
+ =?us-ascii?Q?wsoJcwFC+jUcMesCppn=2FKDSYF6d5uqkE39NQIw5?=
+ =?us-ascii?Q?4ZQbsNNoTTyS9ZJihIRh2WeF4GuTtHsJGdy3B7s?=
+ =?us-ascii?Q?HSXVSp3b5LiHCu2iUERqhC2yUb6=2FGtAA1HGtjbt?=
+ =?us-ascii?Q?2lBl+pDAvKoLLmPF+jPH+D2AD+a5VVYhU4T7VeP?=
+ =?us-ascii?Q?8YQuZvwKI8XVa4qeC4YB3F=2FvbWyKSeCzu5bPDgF?=
+ =?us-ascii?Q?WFyJzBmGmlc79DT6TgpqGuA9zyT4C440AUrTZAn?=
+ =?us-ascii?Q?ba6j8WVDKdhng9amH3VuOclZCEibk79D+rAjRAM?=
+ =?us-ascii?Q?9Pr8IgXF6klExWwGrVKpTJ7YD3?=
+To: ashd2002@gmail.com
+X-Entity-ID: u001.ezV1VdF0ZVFukC6+b2gZXg==
+
+<!doctype html>
+<html xmlns=3D"http://www.w3.org/1999/xhtml" xmlns:v=3D"urn:schemas-microso=
+ft-com:vml" xmlns:o=3D"urn:schemas-microsoft-com:office:office">
+<head>
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dutf-8">
+<meta name=3D"viewport" content=3D"width=3Ddevice-width">
+<!--[if !mso]><!-- -->
+<meta http-equiv=3D"X-UA-Compatible" content=3D"IE=3Dedge">
+<!--<![endif]-->
+<!--[if gte mso 9]><xml>
+<o:OfficeDocumentSettings>
+<o:AllowPNG/>
+<o:PixelsPerInch>96</o:PixelsPerInch>
+</o:OfficeDocumentSettings>
+</xml><![endif]-->
+
+<style>
+
+@media only screen and (min-width: 650px) {
+   =20
+   .p13_mm_offer_tag{font-size:14px!important;line-height:22px!important;}
+   .p13_mm_discounted_price{font-size:16px!important;line-height:22px!impor=
+tant;}
+   .p13_mm_original_price{font-size:14px!important;line-height:22px!importa=
+nt;}
+   .p13_mm_description{font-size:14px!important;line-height:22px!important;=
+}
+   .gr_3_merchant{width:31%!important;}
+   .gr_4_merchant{width:22%!important;}
+}
+
+@media only screen and (max-width: 430px){
+   .m_to_50_percentage{width:50%!important;}=20
+ =20
+  .temp_td_h5{ font-size: 16px !important; line-height: 22px !important;  }
+  .temp_display_table{display:table !important;}
+  .temp_mob_reset{padding:0!important;}
+  .mobtac {text-align: center !important;}
+  .h3_p1{font-size:20px!important;line-height:26px!important;}
+}
+
+ =20
+</style>
+
+<style type=3D"text/css">
+@media only screen and (max-width: 640px){
+   .left_aligned{text-align:left!important;}
+   .mob_h_130{height:130px!important;}
+   .card{height:auto!important;}
+   .img_312{max-width:none!important;}
+}
+ =20
+@media only screen and (max-width: 350px){
+   .mob_h_73{height:73px!important;}
+}
+
+</style>
+
+<style type=3D"text/css">
+a {text-decoration: none;}
+a[x-apple-data-detectors] { color: inherit !important; text-decoration: non=
+e !important; font-size: inherit !important; font-family: inherit !importan=
+t; font-weight: inherit !important; line-height: inherit !important } table=
+{ mso-table-lspace: 0; mso-table-rspace: 0; mso-table-lspace: 0; border: no=
+ne; border-collapse: collapse; border-spacing: 0;} p {margin: 0 !important;=
+} h1, .h1, .h1l{ font-size: 60px !important; line-height: 66px !important; =
+} .h1xl{ font-size: 96px !important; line-height: 96px !important; } .hsubx=
+l {font-size: 28px !important; line-height: 36px !important; font-family: '=
+Uber Move', 'Helvetica Neue', Helvetica, Arial, sans-serif !important; font=
+-weight: 500 !important; } .h1bl { font-size: 50px !important; line-height:=
+ 54px !important; } h2, .h2, .h2l { font-size: 44px !important; line-height=
+: 50px !important; } ul, ol {padding-left:0; margin:0; margin-left:30px !im=
+portant;} u + .body ul, u + .body ol { margin-left: 30px !important; }=20
+
+@media only screen and (max-width: 640px) { u + .body ul, u + .body ol { ma=
+rgin-left: 18px !important;} }
+.show670, .show414 {display:none;}=20
+
+@media screen and (max-width:670px) { .t1of12, .t2of12, .t3of12, .t4of12, .=
+t5of12, .t6of12, .t7of12, .t8of12, .t9of12, .t10of12, .t11of12, .t12of12, .=
+full { width: 100% !important; max-width: none !important; } .show670 { dis=
+play: block !important; max-height: none !important; overflow:visible !impo=
+rtant; } .mobheight0{height:0 !important; line-height: 0 !important;} .hide=
+670 { display: none !important; } .mobheightAuto{height:auto !important;} }=
+=20
+
+@media screen and (min-width:671px) { .force700{width: 700px !important;} .=
+desktar {text-align: right !important;} }=20
+
+
+@media screen and (max-width:430px) { h1, h2, .h1, .h1l, .h2{ font-size: 34=
+px !important; line-height: 40px !important;} .h1xl{ font-size: 64px !impor=
+tant; line-height: 64px !important;} .h1scale, .h1lscale {font-size: 54px !=
+important; line-height: 60px !important;} .h2scale, .h2lscale {font-size: 4=
+2px !important; line-height: 48px !important;} .hsubxl {font-size: 24px !im=
+portant; line-height: 30px !important; font-family: 'Uber Move', 'Helvetica=
+ Neue', Helvetica, Arial, sans-serif !important; font-weight: 500 !importan=
+t;} .h1bl { font-size: 22px !important; line-height: 28px !important; } .p1=
+scale{font-size: 16px !important;line-height: 22px !important;} .show414 { =
+display: block !important; max-height: none !important; overflow:visible !i=
+mportant; } .hide414 { display: none !important; } }=20
+
+@media screen and (max-width:375px) { .h1xl{ font-size: 64px !important; li=
+ne-height: 64px !important;} .hsubxl { font-size: 20px !important; line-hei=
+ght: 26px !important; font-family: 'Uber Move Text', 'Helvetica Neue', Helv=
+etica, Arial, sans-serif  !important; font-weight: 700 !important; } .h1sca=
+le {font-size: 46px !important; line-height: 52px !important;} .h2scale {fo=
+nt-size: 40px !important; line-height: 46px !important;} }
+
+
+@font-face{font-family: 'UberMove-Medium'; src: url('https://tb-static.uber=
+.com/prod/crm/assets/fonts/UberMove/UberMove-Medium.woff') format('woff'), =
+url('https://tb-static.uber.com/prod/crm/assets/fonts/UberMove/UberMove-Med=
+ium.ttf') format('truetype'); font-weight: normal !important; font-style: n=
+ormal !important; mso-font-alt: 'Arial'}@font-face{font-family: 'UberMoveTe=
+xt-Regular'; src: url('https://tb-static.uber.com/prod/crm/assets/fonts/Ube=
+rMove/UberMoveText-Regular.woff') format('woff'), url('https://tb-static.ub=
+er.com/prod/crm/assets/fonts/UberMove/UberMoveText-Regular.ttf') format('tr=
+uetype'); font-weight: normal !important; font-style: normal !important; ms=
+o-font-alt: 'Arial'}
+@font-face{font-family: 'UberMoveText-Medium'; src: url('https://tb-static.=
+uber.com/prod/crm/assets/fonts/UberMove/UberMoveText-Medium.woff') format('=
+woff'), url('https://tb-static.uber.com/prod/crm/assets/fonts/UberMove/Uber=
+MoveText-Medium.ttf') format('truetype'); font-weight: normal !important; f=
+ont-style: normal !important; mso-font-alt: 'Arial'}@font-face{font-family:=
+ 'UberMoveText-Bold'; src: url('https://tb-static.uber.com/prod/crm/assets/=
+fonts/UberMove/UberMoveText-Bold.woff') format('woff'), url('https://tb-sta=
+tic.uber.com/prod/crm/assets/fonts/UberMove/UberMoveText-Bold.ttf') format(=
+'truetype'); font-weight: normal !important; font-style: normal !important;=
+ mso-font-alt: 'Arial'}
+@font-face{font-family: 'Uber Move Text'; src: url('https://tb-static.uber.=
+com/prod/crm/assets/fonts/UberMove/UberMoveText-Bold.woff') format('woff'),=
+ url('https://tb-static.uber.com/prod/crm/assets/fonts/UberMove/UberMoveTex=
+t-Bold.ttf') format('truetype'); font-weight: bold; mso-font-alt: 'Arial'}@=
+font-face{font-family: 'Uber Move Text'; src: url('https://tb-static.uber.c=
+om/prod/crm/assets/fonts/UberMove/UberMoveText-Medium.woff') format('woff')=
+, url('https://tb-static.uber.com/prod/crm/assets/fonts/UberMove/UberMoveTe=
+xt-Medium.ttf') format('truetype'); font-weight: 500; mso-font-alt: 'Arial'=
+}
+@font-face{font-family: 'Uber Move Text'; src: url('https://tb-static.uber.=
+com/prod/crm/assets/fonts/UberMove/UberMoveText-Regular.woff') format('woff=
+'), url('https://tb-static.uber.com/prod/crm/assets/fonts/UberMove/UberMove=
+Text-Regular.ttf') format('truetype'); font-weight: normal; mso-font-alt: '=
+Arial'}@font-face{font-family: 'Uber Move'; src: url('https://tb-static.ube=
+r.com/prod/crm/assets/fonts/UberMove/UberMove-Medium.woff') format('woff'),=
+ url('https://tb-static.uber.com/prod/crm/assets/fonts/UberMove/UberMove-Me=
+dium.ttf') format('truetype'); font-weight: 500; mso-font-alt: 'Arial'}
+sup { line-height:0; font-size:70%; } =20
+</style>
+
+
+
+
+
+
+<!--[if mso]>
+<style>a.ol_ul{text-decoration:underline !important}</style>
+<![endif]-->
+
+ =20
+<style>
+sup { line-height:0; font-size:70%; }
+
+ =20
+ @media screen and (max-width:414px) {
+	.mobilebgcolor{
+      background-color: #00ff00 !important;
+   }
+     .hide {display: none !important;}
+  .show {display: inline-block !important; width:auto !important; height:au=
+to !important; overflow:visible !important; float:none !important; visibili=
+ty:visible !important; border:none !important; padding-bottom:0px !importan=
+t; vertical-align: bottom !important;}
+  .show1 {
+    display: block !important;
+    max-height: none !important;
+  }
+  .mobh1 {font-size: 44px !important; line-height: 50px !important;}
+  .mobh2 {font-size: 34px !important;line-height: 40px !important;} =20
+ .p3mob {font-size:14px !important; line-height: 20px !important}
+ .h5mob{font-size: 24px !important; line-height:30px !important}
+  .h2m {font-size: 36px !important; line-height: 42px !important}
+  .width33 { max-width: 33% !important; width: 33% !important}
+  .width34 {max-width: 34% !important; max-width: 34% !important; }
+
+ =20
+}
+
+
+ =20
+</style> =20
+
+<style>
+  @media (max-width: 614px) {=20
+    .h2_h4{font-size: 28px!important; line-height: 36px !important;}
+  }
+</style>
+
+
+<style type=3D"text/css">
+  .font-40, .font-50, .font-60, .font-70 {font-size: 70px !important; line-=
+height: 70px !important}
+  .mobileSpacerNC {width: 82px !important; max-width: 82px !important}
+</style>
+
+
+<style>
+  @media screen and (max-width:650px) {
+   =20
+ .mobileSpacerNC {width: 26px !important; max-width: 26px !important}
+ .mobileSpacerTB {line-height: 32px !important; height: 32px !important; ma=
+x-width: 32px !important; width:32px !important
+   }
+    .pt0 {padding-top:0 !important}
+  .pt50 {padding-top:50px !important}
+  .pt100 {padding-top:100px !important}
+  .pt138 {padding-top:138px !important}
+  .pt143 {padding-top:143px !important} =20
+  .pt150 {padding-top:150px !important}
+  .pt192 {padding-top:192px !important}
+  .pt208 {padding-top:208px !important}
+  .pt216 {padding-top:216px !important}
+  .pt250 {padding-top:250px !important}=20
+  .pt278 {padding-top:278px !important} =20
+  .pt311 {padding-top:311px !important}=20
+  .pt322 {padding-top:322px !important}=20
+  .pt340 {padding-top:340px !important}
+  .pt350 {padding-top:350px !important}
+  .pt374 {padding-top:374px !important}
+  .pt375 {padding-top:375px !important}
+  .pt415 {padding-top:415px !important}
+  .pt430 {padding-top:430px !important}
+  .pt573 {padding-top:573px !important}
+  .pt993 {padding-top:190% !important}
+   =20
+   =20
+  .pb100 {padding-bottom:70px !important}
+    .pb200 {padding-bottom:120px !important}
+    .pb300 {padding-bottom:170px !important}
+    .pb400 {padding-bottom:250px !important}
+    .pb500 {padding-bottom:300px !important}
+  .pb2550 {padding-bottom:1390px !important}
+  .contain {background-size: contain !important;  height: auto !important;=20
+      min-height: 430px !important;}
+  .cover {background-size: cover !important; height: auto !important;=20
+      min-height: 430px !important;}
+  .center-top {background-position: center top !important}
+  .left-top {background-position: left top !important}
+  .right-top {background-position: right top !important}
+  .font-40 {font-size: 40px !important; line-height: 40px !important}
+  .font-50 {font-size: 50px !important; line-height: 50px !important}
+  .font-60 {font-size: 60px !important; line-height: 60px !important}
+  .font-70 {font-size: 70px !important; line-height: 70px !important}
+  .card { height: auto !important;}
+
+  }
+ =20
+
+          @media screen and (max-width:375px) {
+    =09
+   .pt50 {padding-top:43px !important}
+  .pt100 {padding-top:88px !important}
+  .pt138 {padding-top:120px !important}
+  .pt143 {padding-top:125px !important} =20
+  .pt150 {padding-top:130px !important}
+  .pt208 {padding-top:181px !important}
+  .pt250 {padding-top:220px !important}
+  .pt311 {padding-top:270px !important}
+ .pt350 {padding-top:305px !important}
+  .pt375 {padding-top:327px !important}
+  .pt415 {padding-top:361px !important}
+  .pt993 {padding-top:192% !important}
+  .pb2550 {padding-bottom:1390px !important}
+              .pb100 {padding-bottom:50px !important}
+    .pb200 {padding-bottom:100px !important}
+    .pb300 {padding-bottom:150px !important}
+    .pb400 {padding-bottom:200px !important}
+    .pb500 {padding-bottom:250px !important}
+.contain {background-size: contain !important;  height: auto !important; }
+  .cover {background-size: cover !important; height: auto !important; }
+    }
+    @media screen and (max-width:325px) {
+    =09
+   .pt50 {padding-top:43px !important}
+  .pt100 {padding-top:88px !important}
+  .pt138 {padding-top:120px !important}
+  .pt150 {padding-top:130px !important}
+  .pt208 {padding-top:181px !important}
+  .pt250 {padding-top:220px !important}
+  .pt311 {padding-top:235px !important}
+  .pt350 {padding-top:264px !important}
+  .pt375 {padding-top:283px !important}
+  .pt415 {padding-top:361px !important}
+  .pt993 {padding-top:195% !important}
+  .pb2550 {padding-bottom:1250px !important}
+        .pb100 {padding-bottom:50px !important}
+    .pb200 {padding-bottom:100px !important}
+    .pb300 {padding-bottom:150px !important}
+    .pb400 {padding-bottom:200px !important}
+    .pb500 {padding-bottom:250px !important}
+        .contain {background-size: contain !important;  height: auto !impor=
+tant; }
+  .cover {background-size: cover !important; height: auto !important;}
+    }
+ =20
+</style>
+</head>
+<body class=3D"body" dir=3Dltr style=3D"-ms-text-size-adjust:100%;-webkit-t=
+ext-size-adjust:100%;background-color:#d6d6d5;margin:0;min-width:100%;paddi=
+ng:0;width:100%">
+<span id=3D"Preheader" class=3D"preheader" data-blockuuid=3D"ca689640-0465-=
+4122-8493-d640f5818700" style=3D"display: none; max-height: 0px; font-size:=
+ 0px; overflow: hidden; mso-hide: all;">
+Get the crew there in one go=E2=80=94take an UberXL.
+&#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &shy; &#847; &#847;=
+ &#847; &#847; &#847; &#847; &#847; &#847; &shy;
+&#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &shy; &#847; &#847;=
+ &#847; &#847; &#847; &#847; &#847; &#847; &shy;
+&#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &shy; &#847; &#847;=
+ &#847; &#847; &#847; &#847; &#847; &#847; &shy;
+&#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &shy; &#847; &#847;=
+ &#847; &#847; &#847; &#847; &#847; &#847; &shy;
+&#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &shy; &#847; &#847;=
+ &#847; &#847; &#847; &#847; &#847; &#847; &shy;
+&#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &shy; &#847; &#847;=
+ &#847; &#847; &#847; &#847; &#847; &#847; &shy;
+&#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &shy; &#847; &#847;=
+ &#847; &#847; &#847; &#847; &#847; &#847; &shy;
+
+</span>
+<span id=3D"TemplateUUID_1a2a4579-5748-4afa-ad39-7939fc8faa61"></span>
+ =20
+<span id=3D"WorkflowUUID_7c170ef8-f92b-4100-9ca1-2dc0b86e3102"></span>  =20
+
+<style>.yahooHide{display:none!important}</style>
+<table width=3D"100%" border=3D"0" cellpadding=3D"0" cellspacing=3D"0" styl=
+e=3D"background-color:#d6d6d5;border:0;border-collapse:collapse;border-spac=
+ing:0;" bgcolor=3D"#d6d6d5" class=3D"">
+<tbody>
+<tr>
+<td align=3D"center" style=3D"display: block;">
+<!--[if (gte mso 9)|(IE)]>
+<table width=3D"700" align=3D"center" cellpadding=3D"0" cellspacing=3D"0" b=
+order=3D"0">
+<tr>
+<td>
+<![endif]-->
+<table width=3D"100%" border=3D"0" cellpadding=3D"0" cellspacing=3D"0" styl=
+e=3D"border:0;border-collapse:collapse;border-spacing:0;max-width:700px;" c=
+lass=3D"force700">
+<tbody>
+<tr>
+<td style=3D"background-color:#ffffff">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ =20
+ =20
+ =20
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--[if (gte mso 9)|(IE)]>
+<table align=3D"center" cellpadding=3D"0" cellspacing=3D"0" border=3D"0" ro=
+le=3D"presentation"
+style=3D"width:700px;background-color:#000000;">
+<tr>
+<td style=3D"font-size:1px;line-height:1px;" align=3D"center">
+<![endif]-->
+<table border=3D"0" cellspacing=3D"0" cellpadding=3D"0" align=3D"center" bg=
+color=3D"#000000" role=3D"presentation"
+style=3D"width:100%;max-width:700px;" data-blockuuid=3D"faab5b21-b169-4138-=
+90a9-60380436126c">
+<tr>
+<td style=3D"font-size:1px;line-height:1px;vertical-align:top;" valign=3D"t=
+op" align=3D"center">
+
+
+<!--[if (gte mso 9)|(IE)]>
+<table align=3D"center" cellpadding=3D"0" cellspacing=3D"0" border=3D"0" ro=
+le=3D"presentation"
+style=3D"width:700px;">
+<tr>
+<td style=3D"font-size:1px;line-height:1px;" align=3D"center">
+<![endif]-->
+<table border=3D"0" cellspacing=3D"0" cellpadding=3D"0" align=3D"center"
+role=3D"presentation"
+style=3D"width:100%;max-width:700px;">
+<tr>
+<td style=3D"font-size:1px;line-height:1px;vertical-align:top;"
+valign=3D"top" align=3D"center">
+<table border=3D"0" cellspacing=3D"0" cellpadding=3D"0"
+align=3D"center" role=3D"presentation">
+
+
+<tr>
+<td style=3D"font-size:1px;line-height:1px;width:700px;max-width:100%;"
+align=3D"center">
+
+<div class=3D"hide414">
+
+<a href=3D"https://rides.sng.link/Aw5zn/hw3r?_dl=3Duber%3A%2F%2Flearning_hu=
+b_topic%3Fcontent_key%3Dcrm_uberxl_awareness_v1&_fallback_redirect=3Dhttps%=
+3A%2F%2Fwww.uber.com%2Fride%2Fuberxl%2F&_forward_params=3D1&_smtype=3D3&par=
+tner=3Dcrm&pcid=3Dbloc_1a2a4579-5748-4afa-ad39-7939fc8faa61&u_action_id=3D0=
+d2dad2a-01d1-48a4-bcac-8b67c19a6b7b&utm_campaign=3D7c170ef8-f92b-4100-9ca1-=
+2dc0b86e3102&utm_content=3D94dc4ef1-caa8-333a-bd6e-24b3511e189f&utm_medium=
+=3Demail&utm_source=3Dcrm&~customer_keyword=3D94dc4ef1-caa8-333a-bd6e-24b35=
+11e189f" clicktracking=3Doff data-msys-clicktrack=3D"0" disable-tracking=3D=
+true
+style=3D"text-decoration:none;"><img
+src=3D"https://tb-static.uber.com/prod/bp-assets/images/22/17590d76-f7f5-49=
+17-a677-6c94bcb62510-compressed.png"
+alt=3D"gcrm_rider_tiger_uberxl-desktop" border=3D"0"
+width=3D"700"
+height=3D"300"
+style=3D"width:100%!important;max-width:700px;height:auto!important;display=
+:block;text-decoration:none;font-family:'Uber Move','Helvetica Neue',Helvet=
+ica,Arial,sans-serif;font-size:14px;line-height:17px;color:#ffffff;font-wei=
+ght:bold;text-decoration:none;text-align:center;" /></a>
+</div>
+<!--[if !mso 9]><!-->
+<div class=3D"show414"
+style=3D"padding:0px;display:none;overflow:hidden;max-height:0;mso-hide:all=
+;">
+
+<a href=3D"https://rides.sng.link/Aw5zn/hw3r?_dl=3Duber%3A%2F%2Flearning_hu=
+b_topic%3Fcontent_key%3Dcrm_uberxl_awareness_v1&_fallback_redirect=3Dhttps%=
+3A%2F%2Fwww.uber.com%2Fride%2Fuberxl%2F&_forward_params=3D1&_smtype=3D3&par=
+tner=3Dcrm&pcid=3Dbloc_1a2a4579-5748-4afa-ad39-7939fc8faa61&u_action_id=3D0=
+d2dad2a-01d1-48a4-bcac-8b67c19a6b7b&utm_campaign=3D7c170ef8-f92b-4100-9ca1-=
+2dc0b86e3102&utm_content=3D94dc4ef1-caa8-333a-bd6e-24b3511e189f&utm_medium=
+=3Demail&utm_source=3Dcrm&~customer_keyword=3D94dc4ef1-caa8-333a-bd6e-24b35=
+11e189f" clicktracking=3Doff data-msys-clicktrack=3D"0" disable-tracking=3D=
+true
+style=3D"text-decoration:none;"><img
+src=3D"https://tb-static.uber.com/prod/bp-assets/images/22/2fffad1f-a5b8-49=
+4b-a455-9cde7871741a-compressed.png"
+alt=3D"gcrm_rider_tiger_uberxl-mobile" width=3D"100%"
+height=3D"auto" border=3D"0"
+style=3D"max-width:430px!important;width:100%!important;height:auto!importa=
+nt;display:block;text-decoration:none;font-family:'Uber Move','Helvetica Ne=
+ue',Helvetica,Arial,sans-serif;font-size:14px;line-height:17px;color:#fffff=
+f;font-weight:bold;text-decoration:none;text-align:center;" /></a>
+</div>
+<!--<![endif]-->
+
+</td>
+</tr>
+
+
+</table>
+</td>
+</tr>
+</table>
+<!--[if (gte mso 9)|(IE)]>
+</td>
+</tr>
+</table>
+<![endif]-->
+</td>
+</tr>
+</table>
+<!--[if (gte mso 9)|(IE)]>
+</td>
+</tr>
+</table>
+<![endif]-->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--[if (gte mso 9)|(IE)]>
+<table align=3D"center" cellpadding=3D"0" cellspacing=3D"0" border=3D"0" ro=
+le=3D"presentation"
+style=3D"width:700px;direction:ltr;">
+<tr>
+<td style=3D"font-size:1px;line-height:1px;" align=3D"center">
+<![endif]-->
+<table border=3D"0" cellspacing=3D"0" cellpadding=3D"0" align=3D"center" bg=
+color=3D"#000000" role=3D"presentation"
+data-blockuuid=3D"aaf47490-011e-4ce2-bb2d-42659d99ed55" style=3D"width:100%=
+;max-width:700px;direction:ltr;">
+<tr>
+<td style=3D"font-size:1px;line-height:1px;vertical-align:top;" valign=3D"t=
+op" align=3D"center">
+<!--[if (gte mso 9)|(IE)]>
+<table align=3D"center" cellpadding=3D"0" cellspacing=3D"0" border=3D"0" ro=
+le=3D"presentation"
+style=3D"width:588px;direction:ltr;">
+<tr>
+<td style=3D"font-size:1px;line-height:1px;" align=3D"center">
+<![endif]-->
+<table border=3D"0" cellspacing=3D"0" cellpadding=3D"0" align=3D"center"
+bgcolor=3D"#000000" role=3D"presentation"
+style=3D"width:100%;max-width:588px;direction:ltr;">
+<tr>
+<td style=3D"font-size:1px;line-height:1px;width:588px;max-width:100%;"
+align=3D"center">
+<table border=3D"0" cellspacing=3D"0" cellpadding=3D"0" align=3D"center"
+role=3D"presentation" style=3D"direction:ltr;">
+
+<tr>
+<td bgcolor=3D"#000000" height=3D"30"
+style=3D"font-size:30px;line-height:30px;mso-line-height-rule:exactly;opaci=
+ty:0;">
+&nbsp;</td>
+</tr>
+
+
+
+
+
+
+<tr>
+
+<td style=3D"font-size:1px;line-height:1px;padding:0px 26px 8px 26px;height=
+:auto;direction:ltr;"
+align=3D"left">
+
+<h1 style=3D"mso-line-height-rule:exactly;margin:0;line-height:66px!importa=
+nt;font-family:'Uber Move','Helvetica Neue',Helvetica,Arial,sans-serif;font=
+-size:60px!important;color:#ffcef2;font-weight: 500;text-decoration:none;di=
+rection:ltr;"
+align=3D"left"
+class=3D"hide414">
+
+
+
+
+Cruise to your destination with the whole crew
+
+
+
+
+
+</h1>
+
+<!--[if !mso 9]><!-->
+<h2 style=3D"display:none;overflow:hidden;max-height:0;mso-hide:all;margin:=
+0;line-height:50px!important;font-family:'Uber Move','Helvetica Neue',Helve=
+tica,Arial,sans-serif;font-size:44px!important;color:#ffcef2;font-weight: 5=
+00;text-decoration:none;direction:ltr;"
+align=3D"left"
+class=3D"show414">
+<span style=3D"font-size:44px!important;line-height:50px!important;">
+
+
+
+
+Cruise to your destination with the whole crew
+
+
+
+
+
+</span>
+</h2>
+<!--<![endif]-->
+
+</td>
+
+</tr>
+
+
+
+
+<tr>
+<td height=3D"26"
+style=3D"mso-line-height-rule:exactly;line-height: 26px;font-family:'Uber M=
+ove Text','Helvetica Neue',Helvetica,Arial,sans-serif;font-size: 20px;color=
+: #ffffff;font-weight: normal;text-decoration:none;direction:ltr;padding:0p=
+x 26px 0px 26px;"
+align=3D"left"
+class=3D"p1scale">
+
+<div>Ashish, with UberXL, enjoy a spacious and affordable way to pick up fr=
+iends, attend social outings, or whatever you have planned.</div>
+
+
+</td>
+</tr>
+
+
+
+
+
+<tr>
+<td style=3D"font-size:1px;line-height:1px;vertical-align:top;width:588px;m=
+ax-width:100%;"
+valign=3D"top"
+align=3D"left">
+<table border=3D"0" cellspacing=3D"0" cellpadding=3D"0"
+align=3D"left"
+role=3D"presentation" style=3D"direction:ltr;">
+
+
+<tr>
+<td style=3D"font-size:1px;line-height:1px;padding:0px 26px 0px 26px;paddin=
+g-top:30px;" align=3D"center">
+
+<div style=3D"font-size:1px;line-height:1px;" align=3D"left">
+
+<div class=3D"ucta_1d umig" style=3D"border-color:#4b4b4b; border-radius: 9=
+px; border-width: 1px; border-style: solid; mso-border-style-alt: none; dis=
+play: inline-block;">
+<table border=3D"0" cellspacing=3D"0" cellpadding=3D"0"  bgcolor=3D"#FFFFFF=
+" style=3D"border-radius:8px; display:inline-table;direction:ltr;" role=3D"=
+presentation">
+<tr>
+<td style=3D"vertical-align:middle;padding:11px 15px 11px 15px;mso-line-hei=
+ght:exactly;line-height:22px;font-family:'Uber Move','Helvetica Neue',Helve=
+tica,Arial,sans-serif;font-size:16px;font-weight:bold;color:#000000;text-al=
+ign:center;vertical-align:middle;direction:ltr;letter-spacing:0.5px"
+align=3D"center" valign=3D"middle">
+<a href=3D"https://rides.sng.link/Aw5zn/hw3r?_dl=3Duber%3A%2F%2Flearning_hu=
+b_topic%3Fcontent_key%3Dcrm_uberxl_awareness_v1&_fallback_redirect=3Dhttps%=
+3A%2F%2Fwww.uber.com%2Fride%2Fuberxl%2F&_forward_params=3D1&_smtype=3D3&par=
+tner=3Dcrm&pcid=3Dbloc_1a2a4579-5748-4afa-ad39-7939fc8faa61&u_action_id=3D0=
+d2dad2a-01d1-48a4-bcac-8b67c19a6b7b&utm_campaign=3D7c170ef8-f92b-4100-9ca1-=
+2dc0b86e3102&utm_content=3D94dc4ef1-caa8-333a-bd6e-24b3511e189f&utm_medium=
+=3Demail&utm_source=3Dcrm&~customer_keyword=3D94dc4ef1-caa8-333a-bd6e-24b35=
+11e189f" clicktracking=3Doff data-msys-clicktrack=3D"0" disable-tracking=3D=
+true style=3D"color:#000000;text-decoration:none;direction:ltr;">Take a tri=
+p</a>
+</td>
+</tr>
+</table>
+</div>
+</div>
+
+</td>
+</tr>
+
+
+
+
+
+<tr>
+<td bgcolor=3D"#000000" height=3D"50"
+style=3D"font-size:50px;line-height:50px;mso-line-height-rule:exactly;opaci=
+ty:0;">
+&nbsp;</td>
+</tr>
+
+</table>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+<!--[if (gte mso 9)|(IE)]>
+</td>
+</tr>
+</table>
+<![endif]-->
+</td>
+</tr>
+</table>
+<!--[if (gte mso 9)|(IE)]>
+</td>
+</tr>
+</table>
+<![endif]-->
+
+<table width=3D"100%" border=3D"0" cellpadding=3D"0" cellspacing=3D"0" styl=
+e=3D"border:0;border-collapse:collapse;border-spacing:0;margin:auto;max-wid=
+th:700px;" class=3D"">
+<tbody>
+<tr>
+<td align=3D"center">
+<table width=3D"100%" border=3D"0" cellpadding=3D"0" cellspacing=3D"0" styl=
+e=3D"background-color:#fff;border:0;border-collapse:collapse;border-spacing=
+:0;margin:auto;" bgcolor=3D"#ffffff" class=3D"basetable">
+<tbody>
+<tr>
+<td align=3D"center">
+<!--[if (gte mso 9)|(IE)]>
+<table width=3D"700" align=3D"center" cellpadding=3D"0" cellspacing=3D"0" b=
+order=3D"0">
+<tr>
+<td align=3D"center">
+<![endif]-->
+<table width=3D"100%" border=3D"0" cellpadding=3D"0" cellspacing=3D"0" clas=
+s=3D"basetable" style=3D"border:0;border-collapse:collapse;border-spacing:0=
+;">
+<tbody>
+<tr>
+<td align=3D"center" style=3D"background-color:#ffffff">
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" width=3D"100%" clas=
+s=3D"basetable" style=3D"border:0;border-collapse:collapse;border-spacing:0=
+;">
+<tbody>
+<tr>
+<td>
+<!--[if (gte mso 9)|(IE)]>
+<table width=3D"100%" align=3D"center" cellpadding=3D"0" cellspacing=3D"0" =
+border=3D"0">
+<tr>
+<td>
+<![endif]-->
+<table width=3D"100%" border=3D"0" cellpadding=3D"0" cellspacing=3D"0" clas=
+s=3D"basetable" style=3D"border:0;border-collapse:collapse;border-spacing:0=
+;">
+<tbody>
+<tr>
+<td>
+<!--[if (gte mso 9)|(IE)]>
+<table width=3D"100%" align=3D"center" cellpadding=3D"0" cellspacing=3D"0" =
+border=3D"0">
+<tr>
+<td>
+<![endif]-->
+<table width=3D"100%" border=3D"0" cellpadding=3D"0" cellspacing=3D"0" styl=
+e=3D"border:0;border-collapse:collapse;border-spacing:0;" class=3D"">
+<tbody>
+<tr>
+<td>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   =20
+   =20
+   =20
+   =20
+
+   =20
+   =20
+
+   =20
+   =20
+   =20
+
+
+
+
+
+
+
+
+
+
+
+<!--  B_LIST  -->
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" style=3D"border-col=
+lapse:collapse;width:100%;direction:ltr;" role=3D"presentation" bgcolor=3D"=
+#000000"
+data-blockuuid=3D"ebb96728-f307-4a75-a1df-52f08d0c82c1">
+<tbody>
+<tr>
+<td class=3D"outsidegutter" align=3D"left"
+style=3D"direction:ltr;text-align:left;padding-left:14px;padding-right:14px=
+;">
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" style=3D"border-col=
+lapse:collapse;width:100%;direction:ltr;" role=3D"presentation">
+<tbody>
+<tr>
+<td style=3D"direction:ltr;text-align:left;">
+<!--[if (gte mso 9)|(IE)]>
+<table align=3D"center" cellpadding=3D"0" cellspacing=3D"0" border=3D"0" ro=
+le=3D"presentation" style=3D"width:560px;direction:ltr;">
+<tr>
+<td>
+<![endif]-->
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" class=3D"t10of12"
+align=3D"center"
+style=3D"Margin:0 auto;border-collapse:collapse;max-width:560px;width:100%;=
+direction:ltr;" role=3D"presentation">
+<tbody>
+<tr>
+<td
+style=3D"direction:ltr;text-align:left;">
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" align=3D"left"
+style=3D"border-collapse:collapse;table-layout:fixed;width:100%;" role=3D"p=
+resentation">
+<tbody>
+
+
+
+
+
+
+
+<tr>
+<td
+style=3D"direction:ltr;text-align:left;">
+<table border=3D"0" cellpadding=3D"0"
+cellspacing=3D"0" width=3D"100%"
+align=3D"left"
+style=3D"border-collapse: collapse; table-layout: fixed; width: 100%;" role=
+=3D"presentation">
+<tbody>
+<!-- Sub Bloc ---- -->
+
+
+
+
+
+
+
+
+
+
+ =20
+ =20
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<tr data-blockuuid=3D"d80552bc-7a1c-4da6-ae53-daae8520cc39">
+
+<td style=3D"width: 46px; max-width: 46px; padding-left: 12px; direction:lt=
+r;text-align:left; padding-top:4px;  padding-bottom: 8px;" valign=3D"top" a=
+lign=3D"left">
+<img src=3D"https://tb-static.uber.com/prod/crm/d_emails/2024/10/UB-708/em0=
+3_icon01_2x.png" width=3D"32" height=3D"" style=3D"display: block; width:32=
+px!important; height:32px!important; outline: none; text-decoration: none; =
+padding-top:4px; " border=3D"0" alt=3D"">
+</td>
+
+  <!--[if (gte mso 9)|(IE)]>
+  <td width=3D"10" class=3D"h5 white" role=3D"presentation" style=3D"width:=
+10px!important;direction:ltr;text-align:center; font-family: 'Uber Move', '=
+Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 1px; font-weight:=
+ 500; line-height: 1px; ">
+     &nbsp;  =20
+</td>
+<![endif]-->
+
+<td style=3D"direction:ltr;text-align:left; padding-bottom: 7px; padding-to=
+p: 7px; padding-right: 12px; padding-left: 6px;" valign=3D"top">
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" class=3D"basetable"=
+ width=3D"100%" align=3D"left" style=3D"table-layout: fixed; width: 100%;">
+ =20
+  <tr>
+  <td class=3D"p1b" style=3D"color: #ffffff; font-family: 'Uber Move Text',=
+ 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 20px; font-weig=
+ht: bold; line-height: 26px; padding-bottom: 7px; padding-top: 0px;">All th=
+e room you need</td>
+  </tr>
+ =20
+ =20
+<tr>
+<td class=3D"p2" style=3D"color: #ffffff; font-family: 'Uber Move Text', 'H=
+elvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; font-weight:=
+ normal; line-height: 22px; padding-bottom: 7px; padding-top: 0px;"><p>Get =
+a ride with enough space for up to 6 people=E2=80=94plus, with extra space =
+throughout the vehicle, there=E2=80=99s even room for luggage.</p>
+</td>
+</tr>
+
+
+
+
+
+
+</table>
+</td>
+</tr>
+
+
+
+
+
+
+
+
+
+ =20
+ =20
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<tr data-blockuuid=3D"8128fcd6-6530-411f-a60d-c8d31edc4825">
+
+<td style=3D"width: 46px; max-width: 46px; padding-left: 12px; direction:lt=
+r;text-align:left; padding-top:4px;  padding-bottom: 8px;" valign=3D"top" a=
+lign=3D"left">
+<img src=3D"https://tb-static.uber.com/prod/bp-assets/images/cf/ff7f92ed-53=
+dc-4f19-ac1c-2ba4c0210def-compressed.png" width=3D"32" height=3D"" style=3D=
+"display: block; width:32px!important; height:32px!important; outline: none=
+; text-decoration: none; padding-top:4px; " border=3D"0" alt=3D"multi stop =
+icon">
+</td>
+
+  <!--[if (gte mso 9)|(IE)]>
+  <td width=3D"10" class=3D"h5 white" role=3D"presentation" style=3D"width:=
+10px!important;direction:ltr;text-align:center; font-family: 'Uber Move', '=
+Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 1px; font-weight:=
+ 500; line-height: 1px; ">
+     &nbsp;  =20
+</td>
+<![endif]-->
+
+<td style=3D"direction:ltr;text-align:left; padding-bottom: 7px; padding-to=
+p: 7px; padding-right: 12px; padding-left: 6px;" valign=3D"top">
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" class=3D"basetable"=
+ width=3D"100%" align=3D"left" style=3D"table-layout: fixed; width: 100%;">
+ =20
+  <tr>
+  <td class=3D"p1b" style=3D"color: #ffffff; font-family: 'Uber Move Text',=
+ 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 20px; font-weig=
+ht: bold; line-height: 26px; padding-bottom: 7px; padding-top: 0px;">Stay c=
+onnected</td>
+  </tr>
+ =20
+ =20
+<tr>
+<td class=3D"p2" style=3D"color: #ffffff; font-family: 'Uber Move Text', 'H=
+elvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; font-weight:=
+ normal; line-height: 22px; padding-bottom: 7px; padding-top: 0px;"><p>Add =
+extra stops so you can get to each of your destinations by tapping + next t=
+o the destination box.<br />
+<br />
+Tap Send Status to quickly send your GPS location to loved ones at any time=
+ during the trip.</p>
+</td>
+</tr>
+
+
+
+
+
+
+</table>
+</td>
+</tr>
+<!-- END Sub bloc -->
+</tbody>
+</table>
+</td>
+</tr>
+
+
+
+<tr>
+<td bgcolor=3D"#000000" height=3D"50" style=3D"font-size:50px;line-height:5=
+0px;mso-line-height-rule:exactly;opacity:0;">&nbsp;</td>
+</tr>
+
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+<!--[if (gte mso 9)|(IE)]>
+</td>
+</tr>
+</table>
+<![endif]-->
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+<!--  close B_LIST   -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0"
+style=3D"border-collapse:collapse;width:100%;direction:ltr;" role=3D"presen=
+tation"
+bgcolor=3D"#000000" data-blockuuid=3D"28bbc662-0c24-4cf4-aa31-4d4167c54a17"=
+>
+<tr>
+<td class=3D"outsidegutter" align=3D"left"
+style=3D"direction:ltr;text-align:left; padding-left: 14px; padding-right: =
+14px;">
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" style=3D"border-col=
+lapse: collapse; width: 100%;"
+role=3D"presentation">
+<tr>
+<td style=3D"direction:ltr;text-align:left;">
+<!--[if (gte mso 9)|(IE)]>
+<table align=3D"center" cellpadding=3D"0" cellspacing=3D"0" border=3D"0"
+role=3D"presentation" style=3D"width:560px;">
+<tr>
+<td>
+<![endif]-->
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" class=3D"t10of12" a=
+lign=3D"center"
+style=3D"Margin: 0 auto; border-collapse: collapse; max-width: 560px; width=
+: 100%;"
+role=3D"presentation">
+<tr>
+<td style=3D"direction:ltr;text-align:left;">
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" width=3D"100%"
+align=3D"left"
+style=3D"border-collapse: collapse; table-layout: fixed; width: 100%;"
+role=3D"presentation">
+
+
+<tr>
+
+
+</tr>
+
+
+
+
+<tr>
+<td style=3D"direction:ltr;text-align:left;">
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" width=3D"100%"
+align=3D"left"
+style=3D"border-collapse: collapse; table-layout: fixed; width: 100%;"
+role=3D"presentation">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--[if !mso 9]><!-->
+
+<head>
+<style type=3D"text/css">
+@media screen and (min-width:671px) {
+.outlook-mac-fix-left .floatleft {
+float: left !important
+}
+
+.outlook-mac-fix-right .floatright {
+float: right !important
+}
+}
+
+@media screen and (max-width:430px) {
+.heightauto {
+height: auto !important
+}
+
+.pt20 {
+padding-top: 20px !important;
+}
+
+.pr20 {
+padding-right: 20px !important;
+}
+
+.pl20 {
+padding-left: 20px !important;
+}
+
+.floatleft {
+float: left !important;
+}
+
+.floatright {
+float: right !important;
+}
+}
+</style>
+</head>
+<!--<![endif]-->
+
+
+
+
+
+
+
+<tr data-blockuuid=3D"4f2f2f5e-0a57-4203-ab23-f7c756fbd23c">
+<td style=3D"font-size:1px;line-height:1px;vertical-align:top;padding-left:=
+12px;padding-right:12px;"
+valign=3D"top" align=3D"left">
+<!--[if (gte mso 9)|(IE)]>
+<table align=3D"left" cellpadding=3D"0" cellspacing=3D"0" border=3D"0" role=
+=3D"presentation"
+style=3D"width:536px;">
+<tr>
+<td width=3D"536">
+<![endif]-->
+<table width=3D"536" border=3D"0" cellspacing=3D"0" cellpadding=3D"0" align=
+=3D"left"
+role=3D"presentation"
+style=3D"width:100%;max-width:536px;direction:ltr;text-align:left;">
+
+<tr>
+<td style=3D"font-size:1px;line-height:1px;border-radius:10px;" bgcolor=3D"=
+#FFFFFF"
+align=3D"left">
+<table style=3D"width:100%;border-radius:10px;" cellpadding=3D"0" cellspaci=
+ng=3D"0" border=3D"0"
+align=3D"left" role=3D"presentation">
+<tr>
+<td style=3D"font-size:1px;line-height:1px;vertical-align:top;border-radius=
+:10px;"
+valign=3D"top" align=3D"left">
+<!--[if (gte mso 9)|(IE)]>
+<table align=3D"left" cellpadding=3D"0" cellspacing=3D"0"
+border=3D"0" role=3D"presentation" style=3D"width:536px;">
+<tr>
+<td width=3D"536">
+<![endif]-->
+<table border=3D"0" cellspacing=3D"0" cellpadding=3D"0"
+align=3D"left"
+style=3D"width:100%;max-width:536px;" role=3D"presentation">
+<tr>
+<td style=3D"padding:30px 20px 0px 20px;font-size:1px;line-height:1px;verti=
+cal-align:top;direction:ltr;text-align:left;"
+valign=3D"top" align=3D"left">
+<table width=3D"88" border=3D"0"
+cellspacing=3D"0" cellpadding=3D"0"
+align=3D"left" role=3D"presentation"
+style=3D"direction:ltr;text-align:left;">
+<tr>
+<td style=3D"direction:ltr;text-align:left;"
+align=3D"left">
+
+<a href=3D"https://rides.sng.link/Aw5zn/hw3r?_dl=3Duber%3A%2F%2Flearning_hu=
+b_topic%3Fcontent_key%3Dcrm_uberxl_awareness_v1&_fallback_redirect=3Dhttps%=
+3A%2F%2Fwww.uber.com%2Fride%2Fuberxl%2F&_forward_params=3D1&_smtype=3D3&par=
+tner=3Dcrm&pcid=3Dbloc_1a2a4579-5748-4afa-ad39-7939fc8faa61&u_action_id=3D0=
+d2dad2a-01d1-48a4-bcac-8b67c19a6b7b&utm_campaign=3D7c170ef8-f92b-4100-9ca1-=
+2dc0b86e3102&utm_content=3D94dc4ef1-caa8-333a-bd6e-24b3511e189f&utm_medium=
+=3Demail&utm_source=3Dcrm&~customer_keyword=3D94dc4ef1-caa8-333a-bd6e-24b35=
+11e189f" clicktracking=3Doff data-msys-clicktrack=3D"0" disable-tracking=3D=
+true
+style=3D"color:#000000;">
+
+<img src=3D"https://tb-static.uber.com/prod/crm/d_emails/2024/10/UB-708/em0=
+3_icon02_2x.png"
+alt=3D""
+title=3D""
+width=3D"88"
+height=3D"88"
+border=3D"0"
+style=3D"vertical-align:top;display:inline-block!important;font-family:'Ube=
+r Move','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:14px;line-hei=
+ght:17px;color:#000000;font-weight:500;text-decoration:none;width:88px;heig=
+ht:88px;" />
+
+</a>
+
+</td>
+</tr>
+</table>
+</td>
+</tr>
+
+<tr>
+<td
+style=3D"direction:ltr;text-align:left;padding:20px 20px 0px 20px;">
+<h4
+class=3D"" style=3D"Margin:0;
+padding:0;mso-line-height-rule:exactly;
+font-family:'Uber Move','Helvetica Neue',
+Helvetica,Arial,sans-serif;font-size: 28px;
+line-height: 34px;
+font-weight: 500;
+color:#000000;">
+Take a group trip with UberXL
+
+</h4>
+</td>
+</tr>
+
+
+<tr>
+<td height=3D"22"
+style=3D"padding:10px 20px 0px 20px;mso-line-height-rule:exactly;line-heigh=
+t:22px;font-family:'Uber Move Text', 'Helvetica Neue', Helvetica, Arial, sa=
+ns-serif;font-size:16px;color:#000000;font-weight:normal;text-decoration:no=
+ne;"
+align=3D"left">
+<div>Supersize your ride so you can all travel to your destination together=
+.</div>
+
+</td>
+</tr>
+
+
+
+<tr>
+<td style=3D"direction:ltr;text-align:left;padding-top:20px; padding-right:=
+20px; padding-bottom:30px; padding-left:20px; direction:ltr;"
+align=3D"left"
+class=3D"">
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0"
+class=3D"basetable" width=3D"100%"
+align=3D"left"
+style=3D"table-layout: fixed; width: 100%; direction:ltr;"
+role=3D"presentation">
+<tr>
+<td class=3D"cta" lang=3D"x-textcta"
+style=3D"direction:ltr;text-align:left;font-family: 'Uber Move Text', 'Helv=
+etica Neue', Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 70=
+0; line-height: 22px; color: #000000;">
+
+
+<div class=3D"ucta_3 umig" style=3D"border-color:#4b4b4b; border-bottom-wid=
+th: 1px; border-bottom-style: solid; mso-border-style-alt: none; display: i=
+nline-block;">
+<a class=3D"ol_ul" href=3D"https://rides.sng.link/Aw5zn/hw3r?_dl=3Duber%3A%=
+2F%2Flearning_hub_topic%3Fcontent_key%3Dcrm_uberxl_awareness_v1&_fallback_r=
+edirect=3Dhttps%3A%2F%2Fwww.uber.com%2Fride%2Fuberxl%2F&_forward_params=3D1=
+&_smtype=3D3&partner=3Dcrm&pcid=3Dbloc_1a2a4579-5748-4afa-ad39-7939fc8faa61=
+&u_action_id=3D0d2dad2a-01d1-48a4-bcac-8b67c19a6b7b&utm_campaign=3D7c170ef8=
+-f92b-4100-9ca1-2dc0b86e3102&utm_content=3D94dc4ef1-caa8-333a-bd6e-24b3511e=
+189f&utm_medium=3Demail&utm_source=3Dcrm&~customer_keyword=3D94dc4ef1-caa8-=
+333a-bd6e-24b3511e189f" clicktracking=3Doff data-msys-clicktrack=3D"0" disa=
+ble-tracking=3Dtrue
+style=3D"border-bottom: 1px solid; display: inline-block; line-height: 24px=
+; padding-bottom: 4px; font-weight:bold; text-decoration:none!important; co=
+lor: #000000;">Get a ride</a>
+</div>
+
+</td>
+</tr>
+</table>
+</td>
+</tr>
+
+</table>
+<!--[if (gte mso 9)|(IE)]>
+</td>
+</tr>
+</table>
+<![endif]-->
+</td>
+</tr>
+</table>
+</td>
+</tr>
+
+<tr>
+<td height=3D"20"
+style=3D"font-size:20px;line-height:20px;mso-line-height-rule:exactly;opaci=
+ty:0;">
+&nbsp;&nbsp;</td>
+</tr>
+</table>
+<!--[if (gte mso 9)|(IE)]>
+</td>
+</tr>
+</table>
+<![endif]-->
+</td>
+</tr>
+
+
+</table>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+
+
+
+
+
+
+<tr>
+<td bgcolor=3D"#000000" height=3D"50"
+style=3D"font-size:50px;line-height:50px;mso-line-height-rule:exactly;opaci=
+ty:0;">
+&nbsp;</td>
+</tr>
+
+</table>
+<!--[if (gte mso 9)|(IE)]>
+</td>
+</tr>
+</table>
+<![endif]-->
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+
+</td>
+</tr>
+</tbody>
+</table>
+<!--[if (gte mso 9)|(IE)]>
+</td>
+</tr>
+</table>
+<![endif]-->
+</td>
+</tr>
+</tbody>
+</table>
+<!--[if (gte mso 9)|(IE)]>
+</td>
+</tr>
+</table>
+<![endif]-->
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+<!--[if (gte mso 9)|(IE)]>
+</td>
+</tr>
+</table>
+<![endif]-->
+</td>
+</tr>
+</tbody>
+</table>
+<!-- END LIST-->
+</td>
+</tr>
+<!-- END BODY-->
+</tbody>
+</table>
+ =20
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ =20
+   =20
+     =20
+     =20
+   =20
+   =20
+
+
+
+
+
+ =20
+   =20
+ =20
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ =20
+ =20
+ =20
+
+ =20
+ =20
+ =20
+ =20
+
+  =20
+ =20
+ =20
+
+ =20
+ =20
+ =20
+
+ =20
+ =20
+ =20
+
+ =20
+   =20
+   =20
+   =20
+   =20
+   =20
+ =20
+
+
+ =20
+
+ =20
+ =20
+ =20
+ =20
+
+  =20
+ =20
+ =20
+
+ =20
+ =20
+ =20
+
+ =20
+ =20
+ =20
+
+ =20
+   =20
+   =20
+   =20
+   =20
+   =20
+ =20
+
+
+ =20
+
+ =20
+ =20
+ =20
+ =20
+
+  =20
+ =20
+ =20
+
+ =20
+ =20
+ =20
+
+ =20
+ =20
+ =20
+
+ =20
+   =20
+   =20
+   =20
+   =20
+   =20
+ =20
+
+
+ =20
+
+ =20
+ =20
+ =20
+ =20
+
+  =20
+ =20
+ =20
+
+ =20
+ =20
+ =20
+
+ =20
+ =20
+ =20
+
+ =20
+   =20
+   =20
+   =20
+   =20
+   =20
+ =20
+
+
+
+
+ =20
+ =20
+ =20
+ =20
+
+ =20
+ =20
+   =20
+ =20
+ =20
+
+ =20
+   =20
+   =20
+ =20
+
+ =20
+ =20
+ =20
+ =20
+
+ =20
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- footer update 07/13/2022 MT -->
+<table width=3D"100%" border=3D"0" cellpadding=3D"0" cellspacing=3D"0" styl=
+e=3D"background-color: #000000; width: 100%;" data-blockuuid=3D"a752cdcb-92=
+f3-47e5-a999-fc99f4bddab0">
+<tr>
+<td class=3D"outsidegutter" align=3D"left" style=3D"direction:ltr;text-alig=
+n:left; padding-top: 30px">
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" style=3D"width: 100=
+%;" class=3D"">
+
+
+
+
+<!-- Top half -->
+
+
+<tr>
+<td style=3D"direction:ltr;text-align:left;padding: 0px 14px 20px 14px;">
+<!--[if (gte mso 9)|(IE)]>
+<table width=3D"560" align=3D"center" cellpadding=3D"0" cellspacing=3D"0" b=
+order=3D"0">
+<tr>
+<td>
+<![endif]-->
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" class=3D"t10of12" a=
+lign=3D"center" style=3D"Margin: 0 auto; max-width: 560px; width: 100%;">
+<tr>
+<td>
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" width=3D"100%" alig=
+n=3D"left" style=3D"direction: rtl; table-layout: fixed; width: 100%;">
+<tr>
+<td class=3D"ignoreTd" style=3D"font-size:0; text-align: left;">
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" class=3D"t6of12" st=
+yle=3D"direction: ltr; display: inline-block; max-width: 560px; vertical-al=
+ign: top; width: 100%;">
+<tr>
+<td>
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" width=3D"100%" alig=
+n=3D"left" style=3D"table-layout: fixed; width: 100%;">
+<tr>
+<td>
+<!--[if (gte mso 9)|(IE)]>
+<table width=3D"468" align=3D"left" cellpadding=3D"0" cellspacing=3D"0" bor=
+der=3D"0">
+<tr>
+<td width=3D"168">
+<![endif]-->
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" class=3D"t3of12" al=
+ign=3D"left" style=3D"max-width: 168px; width: 100%;">
+<tr>
+<td style=3D"direction:ltr;text-align:left;padding: 0 12px;">
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" width=3D"100%" alig=
+n=3D"left" style=3D"table-layout: fixed; width: 100%;">
+
+
+
+ =20
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<tr>
+<td class=3D"white" style=3D"color:#ffffff; font-family: 'Uber Move Text', =
+'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px; line-heigh=
+t: 18px; padding: 3px 0px; direction: ltr; text-align: left;">
+<a href=3D"http://email.uber.com/ss/c/u001.Z92I9v7tcN2DT5AZgXa6lqaMO_qwUgT-=
+TZj7j9kDDPY/4js/KSHg63e8QjuG97qj6unBgw/h0/h001.CwrEqoyVkiQaRIbkpzStEsAiBToE=
+kq6qZ60DOv6llnY" style=3D"color: #ffffff; text-decoration: none;">Help Cent=
+er
+</a>
+</td>
+</tr>
+
+ =20
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<tr>
+<td class=3D"white" style=3D"color:#ffffff; font-family: 'Uber Move Text', =
+'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px; line-heigh=
+t: 18px; padding: 3px 0px; direction: ltr; text-align: left;">
+<a href=3D"http://email.uber.com/ss/c/u001.3rz4IfclD0-2ph6Eff9d69FeoNWZ7HJl=
+ckoipfD4Y0E51tkiUwjlOABgER80fiIW/4js/KSHg63e8QjuG97qj6unBgw/h1/h001.tZHWvit=
+SIQM1I1dT3BH6TD1yD7sKdLkBjPpnGukL6Lg" style=3D"color: #ffffff; text-decorat=
+ion: none;">Terms</a>
+</td>
+</tr>
+
+
+ =20
+ =20
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ =20
+   =20
+   =20
+ =20
+
+
+<tr>
+<td class=3D"white" style=3D"color:#ffffff; font-family: 'Uber Move Text', =
+'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px; line-heigh=
+t: 18px; padding: 3px 0px; direction: ltr; text-align: left;">
+<a href=3D"http://email.uber.com/ss/c/u001.3rz4IfclD0-2ph6Eff9d62l6WT6qKAZ6=
+xAyGls9kuW3g7Hot5Mw9UjqwSrge8UXC5EXqTIyLNjQUHtIl5JZK8-ms0j_8WM9DgikjNUKOrOE=
+tzurtp-WQvvWsaymgpKboKAa4yzSctQq2YpPTMhov05dYs1Ck1vm1xcdtLDU5BFMIPHOJHPL_dW=
+kpJ_x8rTfgcmEEJsdGsCdlSMV0fLJV05PcguRdwyRuy5Gsmw_pk6F_MM7_hCuaycYFQwQWLhIaD=
+9puvQB6c9LuG2rRUeBxkivhVy9FzfBYzkPtTDNSfgzfBeQBiWod6GW9UfCY0ftOX_9A6gF82e0d=
+9Oy3LcVYrbSnVE8MDu6fxNIPsNsn-OPWHczc29VJjg-hezh9gt_0LnVfvNz8RKaFJyHwoC2wOD7=
+Fcx_Toj551wjVY9ezFXCzBIUOQBpCwvVHEvxaxN3o8nzYCR3F8mDcJ7uhNwL2uXoq4nl_3r3j5j=
+2hg-rr67VXz7qbmIMxdrL5_6wSqgHCF3a9-mCURCw8m6Ht-gaL2zoTb1JoqM-CUape1Aa3WEUWX=
+4cpf79Gv3W4eVM8Vy4-rwXf7jIkhu7xBY9QoEel_0ABVAHCJyqphcu4JcvNeyeu_HifMQNXKF7U=
+xQPt7snfSHjalWO6Ftb7eLEAlutGlE3chqkitc4HFk73gPDTdqrkoZBbPugo49T6Q1o9uZpggOk=
+uFAccnyiPuvyOblEZ43uXR4K_gazK8h5X3OhHDlHEFVSFYbPbmN5TvQuKBcKn6gmJBp4f04nYAQ=
+1_7x7Qy4yt61z0svqV_ueQdasUEeWdG5HNRfYxnhQhZ6NNoW_vrIJl_nTNgWnu2U6W2DQMv_z43=
+FnyWVOvKXpJQa8gNEqYVPgLCjCTYTkEl4wOEsYh7GNkKa4wrB9DvBLxM7t1yswpgKKtVU_yXZHt=
+qmFuHkZF03X6OOqZAkqBcQSnVgVA50LWc9HzLtpJ9Abu1gf0R1UY7EFYrgOxuwNvSHBwi1-Tr31=
+C9MonYnQHk_BaAZnpKUXgIRKWAzW23ixLOVnCp75UKsotcZXFBxCMA1SpPwvIHYMuZ1mayf6c2g=
+euNzij/4js/KSHg63e8QjuG97qj6unBgw/h2/h001.-cBtAXHcq-R-y_G1mzCCJW999Cpacz3vt=
+7XbiNePK4E" style=3D"color: #ffffff; text-decoration: none;">Unsubscribe</a=
+>
+</td>
+</tr>
+
+ =20
+
+ =20
+
+
+
+
+
+
+
+
+
+
+
+
+
+</table>
+</td>
+</tr>
+</table>
+<!--[if (gte mso 9)|(IE)]>
+</td>
+
+<td width=3D"300" valign=3D"top" style=3D"vertical-align: top;">
+<![endif]-->
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" class=3D"t3of12" al=
+ign=3D"left" style=3D"max-width: 300px; width: 100%;">
+<tr>
+<td style=3D"direction:ltr;text-align:left;padding: 0 12px;">
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" width=3D"100%" alig=
+n=3D"left" style=3D"table-layout: fixed; width: 100%;">
+
+
+
+ =20
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<tr>
+<td class=3D"white" style=3D"color:#ffffff; font-family: 'Uber Move Text', =
+'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px; line-heigh=
+t: 18px; padding: 3px 0px; direction: ltr; text-align: left;">
+<a href=3D"http://email.uber.com/ss/c/u001.JfX2-y9ZMfLbJ6S_zqCLfayu1d2hl_2Q=
+2KYfMC3I5ZVUoVmAAYiLbTL2GZlbo1Yh/4js/KSHg63e8QjuG97qj6unBgw/h3/h001.edsyC2d=
+xuJK04u2BntzUaIxGYvOEEMoN5xJ2woytHas" style=3D"color: #ffffff; text-decorat=
+ion: none;">Privacy</a>
+</td>
+</tr>
+
+ =20
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<tr>
+<td class=3D"white" style=3D"color:#ffffff; font-family: 'Uber Move Text', =
+'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px; line-heigh=
+t: 18px; padding: 3px 0px; direction: ltr; text-align: left;">
+<a href=3D"http://email.uber.com/ss/c/u001.3rz4IfclD0-2ph6Eff9d69FeoNWZ7HJl=
+ckoipfD4Y0HOGGvCpLi7O88M5_aHZR7d7A7kLaMVp3wORSNAaHJOesU3-HnekdowkhKT8R-_390=
+/4js/KSHg63e8QjuG97qj6unBgw/h4/h001.o-uJLnf_B47xEk8GQpkvWYcX80CzqKawDvgQbuR=
+AWJc" style=3D"color: #ffffff; text-decoration: none;">Community</a>
+</td>
+</tr>
+
+  =20
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<tr>
+<td class=3D"white" style=3D"color:#ffffff; font-family: 'Uber Move Text', =
+'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px; line-heigh=
+t: 18px; padding: 3px 0px; direction: ltr; text-align: left;">
+<a href=3D"http://email.uber.com/ss/c/u001.4ExuDpoZDQKZIscLSzLJVs_uGuYqLGUA=
+SHT-0vjc6-KcZvNr-xQlSIW3JPLF9zDQ/4js/KSHg63e8QjuG97qj6unBgw/h5/h001.FYzAUb0=
+87uxyusyxueLqJFnsVrEjMeRmD-6H_Jv24bU" style=3D"color: #ffffff; text-decorat=
+ion: none;">Email Preferences</a>
+</td>
+</tr>
+=20
+
+
+
+
+
+
+
+
+
+
+
+</table>
+</td>
+</tr>
+</table>
+<!--[if (gte mso 9)|(IE)]>
+</td>
+
+
+</tr>
+</table>
+<![endif]-->
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+<!--[if (gte mso 9)|(IE)]>
+</td>
+</tr>
+</table>
+<![endif]-->
+</td>
+</tr>
+<!-- END top half -->
+
+
+<!-- bottom half -->
+<tr>
+<td style=3D"direction:ltr;text-align:left; padding: 0px 14px 30px 14px;">
+<!--[if (gte mso 9)|(IE)]>
+<table width=3D"560" align=3D"center" cellpadding=3D"0" cellspacing=3D"0" b=
+order=3D"0">
+<tr>
+<td width=3D"560">
+<![endif]-->
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" class=3D"t10of12" a=
+lign=3D"center" style=3D"Margin: 0 auto; max-width: 560px; width: 100%;">
+<tr>
+<td>
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" width=3D"100%" alig=
+n=3D"left" style=3D"direction: rtl; table-layout: fixed; width: 100%;">
+<tr>
+<td style=3D"font-size:0; text-align: left">
+<!--[if (gte mso 9)|(IE)]>
+<table width=3D"560" align=3D"left" cellpadding=3D"0" cellspacing=3D"0" bor=
+der=3D"0">
+<tr>
+<td width=3D"224">
+<![endif]-->
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" class=3D"t4of12" st=
+yle=3D"direction: ltr; display: inline-block; max-width: 224px; vertical-al=
+ign: bottom; width: 100%;">
+<tr>
+<td style=3D"direction:ltr;text-align:left;padding:10px 12px 0 12px;">
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0"  align=3D"left" sty=
+le=3D"table-layout: fixed;">
+<tr>
+<td style=3D"direction:ltr;text-align:left;">
+
+<!-- social table -->
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" width=3D"100%" alig=
+n=3D"left" style=3D"table-layout: fixed; width: 130px;">
+<tr>
+<td width=3D"43" align=3D"center" style=3D"direction: ltr; text-align: left=
+;">
+<a href=3D"http://email.uber.com/ss/c/u001.3rz4IfclD0-2ph6Eff9d66wdDEvXjrbE=
+Dt9pz5vdBGRoNk88CTLSg6AO2xKvXH5G/4js/KSHg63e8QjuG97qj6unBgw/h6/h001.Gqtn7WR=
+bxM7X9o1SGq6qX3t_H84RUPa_TmrcCcvQSVc"> <img src=3D"https://tb-static.uber.c=
+om/prod/crm/assets/icons/social_darkmode/social_icons_071522/social-icon-fa=
+cebook-black.png" width=3D"32" height=3D"32" border=3D"0" style=3D"display:=
+ block; height: auto; max-height: 32px; max-width: 32px; width: 100%;">
+</a>
+</td>
+<td width=3D"43" align=3D"center" style=3D"direction: ltr; text-align: left=
+;">
+<a href=3D"http://email.uber.com/ss/c/u001.mspHjJOk8JIj3l-SrEEc6RgU3mYfceK5=
+MxuC1fXMaqw/4js/KSHg63e8QjuG97qj6unBgw/h7/h001.R1LZZa12KwBvyZW7GSSt_IVtQUX2=
+hqRpHv-zyBXj-bs"> <img src=3D"https://tb-static.uber.com/prod/crm/assets/ic=
+ons/social_darkmode/social_icons_071522/social-icon-twitter-black.png" widt=
+h=3D"32" height=3D"32" border=3D"0" style=3D"display: block; height: auto; =
+max-height: 32px; max-width: 32px; width: 100%;">
+</a>
+</td>
+<td width=3D"43" align=3D"center" style=3D"direction: ltr; text-align: left=
+;">
+<a href=3D"http://email.uber.com/ss/c/u001.3rz4IfclD0-2ph6Eff9d60ryYi1OKRcO=
+apk6BJhmUWwiICBglVglqiC8NcDPmUZ7/4js/KSHg63e8QjuG97qj6unBgw/h8/h001.cQhSwTn=
+bg2jzPsdXzVJl2vdhih5ntkz6YRuZ2UFUaS0"> <img src=3D"https://tb-static.uber.c=
+om/prod/crm/assets/icons/social_darkmode/social_icons_071522/social-icon-in=
+stagram-black.png" width=3D"32" height=3D"32" border=3D"0" style=3D"display=
+: block; height: auto; max-height: 32px; max-width: 32px; width: 100%;">
+</a>
+</td>
+</tr>
+</table>
+<!-- END social table -->
+
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+<!--[if (gte mso 9)|(IE)]>
+</td>
+<td width=3D"336">
+<![endif]-->
+
+
+ =20
+ =20
+ =20
+
+ =20
+
+
+ =20
+  <table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" class=3D"t6of12" =
+style=3D"direction: ltr; display: inline-block; max-width: 336px; vertical-=
+align: top; width: 100%;">
+  <tr>
+  <td style=3D"direction:ltr;text-align:left;padding: 12px 12px 0 12px">
+  <table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" width=3D"100%" al=
+ign=3D"left" style=3D"table-layout: fixed; width: 100%;">
+  <tr>
+  <td style=3D"direction:ltr;text-align:left;color: #e5e5e5; font-family: '=
+Uber Move Text', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size:=
+ 10px; line-height: 18px;">
+
+
+  <!-- Legal Disclaimer -->
+ =20
+
+ =20
+ =20
+
+ =20
+ =20
+
+ =20
+ =20
+
+ =20
+ =20
+ =20
+ =20
+ =20
+
+ =20
+ =20
+
+ =20
+ =20
+ =20
+ =20
+ =20
+ =20
+ =20
+   =20
+   =20
+     =20
+        Images or text may have been created or edited with AI.
+     =20
+   =20
+
+   =20
+
+   =20
+
+   =20
+
+   =20
+
+   =20
+
+   =20
+
+   =20
+
+   =20
+
+   =20
+
+   =20
+
+   =20
+
+   =20
+
+<br>
+
+
+<br>
+
+  <!-- Legal Disclaimer -->
+
+ =20
+ =20
+  This is a promotional email from
+ =20
+ =20
+
+ =20
+
+ =20
+  Uber Technologies<br>1725 3rd St., San Francisco, CA 94158 =20
+ =20
+  <br>
+ =20
+  <a href=3D"http://email.uber.com/ss/c/u001.D99t-Ta36h6Fmg_QWyqx8x9EYQwcF7=
+wsrJii1Zqbvvs/4js/KSHg63e8QjuG97qj6unBgw/h9/h001.N7BG5xSN-AdORJBcKE6WWZue4H=
+Le4O-jDxV4OySTPJQ" style=3D"text-decoration: none; color: #e5e5e5">Uber.com=
+</a>
+ =20
+  </td>
+  </tr>
+  </table>
+  </td>
+  </tr>
+  </table>
+
+
+<!--[if (gte mso 9)|(IE)]>
+</td>
+</tr>
+</table>
+<![endif]-->
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+<!--[if (gte mso 9)|(IE)]>
+</td>
+</tr>
+</table>
+<![endif]-->
+</td>
+</tr>
+<!-- END bottom half -->
+
+
+</table>
+</td>
+</tr>
+</table>
+<!-- close footer update - MT -->
+
+
+
+
+
+
+</td>
+</tr>
+</tbody>
+</table>
+<!--[if (gte mso 9)|(IE)]>
+</td>
+</tr>
+</table>
+<![endif]-->
+</td>
+</tr>
+</tbody>
+</table>
+
+<img src=3D"http://email.uber.com/ss/o/u001.NY4fipz4LeOAyyRQlF-n1Q/4js/KSHg=
+63e8QjuG97qj6unBgw/ho.gif" alt=3D"" width=3D"1" height=3D"1" border=3D"0" s=
+tyle=3D"height:1px !important;width:1px !important;border-width:0 !importan=
+t;margin-top:0 !important;margin-bottom:0 !important;margin-right:0 !import=
+ant;margin-left:0 !important;padding-top:0 !important;padding-bottom:0 !imp=
+ortant;padding-right:0 !important;padding-left:0 !important;"/></body></htm=
+l>

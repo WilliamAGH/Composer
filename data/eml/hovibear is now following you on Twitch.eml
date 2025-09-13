@@ -1,0 +1,318 @@
+Delivered-To: ashd2002@gmail.com
+Received: by 2002:a05:7110:4a84:b0:272:d97f:b54a with SMTP id cd4csp876194geb;
+        Sun, 7 Sep 2025 16:36:20 -0700 (PDT)
+X-Google-Smtp-Source: AGHT+IHeFVOdr9phpdYob8CQW9Z8KtMYFWXNtKNJS2wwqtVipiL3x+DrMdx8JAhVgOi9gjvWGsor
+X-Received: by 2002:a17:90b:4a0c:b0:32b:9489:c860 with SMTP id 98e67ed59e1d1-32d43f2f2a5mr7038836a91.11.1757288180130;
+        Sun, 07 Sep 2025 16:36:20 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1757288180; cv=none;
+        d=google.com; s=arc-20240605;
+        b=Xzl5FtGXiyozWm+N+ZlbMBxOv+POtXxwrKCePiMwTm4YmkhghC4QLtajiqVNeYo4ov
+         V95GRN564f0KMx1kjMX8Nh+mbsiFhqXOUYb06gW3YeJ/ufAk4gPVpyu+KRhk4C3jv5+P
+         9WvNDjbAKSNru715y50bPA8O1c0Lx8sHH1ZXcgCgivcbej9ic1K2czQuXJU6tPseB3Ey
+         NVbExhqE5Zu5GSmETNMvEEoMbvZWS7iO8gjKA3+1TjJpBGhwf85pgHSDa76k6sFvfN17
+         EMWE7zpE3G6tbBPuYmvTSdsEIuo6SVKWsFx/PrVxba5QUJ0rS6SgveJk7cLcme+c6PQK
+         7rGA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=feedback-id:date:message-id:list-unsubscribe-post:list-unsubscribe
+         :list-id:content-transfer-encoding:mime-version:subject:to:from
+         :dkim-signature:dkim-signature;
+        bh=twfTDAd7Dc9vddVfOu0+6WC+u1hlvcw0DL9xPvqDIiQ=;
+        fh=VuVUZG8yLvxQk4eQqcyGBgSkARd92SFlUD8MXxtCOA8=;
+        b=aHvN69/FsW52U6UC+cNou/HLRehSM1y9l7xGcJllcMhP51FFZLGXTSjE4/Tyt8lE14
+         LAvbkAa1rx+hSZH3raNo5jtslCdgP1CyUqsYzQIxqX54F6/hRxhEMD0+EUcuLcURIk0u
+         DQEbwYDBhnMe7D5HA2DH51wSPOi9o+bsMQOjCHK2Pzz70FtwbG9Z64NW2+B02j6cHn9S
+         AaTJondzqssLwAG/FoCHZw8QvxqtQXUwBKVrVZ8PNzflNtbK/UIsb+4XT8AUynA3TfF+
+         chsHsLQSXVnXVr4BbYf2CoZi+YOAXl8oCD9t6YtIaCQQtbwkej1WzeZYkzQIR2xtdMVH
+         Tv8A==;
+        dara=google.com
+ARC-Authentication-Results: i=1; mx.google.com;
+       dkim=pass header.i=@twitch.tv header.s=uder6jfl2ivm6ra4d56gtvzkfaq2gr2v header.b=RzXJIaJT;
+       dkim=pass header.i=@amazonses.com header.s=gdwg2y3kokkkj5a55z2ilkup5wp5hhxx header.b=NdlX6iBy;
+       spf=pass (google.com: domain of 010101992689a81a-48f993e3-4c2c-4a44-bac5-01c135284f41-000000@bounce-west.twitch.tv designates 54.240.26.69 as permitted sender) smtp.mailfrom=010101992689a81a-48f993e3-4c2c-4a44-bac5-01c135284f41-000000@bounce-west.twitch.tv;
+       dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=twitch.tv
+Return-Path: <010101992689a81a-48f993e3-4c2c-4a44-bac5-01c135284f41-000000@bounce-west.twitch.tv>
+Received: from a26-69.smtp-out.us-west-2.amazonses.com (a26-69.smtp-out.us-west-2.amazonses.com. [54.240.26.69])
+        by mx.google.com with ESMTPS id 41be03b00d2f7-b4cd412a51bsi17215185a12.1298.2025.09.07.16.36.19
+        for <ashd2002@gmail.com>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sun, 07 Sep 2025 16:36:20 -0700 (PDT)
+Received-SPF: pass (google.com: domain of 010101992689a81a-48f993e3-4c2c-4a44-bac5-01c135284f41-000000@bounce-west.twitch.tv designates 54.240.26.69 as permitted sender) client-ip=54.240.26.69;
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@twitch.tv header.s=uder6jfl2ivm6ra4d56gtvzkfaq2gr2v header.b=RzXJIaJT;
+       dkim=pass header.i=@amazonses.com header.s=gdwg2y3kokkkj5a55z2ilkup5wp5hhxx header.b=NdlX6iBy;
+       spf=pass (google.com: domain of 010101992689a81a-48f993e3-4c2c-4a44-bac5-01c135284f41-000000@bounce-west.twitch.tv designates 54.240.26.69 as permitted sender) smtp.mailfrom=010101992689a81a-48f993e3-4c2c-4a44-bac5-01c135284f41-000000@bounce-west.twitch.tv;
+       dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=twitch.tv
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/simple;
+	s=uder6jfl2ivm6ra4d56gtvzkfaq2gr2v; d=twitch.tv; t=1757288179;
+	h=From:To:Subject:MIME-Version:Content-Type:Content-Transfer-Encoding:List-Id:List-Unsubscribe:List-Unsubscribe-Post:Message-ID:Date;
+	bh=WonfPVC8yk32u+76tfkSurYj2LqQPj4/wsRze45U6BM=;
+	b=RzXJIaJTE8KUJ3NQJnfa8j5LLLxHdnTMtIJrlu2CApJ9ebY7l3dC3Uw1RY2AO2iC
+	BXl0M0RN7rEFqKaQHduWFXvQw2YqjmPlU6HQ4LiJoH9YjXgyAyEkWswHdNYCeOaHYke
+	ISMWEQKOzsoSXguGZ1JJMBeqkqWzAWkWmBgViNrA=
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/simple;
+	s=gdwg2y3kokkkj5a55z2ilkup5wp5hhxx; d=amazonses.com; t=1757288179;
+	h=From:To:Subject:MIME-Version:Content-Type:Content-Transfer-Encoding:List-Id:List-Unsubscribe:List-Unsubscribe-Post:Message-ID:Date:Feedback-ID;
+	bh=WonfPVC8yk32u+76tfkSurYj2LqQPj4/wsRze45U6BM=;
+	b=NdlX6iBytOv62EP+voXLahnWX7UQhS8UZKFgndMODRtk6P8CHSmNz7sNOdVkENHn
+	3gqZdoZIb66l5jcfBLuf0Nb08vASmKPn/MST57RcVllBozIxgHTyAUF+Cgg4seOxoXK
+	35iUgaAfYieVdeUgIRIj+5j4nZ1D7+dFwltRaLLE=
+From: Twitch <no-reply@twitch.tv>
+To: ashd2002@gmail.com
+Subject: hovibear is now following you on Twitch
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+List-Id: <followeradd.list-id.twitch.tv>
+List-Unsubscribe: <https://click.twitch.tv/v1/unsubscribe?email_id=b7359ac0-56e1-4a46-a31e-b6b258be96fb&settings_key=followeradd&email_type=followeradd&user_id=77730660&validating_hash=e01ca470655566a769f26461f7ee1aa030b526b58f92d498a21f8706bcfd61a4>
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
+Message-ID: <010101992689a81a-48f993e3-4c2c-4a44-bac5-01c135284f41-000000@us-west-2.amazonses.com>
+Date: Sun, 7 Sep 2025 23:36:19 +0000
+Feedback-ID: ::1.us-west-2.6if1qLlyPRc8dOFaAhyZ7qPPGGxp441EVJenuzKlcvQ=:AmazonSES
+X-SES-Outgoing: 2025.09.07-54.240.26.69
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org=
+/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns=3D"http://www.w3.org/1999/xht=
+ml" style=3D"background-color: #efeef1" dir=3D"ltr"><head>
+=09=09<base target=3D"=E2=80=9C_blank=E2=80=9D"/>
+       =20
+        <meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Du=
+tf-8"/>
+        <meta name=3D"viewport" content=3D"width=3Ddevice-width"/>
+    </head>
+    <body dir=3D"ltr" style=3D"background-color:#eee;background-image:none;=
+background-repeat:repeat;background-position:top left;background-attachment=
+:scroll;color:#333;font-family:Helvetica, Arial, sans-serif;line-height:1.2=
+5;-webkit-text-size-adjust:100%;">
+        <div class=3D"preview-text" style=3D"display:none;font-size:1px;col=
+or:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:=
+hidden">
+           =20
+        </div>
+=09=09=09=09<div dir=3D"ltr">
+        =09
+
+ =20
+    <meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dutf-8=
+"/>
+    <meta name=3D"viewport" content=3D"width=3Ddevice-width"/>
+ =20
+ =20
+    <table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" height=3D"100%"=
+ width=3D"100%" class=3D"body-table">
+      <tbody><tr>
+        <td align=3D"center" valign=3D"top">
+          <table border=3D"0" cellpadding=3D"20" cellspacing=3D"0" width=3D=
+"600" class=3D"outer-email-container">
+            <tbody><tr>
+              <td align=3D"center" valign=3D"top">
+                <table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" wid=
+th=3D"100%" class=3D"inner-email-container" style=3D"background-color:#fff;=
+background-image:none;background-repeat:repeat;background-position:top left=
+;background-attachment:scroll;">
+                  <tbody><tr>
+                    <td align=3D"center" valign=3D"top">
+                      <table border=3D"0" cellpadding=3D"0" cellspacing=3D"=
+0" height=3D"90" width=3D"100%" class=3D"email-logo" style=3D"background-co=
+lor:#fff;background-image:none;background-repeat:repeat;background-position=
+:top left;background-attachment:scroll;">
+                        <tbody><tr>
+                          <td align=3D"center" valign=3D"middle">
+                            <a href=3D"https://www.twitch.tv/r/e/eyJsb2NhdG=
+lvbiI6ImxvZ28iLCJlbWFpbF9pZCI6ImI3MzU5YWMwLTU2ZTEtNGE0Ni1hMzFlLWI2YjI1OGJlO=
+TZmYiIsIm5hbWUiOiJmb2xsb3dlcmFkZCIsInNvdXJjZV9lbWFpbCI6IiIsImN0YV92YWx1ZSI6=
+IiIsImNoYW5uZWwiOiIiLCJsb2dpbiI6IiJ9/77730660/9384c919c4c83c58e03f7eabbc292=
+b0ad9360c0062c311998b93c8d586530b7d/hovibear?ignore_query=3Dtrue&amp;tt_con=
+tent=3Dfolloweradd&amp;tt_email_id=3Db7359ac0-56e1-4a46-a31e-b6b258be96fb&a=
+mp;tt_medium=3Demail">
+                              <img src=3D"https://static-cdn.jtvnw.net/grow=
+th-assets/email_twitch_logo_uv" width=3D"114" height=3D"38" alt=3D"Twitch"/=
+>
+                            </a>
+                          </td>
+                        </tr>
+                      </tbody></table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td align=3D"center" valign=3D"top">
+                      <table border=3D"0" cellpadding=3D"0" cellspacing=3D"=
+0" height=3D"1" width=3D"100%" class=3D"email-divider">
+                        <tbody><tr>
+                          <td align=3D"center" valign=3D"middle" style=3D"b=
+ackground-color: #eeeeee" width=3D"249"></td>
+                          <td align=3D"center" valign=3D"middle" style=3D"b=
+ackground-color: #9147ff" width=3D"102"></td>
+                          <td align=3D"center" valign=3D"middle" style=3D"b=
+ackground-color: #eeeeee" width=3D"249"></td>
+                        </tr>
+                      </tbody></table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td align=3D"center" valign=3D"top">
+                      <table border=3D"0" cellpadding=3D"40" cellspacing=3D=
+"0" height=3D"0" width=3D"100%" class=3D"email-header">
+                        <tbody><tr>
+                          <td align=3D"center" valign=3D"middle">
+                            <div class=3D"header-message">
+                              Hey ashkuttan, <strong style=3D"color:#9147ff=
+">you have a new follower!</strong>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody></table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td align=3D"center" valign=3D"top">
+                      <table border=3D"0" cellpadding=3D"0" cellspacing=3D"=
+0" height=3D"0" width=3D"100%" class=3D"email-content">
+                        <tbody><tr>
+                          <td align=3D"center" valign=3D"middle">
+                            <a href=3D"https://www.twitch.tv/r/e/eyJsb2NhdG=
+lvbiI6InByb2ZpbGVfcGljdHVyZSIsImVtYWlsX2lkIjoiYjczNTlhYzAtNTZlMS00YTQ2LWEzM=
+WUtYjZiMjU4YmU5NmZiIiwibmFtZSI6ImZvbGxvd2VyYWRkIiwic291cmNlX2VtYWlsIjoiIiwi=
+Y3RhX3ZhbHVlIjoiIiwiY2hhbm5lbCI6IiIsImxvZ2luIjoiIn0=3D/77730660/dbbbee97f06=
+a91dd8feacefa7c3280d90c618c8f9508725315737fd1599c5098/hovibear?ignore_query=
+=3Dtrue&amp;tt_content=3Dfolloweradd&amp;tt_email_id=3Db7359ac0-56e1-4a46-a=
+31e-b6b258be96fb&amp;tt_medium=3Demail">
+                              <img src=3D"https://static-cdn.jtvnw.net/jtv_=
+user_pictures/hovibear-profile_image-4f3440d7aed8194f-70x70.jpeg" width=3D"=
+96" height=3D"96" style=3D"border-radius:50%;"/>
+                            </a>
+                            <div class=3D"follower-name" style=3D"font-size=
+: 28px;font-weight:bold;margin-top:10px;margin-bottom: 30px">
+                              <a href=3D"https://www.twitch.tv/r/e/eyJsb2Nh=
+dGlvbiI6Im5hbWUiLCJlbWFpbF9pZCI6ImI3MzU5YWMwLTU2ZTEtNGE0Ni1hMzFlLWI2YjI1OGJ=
+lOTZmYiIsIm5hbWUiOiJmb2xsb3dlcmFkZCIsInNvdXJjZV9lbWFpbCI6IiIsImN0YV92YWx1ZS=
+I6IiIsImNoYW5uZWwiOiIiLCJsb2dpbiI6IiJ9/77730660/02d66241cdfe76b7286b895a972=
+2eaec5d7530b4db7d9ab11a03a6497e582bf9/hovibear?ignore_query=3Dtrue&amp;tt_c=
+ontent=3Dfolloweradd&amp;tt_email_id=3Db7359ac0-56e1-4a46-a31e-b6b258be96fb=
+&amp;tt_medium=3Demail" style=3D"color:#9147ff;text-decoration:none;">
+                                hovibear
+                              </a>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody></table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td align=3D"center" valign=3D"top">
+                      <table border=3D"0" cellpadding=3D"30" cellspacing=3D=
+"0" height=3D"0" width=3D"100%" class=3D"email-action" style=3D"border-top-=
+width:1px;border-top-style:solid;border-top-color:#eee;">
+                        <tbody><tr>
+                          <td align=3D"center" valign=3D"middle">
+                            <div>
+                              <a href=3D"https://www.twitch.tv/r/e/eyJsb2Nh=
+dGlvbiI6InZpZXdfcHJvZmlsZSIsImVtYWlsX2lkIjoiYjczNTlhYzAtNTZlMS00YTQ2LWEzMWU=
+tYjZiMjU4YmU5NmZiIiwibmFtZSI6ImZvbGxvd2VyYWRkIiwic291cmNlX2VtYWlsIjoiIiwiY3=
+RhX3ZhbHVlIjoiIiwiY2hhbm5lbCI6IiIsImxvZ2luIjoiIn0=3D/77730660/1720ba8757422=
+d141230ebb00025154deab91ea2afde467deb452fb489c446f5/hovibear?ignore_query=
+=3Dtrue&amp;tt_content=3Dfolloweradd&amp;tt_email_id=3Db7359ac0-56e1-4a46-a=
+31e-b6b258be96fb&amp;tt_medium=3Demail" style=3D"background-color:#9147ff;c=
+olor:#ffffff;display:inline-block;font-family:sans-serif;font-size:14px;lin=
+e-height:40px;margin-bottom:10px;text-align:center;text-decoration:none;wid=
+th:200px;-webkit-text-size-adjust:none;mso-hide:all;">
+                                View Their Profile
+                              </a>
+                              <br/>
+                              <small class=3D"alternate-link" style=3D"colo=
+r:#999;font-size:11px;margin-top:4px;margin-bottom:4px;margin-right:4px;mar=
+gin-left:4px;"> Or click on this link:
+                                <a href=3D"https://www.twitch.tv/r/e/eyJsb2=
+NhdGlvbiI6ImxpbmtfdGV4dCIsImVtYWlsX2lkIjoiYjczNTlhYzAtNTZlMS00YTQ2LWEzMWUtY=
+jZiMjU4YmU5NmZiIiwibmFtZSI6ImZvbGxvd2VyYWRkIiwic291cmNlX2VtYWlsIjoiIiwiY3Rh=
+X3ZhbHVlIjoiIiwiY2hhbm5lbCI6IiIsImxvZ2luIjoiIn0=3D/77730660/cc64f91830a5a32=
+cdcb2ef9b80a591d1c12f51cf242c21f76ce20a9671429896/hovibear?ignore_query=3Dt=
+rue&amp;tt_content=3Dfolloweradd&amp;tt_email_id=3Db7359ac0-56e1-4a46-a31e-=
+b6b258be96fb&amp;tt_medium=3Demail" style=3D"color:#999">
+                                  https://www.twitch.tv/hovibear
+                                </a>
+                              </small>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody></table>
+                    </td>
+                  </tr>
+                </tbody></table>
+              </td>
+            </tr>
+            <tr>
+              <td align=3D"center" valign=3D"top">
+               <table class=3D"row" style=3D"border-collapse:collapse;borde=
+r-spacing:0;display:table;padding:0;position:relative;text-align:left;verti=
+cal-align:top;width:100%">
+                                <tbody>
+                                <tr style=3D"padding:0;text-align:left;vert=
+ical-align:top">
+                                    <th class=3D"small-12 large-12 columns =
+first last" style=3D"Margin:0 auto;color:#322F37;font-family:Helvetica,Aria=
+l,sans-serif;font-size:16px;font-weight:400;line-height:1.3;margin:0 auto;p=
+adding:0;padding-bottom:16px;padding-left:20px;padding-right:20px;padding-t=
+op:20px;text-align:left;width:560px">
+                                        <table style=3D"border-collapse:col=
+lapse;border-spacing:0;padding:0;text-align:left;vertical-align:top;width:1=
+00%">
+                                            <tbody><tr style=3D"padding:0;t=
+ext-align:left;vertical-align:top">
+                                                <th style=3D"Margin:0;color=
+:#322F37;font-family:Helvetica,Arial,sans-serif;font-size:16px;font-weight:=
+400;line-height:1.3;margin:0;padding:0;text-align:left">
+                                                    <p class=3D"text-center=
+" style=3D"Margin:0;Margin-bottom:10px;color:#322F37;font-family:Helvetica,=
+Arial,Verdana,&#39;Trebuchet MS&#39;;font-size:16px;font-weight:400;line-he=
+ight:24px;margin:0;margin-bottom:10px;padding:0;padding-bottom:10px;text-al=
+ign:center">
+                                                        <small style=3D"col=
+or:#706a7c;font-size:14px">
+                                                            You&#39;re rece=
+iving this email because you&#39;re a valued member of the Twitch community=
+.<br/>If you prefer not to receive emails like these, you can <a href=3D"ht=
+tps://www.twitch.tv/user/remove_me?block=3Dkind&amp;email_id=3Db7359ac0-56e=
+1-4a46-a31e-b6b258be96fb&amp;email_type=3Dfolloweradd&amp;source_email=3Dfo=
+lloweradd&amp;user_id=3D77730660&amp;validating_hash=3De01ca470655566a769f2=
+6461f7ee1aa030b526b58f92d498a21f8706bcfd61a4&amp;tt_medium=3Dfolloweradd&am=
+p;tt_content=3Dkind_unsubscribe" style=3D"Margin:0;color:#9147ff;font-famil=
+y:Helvetica,Arial,sans-serif;font-weight:400;line-height:1.3;margin:0;paddi=
+ng:0;text-align:left;text-decoration:none">unsubscribe</a>.
+                                                            <br/>
+                                                            =C2=A9 2025 Twi=
+tch, All Rights Reserved
+                                                            <br/>
+                                                            350 Bush Street=
+, 2nd Floor, San Francisco, CA, 94104 - USA
+                                                        </small>
+                                                    </p>
+                                                </th>
+                                                <th class=3D"expander" styl=
+e=3D"Margin:0;color:#322F37;font-family:Helvetica,Arial,sans-serif;font-siz=
+e:16px;font-weight:400;line-height:1.3;margin:0;padding:0!important;text-al=
+ign:left;visibility:hidden;width:0">
+                                                </th>
+                                            </tr>
+                                        </tbody></table>
+                                    </th>
+                                </tr>
+                                </tbody>
+                            </table>
+              </td>
+            </tr>
+          </tbody></table>
+        </td>
+      </tr>
+    </tbody></table>
+ =20
+
+
+=09=09=09=09</div>
+
+=09=09<img src=3D"https://spade.twitch.tv/track?data=3DeyJldmVudCI6ImVtYWls=
+X29wZW4iLCJwcm9wZXJ0aWVzIjp7Im5vdGlmaWNhdGlvbl9pZCI6ImI3MzU5YWMwLTU2ZTEtNGE=
+0Ni1hMzFlLWI2YjI1OGJlOTZmYiIsIm5vdGlmaWNhdGlvbl90eXBlIjoiZm9sbG93ZXJhZGQifX=
+0%3D&amp;img=3D1&amp;ua=3D1" width=3D"1" height=3D"1"/>
+   =20
+
+</body></html>

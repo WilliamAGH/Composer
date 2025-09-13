@@ -1,0 +1,1374 @@
+Delivered-To: ashd2002@gmail.com
+Received: by 2002:a05:7110:6993:b0:26b:9061:38df with SMTP id mo19csp3625814gec;
+        Wed, 18 Jun 2025 15:32:46 -0700 (PDT)
+X-Received: by 2002:a05:6a20:4392:b0:21f:59c5:41d0 with SMTP id adf61e73a8af0-22010ebc9edmr1824034637.0.1750285965688;
+        Wed, 18 Jun 2025 15:32:45 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1750285965; cv=none;
+        d=google.com; s=arc-20240605;
+        b=BZ17v2nkppXenl3Mqm4gz6LGDtzgPrTTbMK2e9lJNgpQ/1U2SgBZsrqcbOE4YegSHX
+         8Rw3eV0kYC+0a1SW44lzFb+bGS1pen8+esvu2xZiIVhzEdPSZTTW9X/tx9a4d+umJ3F6
+         +7FEfJl2uc4sD2/Xgcf1XcRKgtRoVyyshoXlVaSJNV3wkEHIXRqtb3QiXtWORY+4WvqK
+         UBidXdMPhwFZeelVvYRMC88bOV9SAc+H7EKZyNHIkgTfXc5AbSoGcvvlWB4zVOvILLjh
+         GfisBxk21CLI0N14/DCqFO/HlmJbfDHsoFgNZa5E6bZKIH9B3HMmZzsRtahCooDiGUOd
+         +1uA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=to:from:subject:message-id:list-id:feedback-id:precedence
+         :list-unsubscribe:list-unsubscribe-post:reply-to:date:mime-version
+         :dkim-signature;
+        bh=Paze3msm/LNXFXaIJ/vDIuG/MKZNqQkpGVTrNkCW/zE=;
+        fh=VuVUZG8yLvxQk4eQqcyGBgSkARd92SFlUD8MXxtCOA8=;
+        b=VmA78Djj9OX15F6/HrYA5NiWeAGNCM/ddiYHXlesVk9J0OQtiv61mxTeF7qVcNhHSP
+         2NyA+sdVykKrSecIurCFmVUlYiMwEoOBCEKUNx9XvyY1LqqDla4JC7qQ3xqsjdrIrmgm
+         jZWVIdX3zWZFMxtvnv/M/dXxPWPRuLGmh0MX2zpjGuk7VyXAjr/8kD6a5YrJOhHMDrma
+         gGFLIUuqczEtH3sXc8AYTZKaicsjQK4Z69eudGIBbkcyOR9LjvCK6bxz89IwBqFs8hVz
+         NRqWojj7ahshjoZswPGxI2KgiICuALCwj4eEbmp2oF5QdZgUFKUKJpty+pwnHIpMauuk
+         sM/w==;
+        dara=google.com
+ARC-Authentication-Results: i=1; mx.google.com;
+       dkim=pass header.i=@waymo.com header.s=20230601 header.b=lQ5Gfcs3;
+       spf=pass (google.com: domain of 3jt5taacjckanoreplywaymo.comashdcaacgmail.com@scoutcamp.bounces.google.com designates 209.85.220.69 as permitted sender) smtp.mailfrom=3jT5TaAcJCKANOREPLYWAYMO.COMASHDcaacGMAIL.COM@scoutcamp.bounces.google.com;
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=waymo.com;
+       dara=pass header.i=@gmail.com
+Return-Path: <3jT5TaAcJCKANOREPLYWAYMO.COMASHDcaacGMAIL.COM@scoutcamp.bounces.google.com>
+Received: from mail-sor-f69.google.com (mail-sor-f69.google.com. [209.85.220.69])
+        by mx.google.com with SMTPS id 41be03b00d2f7-b31d90b1533sor431061a12.3.2025.06.18.15.32.45
+        for <ashd2002@gmail.com>
+        (Google Transport Security);
+        Wed, 18 Jun 2025 15:32:45 -0700 (PDT)
+Received-SPF: pass (google.com: domain of 3jt5taacjckanoreplywaymo.comashdcaacgmail.com@scoutcamp.bounces.google.com designates 209.85.220.69 as permitted sender) client-ip=209.85.220.69;
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@waymo.com header.s=20230601 header.b=lQ5Gfcs3;
+       spf=pass (google.com: domain of 3jt5taacjckanoreplywaymo.comashdcaacgmail.com@scoutcamp.bounces.google.com designates 209.85.220.69 as permitted sender) smtp.mailfrom=3jT5TaAcJCKANOREPLYWAYMO.COMASHDcaacGMAIL.COM@scoutcamp.bounces.google.com;
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=waymo.com;
+       dara=pass header.i=@gmail.com
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=waymo.com; s=20230601; t=1750285965; x=1750890765; dara=google.com;
+        h=to:from:subject:message-id:list-id:feedback-id:precedence
+         :list-unsubscribe:list-unsubscribe-post:reply-to:date:mime-version
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=Paze3msm/LNXFXaIJ/vDIuG/MKZNqQkpGVTrNkCW/zE=;
+        b=lQ5Gfcs3/ILuZJuJ8nsy/nNTnQfjOgD0PN2O/LtS4qd/U7vPTwImjcdmotYlpExmas
+         IUMvSF4QeSc2LVM/A1zxVM1ntS7e2j+PuDiw98OmYCUVSdfwdOin4pBJzEW0k4BlXmtw
+         jVuhuSA3MDgs/EYE/Gxuu9BCR60F3iFUokLCMUySv6hZlhC6HRFB8MvkZ+PHjuCsG11B
+         /ijN3st40/prbB+pfFv1Wv/pfCc2O1gHB685qwMsoBGp0MRwdkmDhPIbWkLDZJAODF5f
+         CFdWJo0F9MblOGi4qw6ZTjDhWKkFVrYWbgocVE7v4nGjUWBdPWG+kJjDTGAVgcREhXll
+         7sUg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1750285965; x=1750890765;
+        h=to:from:subject:message-id:list-id:feedback-id:precedence
+         :list-unsubscribe:list-unsubscribe-post:reply-to:date:mime-version
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=Paze3msm/LNXFXaIJ/vDIuG/MKZNqQkpGVTrNkCW/zE=;
+        b=AfHxkqvx4Hm7C/wPzgw7WumTsxDOadOxHMZGvGhudOJ95dQWkAZZedJ15zRAqQVdvI
+         6EWR5zk8GHafIi6dO/Znp5DiJO3F/FV0rUfTUSNDzwTCYiYnPUEI8WeUWSfya3IXuqLt
+         QO9bnUqo5PbTybVlO8IY0n57nA1NCsDsa0+4stvRHdhlaN+HgLLEsHLH1OwXXkvOrhEK
+         M01FOwE3+aFpxUT6Z//PFXfpNDiepKiiBRAkpy+cdUdanDoo9rVwkd5s0KO1swVQH1rs
+         O4V6p2lTQBygzSE2pwiHU3KsglPn9+DDb1GsM5faehKy4CQeVnXsBgAvh9gJO8HrCwrD
+         qdtg==
+X-Gm-Message-State: AOJu0YzQyS1cAeCFrD0ysgjRBSuTni+I5H3xyR5JBHp0yrDdQRxZqF+3
+	hr8we3af6Jk0VUhFgVYQRpOjrlhvcJAtmavVBukezZiEGD89lF4w3mPM9dgV
+X-Google-Smtp-Source: AGHT+IGgiqTCA9wKPP7xZRuWMe+T0lytKKv9DmuH+Y5UJaif4f3IIMYygTAfdtv22FE6PkipK6SVtAc=
+MIME-Version: 1.0
+X-Received: by 2002:a17:90b:2dc6:b0:311:be43:f09a with SMTP id
+ 98e67ed59e1d1-3158abf404dmr1712759a91.9.1750285965400; Wed, 18 Jun 2025
+ 15:32:45 -0700 (PDT)
+Date: Wed, 18 Jun 2025 15:32:45 -0700
+Reply-To: Waymo Team <noreply@waymo.com>
+X-Google-Id: 4331119	
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
+List-Unsubscribe: <https://myaccount.google.com/communication-preferences/auto/unsubscribe/gt/ANiao5qX8yieBGPDqYPoUbFWNofKSqhzgtSeBWZCrNgDBTo-gftPzvSH5bGgG9b43idJR3hLMoKotx-zCkslCjWU6G7yMau0FAHdNJit8DfW3vgEYB-bYOLlZG9lJWats3hcJPFUzCMBno_Tdtl_0idTzxLmNVk9lKWgxfuD4gKpOtEof7WrbWZ8j55fVfAx1VyPWTgBSxPmAebt-mam8hwshkcb8pr0h_psLLvbrvu7jag5xcPzxR1UNpky?utm_source=gm_header&utm_medium=email>
+Precedence: bulk
+Feedback-ID: P1508-14201:C20362368:M110960210-en:gamma
+List-Id: <748957ae45b1301e88bca6d8875909fea0010cfe.google.com>
+X-Notifications: 327bcdd18eea0000
+X-Notifications-Bounce-Info: AWoTSIE3h5HcWRiEqsWuc3_Mmb8RmvetM_lpvAwFeawyFHKhe_JqEJMeXBcPOghPOiEfF5Jx3HjBvDv_ZIp4Z--DJ2R6xvq149e6eiFIM6VImrdNytyV6nWSACPYnMQKXUspaDT27DyZ7cY92DSVuPfBanyLTO0mNeWrCZqTTWGVYDnNg5DLhnlQ7uDkZj2_hayNazJ_wVlWAAKZqqV2NMx0qQuvohv4N1SBMETvBDv3N_C0RuisLckQbWFU9IRvVAejTABoT3_6ENMrqpz49mJJcKktBXbxzGDHQXAakO35UcOb19QYCvzMX24jqpk1rMOXw2RyY7Q7_2N4I6hfax22nxeOsZi1Zow1xOWXKI499ETS09UoEJeQpzDwWfKBUaeReA-lO8fxARIVgZ7XK9j4CqD22V4jBP4_u7579NeHftrdSaRPeu_yexPqROnVvmBmlaZrolhL6y4v6uefBeqBHYdAzX4_o-aerkWh3ikpCLz56ZVGnv2OScrs1wELCTWgKyqJOW-TEV36l5HORMsPNjAwNjA0MDQxNTM1NTk2OTMzMg
+Message-ID: <d0b47897e01e8fcdab495a20112b072ff2b4f362-20362368-111673070@google.com>
+Subject: Expanding our service in CA
+From: Waymo Team <noreply@waymo.com>
+To: ashd2002@gmail.com
+Content-Type: multipart/alternative; boundary="000000000000391c680637e0353d"
+
+--000000000000391c680637e0353d
+Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
+Content-Transfer-Encoding: base64
+
+PGh0dHBzOi8vYy5nbGUvQU5pYW81cG9BazFxcFcydWFKV2hvekVQYnRJdW5nVXJHOFdQemp6UUc3
+WURKalJoNFZUMGNBTjU3bW94ZGFGbFdfUXJHR0tvZ0c2ajZWQ2dqMEJ4N1QzWk8yeXY4Z2ZJWnVX
+ZWZKVGtCOFZkQi1Ta0UyRXVydlpPUEs2N0RPUWhBR3BvWmc+DQoNCldheW1vIE9uZSBpcyBjb3Zl
+cmluZyBtb3JlIGdyb3VuZA0KDQpXZSBqdXN0IGFkZGVkIHRvIG91ciBTYW4gRnJhbmNpc2NvLCBT
+aWxpY29uIFZhbGxleSwgYW5kIExvcyBBbmdlbGVzIHNlcnZpY2UgIA0KYXJlYXMuIFJlYWR5IHRv
+IGdvIG1vcmUgcGxhY2VzIHdpdGggV2F5bW8gT25lPw0KDQpUYWtlIGEgcmlkZSA8aHR0cHM6Ly93
+YXltby5zbWFydC5saW5rL25od241cjMzbD4NCg0KV2luZHNvciBIaWxscywgaGVyZSB3ZSBjb21l
+DQoNCkxBOiBFeHBsb3JlIFdpbmRzb3IgSGlsbHMsIExhZGVyYSBIZWlnaHRzLCBFY2hvIFBhcmss
+IGFuZCBTaWx2ZXIgTGFrZS4gQW5kICANCm5vdywgZ2V0IGRpcmVjdGx5IGZyb20gTWlkLUNpdHkg
+dG8gSW5nbGV3b29kIGFuZCBXZXN0Y2hlc3RlciB2aWEgTGEgQ2llbmVnYSAgDQphbmQgTGEgQnJl
+YS4NCg0KSGVhZGluZyBzb3V0aCBvZiBTRg0KDQpCcmlzYmFuZSwgU291dGggU0YsIFNhbiBCcnVu
+bywgTWlsbGJyYWUsIGFuZCBCdXJsaW5nYW1lOiBXZWxjb21lIHRvIHRoZSAgDQpmb2xkISBXZeKA
+mXJlIHNvIGV4Y2l0ZWQgdG8gc2VydmUgeW91ciBjb21tdW5pdGllcy4NCg0KQ292ZXJpbmcgbW9y
+ZSBvZiBTaWxpY29uIFZhbGxleQ0KDQpXZeKAmXJlIGV4Y2l0ZWQgdG8gc2VydmUgbW9yZSBvZiBQ
+YWxvIEFsdG8gZm9yIG91ciBTaWxpY29uIFZhbGxleSByaWRlcnMuICANClN0aWxsIHdhaXRpbmcg
+b24gYWNjZXNzIHRvIG91ciBuZXdlc3QgdGVycml0b3J5PyBXZeKAmXJlIGdyYWR1YWxseSBpbnZp
+dGluZyAgDQpyaWRlcnMg4oCUIGtlZXAgYW4gZXllIG9uIHRoZSBhcHAhDQoNCkZvbGxvdyBhbG9u
+ZyBvbiBzb2NpYWwNCg0KPGh0dHBzOi8vYy5nbGUvQU5pYW81cDlfTnI5T1FjQ3QxVnlLR01qOUN2
+LWx1b3oxc29GUlpRNWo1MUxuYXZjbFB2TzZvLXJjcndjRWE2TXh6YmtRNUJWUWFfU1VlYjRSM3F3
+N0RCYmc2WkJmcHhGX09BajlnRWh2QmVNOWh4SzlIS3RhY3VfNTVDdTRSdkU2MU9EcVd5MnNKN0pi
+U2lqeEZ3Pg0KDQo8aHR0cHM6Ly9jLmdsZS9BTmlhbzVwSkREbnBKSDF5am02eFM3WThabGFTTmZU
+dXljVTlIOEtSMDk5RE1jWmdEZkhkRGNwZ1U0TVdJTS1melNxdEc0dFdnNGdSTmlNLTlvNkprWXRG
+SHNzSThpc3pYdF9fLUpRV3RsNXlSYnItTkgtUUJJbl85ck9fcXhFUW40MFAzdmpKakJTb3R4LUw+
+DQoNCjxodHRwczovL2MuZ2xlL0FOaWFvNW9TZGxOM0hXaVdJbFVuWWFDWFZFc1JkZ2VfeDNwS2J1
+V3FoQUotR2pWOGxKVjN0YmNZQVM3ZWdTX1FwblEyeWIzNlRQWW11RjkwVlhFckRaRWFUemtna0RZ
+V3RyY2x3Uk51Vm9vZFpsREd0d21xSzlhdzlsMjYwdFRVRi1ZVkpQRDBrbl83MnpUODVfZUl3RGFk
+R0xNPg0KDQo8aHR0cHM6Ly9jLmdsZS9BTmlhbzVxYW4yWFk5Wm5SaDl3dFM1emhmZklKazdtZExO
+b0p2M09qMGhfU3pzb3JtbkltYmFSaDRlOGVEZHdXUVdrNVFxUC00Ty1uaThWTHMxcjd1a1Z0QzR4
+ZFV5RjdrbEthdDhtV0NFc1hmMG5XQW1uZzh6Yz4NCg0KPGh0dHBzOi8vYy5nbGUvQU5pYW81cnhY
+V1VzYjBWU2pnbEdXM2pDbTc1TjVpUENrVDhiUkJZcUFnLUIxTG96dkJDa2Q0VEdIbFRYeU5QckUw
+b2xYQmhCaDlhUTVpWXhIR3RJWUV0OWJlcmpiTFZLb0ZVa2kwOVpqTFZ5Wkx5Tk5EdkdaeUlpcVdU
+aXRXaFBxYWxrY0U2RGJMdV9LYnlEcGZhNmVaVlRZTkQ1ZGdnbnlYcmRMTDhPdmw3SkZMRG4+DQoN
+CjxodHRwczovL2MuZ2xlL0FOaWFvNW90Ym0yRkRxaFh3S1hYLVZweDZOUWdFX0FkMVpwSDRtYU5O
+cGxsZXpuRG1neGlrOWoyQkFUVG1NaVFkNWlTTTRSS2tJUW1RSFlkazlWdkw2U1pSTUE2Y3dxMzBZ
+bFFMc0RENTM1SC1OcG1DQ1Rlc2J5UER0OTlKX1dnMmZjTmw2RlRwN3FDaTB1cW5aNXkxUT4NCg0K
+PGh0dHBzOi8vYy5nbGUvQU5pYW81bzdNd2dkbS1GbGJGajAteHJwOXA1Tm9IMS1IY0hFNGpjLTJH
+UTB2SkowV1YzN2dWaGM2RDQ3ZzZDOU9Qc2dITk9oRWZVbDA1ZXB0ZDhCODlFbWNwUURMQS0tZVZW
+MVJMcFgwZzlnUzJXWmg1UmU1b2xvbmV1RVNvc0c5UGY4b1E+DQoNCldlYnNpdGUgIA0KPGh0dHBz
+Oi8vYy5nbGUvQU5pYW81cXE4X0ZyeFFFNXdESElFX2ZuZHAwSnJ3SXJkVl83TFdvOWpCM1ZMdDk2
+UUNNQnY3QTVxd09zWEVzZG1SNUlIR1ZJZ1ZyYW5pUzNKa2xHc3VjQWd5RzJfNDQ1Q1pjMXBHWmQt
+Q2wzbTdvam5oV3BRUmQyV0pQNmh4dWY+DQoNCkJsb2cgIA0KPGh0dHBzOi8vYy5nbGUvQU5pYW81
+b1hlTkdFM053MlVtWGVsWXVrRGN0TTJXbjNLNWRiUG9sZTFHc2I3RlFSYWlVOFdOc29hUGNQOWNx
+QXpfRHh1WGJzRndDX2pqc3ZfdElPR2g5RnpSb0NPWVFlWE9ReG01S3dDamJ5SlJaT3l2ckxrUWZv
+dkk0NnBWUlJRZlBFPg0KDQpGQVEgIA0KPGh0dHBzOi8vYy5nbGUvQU5pYW81cFVwNnRzS0V6ZW41
+M2FtbkZPc1A0UllvTFYtZU40UW9hNzVEaFJsOFNZVmxTRE40YTdQeDRDYU1kUnpiTHUzbG5TUnc4
+R0JQQW9hcFJvTXdZS1p6UlVBeDVTb05NdW9WZTdRemI0bTUzVDI0WjlWUG1oMTNJa0FQQ3I+DQoN
+ClRoaXMgZW1haWwgd2FzIHNlbnQgdG8gYXNoZDIwMDJAZ21haWwuY29tIGJlY2F1c2UgeW91IHNp
+Z25lZCB1cCB0byByZWNlaXZlICANCnVwZGF0ZXMgZnJvbSBXYXltby4gVG8gc3RvcCByZWNlaXZp
+bmcgdGhlc2UgZW1haWxzLCBwbGVhc2UgdW5zdWJzY3JpYmUgaGVyZSAgDQo8aHR0cHM6Ly9teWFj
+Y291bnQuZ29vZ2xlLmNvbS9jb21tdW5pY2F0aW9uLXByZWZlcmVuY2VzL3Vuc3Vic2NyaWJlL2d0
+L0FOaWFvNXJMNFZRbDllbkRPRlpwMXI0MGVOQnRQN3ZrTjZZdnByRDVzeGotQTdpc0ZXVmZBN0x1
+VnZlYnF0UE9fOUhSQUIwVndJajdVOS1wRkZ1WWNnYlBPaE5vRlBpOW8tS21zOWJla0tRRjI4TG4x
+cmNqQzdSNDNWazc2V2VfNGFlZ0YwUUdwYVhqZUpsamNrMFBTR3R0ckU4ZFV5MHgzbmlNdkJadHlf
+UVNUX3lTc0x0ZUtldURvSGlXS2lSOTNnSDlzM0FBTTI3UURhenRiMGprbTFGLWdkYlRFTjltbFhh
+YW1QNlU0REg0LTlHeW5QY1BFdEZmTXc/dXRtX3NvdXJjZT1nbSZ1dG1fbWVkaXVtPWVtYWlsJmF1
+dG89dHJ1ZT4uDQoNCldhcyB0aGlzIGVtYWlsIGhlbHBmdWw/DQoNCjxodHRwczovL2MuZ2xlL0FO
+aWFvNXEzVkFMMm5mTVgtMWJpYkJ6VHo2ejBjbEhOTnN5a1pUNzM2ekVCWGt0SGxBWG1Qa0d6NjA4
+U0dSOS0tWThqVWpVRmV6TW9VNHNkSHdIMF9JSXBrZVNXbUVZb0dxMWdmdDdZQ0VlcHFZQS15QkMz
+d3poR2dSYkVySEEzcW1RQV9MN3FhbzZfMXVlWXV3c056SWUzbVh1MVpHOHVpWVpodlkxMHMzclgw
+VFFaelcwckZDenVyenlCTVNuMnFNZk93dlg0dW5hV0lMZnhLZS11Y3N1dXkwSDVMMFlCc2hqcGVJ
+TU52cmRoMHhpaDdsUkI+DQoNCjxodHRwczovL2MuZ2xlL0FOaWFvNW82SmY0R09iellsbWtQTFhv
+TlFPbEhlcU10OS12cFk5ZzJqbjl0QlNwNkQ3aVZ3bVUxUi1ZcnBMeUZUTV9WdFk3M0drWWg2QU03
+cXY4V093RDFpd0ZlS2RBN2xLNDBtRnBTT3JRcFprUUVCM3RwbGhRV185S0JfZWYydFhaVl80a0R0
+T1I4ZW1Bcko3NlpuaHF1RVZkY1VOWFVxYk40b0t1bWF1MnFHcjNFTmhpQkZRV3c3YjFIZU56ZW5E
+eV9EZWJYSURGWkFtWVlVeml3OG43VzdMRHhCbXJyZ2pKZHJ5Z0hDM2dZampka2I2d3lNWEk+DQoN
+CjxodHRwczovL2MuZ2xlL0FOaWFvNXBnamdJZEltN1ltbnZuWDdjOFJxRFhmLUdVTzNrcC1xd19E
+TDJkQW54UXBKSlhmZmFZVjJBN2M1eUg1NkNfaW96SG5ETVNWUEhXaHpYdHJ1OWNZWWVJZWZfZEpG
+QS01U0RQRlZWRXVqNEVlQVpNOVB4XzBwVHhqblZHcXNoZFY5WkppcmVWNF9JTFdFcDM4cFRCLW5M
+cm9aX3g5UVgyME5GVEZaSHE4TVFwMGpPa29ldDNYOUsxclZIel9jNndGQzRpUUNqS3I4NDNydzJh
+UWx1cHYxYXR5dUFYT2R3Ni0wcEpzLTRjWXVCSkpQZGd5Tk5RPg0KDQooYykgMjAyNSBXYXltbyBM
+TEMgMTYwMCBBbXBoaXRoZWF0cmUgUGFya3dheSwgTW91bnRhaW4gVmlldywgQ0EgOTQwNDMNCg==
+--000000000000391c680637e0353d
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<!doctype html public "- / / w3c / / dtd xhtml 1.0 transitional / / en" "ht=
+tps: / / www.w3.org / tr / xhtml1 / dtd / xhtml1-transitional.dtd">
+<html xmlns=3Dhttps://www.w3.org/1999/xhtml lang=3Den>
+<head>
+<title>Waymo - CA - Manual - RO 4.0 Rollout - NEWSLETTER - Q2 2025</title>
+<meta http-equiv=3DContent-Type content=3D"text/html; charset=3Dutf-8">
+<!--[if !mso]><!-->
+<meta http-equiv=3DX-UA-Compatible content=3DIE=3Dedge>
+<!--<![endif]-->
+<meta name=3Dviewport content=3D"width=3Ddevice-width, initial-scale=3D1.0"=
+>
+<meta name=3Drobots content=3D"no index">
+<!--[if mso | ie]>
+<style>
+.outborder{
+border-top: 7px solid #1A73E8 !important;
+padding-top: 0px !important;
+}
+</style>
+<![endif]-->
+<style>
+body {
+font-family: Google Sans Text, Roboto, Helvetica Neue, Helvetica, Arial, sa=
+ns-serif;
+font-size: 14px;
+color: #000000;
+-webkit-text-size-adjust: none !important;
+-webkit-font-smoothing: antialiased !important;
+-ms-text-size-adjust: none !important;
+}
+table, tr, td {
+mso-table-lspace: 0pt;
+mso-table-rspace: 0pt;
+}
+a:link, a:visited, a:hover, a:active {
+color: #4285f4;
+text-decoration: none;
+}
+.appleLinks a {
+color: #000000 !important;
+text-decoration: none !important;
+}
+strong {
+font-weight: bold !important;
+}
+em {
+font-style: italic !important;
+}
+html {
+-webkit-text-size-adjust: none;
+-ms-text-size-adjust: 100%;
+}
+td {
+-webkit-text-size-adjust: none;
+text-decoration: none !important;
+-webkit-text-size-adjust: none;
+}
+a[href^=3Dtel] {
+color: inherit;
+text-decoration: none;
+}
+a[x-apple-data-detectors] {
+color: inherit !important;
+text-decoration: none !important;
+font-size: inherit !important;
+font-family: inherit !important;
+font-weight: inherit !important;
+line-height: inherit !important;
+}
+@media only screen and (max-width: 950px) {
+.width360{width: 360px !important}
+.width300{width: 300px !important}
+.width297{width: 297px !important}
+.fs30{font-size: 30px !important; line-height: 36px !important; letter-spac=
+ing: -1px !important}
+.dblock{display: block !important;}
+.dnone{display: none !important;}
+.tcenter{text-align: center !important;}
+.mauto{margin: 0 auto;}
+.ht13{height: 13px !important}
+.ht17{height: 17px !important}
+.ht20{height: 20px !important}
+.ht21{height: 21px !important}
+.ht57{height: 57px !important}
+.ht67{height: 67px !important}
+.padding_footer{padding: 25px 26px 40px 20px !important}
+.pdl5{padding-left: 5px !important}
+.pdt22{padding-top: 22px !important}
+}
+</style>
+</head>
+<body style=3D"margin: 0 auto; padding:0px;" bgcolor=3D#ffffff>
+<!--[if !mso]><!-->
+<p aria-hidden=3Dtrue style=3D"padding-top:0; font-size:0px; line-height:0p=
+x; margin:0px; display: none;" align=3Dcenter>Go more places in LA and the =
+Bay Area=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=
+=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=
+=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=
+=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=
+=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=
+=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=
+=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=
+=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=
+=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=
+=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=
+=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=
+=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=
+=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=
+=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=
+=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=
+=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=C2=A0=E2=80=8C=C2=A0=E2=80=8C=
+=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=
+=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=
+=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=
+=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=
+=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=
+=C2=A0=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=
+=80=8C=C2=A0=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=
+=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=
+=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=
+=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=
+=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=
+=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=C2=A0=E2=80=8C=C2=A0=E2=80=
+=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0=E2=80=8C=C2=A0</p>
+<!--<![endif]-->
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 align=
+=3Dcenter width=3D100%>
+<tbody>
+<tr>
+<td align=3Dcenter valign=3Dtop>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 align=
+=3Dcenter width=3D720 class=3Dwidth360>
+<tbody>
+<tr>
+<td align=3Dcenter valign=3Dtop>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 align=
+=3Dcenter width=3D100%>
+<tbody>
+<tr>
+<td align=3Dcenter valign=3Dtop>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 align=
+=3Dcenter>
+<tbody>
+<tr>
+<td valign=3Dtop align=3Dcenter>
+<a href=3Dhttps://c.gle/ANiao5q8M90eH1boM1It4LydTdwwIJ1p1pub5JTZBikoP-u_BNV=
+n9_T2kn5Y_eHa4OUyYTEwMf9yry8cgEpSUNn406K7JOq4DgtAAVs_pG1Gy_3obFwWVO0HSCCSV6=
+5aSuVPKO5s target=3D_blank aria-label=3DWaymo><img src=3Dhttps://www.gstati=
+c.com/growthlab/api/rEgRoUCKcUUToT4Yz2VIDNIG32itu9smuvd51UmX.png width=3D87=
+ alt=3DWaymo title=3DWaymo style=3D"display: block;" aria-hidden=3Dtrue></a=
+>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+<!-- Spacer starts here -->
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D18 style=3D"display: block;" class=3Dht20>
+</td>
+</tr>
+<!-- Spacer End here -->
+<!-- Hero Module starts here -->
+<tr>
+<td valign=3Dtop align=3Dcenter>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 width=
+=3D500 class=3Dwidth300>
+<tbody>
+<tr>
+<td valign=3Dtop align=3Dcenter style=3D"font-family: GT Walsheim, Google S=
+ans, Roboto, Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 45px;=
+ line-height: 54px; color: #050F1E; font-weight: 400; letter-spacing: -2px;=
+" class=3Dfs30>
+Waymo is serving <br>more of CA
+</td>
+</tr>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D18 style=3D"display: block;" class=3Dht20>
+</td>
+</tr>
+<tr>
+<td valign=3Dtop align=3Dcenter style=3D"font-family: GT Walsheim, Google S=
+ans, Roboto, Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 16px;=
+ line-height: 24px; color: #050F1E; font-weight: 400; letter-spacing: -0.32=
+px">
+We just added to our San Francisco, Silicon Valley, and Los Angeles service=
+ areas. Ready to go more places with Waymo=C2=A0One?
+</td>
+</tr>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D20 style=3D"display: block;">
+</td>
+</tr>
+<tr>
+<td align=3Dcenter valign=3Dtop>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 align=
+=3Dcenter>
+<tbody>
+<tr>
+<td align=3Dcenter valign=3Dtop>
+<a href=3Dhttps://waymo.smart.link/nhwn5r33l style=3D"text-decoration: none=
+; color: #ffffff;">
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 align=
+=3Dcenter>
+<tbody>
+<tr>
+<td align=3Dcenter valign=3Dtop bgcolor=3D#1A73E8 style=3D"border-radius: 2=
+5px;padding: 13px 29px;" class=3Doutborder>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 align=
+=3Dcenter>
+<tbody>
+<tr>
+<td align=3Dcenter valign=3Dmiddle style=3D"font-family: GT Walsheim, Googl=
+e Sans, Roboto, Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 16=
+px; line-height: 24px; color: #ffffff; font-weight: 400; letter-spacing: -0=
+.32px; text-decoration: none;">
+Take a ride
+</td>
+<td aria-hidden=3Dtrue valign=3Dmiddle align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D10 h=
+eight=3D24 style=3D"display: block;">
+</td>
+<td aria-hidden=3Dtrue valign=3Dmiddle>
+<img src=3Dhttps://www.gstatic.com/growthlab/api/NfCSPSnxfGXlp2Yo5bZPHMp0kE=
+XG8QbujRxvBeck.png width=3D13 style=3D"display: block;">
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+</a>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+<!-- Hero Module End here -->
+<!-- Spacer starts here -->
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D40 style=3D"display: block;">
+</td>
+</tr>
+<!-- Spacer End here -->
+<!-- Gif Module Start here -->
+<tr>
+<td valign=3Dtop align=3Dcenter>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<!--[if !mso]><!-->
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dcenter>
+<a href=3D#><img src=3Dhttps://storage.googleapis.com/waymo-uploads/email/E=
+mail_Hero_pill_RO4_12.gif width=3D622 style=3D"display: block;" class=3Dwid=
+th297></a>
+</td>
+<!--<![endif]-->
+<!--[if gte mso 9]>
+<v:rect xmlns:v=3D"urn:schemas-microsoft-com:vml" fill=3D"true" stroke=3D"f=
+alse" style=3D"height: 336px; width: 622px;">
+<v:fill type=3D"frame" src=3D"https://www.gstatic.com/growthlab/api/qJMorIT=
+z9C68WO8U97Fk7ayQZFX0ZFzJvClN8x67.png" color=3D"none" />
+<v:textbox inset=3D"0,0,0,0">
+<![endif]-->
+<!--[if gte mso 9]>
+</v:textbox>
+</v:rect>
+<![endif]-->
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+<!-- Gif Module End here -->
+<!-- Spacer starts here -->
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D64 style=3D"display: block;" class=3Dht67>
+</td>
+</tr>
+<!-- Spacer End here -->
+<!-- M1: LA Module Start here -->
+<tr>
+<td valign=3Dtop align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 class=
+=3Dmauto>
+<tbody>
+<tr>
+<td valign=3Dmiddle align=3Dleft class=3Ddnone>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D50 h=
+eight=3D1 style=3D"display: block;">
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft class=3D"dblock tcenter">
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 class=
+=3D"width300 mauto">
+<tbody>
+<tr>
+<td valign=3Dtop align=3Dleft style=3D"font-family: GT Walsheim, Google San=
+s, Roboto, Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 24px; l=
+ine-height: 36px; color: #050F1E; font-weight: 400; letter-spacing: -1px;" =
+class=3Dtcenter>
+LA: Explore Windsor Hills and more
+</td>
+</tr>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D16 style=3D"display: block;" class=3Dht13>
+</td>
+</tr>
+<tr>
+<td valign=3Dtop align=3Dleft style=3D"font-family: GT Walsheim, Google San=
+s, Roboto, Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 16px; l=
+ine-height: 24px; color: #050F1E; font-weight: 400; letter-spacing: -0.32px=
+;" class=3Dtcenter>
+Explore Windsor Hills, Ladera Heights, Echo Park, and Silver Lake. And now,=
+ get directly from Mid-City to Inglewood and Westchester via La Cienega and=
+ La Brea.
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft class=3Ddblock>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D50 h=
+eight=3D40 style=3D"display: block;">
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft class=3Ddblock>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<a href=3D#><img src=3Dhttps://www.gstatic.com/growthlab/api/WsqcsAa5HF06jP=
+3LzVC4mrhMISoqUhCjTjg1gEa6.png width=3D312 class=3Dwidth300 style=3D"displa=
+y: block;"></a>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft class=3Ddnone>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D48 h=
+eight=3D1 style=3D"display: block;">
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+<!-- M1: LA Module End here -->
+<!-- Spacer starts here -->
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D48 style=3D"display: block;" class=3Dht57>
+</td>
+</tr>
+<!-- Spacer End here -->
+<!-- M2: SF Module Start here -->
+<tr>
+<td valign=3Dtop align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 class=
+=3Dmauto>
+<tbody>
+<tr>
+<td valign=3Dmiddle align=3Dleft class=3Ddnone>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D48 h=
+eight=3D1 style=3D"display: block;">
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft class=3Ddnone>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<a href=3D#><img src=3Dhttps://storage.googleapis.com/waymo-uploads/email/I=
+mage%20SF%402x.png width=3D312 style=3D"display: block;"></a>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft class=3Ddnone>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D50 h=
+eight=3D1 style=3D"display: block;">
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 class=
+=3Dwidth300>
+<tbody>
+<tr>
+<td valign=3Dtop align=3Dleft style=3D"font-family: GT Walsheim, Google San=
+s, Roboto, Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 24px; l=
+ine-height: 36px; color: #050F1E; font-weight: 400; letter-spacing: -1px;" =
+class=3Dtcenter>
+Heading south of SF
+</td>
+</tr>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D16 style=3D"display: block;" class=3Dht13>
+</td>
+</tr>
+<tr>
+<td valign=3Dtop align=3Dleft style=3D"font-family: GT Walsheim, Google San=
+s, Roboto, Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 16px; l=
+ine-height: 24px; color: #050F1E; font-weight: 400; letter-spacing: -0.32px=
+;" class=3Dtcenter>
+Brisbane, South SF, San Bruno, Millbrae, and Burlingame: Welcome to the fol=
+d! We=E2=80=99re so excited to serve your communities.
+</td>
+</tr>
+<!--[if !mso]><!-->
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft class=3Ddblock style=3D"di=
+splay: none;">
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D40 style=3D"display: block;">
+</td>
+</tr>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft class=3Ddblock style=3D"di=
+splay: none;">
+<a href=3D#><img src=3Dhttps://storage.googleapis.com/waymo-uploads/email/I=
+mage%20SF%402x.png width=3D300 style=3D"display: block;"></a>
+</td>
+</tr>
+<!--<![endif]-->
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft class=3Ddnone>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D50 h=
+eight=3D1 style=3D"display: block;">
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+<!-- M2: SF Module End here -->
+<!-- Spacer starts here -->
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D48 style=3D"display: block;" class=3Dht57>
+</td>
+</tr>
+<!-- Spacer End here -->
+<!-- M3: MTV Module Start here -->
+<tr>
+<td valign=3Dtop align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 class=
+=3Dmauto>
+<tbody>
+<tr>
+<td valign=3Dmiddle align=3Dleft class=3Ddnone>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D50 h=
+eight=3D1 style=3D"display: block;">
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft class=3D"dblock tcenter">
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 class=
+=3D"width300 mauto">
+<tbody>
+<tr>
+<td valign=3Dtop align=3Dleft style=3D"font-family: GT Walsheim, Google San=
+s, Roboto, Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 24px; l=
+ine-height: 36px; color: #050F1E; font-weight: 400; letter-spacing: -1px;" =
+class=3Dtcenter>
+Covering more of Silicon=C2=A0Valley
+</td>
+</tr>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D16 style=3D"display: block;" class=3Dht13>
+</td>
+</tr>
+<tr>
+<td valign=3Dtop align=3Dleft style=3D"font-family: GT Walsheim, Google San=
+s, Roboto, Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 16px; l=
+ine-height: 24px; color: #050F1E; font-weight: 400; letter-spacing: -0.32px=
+;" class=3Dtcenter>
+We=E2=80=99re excited to serve more of Palo Alto for our Silicon Valley rid=
+ers. Still waiting on access to our newest territory? We=E2=80=99re gradual=
+ly inviting riders =E2=80=94 keep an eye on the app!
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft class=3Ddblock>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D50 h=
+eight=3D40 style=3D"display: block;">
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft class=3Ddblock>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<a href=3D#><img src=3Dhttps://storage.googleapis.com/waymo-uploads/email/I=
+mage%20MTV2%402x.png width=3D312 class=3Dwidth300 style=3D"display: block;"=
+></a>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft class=3Ddnone>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D48 h=
+eight=3D1 style=3D"display: block;">
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+<!-- M3: MTV Module End here -->
+<!-- Spacer starts here -->
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D24 style=3D"display: block;" class=3Dht21>
+</td>
+</tr>
+<!-- Spacer End here -->
+<!-- Social Icons Module Start here -->
+<tr>
+<td valign=3Dtop align=3Dcenter bgcolor=3D#0077FF style=3D"padding: 47px 0p=
+x">
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td valign=3Dtop align=3Dcenter style=3D"font-family: GT Walsheim, Google S=
+ans, Roboto, Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 24px;=
+ line-height: 36px; color: #FFFFFF; font-weight: 400; letter-spacing: -1px;=
+">
+Follow along on social
+</td>
+</tr>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D13 style=3D"display: block;">
+</td>
+</tr>
+<tr>
+<td valign=3Dtop align=3Dcenter>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td valign=3Dmiddle align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td valign=3Dmiddle align=3Dleft width=3D48 height=3D48>
+<a href=3Dhttps://c.gle/ANiao5qLHu24a0lBmvhSYLoO-at6Lkz-SV2VLe8pFQpowFWv6oM=
+cqhSzN_W6QE0M0ebV-aQJjhTBJl-tAScJ1GOqSf_uKYUX-m264Dd-79ooyEQ_3vKZy-P-LKrtOb=
+z6E9fCZwa0TeIblJcVR8AnSg target=3D_blank style=3D"padding: 4px; display: bl=
+ock;" aria-label=3DInstagram><img src=3Dhttps://www.gstatic.com/growthlab/a=
+pi/MHJ6eNoObGzPhTsknCgeubsSIqN9aGBQPKmrqFzP.png width=3D40 alt=3DInstagram =
+title=3DInstagram style=3D"display: block;" aria-hidden=3Dtrue></a>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D4 he=
+ight=3D1 style=3D"display: block;">
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td valign=3Dmiddle align=3Dleft width=3D48 height=3D48>
+<a href=3Dhttps://c.gle/ANiao5qfz7C77vyd2r-RnZhgylA8Vh9s1gHkYWKtllxzHD-AgV0=
+Kg6vU7yEjxFRrcf4yxq6AKf272bY9HkBVgBJZSHnYiKDGdCuST7vnSaGNYpBkQSOBtRdU2105ED=
+o5T4K7PBcpDTMqbL45CHM target=3D_blank style=3D"padding: 4px; display: block=
+;" aria-label=3DFacebook><img src=3Dhttps://www.gstatic.com/growthlab/api/2=
+8saruNgbpAHktLnRklAHyAFFgny9Fl9xyXPtA8W.png width=3D40 alt=3DFacebook title=
+=3DFacebook style=3D"display: block;" aria-hidden=3Dtrue></a>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D4 he=
+ight=3D1 style=3D"display: block;">
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td valign=3Dmiddle align=3Dleft width=3D48 height=3D48>
+<a href=3Dhttps://c.gle/ANiao5pLIPJQ1SjbgvplR0_RBxFog_QSzKZvLNGQChGyriSxd9v=
+88xcxTHWIv_4A_sku6qXS3VeG6IN9KdGrvlhhXxYdYyzngayX2ef_uRBr-l_e_RwFTAvW0UQFye=
+RDo0uq-lbfp0yX_RB2SXmU1RC7xFmy8A target=3D_blank style=3D"padding: 4px; dis=
+play: block;" aria-label=3DLinkedIn><img src=3Dhttps://www.gstatic.com/grow=
+thlab/api/EE1FQWavg8yQ0yrnW2QTYCTfG7lvtxaNjzL6OGAY.png width=3D40 alt=3DLin=
+kedIn title=3DLinkedIn style=3D"display: block;" aria-hidden=3Dtrue></a>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D4 he=
+ight=3D1 style=3D"display: block;">
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td valign=3Dmiddle align=3Dleft width=3D48 height=3D48>
+<a href=3Dhttps://c.gle/ANiao5oOFeFLfB1uCgSqGunaNSZQf71iozIoRXWVAdAO9D21ob5=
+Ppo8MdEqub7sKFY8gDD0jgegaP_Vr8jxCpMJyh260vLz8RpPq5rFncXYa0BjnpfnCPnGy7w tar=
+get=3D_blank style=3D"padding: 4px; display: block;" aria-label=3DX><img sr=
+c=3Dhttps://www.gstatic.com/growthlab/api/1uO0cbQ3s5N3qSF5NPkUstI0q5aciHbls=
+dAZhYK1.png width=3D40 alt=3DX title=3DX style=3D"display: block;" aria-hid=
+den=3Dtrue></a>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D4 he=
+ight=3D1 style=3D"display: block;">
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td valign=3Dmiddle align=3Dleft width=3D48 height=3D48>
+<a href=3Dhttps://c.gle/ANiao5pO5FpI5PMiniYyC6jGMb1uQiCvNYGrDPDjoAP8S_w3q6P=
+pwba35Sa7sb_HMidUhpP9gKapllK_9Xx4NqMYC_Bnyd3JuHNwSaQIIdCyifoF2r0JIVMP3UMgJ3=
+qAG8RTbdxKOmHMPuJfaoOwZ64U3vzUkGUVYMvqVJtPiTtJRh_ctRA target=3D_blank style=
+=3D"padding: 4px; display: block;" aria-label=3DYoutube><img src=3Dhttps://=
+www.gstatic.com/growthlab/api/iQdajdON6uYSRCVwGYfV4eYLSFeQV3fkB0lMxxrQ.png =
+width=3D40 alt=3DYoutube title=3DYoutube style=3D"display: block;" aria-hid=
+den=3Dtrue></a>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D4 he=
+ight=3D1 style=3D"display: block;">
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td valign=3Dmiddle align=3Dleft width=3D48 height=3D48>
+<a href=3Dhttps://c.gle/ANiao5pKorfH8aG5H9bTEVJIAoOEqcVkLQPPunWVkHHAaUHg2pH=
+Y4YW76LDknGnFXVmV6lk8VkxLAhbpECCeeUGSJR3QAQRppZdVfIUoo8dM_fyM45hKwjVddkhzlB=
+j6AxaNZ_MG_fuvAzpBz7YZyKpr target=3D_blank style=3D"padding: 4px; display: =
+block;" aria-label=3DTikTok><img src=3Dhttps://www.gstatic.com/growthlab/ap=
+i/EzDoRD7Ypg10vIEi8ciuqPj9i717gD04Kb7s2jzk.png width=3D40 alt=3DTikTok titl=
+e=3DTikTok style=3D"display: block;" aria-hidden=3Dtrue></a>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+<!-- Social Icons Module End here -->
+<!-- Footer Module Start -->
+<tr>
+<td valign=3Dtop align=3Dcenter bgcolor=3D#F9F9F9 style=3D"padding: 25px 50=
+px 40px 46px;" class=3Dpadding_footer>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td valign=3Dtop align=3Dcenter>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td valign=3Dtop align=3Dleft class=3Ddnone>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 width=
+=3D187>
+<tbody>
+<tr>
+<td valign=3Dmiddle align=3Dleft width=3D48 height=3D50>
+<a href=3Dhttps://c.gle/ANiao5rNy5HWRYWNdH5-XNf2CL0m0-6o3CLagMvxYuhUgPyC5Jf=
+THwczmyo90vbvql1AZHQ_JnC9ukzKcTMJEjaRlrQSFpQiE5-U46eNzLqn5Ne7cuG1bbyGdFJOBZ=
+IFICvOLfc_ target=3D_blank style=3D"padding: 14px 4px; display: inline-bloc=
+k;" aria-label=3DWaymo><img src=3Dhttps://www.gstatic.com/growthlab/api/sXr=
+cAXIy8mZHv1EE8h9CgZVy6LJ18BLzlH4Cxm5r.png alt=3DWaymo title=3DWaymo width=
+=3D40 style=3D"display: block;" aria-hidden=3Dtrue></a>
+</td>
+</tr>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D3 style=3D"display: block;">
+</td>
+</tr>
+<tr>
+<td valign=3Dtop align=3Dleft style=3D"padding-left: 4px;">
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 width=
+=3D100%>
+<tbody>
+<tr>
+<td valign=3Dtop align=3Dleft style=3D"font-family: GT Walsheim, Google San=
+s, Roboto, Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 16px; l=
+ine-height: 24px; color: #1F2A39; font-weight: 400; letter-spacing: -0.32px=
+;">
+<a href=3Dhttps://c.gle/ANiao5rIbeQ1BxrOLk6RqBkwE8ORNa-GWt8kDLeLcWfOvFi3qid=
+sfIK54Lr9ACRYejU-dvH_9LQTj7qoG3G8_GILylMG4IXV6OQkRF7s-0lHPCcNnsi7t7Nm6xf_iu=
+gOkWE target=3D_blank style=3D"color: #1F2A39; text-decoration: none;">Webs=
+ite</a>
+</td>
+</tr>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft style=3D"border-bottom: 1p=
+x solid #BCC0C3;">
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D8 style=3D"display: block;">
+</td>
+</tr>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D6 style=3D"display: block;">
+</td>
+</tr>
+<tr>
+<td valign=3Dtop align=3Dleft style=3D"font-family: GT Walsheim, Google San=
+s, Roboto, Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 16px; l=
+ine-height: 24px; color: #1F2A39; font-weight: 400; letter-spacing: -0.32px=
+;">
+<a href=3Dhttps://c.gle/ANiao5pP1YbUOvGr_IvlkVrHKwjMycDd3oLL7bOrZvl65EFADdF=
+ZH8ublIeteC20p6PUrHDUQJFaV6b5N80oo0BNwJCWuc_b-lpd01jXLsD8osxk_XjO5A9cb4Oedb=
+HhkXM4jR0 target=3D_blank style=3D"color: #1F2A39; text-decoration: none;">=
+Blog</a>
+</td>
+</tr>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft style=3D"border-bottom: 1p=
+x solid #BCC0C3;">
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D8 style=3D"display: block;">
+</td>
+</tr>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D6 style=3D"display: block;">
+</td>
+</tr>
+<tr>
+<td valign=3Dtop align=3Dleft style=3D"font-family: GT Walsheim, Google San=
+s, Roboto, Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 16px; l=
+ine-height: 24px; color: #1F2A39; font-weight: 400; letter-spacing: -0.32px=
+;">
+<a href=3Dhttps://c.gle/ANiao5rUGaUm_v7DbhsMNv179wCGyCQzILQd__W18IxT8D76Zew=
+R0fYkzZ2RgL_emxerrWLJHmb-Vu7rqUHqt05yIfrxdVPs4269aKZFz-o-CaAfrKrzoiLb00ePvx=
+9HpHM target=3D_blank style=3D"color: #1F2A39; text-decoration: none;">FAQ<=
+/a>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<!--[if !mso]><!-->
+<td valign=3Dtop align=3Dleft class=3Ddblock style=3D"display: none;">
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 width=
+=3D100%>
+<tbody>
+<tr>
+<td valign=3Dtop align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 width=
+=3D48>
+<tbody>
+<tr>
+<td valign=3Dmiddle align=3Dleft width=3D48 height=3D50>
+<a href=3Dhttps://c.gle/ANiao5rNy5HWRYWNdH5-XNf2CL0m0-6o3CLagMvxYuhUgPyC5Jf=
+THwczmyo90vbvql1AZHQ_JnC9ukzKcTMJEjaRlrQSFpQiE5-U46eNzLqn5Ne7cuG1bbyGdFJOBZ=
+IFICvOLfc_ target=3D_blank style=3D"padding: 14px 4px; display: inline-bloc=
+k;" aria-label=3DWaymo><img src=3Dhttps://www.gstatic.com/growthlab/api/sXr=
+cAXIy8mZHv1EE8h9CgZVy6LJ18BLzlH4Cxm5r.png alt=3DWaymo title=3DWaymo width=
+=3D40 style=3D"display: block;" aria-hidden=3Dtrue></a>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dtop align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D24 h=
+eight=3D1 style=3D"display: block;">
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dtop align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 width=
+=3D242>
+<tbody>
+<tr>
+<td valign=3Dtop align=3Dleft style=3D"padding-left: 4px;">
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 width=
+=3D100%>
+<tbody>
+<tr>
+<td valign=3Dtop align=3Dleft style=3D"font-family: GT Walsheim, Google San=
+s, Roboto, Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 16px; l=
+ine-height: 24px; color: #1F2A39; font-weight: 400; letter-spacing: -0.32px=
+; padding-top: 11px;">
+<a href=3Dhttps://c.gle/ANiao5rIbeQ1BxrOLk6RqBkwE8ORNa-GWt8kDLeLcWfOvFi3qid=
+sfIK54Lr9ACRYejU-dvH_9LQTj7qoG3G8_GILylMG4IXV6OQkRF7s-0lHPCcNnsi7t7Nm6xf_iu=
+gOkWE target=3D_blank style=3D"color: #1F2A39; text-decoration: none;">Webs=
+ite</a>
+</td>
+</tr>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft style=3D"border-bottom: 1p=
+x solid #BCC0C3;">
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D8 style=3D"display: block;">
+</td>
+</tr>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D6 style=3D"display: block;">
+</td>
+</tr>
+<tr>
+<td valign=3Dtop align=3Dleft style=3D"font-family: GT Walsheim, Google San=
+s, Roboto, Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 16px; l=
+ine-height: 24px; color: #1F2A39; font-weight: 400; letter-spacing: -0.32px=
+;">
+<a href=3Dhttps://c.gle/ANiao5pP1YbUOvGr_IvlkVrHKwjMycDd3oLL7bOrZvl65EFADdF=
+ZH8ublIeteC20p6PUrHDUQJFaV6b5N80oo0BNwJCWuc_b-lpd01jXLsD8osxk_XjO5A9cb4Oedb=
+HhkXM4jR0 target=3D_blank style=3D"color: #1F2A39; text-decoration: none;">=
+Blog</a>
+</td>
+</tr>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft style=3D"border-bottom: 1p=
+x solid #BCC0C3;">
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D8 style=3D"display: block;">
+</td>
+</tr>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D6 style=3D"display: block;">
+</td>
+</tr>
+<tr>
+<td valign=3Dtop align=3Dleft style=3D"font-family: GT Walsheim, Google San=
+s, Roboto, Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 16px; l=
+ine-height: 24px; color: #1F2A39; font-weight: 400; letter-spacing: -0.32px=
+;">
+<a href=3Dhttps://c.gle/ANiao5rUGaUm_v7DbhsMNv179wCGyCQzILQd__W18IxT8D76Zew=
+R0fYkzZ2RgL_emxerrWLJHmb-Vu7rqUHqt05yIfrxdVPs4269aKZFz-o-CaAfrKrzoiLb00ePvx=
+9HpHM target=3D_blank style=3D"color: #1F2A39; text-decoration: none;">FAQ<=
+/a>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<!--<![endif]-->
+<td valign=3Dtop align=3Dleft class=3Ddblock>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D61 h=
+eight=3D1 style=3D"display: block;">
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dtop align=3Dleft class=3Ddblock>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td valign=3Dtop align=3Dleft style=3D"font-family: GT Walsheim, Google San=
+s, Roboto, Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 12px; l=
+ine-height: 18px; color: #1F2A39; font-weight: 400; letter-spacing: -0.32px=
+; padding-left: 10px; padding-top: 14px;" class=3D"pdl5 pdt22">
+This email was sent to <a href=3Dhttps://myaccount.google.com/communication=
+-preferences/unsubscribe/gt/ANiao5qX8yieBGPDqYPoUbFWNofKSqhzgtSeBWZCrNgDBTo=
+-gftPzvSH5bGgG9b43idJR3hLMoKotx-zCkslCjWU6G7yMau0FAHdNJit8DfW3vgEYB-bYOLlZG=
+9lJWats3hcJPFUzCMBno_Tdtl_0idTzxLmNVk9lKWgxfuD4gKpOtEof7WrbWZ8j55fVfAx1VyPW=
+TgBSxPmAebt-mam8hwshkcb8pr0h_psLLvbrvu7jag5xcPzxR1UNpky?utm_source=3Dgm&amp=
+;utm_medium=3Demail&amp;auto=3Dtrue style=3D"color: #1f2a39; text-decoratio=
+n: none; cursor: default; pointer-events: none;">ashd2002@gmail.com</a> bec=
+ause you are a member of a Waymo rider program. If you do not wish to recei=
+ve further Marketing communications, please <a href=3Dhttps://myaccount.goo=
+gle.com/communication-preferences/unsubscribe/gt/ANiao5qX8yieBGPDqYPoUbFWNo=
+fKSqhzgtSeBWZCrNgDBTo-gftPzvSH5bGgG9b43idJR3hLMoKotx-zCkslCjWU6G7yMau0FAHdN=
+Jit8DfW3vgEYB-bYOLlZG9lJWats3hcJPFUzCMBno_Tdtl_0idTzxLmNVk9lKWgxfuD4gKpOtEo=
+f7WrbWZ8j55fVfAx1VyPWTgBSxPmAebt-mam8hwshkcb8pr0h_psLLvbrvu7jag5xcPzxR1UNpk=
+y?utm_source=3Dgm&amp;utm_medium=3Demail&amp;auto=3Dtrue style=3Dtext-decor=
+ation:none;color:#1464CC>unsubscribe here</a><span aria-hidden=3Dtrue>.</sp=
+an>
+</td>
+</tr>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D16 style=3D"display: block;">
+</td>
+</tr>
+<tr>
+<td valign=3Dtop align=3Dleft style=3D"font-family: GT Walsheim, Google San=
+s, Roboto, Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 12px; l=
+ine-height: 18px; color: #1F2A39; font-weight: 400; letter-spacing: -0.32px=
+;padding-left: 10px;" class=3Dpdl5>
+Was this email helpful?
+</td>
+</tr>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D4 style=3D"display: block;">
+</td>
+</tr>
+<tr>
+<td valign=3Dtop align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td valign=3Dmiddle align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td valign=3Dtop align=3Dleft>
+<a href=3Dhttps://c.gle/ANiao5qtZ0umdvax8T1vPcYzfbIAz6BIWLBebOA8bpy07b6fdgl=
+EWjucb7XLwb1J7YR9nnqXC1_CRXDjm3rfsgw9Oac761ZYjixhJDmIkOVYn4Znk3kwDLO3T5hUDs=
+QOGUzNw78BqP1HCG3_ZUYF_jiwrTkgI8LNd2LAxGYKRZ9Fo3z9ox4Co1D_oX92PbLsNEUSR4r_x=
+5XJc5U0-CBR2XtyK5hD_o9Gef3EkNasaHyTqJrFfwBYCsM target=3D_blank style=3D"dis=
+play: block;" aria-label=3DHelpful><img src=3Dhttps://www.gstatic.com/growt=
+hlab/api/WzPXasj3ZU1HB1wwiZdBjat3za9Q5juVKQ3jtTZn.png width=3D48 alt=3DHelp=
+ful title=3DHelpful style=3D"display: block;" aria-hidden=3Dtrue></a>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td valign=3Dtop align=3Dleft>
+<a href=3Dhttps://c.gle/ANiao5pZ5U5y-0yLuTwxKlNiwxgPIKtMGV8hcK1MWNNn-bQhc-Y=
+Y76oassM0DDn-qySasF_USeYmZc7FwhBSt7pm1ZzfcLf0XPzHljIHlxu-IM1HVpu8bkB1KB8Jle=
+3wYhJl78uyIuTjbID0_xOzCixJi9ZRTu0GfWrQzPEyPyHFHrTVmAO938lbDCco6_rvwNh4vR3ah=
+JXJ-aa6M3lsiENLBzEu5xiQ_bgdpodzhRIC_hLbGDqt2DUe8w target=3D_blank style=3D"=
+display: block;" aria-label=3DNeutral><img src=3Dhttps://www.gstatic.com/gr=
+owthlab/api/KvWm6UYnvKPZkEqArP7wJ0XppbN2Ckd6I3NceyKK.png width=3D48 alt=3DN=
+eutral title=3DNeutral style=3D"display: block;" aria-hidden=3Dtrue></a>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+<td valign=3Dmiddle align=3Dleft>
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0>
+<tbody>
+<tr>
+<td valign=3Dtop align=3Dleft>
+<a href=3Dhttps://c.gle/ANiao5pDzQ6Tl6526ZrdjfvcUWL9u5uN2IAQOrzY3ZYbO8JCs5S=
+Pk72TGnk6p_ZFqymcfJ_qQOT6M5cXd0DRDA4Thvj7kXJBPM4Cf3a5iC40vKBSXeIIe0ZXutU8kf=
+7zt_kv3s64UvG92rhTIAt6tTyBEAI0ieodzslgWmoDyo-vgM1A9b32uyhBTtqHwd3EM0u1iwmsJ=
+uluG4CO30Bs5pp6EBxOK0jt5xXj-aADtKkHEiKWpQ9Kbxh4aeU target=3D_blank style=3D=
+"display: block;" aria-label=3D"Not helpful"><img src=3Dhttps://www.gstatic=
+.com/growthlab/api/vBGGFZMlW1s1CvDK7rk1cGHDXt4nVP8cDJWA7IMW.png width=3D48 =
+alt=3D"Not helpful" title=3D"Not helpful" style=3D"display: block;" aria-hi=
+dden=3Dtrue></a>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+<tr>
+<td valign=3Dtop align=3Dleft style=3D"padding-left: 4px">
+<table role=3Dpresentation cellpadding=3D0 cellspacing=3D0 border=3D0 width=
+=3D100%>
+<tbody>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft style=3D"border-bottom: 1p=
+x solid #BCC0C3;">
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D27 style=3D"display: block;" class=3Dht17>
+</td>
+</tr>
+<tr>
+<td aria-hidden=3Dtrue valign=3Dtop align=3Dleft>
+<img src=3Dhttps://www.gstatic.com/gumdrop/files/spacer-11.gif width=3D1 he=
+ight=3D30 style=3D"display: block;">
+</td>
+</tr>
+<tr>
+<td valign=3Dtop align=3Dleft style=3D"font-family: GT Walsheim, Google San=
+s, Roboto, Helvetica Neue, Helvetica, Arial, sans-serif; font-size: 12px; l=
+ine-height: 18px; color: #1F2A39; font-weight: 400; letter-spacing: -0.32px=
+;">
+<a href=3D# role=3Dtext style=3D"text-decoration: none; color: #1F2A39;">=
+=C2=A9 2025 Waymo LLC 1600 Amphitheatre Parkway, Mountain View, CA 94043</a=
+>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+<!-- Footer Module End -->
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+<img alt=3D"" height=3D1 width=3D3 src=3Dhttps://notifications.google.com/g=
+/img/ANiao5rnvx1V2f93naxN26UcYXLMHGfJ_0SeBq_2P1ZFPffq4UrcjVi-XcMm1JKSpC4h4n=
+5bcZ9ToAN5ShrkKbjnRe0IDcA7YoAmx1BDtNHvnMmjEx4Y2K18I-GZVB1Tez80sG4k1Q.gif></=
+body>
+</html>
+--000000000000391c680637e0353d--

@@ -1,0 +1,72 @@
+Delivered-To: divakarana1@my.smccd.edu
+Received: by 2002:a05:6358:a42:b0:210:7a75:8150 with SMTP id 2csp2728677rwb;
+        Tue, 9 Sep 2025 11:12:53 -0700 (PDT)
+X-Google-Smtp-Source: AGHT+IEbPcNuyB7VzFpAvfXyk2VFNqFXWGe9qG/IdILorpYAXpVxMWPq5DtDZPuJD96jQcir0Qx8
+X-Received: by 2002:a05:6a20:430b:b0:24e:84c9:e990 with SMTP id adf61e73a8af0-2533f8c4d01mr18850613637.15.1757441572713;
+        Tue, 09 Sep 2025 11:12:52 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1757441572; cv=none;
+        d=google.com; s=arc-20240605;
+        b=G5beG+K+FL/RjoaWcV4CsBE8InM9fkL+R7c7ErZE4AEzBRlOn60SPUlq7tIjL1o5Ws
+         S8SbqurFCJq7B8v+wTutH93GXbeQR/+WiuEhdTVHmJ2VeFUGHkOYlpmfyY9wOY12I2Rp
+         WJeUg5tdYoAIOEaFdyEu5ki86kZ4ly5OO2/WBoY1kwpJlBWhE+cnWiqQLoHQcpxPIvQQ
+         v1NYRQAHW3gSUKMGtfTawYNf3RHC/hvJRcLSDN59KHbQpetAfDiZfZdbOPKu7ChK+fJj
+         MWAfakxwIXTM3T/s1z33oRq4bdvD6q2gSb4ATvmsJ+OTIx0AyMVwLfJImsbRl7EOV4RH
+         dgAg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=date:message-id:subject:to:from:dkim-signature;
+        bh=6cAvhnBWI6ETiQxA9kuzAS66cVAyat4gmjHJH1oEefc=;
+        fh=fxNmczMDUOFK/lZPm6N16MAubnxThWTeq8FqN392n68=;
+        b=ZmJyxPxxqdv6zbzGncSwnToibB6y9uXNZxkHv6zA04EFUY3mr+g/bGzhlnkqtELgbi
+         EHN42O2pa5v6KxKzM8xi9BmGxxcXXFT8iyVS+nYt+FjgYDK0BeeySZoznw8Te5XOjiqW
+         OehVtevbVZh3n6KyhXiF2GmEvSSV2qaGUGhIX/pcYFe5LPfDHH2A3FZNcWhH94l2CQCQ
+         qHOr/UJQL1UwkVfB1XRQIjkRRHxw3l/xuw2j8arTdD40/4Z0xQKKDG2l3VcX9q3nbHKN
+         qsYqeXLKisNZbbHAZLhWfhz6KoTcJWoC5j2/ilSUimhfcsVjC35MlQZx2WcHDRh9jLzG
+         p6TA==;
+        dara=google.com
+ARC-Authentication-Results: i=1; mx.google.com;
+       dkim=pass header.i=@smccd.edu header.s=smtp header.b=b2qGoQGB;
+       spf=pass (google.com: domain of kalantarm@smccd.edu designates 207.62.235.169 as permitted sender) smtp.mailfrom=kalantarm@smccd.edu;
+       dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=smccd.edu
+Return-Path: <kalantarm@smccd.edu>
+Received: from banmail.smccd.edu (banmail.smccd.edu. [207.62.235.169])
+        by mx.google.com with ESMTPS id 41be03b00d2f7-b4cd308f95bsi20558550a12.698.2025.09.09.11.12.52
+        for <divakarana1@my.smccd.edu>
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 09 Sep 2025 11:12:52 -0700 (PDT)
+Received-SPF: pass (google.com: domain of kalantarm@smccd.edu designates 207.62.235.169 as permitted sender) client-ip=207.62.235.169;
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@smccd.edu header.s=smtp header.b=b2qGoQGB;
+       spf=pass (google.com: domain of kalantarm@smccd.edu designates 207.62.235.169 as permitted sender) smtp.mailfrom=kalantarm@smccd.edu;
+       dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=smccd.edu
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=smccd.edu;
+	s=smtp; h=From; bh=6cAvhnBWI6ETiQxA9kuzAS66cVAyat4gmjHJH1oEefc=; b=b2qGoQGBkO
+	ZS256eQsp2YPSC9LnVrmWmXrEGVxcwpV5ySZoy6GnanK6teCy2TDW8Dc/f9Wx7xANtaWOqWH7zoMa
+	bjPsl8wZQY0ozuCxNEz12+HOzM3ieHlawCLd/EahP3+3i10xVwImoB4awZkX23pXBwySUqK7JIqCy
+	doKI1E8=;
+Received: from [172.22.90.71] (port=58535 helo=BANMAIL.SMCCD.EDU)
+	by banmail.smccd.edu with smtp (Exim 4.95)
+	(envelope-from <kalantarm@smccd.edu>)
+	id 1uw2pn-0087gz-9V
+	for divakarana1@my.smccd.edu;
+	Tue, 09 Sep 2025 11:12:52 -0700
+From: kalantarm@smccd.edu
+To: divakarana1@my.smccd.edu
+Subject: Homework
+Content-Type: text/html
+X-Mailer: Mailer by Oracle UTL_SMTP
+Message-Id: <E1uw2pn-0087gz-9V@banmail.smccd.edu>
+Date: Tue, 09 Sep 2025 11:12:52 -0700
+
+<p>Hi everyon,</p>
+<p>'Homework for 2.3 (part two) is 7 to 21 0dd.&nbsp;<br />take care</p>
+
+
+
+
+
+
+
+
+
+
+

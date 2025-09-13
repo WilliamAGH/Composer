@@ -1,0 +1,705 @@
+Delivered-To: ashd2002@gmail.com
+Received: by 2002:a05:7110:4a84:b0:272:d97f:b54a with SMTP id cd4csp4061870geb;
+        Fri, 12 Sep 2025 09:41:41 -0700 (PDT)
+X-Google-Smtp-Source: AGHT+IEy26H3m71/0PtQBS8ho6nlLFR2QMu5V6Oe7xmzuVnTYA7TtcQ76BBQPnrrzQy4/dsAhJot
+X-Received: by 2002:a17:90a:d40d:b0:32d:d714:b3e8 with SMTP id 98e67ed59e1d1-32de4eac2b0mr3574074a91.7.1757695301673;
+        Fri, 12 Sep 2025 09:41:41 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1757695301; cv=none;
+        d=google.com; s=arc-20240605;
+        b=FTMnLs5UgszRBFfFm3BHvehy9GInHh0bTGyBA0rFo9x5kcixJagmk5X/UOvNJGhKLJ
+         UGSFtGbuAuO/cDl0PKcCSQhenS7xO/FweLOcJXsWJMg8H4WlXddsHZGnAFfswr/VB/as
+         9BVvHqBvzseAM0MfJlkl3wZIKOV1c9g0XVREL8iysioqN3bBZOEwxUo5U6LN95xuxfID
+         D1MfqWabsoIZ5zjFx7jHRJ5au6cYylQQCAwJwRaWrzE5b0iLRMdnpImtcimA7OnHnST/
+         FnTkH+Vy9AC5ajATYzE9dkcki2tRPlSdUZuDmREH8WLfHslvMI4n7ti323C4lLGrxtf1
+         vIBQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=feedback-id:date:message-id:content-transfer-encoding:mime-version
+         :subject:to:from:dkim-signature:dkim-signature;
+        bh=uiqTf0YGQaNBoddrSH2vXK5j8yJXqaNygl7wzhujL8U=;
+        fh=VuVUZG8yLvxQk4eQqcyGBgSkARd92SFlUD8MXxtCOA8=;
+        b=kC8YtIMZAsMRvNBFby9VG0y+8EI9Opy0i+Nl3gnIznxTPo7+mH/nI5W08rwo+Sresj
+         1/hVvOv1/4PA8kqiYI04sndbgP80DKbCoPSXelSTqGfnD9vQvDJDjVl2A7chJ0stw6Ou
+         6iDwf1c0wXJbGsUcMaafmEcKMGQvwacgc4rm+ktA6DFLIueJGbXGrLmoj0Ob2rjjG/B0
+         dC0BeecUfCUVnMdpoj5E20MMeJo/eBMpanS7YXCk2SZpWOHc5xJ/2fYzyQN3PESmKiPf
+         pCtXxvLg1KfJTa+/h7TDcPCig0i+EZs6y8Z0xAiZ84TGfdtF4a/7UBJiJqp54r8bNn9V
+         DTaw==;
+        dara=google.com
+ARC-Authentication-Results: i=1; mx.google.com;
+       dkim=pass header.i=@confirm.dmvonline.ca.gov header.s=6xkkwfxdclvhnfa66fit2nikuomdb6xz header.b=WQD+42hk;
+       dkim=pass header.i=@amazonses.com header.s=gdwg2y3kokkkj5a55z2ilkup5wp5hhxx header.b=UymmGmfk;
+       spf=pass (google.com: domain of 010101993ecdd6cb-a7da7f1a-aafe-4ac0-9237-80a0394b25b3-000000@us-west-2.amazonses.com designates 54.240.59.150 as permitted sender) smtp.mailfrom=010101993ecdd6cb-a7da7f1a-aafe-4ac0-9237-80a0394b25b3-000000@us-west-2.amazonses.com;
+       dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=confirm.dmvonline.ca.gov
+Return-Path: <010101993ecdd6cb-a7da7f1a-aafe-4ac0-9237-80a0394b25b3-000000@us-west-2.amazonses.com>
+Received: from a59-150.smtp-out.us-west-2.amazonses.com (a59-150.smtp-out.us-west-2.amazonses.com. [54.240.59.150])
+        by mx.google.com with ESMTPS id 41be03b00d2f7-b54b3bde8acsi619549a12.960.2025.09.12.09.41.41
+        for <ashd2002@gmail.com>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Fri, 12 Sep 2025 09:41:41 -0700 (PDT)
+Received-SPF: pass (google.com: domain of 010101993ecdd6cb-a7da7f1a-aafe-4ac0-9237-80a0394b25b3-000000@us-west-2.amazonses.com designates 54.240.59.150 as permitted sender) client-ip=54.240.59.150;
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@confirm.dmvonline.ca.gov header.s=6xkkwfxdclvhnfa66fit2nikuomdb6xz header.b=WQD+42hk;
+       dkim=pass header.i=@amazonses.com header.s=gdwg2y3kokkkj5a55z2ilkup5wp5hhxx header.b=UymmGmfk;
+       spf=pass (google.com: domain of 010101993ecdd6cb-a7da7f1a-aafe-4ac0-9237-80a0394b25b3-000000@us-west-2.amazonses.com designates 54.240.59.150 as permitted sender) smtp.mailfrom=010101993ecdd6cb-a7da7f1a-aafe-4ac0-9237-80a0394b25b3-000000@us-west-2.amazonses.com;
+       dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=confirm.dmvonline.ca.gov
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/simple;
+	s=6xkkwfxdclvhnfa66fit2nikuomdb6xz; d=confirm.dmvonline.ca.gov;
+	t=1757695301;
+	h=From:To:Subject:MIME-Version:Content-Type:Content-Transfer-Encoding:Message-ID:Date;
+	bh=jldrim9o4yXLRH1Kcw6vBFqyjUr4hMk+2k44qxt1IBc=;
+	b=WQD+42hkJaylJopKf7catjK4IskR4rWjpPA5DndgcriemDgWFwJNnRwP1igr/tF2
+	WPidYJOOVTPAcOSwMtF5aXSWukx4kgG8COsXFTuKVqf0br4WoEyREyhRUtA2kAdn25c
+	phHtMHEi0RVOANH3hCR+jOUUdZ6TtO8C1PDYWBv7KKHb24J+Bpmpe7DLmpnUtiKfTsN
+	qYpbrNoF6nG+RTit++m87ICTp6KPYU3blj21OMkjFGcb0yQP/+i5qC9zVf6QnrTOi5L
+	i5b4m2VIrFga66pw8ctTT0IAp+vB2MTZYnU/RD/rsTc8AYhaI0h/Vnz5L/HxY8laK1r
+	W6k0q4owEQ==
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/simple;
+	s=gdwg2y3kokkkj5a55z2ilkup5wp5hhxx; d=amazonses.com; t=1757695301;
+	h=From:To:Subject:MIME-Version:Content-Type:Content-Transfer-Encoding:Message-ID:Date:Feedback-ID;
+	bh=jldrim9o4yXLRH1Kcw6vBFqyjUr4hMk+2k44qxt1IBc=;
+	b=UymmGmfkUzGDXMUzbor5zZAIJzl949adKI3w4lGFM69nqIpck1htZF68KMSbfn2n
+	uSvwYk5GlsPivn7dQAcaUYRPeVSaryPnYodfOSpLb9/eIh53SsQnNfBsQnYBenVuaHl
+	AO0idcVYhbBFW6wAdTsZ5k3ectTpGp11aJ0xtNZA=
+From: DL_CONFIRMATION@confirm.dmvonline.ca.gov
+To: ashd2002@gmail.com
+Subject: CA DMV- Complete Your REAL ID Application
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Message-ID: <010101993ecdd6cb-a7da7f1a-aafe-4ac0-9237-80a0394b25b3-000000@us-west-2.amazonses.com>
+Date: Fri, 12 Sep 2025 16:41:41 +0000
+Feedback-ID: ::1.us-west-2.AsRfS8s/wWU4QzbeqZdjB25gd3mL4onfKF3h5ALGZtI=:AmazonSES
+X-SES-Outgoing: 2025.09.12-54.240.59.150
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html lang="###_HTML_LANG_###">
+
+<head>
+  <meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+  <meta content="width=device-width" name="viewport" />
+  <!--[if !mso]><!-->
+  <meta content="IE=edge" http-equiv="X-UA-Compatible" />
+  <!--<![endif]-->
+  <title>DMV Real ID</title>
+  <!--[if !mso]><!-->
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet" type="text/css" />
+  <!--<![endif]-->
+  <style type="text/css">
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
+    table,
+    td,
+    tr {
+      vertical-align: top;
+      border-collapse: collapse;
+    }
+
+    * {
+      line-height: inherit;
+    }
+
+    a[x-apple-data-detectors=true] {
+      color: inherit !important;
+      text-decoration: none !important;
+    }
+  </style>
+  <style id="media-query" type="text/css">
+    @media (max-width: 720px) {
+
+      .block-grid,
+      .col {
+        min-width: 320px !important;
+        max-width: 100% !important;
+        display: block !important;
+      }
+
+      .block-grid {
+        width: 100% !important;
+      }
+
+      .col {
+        width: 100% !important;
+      }
+
+      .col>div {
+        margin: 0 auto;
+      }
+
+      img.fullwidth,
+      img.fullwidthOnMobile {
+        max-width: 100% !important;
+      }
+
+      .no-stack .col {
+        min-width: 0 !important;
+        display: table-cell !important;
+      }
+
+      .no-stack.two-up .col {
+        width: 50% !important;
+      }
+
+      .no-stack .col.num4 {
+        width: 33% !important;
+      }
+
+      .no-stack .col.num8 {
+        width: 66% !important;
+      }
+
+      .no-stack .col.num4 {
+        width: 33% !important;
+      }
+
+      .no-stack .col.num3 {
+        width: 25% !important;
+      }
+
+      .no-stack .col.num6 {
+        width: 50% !important;
+      }
+
+      .no-stack .col.num9 {
+        width: 75% !important;
+      }
+
+      .mobile_hide {
+        min-height: 0px;
+        max-height: 0px;
+        max-width: 0px;
+        display: none;
+        overflow: hidden;
+        font-size: 0px;
+      }
+    }
+  </style>
+</head>
+
+<body class="clean-body" style="margin: 0; padding: 0; -webkit-text-size-adjust: 100%; background-color: #ffffff;">
+  <!--[if IE]>
+<div class="ie-browser"><![endif]-->
+  <table bgcolor="#ffffff" cellpadding="0" cellspacing="0" class="nl-container" role="presentation"
+    style="table-layout: fixed; vertical-align: top; min-width: 320px; Margin: 0 auto; border-spacing: 0; border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #ffffff; width: 100%;"
+    valign="top" width="100%">
+    <tbody>
+      <tr style="vertical-align: top;" valign="top">
+        <td style="word-break: break-word; vertical-align: top;" valign="top">
+          <!--[if (mso)|(IE)]>
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td align="center" style="background-color:#ffffff"><![endif]-->
+          <div style="background-color:#0054a4;">
+            <div class="block-grid"
+              style="Margin: 0 auto; min-width: 320px; max-width: 700px; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word; background-color: transparent;">
+              <div style="border-collapse: collapse;display: table;width: 100%;background-color:transparent;">
+                <!--[if (mso)|(IE)]>
+                <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                        style="background-color:#0054a4;">
+                    <tr>
+                        <td align="center">
+                            <table cellpadding="0" cellspacing="0" border="0" style="width:700px">
+                                <tr class="layout-full-width" style="background-color:transparent">
+                <![endif]-->
+                <!--[if (mso)|(IE)]>
+                <td align="center" width="700"
+                    style="background-color:transparent;width:700px; border-top: 0px solid transparent; border-left: 0px solid transparent; border-bottom: 0px solid transparent; border-right: 0px solid transparent;"
+                    valign="top">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                            <td style="padding-right: 0px; padding-left: 0px; padding-top:0px; padding-bottom:0px;">
+                <![endif]-->
+                <div class="col num12"
+                  style="min-width: 320px; max-width: 700px; display: table-cell; vertical-align: top; width: 700px;">
+                  <div style="width:100% !important;">
+                    <!--[if (!mso)&(!IE)]><!-->
+                    <div
+                      style="border-top:0px solid transparent; border-left:0px solid transparent; border-bottom:0px solid transparent; border-right:0px solid transparent; padding-top:0px; padding-bottom:0px; padding-right: 0px; padding-left: 0px;">
+                      <!--<![endif]-->
+                      <table border="0" cellpadding="0" cellspacing="0" class="divider" role="presentation"
+                        style="table-layout: fixed; vertical-align: top; border-spacing: 0; border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; min-width: 100%; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%;"
+                        valign="top" width="100%">
+                        <tbody>
+                          <tr style="vertical-align: top;" valign="top">
+                            <td class="divider_inner"
+                              style="word-break: break-word; vertical-align: top; min-width: 100%; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%; padding-top: 5px; padding-right: 5px; padding-bottom: 5px; padding-left: 5px;"
+                              valign="top">
+                              <table align="center" border="0" cellpadding="0" cellspacing="0" class="divider_content"
+                                height="0" role="presentation"
+                                style="table-layout: fixed; vertical-align: top; border-spacing: 0; border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; border-top: 0px solid transparent; height: 0px; width: 100%;"
+                                valign="top" width="100%">
+                                <tbody>
+                                  <tr style="vertical-align: top;" valign="top">
+                                    <td height="0"
+                                      style="word-break: break-word; vertical-align: top; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%;"
+                                      valign="top"><span></span></td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <!--[if (!mso)&(!IE)]><!-->
+                    </div>
+                    <!--<![endif]-->
+                  </div>
+                </div>
+                <!--[if (mso)|(IE)]></td></tr></table><![endif]-->
+                <!--[if (mso)|(IE)]></td></tr></table></td></tr></table><![endif]-->
+              </div>
+            </div>
+          </div>
+          <div style="background-color:transparent;">
+            <div class="block-grid"
+              style="Margin: 0 auto; min-width: 320px; max-width: 700px; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word; background-color: transparent;">
+              <div style="border-collapse: collapse;display: table;width: 100%;background-color:transparent;">
+                <!--[if (mso)|(IE)]>
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                               style="background-color:transparent;">
+                            <tr>
+                                <td align="center">
+                                    <table cellpadding="0" cellspacing="0" border="0" style="width:700px">
+                                        <tr class="layout-full-width" style="background-color:transparent"><![endif]-->
+                <!--[if (mso)|(IE)]>
+                        <td align="center" width="700"
+                            style="background-color:transparent;width:700px; border-top: 0px solid transparent; border-left: 0px solid transparent; border-bottom: 0px solid transparent; border-right: 0px solid transparent;"
+                            valign="top">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="padding-right: 0px; padding-left: 0px; padding-top:5px; padding-bottom:5px;">
+                        <![endif]-->
+                <div class="col num12"
+                  style="min-width: 320px; max-width: 700px; display: table-cell; vertical-align: top; width: 700px;">
+                  <div style="width:100% !important;">
+                    <!--[if (!mso)&(!IE)]><!-->
+                    <div
+                      style="border-top:0px solid transparent; border-left:0px solid transparent; border-bottom:0px solid transparent; border-right:0px solid transparent; padding-top:5px; padding-bottom:5px; padding-right: 0px; padding-left: 0px;">
+                      <!--<![endif]-->
+                      <div align="center" class="img-container center fixedwidth fullwidthOnMobile"
+                        style="padding-right: 5px;padding-left: 5px;">
+                        <!--[if mso]>
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr style="line-height:0px">
+                                                <td style="padding-right: 5px;padding-left: 5px;" align="center">
+                                        <![endif]-->
+                        <div style="font-size:1px;line-height:15px"> </div>
+                        <!-- start logos -->
+                        <div>
+                          <img align="center" alt="Image" border="0" class="center fixedwidth" width="230"
+                            src="https://edl44-email-template-images.s3.us-west-2.amazonaws.com/dmv_logo.png"
+                            style="text-decoration: none; -ms-interpolation-mode: bicubic; border: 0; height: auto; width: 121px; display: inline-block; padding-right: 10px; padding-bottom: 5px;"
+                            title="DMV" />
+                        </div>
+                        <!-- end logos -->
+                        <div style="font-size:1px;line-height:15px"> </div>
+                        <!--[if mso]></td></tr></table><![endif]-->
+                      </div>
+                      <!--[if (!mso)&(!IE)]><!-->
+                    </div>
+                    <!--<![endif]-->
+                  </div>
+                </div>
+                <!--[if (mso)|(IE)]></td></tr></table><![endif]-->
+                <!--[if (mso)|(IE)]></td></tr></table></td></tr></table><![endif]-->
+              </div>
+            </div>
+          </div>
+          <div style="background-color:#efefef;">
+            <div class="block-grid"
+              style="Margin: 0 auto; min-width: 320px; max-width: 700px; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word; background-color: transparent;">
+              <div style="border-collapse: collapse;display: table;width: 100%;background-color:transparent;">
+                <!--[if (mso)|(IE)]>
+                  <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                          style="background-color:#efefef;">
+                      <tr>
+                          <td align="center">
+                              <table cellpadding="0" cellspacing="0" border="0" style="width:700px">
+                                  <tr class="layout-full-width" style="background-color:transparent"><![endif]-->
+                <!--[if (mso)|(IE)]>
+                  <td align="center" width="700"
+                      style="background-color:transparent;width:700px; border-top: 0px solid transparent; border-left: 0px solid transparent; border-bottom: 0px solid transparent; border-right: 0px solid transparent;"
+                      valign="top">
+                      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                          <tr>
+                              <td style="padding-right: 15px; padding-left: 15px; padding-top:45px; padding-bottom:45px;">
+                  <![endif]-->
+                <div class="col num12"
+                  style="min-width: 320px; max-width: 700px; display: table-cell; vertical-align: top; width: 700px;">
+                  <div style="width:100% !important;">
+                    <!--[if (!mso)&(!IE)]><!-->
+                    <div
+                      style="border-top:0px solid transparent; border-left:0px solid transparent; border-bottom:0px solid transparent; border-right:0px solid transparent; padding-top:45px; padding-bottom:45px; padding-right: 15px; padding-left: 15px;">
+                      <!--<![endif]-->
+                      <!--[if mso]>
+                      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                          <tr>
+                              <td style="padding-right: 10px; padding-left: 10px; padding-top: 10px; padding-bottom: 10px; font-family: Arial, sans-serif">
+                      <![endif]-->
+                      <div
+                        style="color:#0054a4;font-family:'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;line-height:1.2;padding-top:10px;padding-right:10px;padding-bottom:10px;padding-left:10px;">
+                        <div
+                          style="font-size: 14px; line-height: 1.2; font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #0054a4; mso-line-height-alt: 17px;">
+                          <p
+                            style="font-size: 26px; line-height: 1.2; text-align: center; word-break: break-word; font-family: inherit; mso-line-height-alt: 31px; margin: 0;">
+                            <span style="font-size: 26px;"><strong>Thank you! We have received your application.</strong></span>
+                          </p>
+                        </div>
+                      </div>
+                      <!--[if mso]></td></tr></table><![endif]-->
+                      <!--[if mso]>
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td style="padding-right: 10px; padding-left: 10px; padding-top: 0px; padding-bottom: 10px; font-family: Tahoma, Verdana, sans-serif">
+                        <![endif]-->
+                      <div
+                        style="color:#555555;font-family:Roboto, Tahoma, Verdana, Segoe, sans-serif;line-height:1.5;padding-top:0px;padding-right:10px;padding-bottom:10px;padding-left:10px;">
+                        <div
+                          style="font-size: 14px; line-height: 1.5; color: #555555; font-family: Roboto, Tahoma, Verdana, Segoe, sans-serif; mso-line-height-alt: 21px;">
+                          <p
+                            style="font-size: 16px; line-height: 1.5; word-break: break-word; text-align: center; mso-line-height-alt: 24px; margin: 0;">
+                            <span style="font-size: 16px;">A visit to a DMV field office is the final step. Present this email to your local DMV along with your original identity and residency documentation.</span>
+                          </p>
+                        </div>
+                      </div>
+                      <!--[if mso]></td></tr></table><![endif]-->
+                    </div>
+                    <!--[if mso]></td></tr></table><![endif]-->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!--[if (mso)|(IE)]></td></tr></table><![endif]-->
+          <!--[if (mso)|(IE)]></td></tr></table></td></tr></table><![endif]-->
+
+          <!--[if mso]>
+          <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                  <td style="padding-right: 10px; padding-left: 10px; padding-top: 0px; padding-bottom: 10px; font-family: Tahoma, Verdana, sans-serif">
+          <![endif]-->
+          <div
+            style="color:#555555;font-family:Roboto, Tahoma, Verdana, Segoe, sans-serif;line-height:1.5;padding-top:20px;padding-right:10px;padding-bottom:10px;padding-left:10px;">
+            <div
+              style="font-size: 14px; line-height: 1.5; color: #555555; font-family: Roboto, Tahoma, Verdana, Segoe, sans-serif; mso-line-height-alt: 21px;">
+              <p
+                style="font-size: 16px; line-height: 1.5; word-break: break-word; text-align: center; mso-line-height-alt: 24px; margin: 0;">
+                <span style="font-size: 16px;">Shorten your visit to DMV by uploading your documents ahead of time. Pre-approval of these documents gets you in and out fast.</span>
+              </p>
+            </div>
+          </div>
+          <!--[if mso]></td></tr></table><![endif]-->
+
+
+          <div align="center" class="button-container"
+            style="padding-top:20px;padding-right:10px;padding-bottom:10px;padding-left:10px;">
+            <a href=""
+              style="-webkit-text-size-adjust: none; text-decoration: none; display: inline-block; color: #ffffff; background-color: #266aca; border-radius: 5px; -webkit-border-radius: 5px; -moz-border-radius: 5px; width: auto; width: auto; border-top: 1px solid #266aca; border-right: 1px solid #266aca; border-bottom: 1px solid #266aca; border-left: 1px solid #266aca; padding-top: 10px; padding-bottom: 10px; font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; text-align: center; mso-border-alt: none; word-break: keep-all;"
+              target="_blank">
+              <span style="padding-left:20px;padding-right:20px;font-size:16px;display:inline-block;">
+                <span
+                  style="font-size: 16px; line-height: 2; word-break: break-word; font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; mso-line-height-alt: 32px;">
+                  <strong>Upload Your Documents</strong>
+                </span>
+              </span>
+            </a>
+          </div>
+
+
+          <div class="col num12"
+            style="min-width: 320px; max-width: 700px; vertical-align: top; width: 700px; margin: auto;">
+            <div style="width:100% !important;">
+              <!--[if (!mso)&(!IE)]><!-->
+              <div
+                style="background: #ffffff; border-top:0px solid transparent; border-left:0px solid transparent; border-bottom:0px solid transparent; border-right:0px solid transparent; padding-top:5px; padding-bottom:5px; padding-right: 0px; padding-left: 0px;">
+                <!--<![endif]-->
+                <div style="font-size:16px;text-align:center;font-family:Roboto, Tahoma, Verdana, Segoe, sans-serif">
+                  <div class="our-class">
+                    <div
+                      style="font-size:16px;text-align:center;font-family:'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+                      <div class="our-class">
+                        <div style="display: block">
+                          <div
+                            style="display: block; text-align: center; width: 60%; border: 2px solid #CDCDCD; border-radius: 5px; padding: 5px 5px; margin: 8px auto; background-color: #ffebcd">
+                            <h3 style="color: #0054A4">
+                              Have this confirmation code ready for your DMV visit:</h3>
+                            <h1 style="">
+                              11E5-C2B6</h1>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+
+                <!--[if (!mso)&(!IE)]><!-->
+              </div>
+              <!--<![endif]-->
+            </div>
+          </div>
+          <div>
+            <div align="center" class="img-container center fixedwidth" style="padding:20px">
+              <!--[if mso]>
+                      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                          <tr style="line-height:0px">
+                              <td style="padding-right: 0px;padding-left: 0px;" align="center">
+                      <![endif]--><img align="center" alt="Alternate text" border="0" class="center fixedwidth"
+                src="https://edl44-email-template-images.s3.us-west-2.amazonaws.com/stop_sign.png"
+                style="text-decoration: none; -ms-interpolation-mode: bicubic; border: 0; height: auto; width: 100%; max-width: 85px; display: block;"
+                title="Alternate text" width="85" />
+              <!--[if mso]></td></tr></table><![endif]-->
+            </div>
+
+            <!--[if mso]>
+          <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                  <td style="padding-right: 10px; padding-left: 10px; padding-top: 0px; padding-bottom: 25px; font-family: Arial, sans-serif">
+          <![endif]-->
+            <div
+              style="color:#555555;font-family:'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;line-height:2;padding-top:0px;padding-right:10px;padding-bottom:25px;padding-left:10px;">
+              <div
+                style="line-height: 2; font-size: 12px; font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #555555; mso-line-height-alt: 24px;">
+                <p
+                  style="font-size: 14px; line-height: 1.3; text-align: center; font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; word-break: break-word; mso-line-height-alt: 28px; margin: 0;">
+                  <strong><span style="font-size: 20px;">Some preferred documents for REAL ID application are:</span></strong>
+                </p>
+              </div>
+            </div>
+            <!--[if mso]></td></tr></table><![endif]-->
+            <!--[if mso]>
+          <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                  <td style="padding-right: 10px; padding-left: 10px; padding-top: 0px; padding-bottom: 5px; font-family: Arial, sans-serif">
+          <![endif]-->
+            <div
+              style="color:#000000;font-family:'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;line-height:2;padding-top:0px;padding-right:10px;padding-bottom:5px;padding-left:10px;">
+              <div
+                style="line-height: 2; font-size: 12px; font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #000000; mso-line-height-alt: 24px;">
+                <p
+                  style="font-size: 14px; line-height: 1.3; text-align: center; font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; word-break: break-word; mso-line-height-alt: 28px; margin: 0;">
+                  <strong><span style="font-size: 18px;">Proof of Identity (one document)</span></strong>
+                </p>
+              </div>
+            </div>
+            <!--[if mso]></td></tr></table><![endif]-->
+            <!--[if mso]>
+          <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                  <td style="padding-right: 10px; padding-left: 10px; padding-top: 0px; padding-bottom: 25px; font-family: Arial, sans-serif">
+          <![endif]-->
+            <div
+              style="color:#555555;font-family:'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;line-height:2;padding-top:0px;padding-right:10px;padding-bottom:25px;padding-left:10px;">
+              <div
+                style="line-height: 2; font-size: 12px; font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #000000; mso-line-height-alt: 24px;">
+                <p
+                  style="font-size: 14px; line-height: 1.7; text-align: center; font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; word-break: break-word; mso-line-height-alt: 28px; margin: 0;">
+                  <span style="font-size: 16px;">U.S. Passport</span>
+                </p>
+                <p
+                  style="font-size: 14px; line-height: 1.7; text-align: center; font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; word-break: break-word; mso-line-height-alt: 28px; margin: 0;">
+                  <span style="font-size: 16px;">Birth Certificate</span>
+                </p>
+              </div>
+            </div>
+            <!--[if mso]></td></tr></table><![endif]-->
+
+
+            <!--[if mso]>
+          <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                  <td style="padding-right: 10px; padding-left: 10px; padding-top: 0px; padding-bottom: 5px; font-family: Arial, sans-serif">
+          <![endif]-->
+            <div
+              style="color:#000000;font-family:'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;line-height:2;padding-top:0px;padding-right:10px;padding-bottom:5px;padding-left:10px;">
+              <div
+                style="line-height: 2; font-size: 12px; font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #000000; mso-line-height-alt: 24px;">
+                <p
+                  style="font-size: 14px; line-height: 1.3; text-align: center; font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; word-break: break-word; mso-line-height-alt: 28px; margin: 0;">
+                  <strong><span style="font-size: 18px;">Proof of California Residency (two documents)</span></strong>
+                </p>
+              </div>
+            </div>
+            <!--[if mso]></td></tr></table><![endif]-->
+            <!--[if mso]>
+          <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                  <td style="padding-right: 10px; padding-left: 10px; padding-top: 0px; padding-bottom: 25px; font-family: Arial, sans-serif">
+          <![endif]-->
+            <div
+              style="color:#555555;font-family:'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;line-height:2;padding-top:0px;padding-right:10px;padding-bottom:25px;padding-left:10px;">
+              <div
+                style="line-height: 2; font-size: 12px; font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #000000; mso-line-height-alt: 24px;">
+                <p
+                  style="font-size: 14px; line-height: 1.7; text-align: center; font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; word-break: break-word; mso-line-height-alt: 28px; margin: 0;">
+                  <span style="font-size: 16px;">Mortgage Bill</span>
+                </p>
+                <p
+                  style="font-size: 14px; line-height: 1.7; text-align: center; font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; word-break: break-word; mso-line-height-alt: 28px; margin: 0;">
+                  <span style="font-size: 16px;">Utility Bill (gas, electricity, etc.)</span>
+                </p>
+              </div>
+            </div>
+            <!--[if mso]></td></tr></table><![endif]-->
+            <div
+              style="margin-top:25px;font-size:16px;text-align:center;font-family:Roboto, Tahoma, Verdana, Segoe, sans-serif">
+              <div class="our-class">
+                <div style="padding-left: 15px; padding-right: 15px;">
+                  <div>
+                    <h3 style="font-weight: bold; color: #293e53 !important">
+                      Voter Registration Information</h3>
+                    <p style="font-size:14px !important; color: #000000 !important">
+                      If you submitted voter registration information as part of your license or ID application, it will be processed after your visit to the DMV field location. If you do not receive a voter notification within four weeks after your visit to the DMV contact your local county elections official. You may 
+                      <a target=\"_blank\" href=https://voterstatus.sos.ca.gov/>check your voter registration status </a>or <a target=\"_blank\"
+                        href=https://registertovote.ca.gov/>register to vote </a>at any time with the California Secretary of State.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div
+              style="margin-top:25px;font-size:16px;text-align:center;font-family:Roboto, Tahoma, Verdana, Segoe, sans-serif">
+              <div class="our-class">
+                <div style="padding-left: 15px; padding-right: 15px;">
+                  <div>
+                    <h3 style="font-weight: bold; color: #293e53 !important">
+                      Go paperless</h3>
+                    <p style="font-size:14px !important; color: #000000 !important">
+                      Are you signed up for paperless e-notices? To opt-in, simply log into your 
+                      <a target=\"_blank\" href=https://www.dmv.ca.gov/portal/mydmv>My DMV account </a>and update your Paperless Notification settings.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!--<![endif]-->
+            <!--[if (mso)|(IE)]></td></tr></table><![endif]-->
+            <!--[if (mso)|(IE)]></td></tr></table></td></tr></table><![endif]-->
+            <div style="background-color:#fbfbfb;">
+              <div class="block-grid"
+                style="Margin: 0 auto; min-width: 320px; max-width: 700px; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word; background-color: transparent;">
+                <div style="border-collapse: collapse;display: table;width: 100%;background-color:transparent;">
+                  <!--[if (mso)|(IE)]>
+                                <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                                      style="background-color:#ffffff;">
+                                    <tr>
+                                        <td align="center">
+                                            <table cellpadding="0" cellspacing="0" border="0" style="width:700px">
+                                                <tr class="layout-full-width" style="background-color:transparent"><![endif]-->
+                  <!--[if (mso)|(IE)]>
+                                <td align="center" width="700"
+                                    style="background-color:transparent;width:700px; border-top: 0px solid transparent; border-left: 0px solid transparent; border-bottom: 0px solid transparent; border-right: 0px solid transparent;"
+                                    valign="top">
+                                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style="padding-right: 10px; padding-left: 10px; padding-top:15px; padding-bottom:10px;">
+                                <![endif]-->
+                  <div class="col num12"
+                    style="min-width: 320px; max-width: 700px; display: table-cell; vertical-align: top; width: 700px;">
+                    <div style="width:100% !important;">
+                      <!--[if (!mso)&(!IE)]><!-->
+                      <div
+                        style="border-top:0px solid transparent; border-left:0px solid transparent; border-bottom:0px solid transparent; border-right:0px solid transparent; padding-top:0px; padding-bottom:0px; padding-right: 0px; padding-left: 0px;">
+                        <!--<![endif]-->
+                        <table border="0" cellpadding="0" cellspacing="0" class="divider" role="presentation"
+                          style="table-layout: fixed; vertical-align: top; border-spacing: 0; border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; min-width: 100%; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%;"
+                          valign="top" width="100%">
+                          <tbody>
+                            <tr style="vertical-align: top;" valign="top">
+                              <td class="divider_inner"
+                                style="word-break: break-word; vertical-align: top; min-width: 100%; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px;"
+                                valign="top">
+                                <table align="center" border="0" cellpadding="0" cellspacing="0" class="divider_content"
+                                  height="0" role="presentation"
+                                  style="table-layout: fixed; vertical-align: top; border-spacing: 0; border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; border-top: 0px solid transparent; height: 0px; width: 100%;"
+                                  valign="top" width="100%">
+                                  <tbody>
+                                    <tr style="vertical-align: top;" valign="top">
+                                      <td height="0"
+                                        style="word-break: break-word; vertical-align: top; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%;"
+                                        valign="top"><span></span></td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                        <!--[if (!mso)&(!IE)]><!-->
+                      </div>
+                      <!--<![endif]-->
+                    </div>
+                  </div>
+                  <!--[if (mso)|(IE)]></td></tr></table><![endif]-->
+                  <!--[if (mso)|(IE)]></td></tr></table></td></tr></table><![endif]-->
+                </div>
+              </div>
+            </div>
+            <div style="background-color:#0054a4;">
+              <div class="block-grid"
+                style="Margin: 0 auto; min-width: 320px; max-width: 700px; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word; background-color: transparent;">
+                <div style="border-collapse: collapse;display: table;width: 100%;background-color:transparent;">
+                  <!--[if (mso)|(IE)]>
+                  <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                          style="background-color:#0054a4;">
+                      <tr>
+                          <td align="center">
+                              <table cellpadding="0" cellspacing="0" border="0" style="width:700px">
+                                  <tr class="layout-full-width" style="background-color:transparent">
+                  <![endif]-->
+                  <!--[if (mso)|(IE)]>
+                  <td align="center" width="700"
+                      style="background-color:transparent;width:700px; border-top: 0px solid transparent; border-left: 0px solid transparent; border-bottom: 0px solid transparent; border-right: 0px solid transparent;"
+                      valign="top">
+                      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                          <tr>
+                              <td style="padding-right: 0px; padding-left: 0px; padding-top:0px; padding-bottom:0px;">
+                  <![endif]-->
+                  <div class="col num12"
+                    style="min-width: 320px; max-width: 700px; display: table-cell; vertical-align: top; width: 700px;">
+                    <div style="width:100% !important;">
+                      <!--[if (!mso)&(!IE)]><!-->
+                      <div
+                        style="border-top:0px solid transparent; border-left:0px solid transparent; border-bottom:0px solid transparent; border-right:0px solid transparent; padding-top:0px; padding-bottom:0px; padding-right: 0px; padding-left: 0px;">
+                        <!--<![endif]-->
+                        <table border="0" cellpadding="0" cellspacing="0" class="divider" role="presentation"
+                          style="table-layout: fixed; vertical-align: top; border-spacing: 0; border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; min-width: 100%; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%;"
+                          valign="top" width="100%">
+                          <tbody>
+                            <tr style="vertical-align: top;" valign="top">
+                              <td class="divider_inner"
+                                style="word-break: break-word; vertical-align: top; min-width: 100%; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%; padding-top: 5px; padding-right: 5px; padding-bottom: 5px; padding-left: 5px;"
+                                valign="top">
+                                <table align="center" border="0" cellpadding="0" cellspacing="0" class="divider_content"
+                                  height="0" role="presentation"
+                                  style="table-layout: fixed; vertical-align: top; border-spacing: 0; border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; border-top: 0px solid transparent; height: 0px; width: 100%;"
+                                  valign="top" width="100%">
+                                  <tbody>
+                                    <tr style="vertical-align: top;" valign="top">
+                                      <td height="0"
+                                        style="word-break: break-word; vertical-align: top; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%;"
+                                        valign="top"><span></span></td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                        <!--[if (!mso)&(!IE)]><!-->
+                      </div>
+                      <!--<![endif]-->
+                    </div>
+                  </div>
+                  <!--[if (mso)|(IE)]></td></tr></table><![endif]-->
+                  <!--[if (mso)|(IE)]></td></tr></table></td></tr></table><![endif]-->
+                </div>
+              </div>
+            </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</body>

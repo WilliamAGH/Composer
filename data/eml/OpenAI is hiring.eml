@@ -1,0 +1,610 @@
+Delivered-To: ashd2002@gmail.com
+Received: by 2002:a05:7110:2205:b0:272:d97f:b54a with SMTP id m5csp809555ged;
+        Wed, 3 Sep 2025 10:44:55 -0700 (PDT)
+X-Google-Smtp-Source: AGHT+IEV68Lv7QWJLQ4smh1w9F4UbOF/POBs6B75wbIgLCCoWLxxo8rDsUJf2cUWZR5fQFP8+liT
+X-Received: by 2002:a05:6a00:480b:10b0:772:3ea3:3218 with SMTP id d2e1a72fcca58-7723ea333ccmr15449934b3a.23.1756921495393;
+        Wed, 03 Sep 2025 10:44:55 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1756921495; cv=none;
+        d=google.com; s=arc-20240605;
+        b=Atq3Vo2jpYe2uPOOkGBddgJ42JWRM/ihM/J0rHseo0Zv0N/Cih5m9BXojQulUS5RUV
+         6OLz6TjDMLiDbzx5kGoO9H89jgKllzGe9eGI5Gy3YaLSa+hga6JdAmkrP9DyP76xN05i
+         knWjST3jjaNKYu5PAZQ4r+K+ClCd2HPRjFQRBUJo0uiwvWaoZgUXpbCGQundyDvVqOmO
+         VuNuluSm9D5rRsmOPnP2v+y4GjhkEbQFP3LKE4684htAekzieQ5Hk5Ob150K/EiBJfdJ
+         DBiTcjz2gVgCXou4PtYmaeaQv8m9s8ODPIQHOvs+Vd7udYQuD3dFAU8YT0JobSWVBRpi
+         Addw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=message-id:list-unsubscribe-post:list-unsubscribe:feedback-id
+         :subject:reply-to:from:to:date:content-transfer-encoding
+         :mime-version:dkim-signature;
+        bh=Mt77Yi36SakuSDXk6NPfJUdHoETaS2I2qtSSaDMZf8U=;
+        fh=VuVUZG8yLvxQk4eQqcyGBgSkARd92SFlUD8MXxtCOA8=;
+        b=CilXOJaFwZsY1ANnSNVV6/pZuD102SONV+KST8BmOZVZv5eebCUu6qVuXyZn3D8HAN
+         ZGddD0ktvFvgkJe8vnSbgYTiBD793xZg+K2MBuXI0/yoAzNbyVA9mUTkNSyLDAju8E5z
+         F0KHtUCEOr6GIpbFfQvnM3i/GjMdxbRdFOJUezKsrENTRM/PSfk3s2FwgM2J5chiV1no
+         Yftq/nDn7A9iXyzeAbr9qWWOMXhYeUOrzQohzR5Xz3PsLXguoN/f5T+f+x/J1yrEmawT
+         HSUXK/DWpMj8Qs5yzvHvqzA9hinJxzKyGo/U74LUO3zrsYJKr1cqmp0eNbgKWJfp49yq
+         uGpg==;
+        dara=google.com
+ARC-Authentication-Results: i=1; mx.google.com;
+       dkim=pass header.i=@e.linkedin.com header.s=linkedin header.b=ZYTSl5Qe;
+       spf=pass (google.com: domain of linkedin@e.linkedin.com designates 199.7.207.193 as permitted sender) smtp.mailfrom=linkedin@e.linkedin.com;
+       dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=e.linkedin.com
+Return-Path: <linkedin@e.linkedin.com>
+Received: from omp.e.linkedin.com (omp.e.linkedin.com. [199.7.207.193])
+        by mx.google.com with ESMTPS id d2e1a72fcca58-7724405b85dsi9095393b3a.125.2025.09.03.10.44.55
+        for <ashd2002@gmail.com>
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 03 Sep 2025 10:44:55 -0700 (PDT)
+Received-SPF: pass (google.com: domain of linkedin@e.linkedin.com designates 199.7.207.193 as permitted sender) client-ip=199.7.207.193;
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@e.linkedin.com header.s=linkedin header.b=ZYTSl5Qe;
+       spf=pass (google.com: domain of linkedin@e.linkedin.com designates 199.7.207.193 as permitted sender) smtp.mailfrom=linkedin@e.linkedin.com;
+       dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=e.linkedin.com
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; s=linkedin; d=e.linkedin.com;
+ h=MIME-Version:Content-Type:Content-Transfer-Encoding:Date:To:From:Reply-To:
+ Subject:Feedback-ID:List-Unsubscribe:List-Unsubscribe-Post:Message-ID;
+ i=linkedin@e.linkedin.com;
+ bh=Mt77Yi36SakuSDXk6NPfJUdHoETaS2I2qtSSaDMZf8U=;
+ b=ZYTSl5Qe3Au7Zr0vPp3xJc8Jp5UvArxJkq7m4adSz2n7Q/o0GmUScNT4iS1EHsMmYIge8fPj99jf
+   FtFkdvz5RjWl79K/oQy6AT4Efm2qy/4LpvlVSwFtOAwrnuyWCwpjmEtHGq6fGfRqbPsnu1Juj1iE
+   pv5/x8OAS97IkUFZEOw=
+MIME-Version: 1.0
+Content-Type: text/html;
+	charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+Date: Wed, 3 Sep 2025 16:33:39 +0000
+To: ashd2002@gmail.com
+From: =?UTF-8?B?TGlua2VkSW4=?= <linkedin@e.linkedin.com>
+Reply-To: =?UTF-8?B?TGlua2VkSW4=?= <donotreply@e.linkedin.com>
+Subject: OpenAI is hiring
+Feedback-ID: 50563:42288055:oraclersys
+List-Unsubscribe: <mailto:unsubscribe-AQjkPkSUTQGyqezazd2B7uMniuujzaYFivULzcfm4EMCUJM6E70FH2lzcYu7MwOlUuzczdwza@imh.rsys132.origin.responsys.ocs.oraclecloud.com?subject=List-Unsubscribe>, <https://e.linkedin.com/pub/optout/UnsubscribeOneStepConfirmAction?YES=true&_ri_=X0Gzc2X%3DAQjkPkSUTQGyqezazd2B7uMniuujzaYFivULzcfm4EMCUJM6E70FH2lzcYu7MwOlUuzczdwza&_ei_=E-vnpMJdK3gUKB0FeStv1Ax3IcmzjkVPi2JO5ePwxORKp5GK3fok6fys7LzZbfUVFiUxLhN2c6fpJ3JckNpyY1hBiHd-cH36jGAdwUqEKeMtfge0CApNBpSAlB2d-eavZ2ZjC1r3nxqgcXHoeWeKJ9YnXLsupVoT_5stu12fkXc3r4O3KQU.>
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
+X-sgxh1: HkoKTRRTxnuHptQJhu
+X-rext: 6.rsys132.EP-LQZT7BmfgpmmrQ5zpN3eXMuWGf83cfAGBRzaTtX5mBfOwt3mXZOQ
+X-cid: linkedin.16162255
+X-ei: EZIos8FtitjQ00zEMYS0z4L__dY3RVCa1M
+X-cp: ELWrAi62q1tVQQSb5CR9CRTwTkbqqUM_b3KXIOTpb_lxYqOI2iwfMD8rd1zQFs6v6vlQRw6_vumiaDz-deswd3SmnTHjrpVd7rt7ub0wT2aYOiqCGP_wyw
+X-CSA-Complaints: whitelist-complaints@eco.de
+Message-ID: <0.0.54.1CF.1DC1CF080F243AE.0@omp.e.linkedin.com>
+
+<=21DOCTYPE html PUBLIC =22-//W3C//DTD XHTML 1=2E0 Strict//EN=22 =22http://=
+www=2Ew3=2Eorg/TR/xhtml1/DTD/xhtml1-strict=2Edtd=22>
+<html lang=3D=22en=22 style=3D=22width: 100%;=22 xml:lang=3D=22en=22 xmlns=
+=3D=22http://www=2Ew3=2Eorg/1999/xhtml=22 xmlns:o=3D=22urn:schemas-microsof=
+t-com:office:office=22 xmlns:v=3D=22urn:schemas-microsoft-com:vml=22>
+<head>
+   <meta content=3D=22text/html; charset=3Dutf-8=22 http-equiv=3D=22Content=
+-Type=22 />
+   <meta content=3D=22width=3Ddevice-width; initial-scale=3D1=2E0; maximum-=
+scale=3D1=2E0; user-scalable=3Dno;=22 name=3D=22viewport=22 />
+   <meta content=3D=22width=3Ddevice-width=22 name=3D=22viewport=22 />
+   <meta content=3D=22noindex, no follow=22 name=3D=22robots=22 />
+   <meta name=3D=22x-apple-disable-message-reformatting=22 />
+   <title>LinkedIn</title>
+   <style type=3D=22text/css=22>=2EExternalClass =7B width:100%; =7D
+=2EExternalClass, =2EExternalClass p, =2EExternalClass span, =2EExternalCla=
+ss font, =2EExternalClass td, =2EExternalClass div =7B line-height: 100%; =
+=7D
+table td p =7B border-collapse: collapse; mso-table-lspace: 0pt; mso-table-=
+rspace: 0pt; =7D
+h1, h2, h3, h4, h5, h6 =7B font-size: inherit; padding: 0; margin: 0; color=
+: black; line-height: 100%; =7D
+=2Eapplelinks a =7B text-decoration: none; color: inherit =21important; =7D
+a =7B color: black; text-decoration: none; =7D
+a, a:link, a:visited =7B color: inherit; text-decoration: none; =7D
+span=2EMsoHyperlink =7B mso-style-priority: 99; color: inherit; =7D
+span=2EMsoHyperlinkFollowed =7B mso-style-priority: 99; color: inherit; =7D
+img =7B border: 0px =21important; =7D
+
+body =7B font-family: Segoe UI, Arial, sans-serif; font-size: 14px; -webkit=
+-text-size-adjust: none; -ms-text-size-adjust: none; -webkit-font-smoothing=
+: antialiased; margin: 0; padding: 0; width: 100% =21important; =7D
+
+=2Elinkopacity:hover =7B opacity: 0=2E8 =21important; =7D
+
+=2Ebutton =7B -webkit-border-radius: 50px; -moz-border-radius: 50px; border=
+-radius: 50px; overflow: hidden; =7D
+
+
+=40media only screen and (max-width: 480px) =7B
+=2Ew100m, =2Ecolumn50, =2Ecolumn33, =2Ecolumn25, =2Ecolumn75, =2Ecolumn66 =
+=7B width: 100% =21important; =7D
+=2Ew90m =7B width: 90% =21important;=7D
+=2Eexpandm =7B width: 100% =21important; display: block =21important; =7D
+=2Eresizem =7B width: 100% =21important; height: auto =21important; =7D
+=2Ehidem =7B display: none =21important; =7D
+=2Eh1m =7B font-size: 22px =21important;=7D
+=2Eh2m =7B font-size: 15px =21important;=7D
+=2Eh3m =7B font-size: 13px =21important;=7D
+=2Etcenterm =7B text-align: center =21important; =7D
+=2Etleftm =7B text-align: left =21important; =7D
+=2Etrightm =7B text-align: right =21important; =7D
+=2Eheight0m =7B height: 0 =21important; =7D
+=2Eshowm =7B display: block =21important; max-height: 1000px =21important; =
+width: 100% =21important; overflow: visible =21important; align: center =21=
+important; =7D=09
+
+=2Elogo =7B width: 150px =21important; height: auto =21important; =7D=09
+
+=2Eborder0m =7B border: 0px =21important; =7D
+=2Eborderlr0m =7B border-left: 0px =21important; border-right: 0px =21impor=
+tant; =7D=09
+=2Epad0m =7B padding: 0px =21important; =7D
+=2Epadlr0m =7B padding-left: 0px =21important; padding-right: 0px =21import=
+ant; =7D=09
+=2Epadt0m =7B padding-top: 0px =21important; =7D
+=2Epadt5m =7B padding-top: 5px =21important; =7D
+=2Epadt10m =7B padding-top: 10px =21important; =7D
+=2Epadt20m =7B padding-top: 20px =21important; =7D
+=2Epadt30m =7B padding-top: 30px =21important; =7D
+=2Epadb0m =7B padding-bottom: 0px =21important;=7D
+=2Epadb5m =7B padding-bottom: 5px =21important;=7D
+=2Epadb10m =7B padding-bottom: 10px =21important;=7D
+=2Epadb20m =7B padding-bottom: 20px =21important;=7D
+=2Epadb30m =7B padding-bottom: 30px =21important;=7D
+=7D
+
+=40media only screen and (max-width: 512px) =7B
+=2Eow100 =7B width: 100% =21important; =7D
+=2Ew100 =7B width: 100% =21important; =7D
+=2Ew90 =7B width: 90% =21important; =7D
+=2Ehide =7B display: none =21important; =7D
+=2Eresize =7B width: 100% =21important; height: auto =21important; =7D
+=2Eresize img =7B max-width: 100% =21important; height: auto =21important; =
+=7D
+=2Eresize a =7B width: auto =21important; height: auto =21important; =7D
+=2Eexpand =7B width: 100% =21important; display: block =21important; =7D
+=2Eheight0 =7B height: 0 =21important; =7D
+=2Ecolumn50 =7B width: 50%; =7D
+=2Ecolumn50a =7B width: 50%; =7D
+=2Ecolumn33 =7B width: 33=2E33%; =7D
+=2Ecolumn25 =7B width: 25%; =7D
+=2Ecolumn75 =7B width: 75%; =7D
+=2Ecolumn66 =7B width: 66%; =7D
+=2Etcenter =7B text-align: center =21important; =7D
+=2Eshow =7B display: block =21important; max-height: 1000px =21important; w=
+idth: 100% =21important; overflow: visible =21important; align: center =21i=
+mportant; =7D
+
+=2Ebannerside =7B padding-top: 105px =21important; =7D
+
+=2Eborder0 =7B border: 0px =21important; =7D
+=2Eborderlr0 =7B border-left: 0px =21important; border-right: 0px =21import=
+ant; =7D=09
+=2Epad0 =7B padding: 0px =21important; =7D
+=2Epadlr0 =7B padding-left: 0px =21important; padding-right: 0px =21importa=
+nt; =7D=09
+=2Epadt0 =7B padding-top: 0px =21important; =7D
+=2Epadt5 =7B padding-top: 5px =21important; =7D
+=2Epadt10 =7B padding-top: 10px =21important; =7D
+=2Epadt20 =7B padding-top: 20px =21important; =7D
+=2Epadt30 =7B padding-top: 30px =21important; =7D
+=2Epadb0 =7B padding-bottom: 0px =21important; =7D
+=2Epadb5 =7B padding-bottom: 5px =21important; =7D
+=2Epadb10 =7B padding-bottom: 10px =21important; =7D
+=2Epadb20 =7B padding-bottom: 20px =21important; =7D
+=2Epadb30 =7B padding-bottom: 30px =21important; =7D
+=7D
+   </style>
+   <=21--=5Bif mso>
+<style type=3D=22text/css=22>
+body =7B margin: 0 =21important; padding: 0 =21important; font-family: Sego=
+e UI, Arial, sans-serif; =7D
+table, td, div, p =7B font-family: Segoe UI, Arial, sans-serif; line-height=
+: normal; =7D
+</style>
+<xml>
+<o:OfficeDocumentSettings>
+<o:AllowPNG/>
+<o:PixelsPerInch>96</o:PixelsPerInch>
+</o:OfficeDocumentSettings>
+</xml>
+<=21=5Bendif-->
+
+</head>
+<body class=3D=22tli=22 data-gr-ext-installed=3D=22=22 data-new-gr-c-s-chec=
+k-loaded=3D=2214=2E1062=2E0=22 data-new-gr-c-s-loaded=3D=2214=2E1102=2E0=22=
+ style=3D=22-webkit-text-size-adjust: none;-ms-text-size-adjust: none; padd=
+ing: 0; margin: 0; background-color: white;=22><=21-- HIDDEN PREHEADER STAR=
+T --><=21--=5Bif =21mso=5D><=21-- -->
+<div style=3D=22display: none; font-size: 0; max-height: 0;width: 0; mso-hi=
+de: all; overflow: hidden; visibility: hidden;=22><span style=3D=22display:=
+ none; font-size: 0; max-height: 0;width: 0; mso-hide: all; overflow: hidde=
+n; visibility: hidden;=22> See new openings </span>
+</div>
+<=21-- DO NOT REMOVE preheader spacing below -->
+
+<div style=3D=22display: none; max-height: 0px; overflow: hidden;=22>&nbsp;=
+&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zw=
+nj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;=
+&nbsp;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zw=
+nj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;=
+&nbsp;&zwnj;&nbsp;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zw=
+nj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;=
+&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zw=
+nj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;=
+&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zw=
+nj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;=
+&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&nbsp;&zwnj;&nbsp;&zw=
+nj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp; &zwnj=
+;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&nbsp;&z=
+wnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj=
+;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&n=
+bsp;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj=
+;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&n=
+bsp;&zwnj;&nbsp;
+</div>
+<=21--<=21=5Bendif=5D--><=21-- HIDDEN PREHEADER END -->
+
+<table align=3D=22center=22 border=3D=220=22 cellpadding=3D=220=22 cellspac=
+ing=3D=220=22 role=3D=22presentation=22 style=3D=22width: 100%;=22 width=3D=
+=22100%=22>
+   <tbody>
+      <tr>
+         <td align=3D=22center=22 style=3D=22background-color: =23F3F2EF;=
+=22>
+         <table align=3D=22center=22 border=3D=220=22 cellpadding=3D=220=22=
+ cellspacing=3D=220=22 class=3D=22w100=22 role=3D=22presentation=22 width=
+=3D=22512=22>
+            <tbody>
+               <tr>
+                  <td align=3D=22center=22>
+                  <table align=3D=22center=22 border=3D=220=22 cellpadding=
+=3D=220=22 cellspacing=3D=220=22 role=3D=22presentation=22 width=3D=22100%=
+=22><=21-- /// SPACING START -->
+                     <tbody>
+                        <tr><=21-- COPY START -->
+                           <td style=3D=22padding-top: 10px; padding-bottom=
+: 10px; text-align: center; font-size: 13px; line-height: 1=2E3em; color: =
+=23191919; font-family: Helvetica Neue, Arial, sans-serif;=22></td>
+                           <=21-- COPY END -->
+                        </tr>
+                        <=21-- SPACING END /// --><=21-- /// HEADER START -=
+->
+                        <tr>
+                           <td align=3D=22center=22 class=3D=22padt10m=22 s=
+tyle=3D=22background-color: =23FCF9F3; padding-top: 16px; padding-bottom: 1=
+6px;=22>
+                           <table align=3D=22center=22 border=3D=220=22 cel=
+lpadding=3D=220=22 cellspacing=3D=220=22 role=3D=22presentation=22 width=3D=
+=2287%=22>
+                              <tbody>
+                                 <tr><=21-- LOGO START -->
+                                    <td align=3D=22left=22 style=3D=22paddi=
+ng-right: 12px;=22 width=3D=22100=22><a href=3D=22https://e=2Elinkedin=2Eco=
+m/pub/cc?_ri_=3DX0Gzc2X%3DAQjkPkSUTQGyqezazd2B7uMniuujzaYFivULzcfm4EMCUJM6E=
+70FH2lzcYu7MwOlUuzczdwzaVXtpKX%3DSDCRBRUY&amp;_ei_=3DEZ8ytgxEdJsiu_q7dOiXv4=
+FaMZVVXs7dc3-RIz7MS0mcpAJv_xs5p9oji2mlRK4JA0UPFVA_Z_mH2rvqpd_z7kMVCaV_mAtKP=
+w1mvpWTPsWpu3b554eOXZNTzhqLMN6vxgurwooTFsPTtKrdkiaGRV3199maTK4boY5LcMzEuhLX=
+UhZ1k_Mdzex7unlcpM=2E&amp;_di_=3Dbm5vmnrcvo54agd1e4i2d52oqeqbl1g1pf98g24s2u=
+88s245pv30=22><img alt=3D=22LinkedIn=22 src=3D=22https://e=2Elinkedin=2Ecom=
+/assets/responsysimages/linkedin/contentlibrary/jeangrey/logos/linkedin-blu=
+e-200x51=2Epng=22 style=3D=22width: 100%; max-width: 100px; display: block;=
+ border: 0; color: black; font-size: 20px; font-weight: bold; font-family: =
+sans-serif;=22 width=3D=22100=22 /></a></td>
+                                    <=21-- LOGO END --><=21-- NAME/PROFILE =
+START -->
+                                    <td align=3D=22right=22 class=3D=22h3m=
+=22 style=3D=22padding-top:3px; font-size: 14px; color: =23191919; font-fam=
+ily: Helvetica Neue, Arial, sans-serif;=22 valign=3D=22top=22 width=3D=2215=
+0=22><a href=3D=22https://e=2Elinkedin=2Ecom/pub/cc?_ri_=3DX0Gzc2X%3DAQjkPk=
+SUTQGyqezazd2B7uMniuujzaYFivULzcfm4EMCUJM6E70FH2lzcYu7MwOlUuzczdwzaVXtpKX%3=
+DSDCRBRYY&amp;_ei_=3DEZ8ytgxEdJsiu_q7dOiXv4FaMZVVXs7dc3-RIz7MS0mcpAJv_xs5p9=
+oji2mlRK4JA0UPFVA_Z_mH2rvqpd_z7kMVCaV_mAtKPw1mvpWTPsWpu3b554eOXZNTzhqLMN6vx=
+gurwooTFsPTtKrdkiaGRV3199maTK4boY5LcMzEuhLXUhZ1k_Mdzex7unlcpM=2E&amp;_di_=
+=3Durskqb7n9e1m28cs4c9os5iffkgcslci2hjk12hu16vaii61okf0=22 style=3D=22color=
+:=23191919; text-decoration:none;=22>Ashish Divakaran</a></td>
+                                    <=21-- NAME/PROFILE END -->
+                                 </tr>
+                              </tbody>
+                           </table>
+                           </td>
+                        </tr>
+                        <=21-- HEADER END /// --><=21-- /// MODULES START -=
+ ADD NEW MODULES BELOW THIS LINE --><=21-- /// LOCKUP START -->
+                        <tr>
+                           <td>
+                           <table border=3D=220=22 cellpadding=3D=220=22 ce=
+llspacing=3D=220=22 role=3D=22presentation=22 width=3D=22100%=22>
+                              <tbody>
+                                 <tr>
+                                    <td align=3D=22center=22 style=3D=22bac=
+kground-color: =23FCF9F3; padding-bottom: 12px;=22>
+                                    <table align=3D=22center=22 border=3D=
+=220=22 cellpadding=3D=220=22 cellspacing=3D=220=22 role=3D=22presentation=
+=22 width=3D=2287%=22><=21-- IMAGE START -->
+                                       <tbody>
+                                          <tr>
+                                             <td align=3D=22center=22 style=
+=3D=22padding-top: 16px;=22><a href=3D=22https://e=2Elinkedin=2Ecom/pub/acc=
+?_ri_=3DX0Gzc2X%3DAQjkPkSUTQGyqezazd2B7uMniuujzaYFivULzcfm4EMCUJM6E70FH2lzc=
+Yu7MwOlUuzczdwzaVXtpKX%3DSDCRBRBY&amp;_ei_=3DEZ8ytgxEdJsiu_q7dOiXv4HUzcf6d3=
+6vjholsbbaLAj8bKEO2b19NtkidTWqmKfClS0FXnVFdicHEeiN7bxEQZelVjfiSbgY5p1KdRAoM=
+Q0u7ZPBQSTXiWwyrEhL6cZKIwIz5rPFnWrvrQVVzbGWfUHjfWWJ0-wT74wizifOkmDEnUFGmRr1=
+NhsIWdffJ9oNQEzRfPfGB0eKijkKL1SzcIi4y-8=2E&amp;_di_=3D5simbcbn61i0jn9puebgu=
+50easvgmt9gg0hr246dlopc4v8iv0ag=22><img alt=3D=22See the latest openings at=
+ company=22 src=3D=22https://media=2Elicdn=2Ecom/dms/image/v2/D560BAQHpzXbq=
+SyR74A/company-logo_400_400/B56ZT8EYB8HsAY-/0/1739395793272/openai_logo?e=
+=3D2147483647&amp;v=3Dbeta&amp;t=3DQc5nJHNEHI2M51DYfKvGlic42eIUHp4-c-dYE5Jh=
+Ck0=22 style=3D=22display: block; border: 0; color: black; font-size: 20px;=
+ font-weight: bold; font-family: sans-serif; max-width: 100%;=22 width=3D=
+=2275=22 /> </a></td>
+                                          </tr>
+                                          <=21-- IMAGE END --><=21-- HEADLI=
+NE START --><=21-- HEADLINE END --><=21-- COPY START --><=21-- COPY END -->=
+<=21-- / SECONDARY CTA START --><=21-- SECONDARY CTA END / -->
+                                       </tbody>
+                                    </table>
+                                    </td>
+                                 </tr>
+                              </tbody>
+                           </table>
+                           </td>
+                        </tr>
+                        <=21-- LOCKUP END /// --><=21-- /// BANNER LIGHT ST=
+ART -->
+                        <tr>
+                           <td>
+                           <table border=3D=220=22 cellpadding=3D=220=22 ce=
+llspacing=3D=220=22 role=3D=22presentation=22 width=3D=22100%=22>
+                              <tbody>
+                                 <tr>
+                                    <td align=3D=22center=22 style=3D=22bac=
+kground-color: =23FCF9F3; padding-bottom: 12px;=22>
+                                    <table align=3D=22center=22 border=3D=
+=220=22 cellpadding=3D=220=22 cellspacing=3D=220=22 role=3D=22presentation=
+=22 width=3D=2287%=22><=21-- HEADLINE START -->
+                                       <tbody>
+                                          <tr>
+                                             <td style=3D=22padding-top: 16=
+px; text-align: center; font-size: 24px; color: =23191919; font-family: Hel=
+vetica Neue, Arial, sans-serif; font-weight: bold;=22><a href=3D=22https://=
+e=2Elinkedin=2Ecom/pub/acc?_ri_=3DX0Gzc2X%3DAQjkPkSUTQGyqezazd2B7uMniuujzaY=
+FivULzcfm4EMCUJM6E70FH2lzcYu7MwOlUuzczdwzaVXtpKX%3DSDCRBRBY&amp;_ei_=3DEZ8y=
+tgxEdJsiu_q7dOiXv4HUzcf6d36vjholsbbaLAj8bKEO2b19NtkidTWqmKfClS0FXnVFdicHEei=
+N7bxEQZelVjfiSbgY5p1KdRAoMQ0u7ZPBQSTXiWwyrEhL6cZKIwIz5rPFnWrvrQVVzbGWfUHjfW=
+WJ0-wT74wizifOkmDEnUFGmRr1NhsIWdffJ9oNQEzRfPfGB0eKijkKL1SzcIi4y-8=2E&amp;_d=
+i_=3D5simbcbn61i0jn9puebgu50easvgmt9gg0hr246dlopc4v8iv0ag=22 style=3D=22col=
+or: =23262626; text-decoration: none;=22>See the latest openings<br />
+                                             at&nbsp;OpenAI=2E</a></td>
+                                          </tr>
+                                          <=21-- HEADLINE END --><=21-- COP=
+Y START --><=21-- COPY END --><=21-- / PRIMARY CTA START -->
+                                          <tr>
+                                             <td style=3D=22padding-top: 16=
+px; padding-bottom: 16px;=22>
+                                             <table align=3D=22center=22 bo=
+rder=3D=220=22 cellpadding=3D=220=22 cellspacing=3D=220=22 role=3D=22presen=
+tation=22>
+                                                <tbody>
+                                                   <tr>
+                                                      <td align=3D=22center=
+=22 class=3D=22button=22 style=3D=22background-color: =230A66C2; padding: 1=
+4px 24px; font-size: 16px; color: white; font-family: Helvetica Neue, Arial=
+, sans-serif; text-align: center; font-weight: bold;=22><a href=3D=22https:=
+//e=2Elinkedin=2Ecom/pub/acc?_ri_=3DX0Gzc2X%3DAQjkPkSUTQGyqezazd2B7uMniuujz=
+aYFivULzcfm4EMCUJM6E70FH2lzcYu7MwOlUuzczdwzaVXtpKX%3DSDCRBRBY&amp;_ei_=3DEZ=
+8ytgxEdJsiu_q7dOiXv4HUzcf6d36vjholsbbaLAj8bKEO2b19NtkidTWqmKfClS0FXnVFdicHE=
+eiN7bxEQZelVjfiSbgY5p1KdRAoMQ0u7ZPBQSTXiWwyrEhL6cZKIwIz5rPFnWrvrQVVzbGWfUHj=
+fWWJ0-wT74wizifOkmDEnUFGmRr1NhsIWdffJ9oNQEzRfPfGB0eKijkKL1SzcIi4y-8=2E&amp;=
+_di_=3D5simbcbn61i0jn9puebgu50easvgmt9gg0hr246dlopc4v8iv0ag=22 style=3D=22c=
+olor: =23ffffff; text-decoration: none;=22><span style=3D=22display: block;=
+ width: 100%;=22>View jobs</span></a></td>
+                                                   </tr>
+                                                </tbody>
+                                             </table>
+                                             </td>
+                                          </tr>
+                                          <=21-- PRIMARY CTA END / -->
+                                       </tbody>
+                                    </table>
+                                    </td>
+                                 </tr>
+                              </tbody>
+                           </table>
+                           </td>
+                        </tr>
+                        <=21-- BANNER LIGHT END /// --><=21-- /// IMAGE STA=
+RT -->
+                        <tr>
+                           <td>
+                           <table border=3D=220=22 cellpadding=3D=220=22 ce=
+llspacing=3D=220=22 role=3D=22presentation=22 width=3D=22100%=22>
+                              <tbody>
+                                 <tr>
+                                    <td align=3D=22center=22 style=3D=22bac=
+kground-color: =23FCF9F3; padding-bottom: 12px;=22>
+                                    <table align=3D=22center=22 border=3D=
+=220=22 cellpadding=3D=220=22 cellspacing=3D=220=22 role=3D=22presentation=
+=22 width=3D=2287%=22><=21-- / 445w START -->
+                                       <tbody>
+                                          <tr>
+                                             <td align=3D=22center=22 style=
+=3D=22padding-top: 16px;=22><a href=3D=22https://e=2Elinkedin=2Ecom/pub/acc=
+?_ri_=3DX0Gzc2X%3DAQjkPkSUTQGyqezazd2B7uMniuujzaYFivULzcfm4EMCUJM6E70FH2lzc=
+Yu7MwOlUuzczdwzaVXtpKX%3DSDCRBRBY&amp;_ei_=3DEZ8ytgxEdJsiu_q7dOiXv4HUzcf6d3=
+6vjholsbbaLAj8bKEO2b19NtkidTWqmKfClS0FXnVFdicHEeiN7bxEQZelVjfiSbgY5p1KdRAoM=
+Q0u7ZPBQSTXiWwyrEhL6cZKIwIz5rPFnWrvrQVVzbGWfUHjfWWJ0-wT74wizifOkmDEnUFGmRr1=
+NhsIWdffJ9oNQEzRfPfGB0eKijkKL1SzcIi4y-8=2E&amp;_di_=3D5simbcbn61i0jn9puebgu=
+50easvgmt9gg0hr246dlopc4v8iv0ag=22><img alt=3D=22Don't miss your chance to =
+apply=2E=22 class=3D=22resize=22 src=3D=22https://e=2Elinkedin=2Ecom/assets=
+/responsysimages/linkedin/contentlibrary/growth/Growth-Careers-Acquisition-=
+Jobs-Recommendations-EML-img=2Epng=22 style=3D=22display: block; border: 0;=
+ color: black; font-size: 20px; font-weight: bold; font-family: sans-serif;=
+ max-width: 100%;=22 width=3D=22445=22 /> </a></td>
+                                          </tr>
+                                          <=21-- 445w END / -->
+                                       </tbody>
+                                    </table>
+                                    </td>
+                                 </tr>
+                              </tbody>
+                           </table>
+                           </td>
+                        </tr>
+                        <=21-- IMAGE END /// --><=21-- /// TEXT CENTER STAR=
+T -->
+                        <tr>
+                           <td align=3D=22center=22 style=3D=22background-c=
+olor: =23FCF9F3; padding-top: 5px; padding-bottom: 12px;=22>
+                           <table align=3D=22center=22 border=3D=220=22 cel=
+lpadding=3D=220=22 cellspacing=3D=220=22 role=3D=22presentation=22 width=3D=
+=2287%=22><=21-- HEADLINE START -->
+                              <tbody>
+                                 <tr>
+                                    <td style=3D=22text-align: center; font=
+-size: 20px; color: =23191919; font-family: Helvetica Neue, Arial, sans-ser=
+if; font-weight: bold;=22><a href=3D=22https://e=2Elinkedin=2Ecom/pub/acc?_=
+ri_=3DX0Gzc2X%3DAQjkPkSUTQGyqezazd2B7uMniuujzaYFivULzcfm4EMCUJM6E70FH2lzcYu=
+7MwOlUuzczdwzaVXtpKX%3DSDCRBRBY&amp;_ei_=3DEZ8ytgxEdJsiu_q7dOiXv4HUzcf6d36v=
+jholsbbaLAj8bKEO2b19NtkidTWqmKfClS0FXnVFdicHEeiN7bxEQZelVjfiSbgY5p1KdRAoMQ0=
+u7ZPBQSTXiWwyrEhL6cZKIwIz5rPFnWrvrQVVzbGWfUHjfWWJ0-wT74wizifOkmDEnUFGmRr1Nh=
+sIWdffJ9oNQEzRfPfGB0eKijkKL1SzcIi4y-8=2E&amp;_di_=3D5simbcbn61i0jn9puebgu50=
+easvgmt9gg0hr246dlopc4v8iv0ag=22 style=3D=22color: =23262626; text-decorati=
+on: none;=22>Don't miss your chance to&nbsp;apply=2E</a></td>
+                                 </tr>
+                                 <=21-- HEADLINE END --><=21-- COPY START -=
+-><=21-- COPY END --><=21-- / SECONDARY CTA START -->
+                                 <tr>
+                                    <td style=3D=22padding-top: 16px;paddin=
+g-bottom: 8px;=22>
+                                    <table align=3D=22center=22 border=3D=
+=220=22 cellpadding=3D=220=22 cellspacing=3D=220=22 role=3D=22presentation=
+=22>
+                                       <tbody>
+                                          <tr>
+                                             <td align=3D=22center=22 class=
+=3D=22button=22 style=3D=22border: 1px solid =230A66C2; padding: 14px 24px;=
+ font-size: 16px; color: white; font-family: Helvetica Neue, Arial, sans-se=
+rif; text-align: center; font-weight: bold;=22><a href=3D=22https://e=2Elin=
+kedin=2Ecom/pub/acc?_ri_=3DX0Gzc2X%3DAQjkPkSUTQGyqezazd2B7uMniuujzaYFivULzc=
+fm4EMCUJM6E70FH2lzcYu7MwOlUuzczdwzaVXtpKX%3DSDCRBRBY&amp;_ei_=3DEZ8ytgxEdJs=
+iu_q7dOiXv4HUzcf6d36vjholsbbaLAj8bKEO2b19NtkidTWqmKfClS0FXnVFdicHEeiN7bxEQZ=
+elVjfiSbgY5p1KdRAoMQ0u7ZPBQSTXiWwyrEhL6cZKIwIz5rPFnWrvrQVVzbGWfUHjfWWJ0-wT7=
+4wizifOkmDEnUFGmRr1NhsIWdffJ9oNQEzRfPfGB0eKijkKL1SzcIi4y-8=2E&amp;_di_=3D5s=
+imbcbn61i0jn9puebgu50easvgmt9gg0hr246dlopc4v8iv0ag=22 style=3D=22color: =23=
+0A66C2;; text-decoration: none;=22><span style=3D=22display: block; width: =
+100%;=22>View jobs</span></a></td>
+                                          </tr>
+                                       </tbody>
+                                    </table>
+                                    </td>
+                                 </tr>
+                                 <=21-- SECONDARY CTA END / -->
+                              </tbody>
+                           </table>
+                           </td>
+                        </tr>
+                        <=21-- TEXT CENTER END /// --><=21-- MODULES END - =
+DO NOT ADD MODULES BELOW THIS LINE /// --><=21-- /// FOOTER START -->
+                        <tr>
+                           <td style=3D=22background-color: =23F3F2EF; padd=
+ing-top: 12px; padding-bottom: 36px;=22><html lang=3D=22en=22>
+<head>
+<title>Footer Mercado English</title>
+</head>
+<body>
+                        <table role=3D=22presentation=22  width=3D=2287%=22=
+ border=3D=220=22 align=3D=22center=22 cellpadding=3D=220=22 cellspacing=3D=
+=220=22 >
+
+                            <=21-- COPY START -->
+                            <tr>
+                                <td style=3D=22padding-top: 24px; text-alig=
+n: left; font-size: 14px; line-height: 1=2E3em; color: =23191919; font-fami=
+ly: Helvetica Neue, Arial, sans-serif;=22>
+                                    This email was intended for Ashish Diva=
+karan (Computer Science Student And Software Developer  Building AI Product=
+s for Customers)
+                                    <br /><a href=3D=22https://e=2Elinkedin=
+=2Ecom/pub/cc?_ri_=3DX0Gzc2X%3DAQjkPkSUTQGyqezazd2B7uMniuujzaYFivULzcfm4EMC=
+UJM6E70FH2lzcYu7MwOlUuzczdwzaVXtpKX%3DTSUBYRBY&_ei_=3DEZ8ytgxEdJsiu_q7dOiXv=
+4FaMZVVXs7dc3-RIz7MS0mcpAJv_xs5p9oji2mlRK4JA0UPFVA_Z_mH2rvqpd_z7kMVCaV_mAtK=
+Pw1mvpWTPsWpu3b554eOXZNTzhqLMN6vxgurwooTFsPTtKrdkiaGRV3199maTK4boY5LcMzEuhL=
+XUhZ1k_Mdzex7unlcpM=2E&_di_=3D6mp539pdk2fqot0q1pemsnprkp4kql8phbcrfrhts4298=
+keqhu0g=22><span style=3D=22color: =230A66C2; text-decoration: underline;=
+=22>Learn why we included&nbsp;this=2E</span></a>
+                                    <br /><br />This is an occasional email=
+ to help you get the most out&nbsp;of&nbsp;LinkedIn=2E
+                                    <br><br>
+                                    <a href=3D=22https://e=2Elinkedin=2Ecom=
+/pub/cc?_ri_=3DX0Gzc2X%3DAQjkPkSUTQGyqezazd2B7uMniuujzaYFivULzcfm4EMCUJM6E7=
+0FH2lzcYu7MwOlUuzczdwzaVXtpKX%3DSDCRBSSY&_ei_=3DEZ8ytgxEdJsiu_q7dOiXv4FaMZV=
+VXs7dc3-RIz7MS0mcpAJv_xs5p9oji2mlRK4JA0UPFVA_Z_mH2rvqpd_z7kMVCaV_mAtKPw1mvp=
+WTPsWpu3b554eOXZNTzhqLMN6vxgurwooTFsPTtKrdkiaGRV1NbjpgWik8RrnY69CXMwpLaBvZ1=
+HCp9pAxBD7YzY8m0DIoNcaJaGWnrBTGFCAH8bsnLB9UFGzuJ8-PIyvsvBuL7zV0n1cGlgJNKvZd=
+zvLgpNWr40yGsjxx3U-yo3QU5rkWF7HpzpUjoBD7GGsmq0KD2w=2E&_di_=3D9o31vrkn0u55cq=
+m39qu5eot2kr0ki56db576c9ha0836k068o0ig=22><span style=3D=22color: =230A66C2=
+; text-decoration: underline;=22>Unsubscribe</span></a>&nbsp;&nbsp;&=23183;=
+&nbsp;&nbsp;<a href=3D=22https://e=2Elinkedin=2Ecom/pub/cc?_ri_=3DX0Gzc2X%3=
+DAQjkPkSUTQGyqezazd2B7uMniuujzaYFivULzcfm4EMCUJM6E70FH2lzcYu7MwOlUuzczdwzaV=
+XtpKX%3DSDCRBSUY&_ei_=3DEZ8ytgxEdJsiu_q7dOiXv4FaMZVVXs7dc3-RIz7MS0mcpAJv_xs=
+5p9oji2mlRK4JA0UPFVA_Z_mH2rvqpd_z7kMVCaV_mAtKPw1mvpWTPsWpu3b554eOXZNTzhqLMN=
+6vxgurwooTFsPTtKrdkiaGRV3199maTK4boY5LcMzEuhLXUhZ1k_Mdzex7unlcpM=2E&_di_=3D=
+qtreg0c4bmrm2tfoivvg2r57etqil7rnjdn58utf587db810r470=22><span style=3D=22co=
+lor: =230A66C2; text-decoration: underline;=22>Help</span></a>
+                                </td>
+                            </tr>
+                            <=21-- COPY END -->
+
+                            <=21-- IMAGE START -->
+                            <tr>
+                                <td style=3D=22padding-top: 25px;=22><a hre=
+f=3D=22https://e=2Elinkedin=2Ecom/pub/cc?_ri_=3DX0Gzc2X%3DAQjkPkSUTQGyqezaz=
+d2B7uMniuujzaYFivULzcfm4EMCUJM6E70FH2lzcYu7MwOlUuzczdwzaVXtpKX%3DSDCRBRUY&_=
+ei_=3DEZ8ytgxEdJsiu_q7dOiXv4FaMZVVXs7dc3-RIz7MS0mcpAJv_xs5p9oji2mlRK4JA0UPF=
+VA_Z_mH2rvqpd_z7kMVCaV_mAtKPw1mvpWTPsWpu3b554eOXZNTzhqLMN6vxgurwooTFsPTtKrd=
+kiaGRV3199maTK4boY5LcMzEuhLXUhZ1k_Mdzex7unlcpM=2E&_di_=3Dbm5vmnrcvo54agd1e4=
+i2d52oqeqbl1g1pf98g24s2u88s245pv30=22><img src=3D=22https://e=2Elinkedin=2E=
+com/assets/responsysimages/content/linkedin/linkedin-blue-80x20=2Epng=22 wi=
+dth=3D=2280=22 alt=3D=22LinkedIn=22 style=3D=22display: block; border: 0; c=
+olor: black; font-size: 20px; font-weight: bold; font-family: sans-serif;=
+=22/></a></td>
+                            </tr>
+                            <=21-- IMAGE END -->
+
+                            <=21-- COPY START -->
+                            <tr>
+                                <td style=3D=22padding-top: 20px; text-alig=
+n: left; font-size: 14px; line-height: 1=2E3em; color: =23191919; font-fami=
+ly: Helvetica Neue, Arial, sans-serif;=22>&=23169; 2025, LinkedIn Corporati=
+on=2E All rights reserved=2E LinkedIn Corporation, 1000 West Maude Ave=2E, =
+Sunnyvale, CA 94085=2E LinkedIn and the LinkedIn logo are registered tradem=
+arks of&nbsp;LinkedIn=2E</td>
+                            </tr>
+                            <=21-- COPY END -->
+
+                        </table><table cellpadding=3D=220=22 cellspacing=3D=
+=220=22 style=3D=22border: 0px; padding: 0px; margin: 0px; position: absolu=
+te; display: none; float: left=22>
+<tr>
+<td height=3D=221=22 style=3D=22font-size: 1px; line-height: 1px; padding: =
+0px;=22>
+<br><img src=3D=22https://e=2Elinkedin=2Ecom/pub/as?_ri_=3DX0Gzc2X%3DAQjkPk=
+SUTQGyqezazd2B7uMniuujzaYFivULzcfm4EMCUJM6E70FH2lzcYu7MwOlUuzczdwzaVXHkMX%3=
+Dw&_ei_=3DE-vnpMJdK3gUKB0FeStv1Ax3IcmzjkVPi2JO5ePwxORKp5GK3fok6fys7LzZbfUVF=
+iUxLhN2c6fpJ3JckNpyY1hBiHd-cH36jGAdwUqEKeMtfge0CApNBpSAlB2d-eavZ2ZjC1r3nxqg=
+cXHoeWeKJ9YnXLsupVoT_5stu12fkXc3r4O3KQU=2E=22></img>
+</td>
+</tr>
+</table>
+</body>
+</html></td>
+                        </tr>
+                        <=21-- FOOTER END /// -->
+                     </tbody>
+                  </table>
+                  </td>
+               </tr>
+            </tbody>
+         </table>
+         </td>
+      </tr>
+   </tbody>
+</table>
+<grammarly-desktop-integration data-grammarly-shadow-root=3D=22true=22></gr=
+ammarly-desktop-integration></body>
+</html>
+
+
