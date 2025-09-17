@@ -7,7 +7,6 @@ import io.qdrant.client.grpc.Points.SearchPoints;
 import io.qdrant.client.grpc.Points.ScoredPoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -23,7 +22,6 @@ public class VectorSearchService {
     private final QdrantClient qdrantClient;
     private final QdrantProperties qdrantProperties;
 
-    @Autowired
     public VectorSearchService(QdrantClient qdrantClient, QdrantProperties qdrantProperties) {
         this.qdrantClient = qdrantClient;
         this.qdrantProperties = qdrantProperties;

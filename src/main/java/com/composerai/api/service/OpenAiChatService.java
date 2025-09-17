@@ -8,7 +8,6 @@ import com.theokanning.openai.completion.chat.ChatMessageRole;
 import com.theokanning.openai.service.OpenAiService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -22,7 +21,6 @@ public class OpenAiChatService {
     private final OpenAiService openAiClient;
     private final OpenAiProperties openAiProperties;
 
-    @Autowired
     public OpenAiChatService(OpenAiService openAiClient, OpenAiProperties openAiProperties) {
         this.openAiClient = openAiClient;
         this.openAiProperties = openAiProperties;

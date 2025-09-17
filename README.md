@@ -13,6 +13,7 @@ Java Spring Boot API backend for ComposerAI - a chat interface for interacting w
 ## Architecture
 
 This backend API serves as the bridge between:
+
 - Frontend chat interface
 - Qdrant vector database (for email embeddings and similarity search)
 - OpenAI-compatible LLM endpoints (for chat completion and intent analysis)
@@ -84,11 +85,13 @@ java -jar target/composerai-api-0.0.1-SNAPSHOT.jar
 ## API Endpoints
 
 ### Health Check
+
 ```http
 GET /api/chat/health
 ```
 
 ### Chat
+
 ```http
 POST /api/chat
 Content-Type: application/json
@@ -102,7 +105,7 @@ Content-Type: application/json
 
 ## Project Structure
 
-```
+```markdown
 src/main/java/com/composerai/api/
 ├── ComposerAiApiApplication.java     # Main Spring Boot application
 ├── config/                          # Configuration classes
