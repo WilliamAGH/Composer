@@ -37,7 +37,6 @@ buildNumber.properties
 
 # Spring Boot
 .DS_Store
-.vscode/
 .idea/
 *.iml
 *.iws
