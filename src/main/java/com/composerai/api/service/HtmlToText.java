@@ -39,6 +39,7 @@ public class HtmlToText {
         public UrlPolicy urlsPolicy = UrlPolicy.KEEP;
         public boolean includeMetadata = true;
         public boolean jsonOutput = false;
+        public boolean suppressUtility = false; // new: control utility/footer suppression
 
         public boolean isValid() {
             return inputFile != null && format != null;
@@ -77,6 +78,10 @@ public class HtmlToText {
                     case "--json" -> {
                         String v = nextArg(args, ++i, "--json requires true|false");
                         c.jsonOutput = Boolean.parseBoolean(v);
+                    }
+                    case "--suppress-utility" -> {
+                        String v = nextArg(args, ++i, "--suppress-utility requires true|false");
+                        c.suppressUtility = Boolean.parseBoolean(v);
                     }
                     case "-h", "--help" -> {
                         System.out.println(usage());
@@ -154,11 +159,11 @@ public class HtmlToText {
     private static String usage() {
         return String.join("\n",
             "Usage:",
-            "  java -cp <jar> com.composerai.api.service.HtmlToText --input-file <path> [--input-type eml|html] --format plain|markdown [--output-file <path>] [--output-dir <dir>] [--charset UTF-8] [--urls keep|stripAll|cleanOnly] [--metadata true|false] [--json true|false]",
+            "  java -cp <jar> com.composerai.api.service.HtmlToText --input-file <path> [--input-type eml|html] --format plain|markdown [--output-file <path>] [--output-dir <dir>] [--charset UTF-8] [--urls keep|stripAll|cleanOnly] [--metadata true|false] [--json true|false] [--suppress-utility true|false]",
             "",
             "Examples:",
-            "  --input-file /path/to/email.eml --format markdown --urls cleanOnly --metadata true --json false",
-            "  --input-file /path/to/email.html --input-type html --format plain --output-dir ./data --urls stripAll --metadata false --json true"
+            "  --input-file /path/to/email.eml --format markdown --urls cleanOnly --metadata true --json false --suppress-utility true",
+            "  --input-file /path/to/email.html --input-type html --format plain --output-dir ./data --urls stripAll --metadata false --json true --suppress-utility false"
         );
     }
 }

@@ -13,42 +13,50 @@ import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
 
 /**
  * HtmlConverter: normalize HTML and convert to plain text or Markdown
- * with URL policies and basic cleanup
+ * with URL policies and basic cleanup.
  */
 public final class HtmlConverter {
 
     private HtmlConverter() {}
 
     public static String convertHtml(String html, HtmlToText.OutputFormat format, HtmlToText.UrlPolicy urlsPolicy) {
+        return convertHtml(html, format, urlsPolicy, true);
+    }
+
+    public static String convertHtml(String html, HtmlToText.OutputFormat format, HtmlToText.UrlPolicy urlsPolicy, boolean suppressUtility) {
         if (html == null || html.isBlank()) return "";
-        String preprocessed = preprocessHtml(html, urlsPolicy);
+        String preprocessed = preprocessHtml(html, urlsPolicy, suppressUtility);
         switch (format) {
             case MARKDOWN -> {
                 FlexmarkHtmlConverter converter = FlexmarkHtmlConverter.builder().build();
                 String md = converter.convert(preprocessed).trim();
-                return cleanupOutput(md);
+                return cleanupOutput(md, suppressUtility);
             }
             case PLAIN -> {
-                String txt = htmlToPlain(preprocessed);
-                if (txt == null || txt.isBlank()) {
-                    String relaxed = preprocessHtml(html, HtmlToText.UrlPolicy.KEEP);
-                    txt = htmlToPlain(relaxed);
+                FlexmarkHtmlConverter converter = FlexmarkHtmlConverter.builder().build();
+                String md = converter.convert(preprocessed).trim();
+                String txt = markdownToPlain(md);
+                if ((txt == null || txt.isBlank()) && !suppressUtility) {
+                    String relaxed = preprocessHtml(html, HtmlToText.UrlPolicy.KEEP, false);
+                    String md2 = converter.convert(relaxed).trim();
+                    txt = markdownToPlain(md2);
                 }
-                return cleanupOutput(txt);
+                return cleanupOutput(txt, suppressUtility);
             }
             default -> {
                 String txt = htmlToPlain(preprocessed);
-                return cleanupOutput(txt);
+                return cleanupOutput(txt, suppressUtility);
             }
         }
     }
 
     /**
-     * Minimal-custom-code HTML → plain text preserving line breaks
+     * Minimal-custom-code HTML → plain text preserving line breaks.
      */
     public static String htmlToPlain(String html) {
         Document doc = Jsoup.parse(html);
@@ -63,9 +71,9 @@ public final class HtmlConverter {
     }
 
     /**
-     * Remove noise, apply URL policy, and flatten layout tables
+     * Remove noise, apply URL policy, and flatten layout tables.
      */
-    public static String preprocessHtml(String html, HtmlToText.UrlPolicy policy) {
+    public static String preprocessHtml(String html, HtmlToText.UrlPolicy policy, boolean suppressUtility) {
         if (html == null || html.isBlank()) return html;
         Document doc = Jsoup.parse(html);
 
@@ -75,7 +83,7 @@ public final class HtmlConverter {
         // Remove non-content elements commonly present in marketing emails
         doc.select("script, style, noscript, svg, iframe").remove();
 
-        // Remove utility/tracking links/icons (Mailchimp & common bulk-mail patterns)
+        // URL-related handling for anchors and images
         for (Element a : doc.select("a[href]")) {
             String href = a.attr("href").toLowerCase();
             String text = a.text().toLowerCase();
@@ -92,7 +100,17 @@ public final class HtmlConverter {
                 || text.contains("unsubscribe")
                 || text.contains("update your preferences")
                 || text.contains("add us to your address book");
-            if (isTrackingHost || isUtilityText) a.remove();
+            if (isTrackingHost) {
+                a.remove();
+            } else if (suppressUtility && isUtilityText) {
+                a.remove();
+            } else if (policy == HtmlToText.UrlPolicy.STRIP_ALL) {
+                a.unwrap();
+            } else if (policy == HtmlToText.UrlPolicy.CLEAN_ONLY) {
+                String cleaned = sanitizeUrl(a.attr("href"));
+                if (cleaned == null || cleaned.isBlank()) a.unwrap();
+                else a.attr("href", cleaned);
+            }
         }
         for (Element img : doc.select("img[src]")) {
             String src = img.attr("src").toLowerCase();
@@ -103,32 +121,20 @@ public final class HtmlConverter {
             if (isTrackingImg) {
                 if (alt != null && !alt.isBlank()) img.replaceWith(new TextNode(alt));
                 else img.remove();
-            }
-        }
-
-        if (policy == HtmlToText.UrlPolicy.STRIP_ALL) {
-            for (Element a : doc.select("a")) a.unwrap();
-            for (Element img : doc.select("img")) {
-                String alt = img.attr("alt");
+            } else if (policy == HtmlToText.UrlPolicy.STRIP_ALL) {
                 if (alt != null && !alt.isBlank()) img.replaceWith(new TextNode(alt));
                 else img.remove();
-            }
-        } else if (policy == HtmlToText.UrlPolicy.CLEAN_ONLY) {
-            for (Element a : doc.select("a[href]")) {
-                String cleaned = sanitizeUrl(a.attr("href"));
-                if (cleaned == null || cleaned.isBlank()) a.unwrap();
-                else a.attr("href", cleaned);
-            }
-            for (Element img : doc.select("img[src]")) {
+            } else if (policy == HtmlToText.UrlPolicy.CLEAN_ONLY) {
                 String cleaned = sanitizeUrl(img.attr("src"));
                 if (cleaned == null || cleaned.isBlank()) {
-                    String alt = img.attr("alt");
                     if (alt != null && !alt.isBlank()) img.replaceWith(new TextNode(alt));
                     else img.remove();
                 } else img.attr("src", cleaned);
             }
+        }
 
-            // Remove entire paragraphs that are boilerplate utility/footer
+        // Optional utility/footer block removal
+        if (suppressUtility) {
             String[] utilityKeys = new String[] {
                 "unsubscribe",
                 "update your preferences",
@@ -146,7 +152,6 @@ public final class HtmlConverter {
                     if (t.contains(key)) { el.remove(); break; }
                 }
             }
-            // Remove targeted footer-like containers by known footer classes/ids
             for (Element el : doc.select(
                 "div[class*='templateFooter'],div[id*='templateFooter'],div[class*='mcnFooter'],div[id*='mcn-footer'],div[class*='monkey_rewards'],div[class*='unsubscribe'],div[id*='unsubscribe'],div[class*='email-footer'],div[id*='email-footer']"
             )) {
@@ -154,15 +159,62 @@ public final class HtmlConverter {
             }
         }
 
+        // Add paragraph separators for table rows before unwrapping to preserve item breaks
+        for (Element row : doc.select("tr")) {
+            row.appendText("\n\n");
+        }
+
         // Flatten layout tables to avoid giant Markdown tables
         for (Element cell : doc.select("th, td")) { cell.appendText("\n"); cell.unwrap(); }
         for (Element wrapper : doc.select("table, thead, tbody, tfoot, tr")) wrapper.unwrap();
 
+        // Insert paragraph breaks around inline emphasis to avoid run-on lines after conversion
+        for (Element inl : doc.select("em, i, strong, b")) {
+            inl.after(new TextNode("\n\n"));
+        }
+
+        // Wrap text nodes into paragraphs: split on double-newlines; single newlines -> <br>
+        wrapTextNodesIntoParagraphs(doc, "body, div, section, article, main");
+
         return doc.html();
     }
 
+    private static void wrapTextNodesIntoParagraphs(Document doc, String selectors) {
+        for (Element el : doc.select(selectors)) {
+            // copy to avoid concurrent modification
+            java.util.List<TextNode> textNodes = new java.util.ArrayList<>(el.textNodes());
+            for (TextNode tn : textNodes) {
+                String raw = tn.getWholeText();
+                if (raw == null) continue;
+                String normalized = raw.replace("\r\n", "\n");
+                if (normalized.trim().isEmpty()) continue;
+                String[] paragraphs = normalized.split("\n{2,}");
+                int idx = el.childNodes().indexOf(tn);
+                Node ref = tn;
+                tn.remove();
+                for (int i = 0; i < paragraphs.length; i++) {
+                    String para = paragraphs[i];
+                    if (para == null || para.trim().isEmpty()) continue;
+                    Element p = doc.createElement("p");
+                    String[] lines = para.split("\n");
+                    for (int j = 0; j < lines.length; j++) {
+                        String line = lines[j];
+                        if (!line.isEmpty()) p.appendChild(new TextNode(line));
+                        if (j < lines.length - 1) p.appendChild(doc.createElement("br"));
+                    }
+                    if (ref != null && idx >= 0 && idx <= el.childNodeSize()) {
+                        el.insertChildren(idx, p);
+                        idx++;
+                    } else {
+                        el.appendChild(p);
+                    }
+                }
+            }
+        }
+    }
+
     /**
-     * Drop trackers/non-http schemes and query/fragment; limit pathological length
+     * Drop trackers/non-http schemes and query/fragment; limit pathological length.
      */
     public static String sanitizeUrl(String url) {
         try {
@@ -184,10 +236,29 @@ public final class HtmlConverter {
     }
 
     /**
+     * Convert Markdown to plain text while preserving line/paragraph breaks.
+     */
+    private static String markdownToPlain(String md) {
+        if (md == null || md.isBlank()) return md;
+        String out = md;
+        out = out.replaceAll("!\\[([^\\]]*)\\]\\([^\\)]*\\)", "$1");
+        out = out.replaceAll("\\[([^\\]]+)\\]\\(([^\\)]*)\\)", "$1");
+        out = out.replaceAll("(?m)^[#]{1,6}\\s*", "");
+        out = out.replaceAll("[*_`~]+", "");
+        out = out.replaceAll("  \\n", "\n");
+        out = out.replaceAll("\n{3,}", "\n\n");
+        return out.trim();
+    }
+
+    /**
      * Drop noisy separator lines, collapse excessive blanks, strip zero-width chars
-     * and convert any residual <br> tags to newlines
+     * and convert any residual <br> tags to newlines.
      */
     public static String cleanupOutput(String content) {
+        return cleanupOutput(content, true);
+    }
+
+    public static String cleanupOutput(String content, boolean suppressUtility) {
         if (content == null || content.isBlank()) return content;
         content = normalizeInvisible(content)
             .replaceAll("(?i)<br\\s*/?>", "\n");
@@ -198,14 +269,15 @@ public final class HtmlConverter {
             String trimmed = line.trim();
             String lower = trimmed.toLowerCase();
             if (trimmed.matches("^[\\-\\|_\\s]{50,}$")) continue;
-            if (trimmed.equals("You can or .")) continue;
-            if (lower.contains("you are receiving this email because")
-                || lower.contains("email marketing powered by mailchimp")
-                || lower.contains("want to change how you receive these emails")
-                || lower.contains("our mailing address is:")
-                || lower.contains("unsubscribe")
-                || lower.contains("update your preferences")) continue;
-            // Collapse extreme space runs inside a line
+            if (suppressUtility) {
+                if (trimmed.equals("You can or .")) continue;
+                if (lower.contains("you are receiving this email because")
+                    || lower.contains("email marketing powered by mailchimp")
+                    || lower.contains("want to change how you receive these emails")
+                    || lower.contains("our mailing address is:")
+                    || lower.contains("unsubscribe")
+                    || lower.contains("update your preferences")) continue;
+            }
             line = line.replaceAll(" {10,}", " ");
             if (trimmed.isEmpty()) {
                 blankRun++;
@@ -213,11 +285,15 @@ public final class HtmlConverter {
             } else blankRun = 0;
             sb.append(line).append('\n');
         }
-        return sb.toString().trim();
+        String out = sb.toString().trim();
+        out = out.replaceAll("\n\s*,\s*\n", ", ");
+        // Generic: insert paragraph breaks before emphasized By-sections common in newsletters
+        out = out.replaceAll("(?<!\n)\\*By\\s", "\n\n*By ");
+        return out;
     }
 
     /**
-     * Remove zero-width and soft-hyphen characters that pollute outputs
+     * Remove zero-width and soft-hyphen characters that pollute outputs.
      */
     private static String normalizeInvisible(String s) {
         return s.replaceAll("[\\u200B\\u200C\\u200D\\uFEFF\\u2060\\u00AD]", "");

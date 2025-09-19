@@ -50,8 +50,8 @@ public final class EmailPipeline {
                 String text = html != null ? null : EmailExtractor.extractFirstPlainText(message).orElse("");
 
                 if (options.jsonOutput) {
-                    String plain = html != null ? HtmlConverter.convertHtml(html, HtmlToText.OutputFormat.PLAIN, options.urlsPolicy) : HtmlConverter.cleanupOutput(text);
-                    String markdown = html != null ? HtmlConverter.convertHtml(html, HtmlToText.OutputFormat.MARKDOWN, options.urlsPolicy) : HtmlConverter.cleanupOutput(text);
+                    String plain = html != null ? HtmlConverter.convertHtml(html, HtmlToText.OutputFormat.PLAIN, options.urlsPolicy, options.suppressUtility) : HtmlConverter.cleanupOutput(text, options.suppressUtility);
+                    String markdown = html != null ? HtmlConverter.convertHtml(html, HtmlToText.OutputFormat.MARKDOWN, options.urlsPolicy, options.suppressUtility) : HtmlConverter.cleanupOutput(text, options.suppressUtility);
                     Map<String, Object> meta = new HashMap<>();
                     meta.put("messageId", safe(message.getMessageID()));
                     meta.put("subject", safe(message.getSubject()));
@@ -65,41 +65,46 @@ public final class EmailPipeline {
                         "flattenTables", Boolean.TRUE,
                         "stripScripts", Boolean.TRUE,
                         "urlsPolicy", options.urlsPolicy.name().toLowerCase(Locale.ROOT),
-                        "metadataIncluded", options.includeMetadata
+                        "metadataIncluded", options.includeMetadata,
+                        "suppressUtility", options.suppressUtility
                     );
 
-                String id = meta.get("messageId") != null && !meta.get("messageId").toString().isBlank()
+                    String id = meta.get("messageId") != null && !meta.get("messageId").toString().isBlank()
                         ? meta.get("messageId").toString() : com.composerai.api.service.HtmlToText.normalizeBaseName(options.inputFile);
                     Map<String, Object> doc = EmailDocumentBuilder.buildDocument(id, meta, plain, markdown, policies);
                     return new ObjectMapper().writeValueAsString(doc);
                 } else {
                     String metaHeader = options.includeMetadata ? EmailExtractor.buildMetadataHeader(message, options.format) : "";
                     if (html != null) {
-                        String body = HtmlConverter.convertHtml(html, options.format, options.urlsPolicy);
+                        String body = HtmlConverter.convertHtml(html, options.format, options.urlsPolicy, options.suppressUtility);
+                        if (!options.suppressUtility && options.format == HtmlToText.OutputFormat.PLAIN && (body == null || body.isBlank())) {
+                            body = HtmlConverter.convertHtml(html, options.format, HtmlToText.UrlPolicy.KEEP, false);
+                        }
                         return metaHeader + body;
                     }
-                    return metaHeader + HtmlConverter.cleanupOutput(text);
+                    return metaHeader + HtmlConverter.cleanupOutput(text, options.suppressUtility);
                 }
             }
         } else if ("html".equalsIgnoreCase(type) || "htm".equalsIgnoreCase(type)) {
             Charset cs = options.charset != null ? options.charset : StandardCharsets.UTF_8;
             String html = Files.readString(Path.of(options.inputFile), cs);
             if (options.jsonOutput) {
-                String plain = HtmlConverter.convertHtml(html, HtmlToText.OutputFormat.PLAIN, options.urlsPolicy);
-                String markdown = HtmlConverter.convertHtml(html, HtmlToText.OutputFormat.MARKDOWN, options.urlsPolicy);
+                String plain = HtmlConverter.convertHtml(html, HtmlToText.OutputFormat.PLAIN, options.urlsPolicy, options.suppressUtility);
+                String markdown = HtmlConverter.convertHtml(html, HtmlToText.OutputFormat.MARKDOWN, options.urlsPolicy, options.suppressUtility);
                 Map<String, Object> meta = new HashMap<>();
                 meta.put("source", "html-file");
                 meta.put("path", options.inputFile);
                 Map<String, Object> policies = Map.of(
                     "flattenTables", Boolean.TRUE,
                     "stripScripts", Boolean.TRUE,
-                    "urlsPolicy", options.urlsPolicy.name().toLowerCase(Locale.ROOT)
+                    "urlsPolicy", options.urlsPolicy.name().toLowerCase(Locale.ROOT),
+                    "suppressUtility", options.suppressUtility
                 );
                 String id = com.composerai.api.service.HtmlToText.normalizeBaseName(options.inputFile);
                 Map<String, Object> doc = EmailDocumentBuilder.buildDocument(id, meta, plain, markdown, policies);
                 return new ObjectMapper().writeValueAsString(doc);
             }
-            return HtmlConverter.convertHtml(html, options.format, options.urlsPolicy);
+            return HtmlConverter.convertHtml(html, options.format, options.urlsPolicy, options.suppressUtility);
         }
         throw new IllegalArgumentException("Unsupported input type: " + type);
     }
@@ -110,8 +115,6 @@ public final class EmailPipeline {
         if (idx < 0) return "";
         return inputFile.substring(idx + 1).toLowerCase(Locale.ROOT);
     }
-
-    
 
     private static String safe(String s) { return s == null ? "" : s; }
 }
