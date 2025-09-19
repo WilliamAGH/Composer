@@ -68,8 +68,8 @@ public final class EmailPipeline {
                         "metadataIncluded", options.includeMetadata
                     );
 
-                    String id = meta.get("messageId") != null && !meta.get("messageId").toString().isBlank()
-                        ? meta.get("messageId").toString() : normalizeBaseName(options.inputFile);
+                String id = meta.get("messageId") != null && !meta.get("messageId").toString().isBlank()
+                        ? meta.get("messageId").toString() : com.composerai.api.service.HtmlToText.normalizeBaseName(options.inputFile);
                     Map<String, Object> doc = EmailDocumentBuilder.buildDocument(id, meta, plain, markdown, policies);
                     return new ObjectMapper().writeValueAsString(doc);
                 } else {
@@ -95,7 +95,7 @@ public final class EmailPipeline {
                     "stripScripts", Boolean.TRUE,
                     "urlsPolicy", options.urlsPolicy.name().toLowerCase(Locale.ROOT)
                 );
-                String id = normalizeBaseName(options.inputFile);
+                String id = com.composerai.api.service.HtmlToText.normalizeBaseName(options.inputFile);
                 Map<String, Object> doc = EmailDocumentBuilder.buildDocument(id, meta, plain, markdown, policies);
                 return new ObjectMapper().writeValueAsString(doc);
             }
@@ -111,16 +111,7 @@ public final class EmailPipeline {
         return inputFile.substring(idx + 1).toLowerCase(Locale.ROOT);
     }
 
-    private static String normalizeBaseName(String inputFile) {
-        String fileName = Path.of(inputFile).getFileName().toString();
-        int dot = fileName.lastIndexOf('.');
-        String base = dot > 0 ? fileName.substring(0, dot) : fileName;
-        String lower = base.toLowerCase(Locale.ROOT);
-        String dashed = lower.replaceAll("[^a-z0-9]+", "-");
-        dashed = dashed.replaceAll("-+", "-");
-        dashed = dashed.replaceAll("^-|-$", "");
-        return dashed.isEmpty() ? "output" : dashed;
-    }
+    
 
     private static String safe(String s) { return s == null ? "" : s; }
 }
