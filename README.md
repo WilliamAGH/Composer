@@ -82,6 +82,35 @@ mvn clean package
 java -jar target/composerai-api-0.0.1-SNAPSHOT.jar
 ```
 
+## HTML Email Parsing (CLI)
+
+Convert `.eml` or `.html` to plain text or Markdown using `com.composerai.api.service.HtmlToText`.
+
+- Build once:
+  - `mvn -q -DskipTests package`
+- Run via Maven Exec (example to Markdown):
+  - `mvn -q -DskipTests exec:java -Dexec.mainClass=com.composerai.api.service.HtmlToText -Dexec.args="--input-file 'data/eml/OpenAI is hiring.eml' --urls stripAll --format markdown --output-dir 'data/markdown'"`
+ - Run via Spring Boot launcher (fat jar, example to Plain):
+  - `java -Dloader.main=com.composerai.api.service.HtmlToText -cp target/composerai-api-0.0.1-SNAPSHOT.jar org.springframework.boot.loader.PropertiesLauncher -- --input-file "data/eml/OpenAI is hiring.eml" --urls stripAll --format plain --output-dir "data/plain"`
+
+Arguments:
+
+- `--input-file <path>` (required)
+- `--input-type eml|html` (optional; inferred by extension)
+- `--format plain|markdown` (required)
+- `--output-file <path>` (optional; defaults to stdout)
+- `--output-dir <dir>` (optional; auto-generates normalized file name like `openai-is-hiring.md`)
+- `--charset <name>` (optional; for raw HTML files)
+- `--urls keep|stripAll|cleanOnly` (optional; default `keep`)
+- `--metadata true|false` (optional; default `true`) – when true, prepends Sender, Recipient(s), Date/time (ISO-8601), Subject
+ - `--json true|false` (optional; default `false`) – when true, emits a JSON document with metadata, plainText, markdown
+
+Notes:
+
+- Prefers HTML part in `multipart/alternative`; falls back to text.
+- HTML→Markdown uses Flexmark html2md; HTML→Plain uses JSoup with minimal structure preservation.
+- `stripAll` removes links/images entirely; `cleanOnly` keeps only clean http(s)/mailto URLs and strips tracking params.
+
 ## API Endpoints
 
 ### Health Check
@@ -120,7 +149,13 @@ src/main/java/com/composerai/api/
 └── service/                        # Business logic
     ├── ChatService.java           # Main chat orchestration
     ├── OpenAiChatService.java     # OpenAI integration
-    └── VectorSearchService.java   # Qdrant vector search
+    ├── VectorSearchService.java   # Qdrant vector search
+    └── email/                     # Email parsing & conversion modules
+        ├── HtmlConverter.java     # HTML → plain/markdown with URL policy & cleanup
+        ├── EmailExtractor.java    # MIME/EML extraction and header decoding
+        ├── EmailPipeline.java     # Orchestration of extract→convert (used by CLI)
+        ├── EmailDocumentBuilder.java # Build normalized JSON-ready documents
+        └── ChunkingStrategy.java  # Interface for text chunking
 ```
 
 ## Development Notes
