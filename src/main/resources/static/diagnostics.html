@@ -422,7 +422,7 @@
                 let data;
                 
                 try {
-                    response = await fetch('/api/health');
+                    response = await fetch('api/health');
                     data = await response.json();
                 } catch (error) {
                     console.log('API not available, using mock data');
@@ -474,7 +474,7 @@
                 // Step 2: Search API call
                 let searchData;
                 try {
-                    const searchResponse = await fetch('/api/search', {
+                    const searchResponse = await fetch('api/search', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ query })
@@ -528,7 +528,7 @@
                 // Step 4: Generate API call
                 let generateData;
                 try {
-                    const generateResponse = await fetch('/api/generate', {
+                    const generateResponse = await fetch('api/generate', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 

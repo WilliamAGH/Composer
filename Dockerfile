@@ -16,7 +16,7 @@ ENV SPRING_PROFILES_ACTIVE=prod
 ENV JAVA_OPTS=""
 # Copy application JAR
 COPY --from=builder /workspace/target/*.jar /app/app.jar
-# Copy static assets for production (will be served from /api/*)
-COPY Code /app/static
+# Copy static assets built into the JAR context for serving
+COPY --from=builder /workspace/src/main/resources/static /app/static
 EXPOSE 8080
 ENTRYPOINT ["/bin/sh","-c","java ${JAVA_OPTS} -jar /app/app.jar"]

@@ -434,7 +434,7 @@
                 const formData = new FormData();
                 formData.append('file', selectedFile);
 
-                const response = await fetch('/parse-email', {
+                const response = await fetch('api/parse-email', {
                     method: 'POST',
                     mode: 'cors',
                     body: formData
