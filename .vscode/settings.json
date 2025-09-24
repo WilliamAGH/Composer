@@ -1,4 +1,21 @@
 {
+  "java.project.sourcePaths": ["src/main/java"],
+  "java.project.outputPath": "target/classes",
+  "java.project.resourcePaths": ["src/main/resources"],
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "java.compile.nullAnalysis.mode": "disabled",
+  "java.import.maven.enabled": true,
+  "java.configuration.runtimes": [
+    {
+      "name": "JavaSE-21",
+      "path": "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home",
+      "default": true
+    }
+  ],
+  "java.server.launchMode": "Standard",
+  "java.autobuild.enabled": true,
+  "maven.view": "hierarchical",
+  "maven.pomfile.autoUpdateEffectivePOM": true,
   "markdownlint.config": {
     "MD005": false,
     "MD007": false,
@@ -10,6 +27,6 @@
     "MD034": false,
     "MD001": false,
     "MD003": false,
-    "MD026": false,
+    "MD026": false
   }
 }
