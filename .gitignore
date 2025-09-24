@@ -42,3 +42,5 @@ buildNumber.properties
 *.iws
 *.ipr
 application-local.properties
+Code/email-backend.html.backup
+email-test.html
