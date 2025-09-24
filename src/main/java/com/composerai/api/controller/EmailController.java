@@ -7,9 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -35,8 +32,6 @@ public class EmailController {
     // HtmlToText service for converting HTML to plain text if needed
     @Autowired
     private HtmlToText htmlToText;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * Parse uploaded .eml email file and return extracted text content.
