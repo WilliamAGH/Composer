@@ -434,7 +434,7 @@
                 const formData = new FormData();
                 formData.append('file', selectedFile);
 
-                const response = await fetch('http://localhost:8080/api/parse-email', {
+                const response = await fetch('/api/parse-email', {
                     method: 'POST',
                     mode: 'cors',
                     body: formData
@@ -453,7 +453,6 @@
                     throw new Error(`Server error (${response.status}): ${errorResult.error}`);
                 }
             } catch (error) {
-                // Always show real error - no mock fallback
                 parsedContent.value = `Error: ${error.message}`;
                 showMessage(`Failed to parse email: ${error.message}`, 'error');
             } finally {
@@ -462,35 +461,7 @@
             }
         }
 
-//         function showMockParsedResult() {
-//             // Mock parsed result for demonstration
-//             const mockResult = `PARSED EMAIL CONTENT
-// ====================
-// 
-// From: sender@example.com
-// To: recipient@example.com
-// Subject: Sample Email Subject
-// Date: ${new Date().toLocaleDateString()}
-// 
-// Body:
-// This is the parsed email content. The backend would normally extract:
-// - Headers (From, To, Subject, Date, etc.)
-// - Plain text body content
-// - Attachments information (if any)
-// - Email metadata
-// 
-// This is a mock result shown when the backend API is not available.
-// In a real implementation, the http://localhost:8080/api/parse-email endpoint would:
-// 1. Accept the uploaded .eml file
-// 2. Parse the email structure
-// 3. Extract readable content
-// 4. Return formatted text output
-// 
-// Original filename: ${selectedFile.name}
-// File size: ${formatFileSize(selectedFile.size)}`;
-// 
-//             parsedContent.value = mockResult;
-//         }
+
 
             function showMessage(message, type) {
                 let className = type === 'error' ? 'error-message' : 'success-message';
