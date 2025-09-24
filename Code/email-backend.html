@@ -261,7 +261,7 @@
             
             <div class="file-input-container">
                 <div class="file-input-wrapper" id="fileInputWrapper">
-                    <input type="file" id="fileInput" class="file-input" accept=".eml,.msg,.txt" />
+                    <input type="file" id="fileInput" class="file-input" accept=".eml,.msg,.txt,text/plain,message/rfc822" />
                     <div class="file-input-text">
                         <strong>Click to select</strong> or <strong>drag & drop</strong> your .eml file here
                         <br><small>Supported formats: .eml, .msg, .txt</small>
@@ -310,6 +310,12 @@
 
         // File input event listeners
         fileInput.addEventListener('change', handleFileSelect);
+        fileInputWrapper.addEventListener('click', function(event) {
+            // Only trigger file input if clicking on the wrapper itself, not the file input
+            if (event.target !== fileInput) {
+                fileInput.click();
+            }
+        });
         fileInputWrapper.addEventListener('dragover', handleDragOver);
         fileInputWrapper.addEventListener('dragleave', handleDragLeave);
         fileInputWrapper.addEventListener('drop', handleDrop);
@@ -337,17 +343,29 @@
             event.preventDefault();
             fileInputWrapper.classList.remove('dragover');
             const file = event.dataTransfer.files[0];
+            
+            // Sync the file input with the dropped file
+            if (file) {
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                fileInput.files = dt.files;
+            }
+            
             processSelectedFile(file);
         }
 
         function processSelectedFile(file) {
             if (!file) return;
 
-            // Validate file type
+            // Validate file type by extension and MIME type
             const validExtensions = ['.eml', '.msg', '.txt'];
+            const validMimeTypes = ['message/rfc822', 'text/plain', 'application/octet-stream'];
             const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
             
-            if (!validExtensions.includes(fileExtension)) {
+            const isValidExtension = validExtensions.includes(fileExtension);
+            const isValidMimeType = validMimeTypes.includes(file.type) || file.type === '';
+            
+            if (!isValidExtension) {
                 showMessage('Please select a valid email file (.eml, .msg, or .txt)', 'error');
                 return;
             }
