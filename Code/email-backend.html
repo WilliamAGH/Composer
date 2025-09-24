@@ -310,12 +310,6 @@
 
         // File input event listeners
         fileInput.addEventListener('change', handleFileSelect);
-        fileInputWrapper.addEventListener('click', function(event) {
-            // Only trigger file input if clicking on the wrapper itself, not the file input
-            if (event.target !== fileInput) {
-                fileInput.click();
-            }
-        });
         fileInputWrapper.addEventListener('dragover', handleDragOver);
         fileInputWrapper.addEventListener('dragleave', handleDragLeave);
         fileInputWrapper.addEventListener('drop', handleDrop);
