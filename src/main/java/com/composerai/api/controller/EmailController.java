@@ -28,7 +28,6 @@ import jakarta.mail.internet.MimeMessage;
  * Provides endpoints for processing .eml files and extracting readable content.
  */
 @RestController
-@RequestMapping("/api")
 @CrossOrigin(origins = "*") // Allow frontend to call this API
 public class EmailController {
 
@@ -166,10 +165,10 @@ public class EmailController {
     }
 
     /**
-     * Health check endpoint to verify the API is working
+     * Email service health check endpoint to verify the email parsing service is working
      */
-    @GetMapping("/health")
-    public ResponseEntity<Map<String, Object>> healthCheck() {
+    @GetMapping("/email-health")
+    public ResponseEntity<Map<String, Object>> emailHealthCheck() {
         Map<String, Object> response = new HashMap<>();
         response.put("status", "healthy");
         response.put("service", "EmailController");
