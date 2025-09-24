@@ -310,17 +310,28 @@
             const parsedContent = document.getElementById('parsedContent');
             const statusMessage = document.getElementById('statusMessage');
 
+            // Debug: Check if elements exist
+            console.log('fileInput:', fileInput);
+            console.log('fileInputWrapper:', fileInputWrapper);
+
             // File input event listeners
-            fileInput.addEventListener('change', handleFileSelect);
-            fileInputWrapper.addEventListener('dragover', handleDragOver);
-            fileInputWrapper.addEventListener('dragleave', handleDragLeave);
-            fileInputWrapper.addEventListener('drop', handleDrop);
+            if (fileInput) {
+                fileInput.addEventListener('change', handleFileSelect);
+                console.log('Added change listener to fileInput');
+            }
+            if (fileInputWrapper) {
+                fileInputWrapper.addEventListener('dragover', handleDragOver);
+                fileInputWrapper.addEventListener('dragleave', handleDragLeave);
+                fileInputWrapper.addEventListener('drop', handleDrop);
+                console.log('Added drag listeners to fileInputWrapper');
+            }
 
             // Button event listeners
             previewBtn.addEventListener('click', previewRawContents);
             parseBtn.addEventListener('click', sendToBackend);
 
             function handleFileSelect(event) {
+                console.log('handleFileSelect called', event.target.files);
                 const file = event.target.files[0];
                 processSelectedFile(file);
             }
@@ -351,12 +362,17 @@
             }
 
             function processSelectedFile(file) {
-                if (!file) return;
+                console.log('processSelectedFile called with:', file);
+                if (!file) {
+                    console.log('No file provided');
+                    return;
+                }
 
                 // Validate file type by extension and MIME type
                 const validExtensions = ['.eml', '.msg', '.txt'];
                 const validMimeTypes = ['message/rfc822', 'text/plain', 'application/octet-stream'];
                 const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+                console.log('File extension:', fileExtension, 'File type:', file.type);
                 
                 const isValidExtension = validExtensions.includes(fileExtension);
                 const isValidMimeType = validMimeTypes.includes(file.type) || file.type === '';
