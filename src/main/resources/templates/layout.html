@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(content, pageTitle, headContent)">
 <head>
     <meta charset="UTF-8">
     <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
@@ -8,15 +8,12 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-title" content="ComposerAI" />
     <link rel="manifest" href="/site.webmanifest" />
-    <meta http-equiv="refresh" content="0; url=diagnostics.html">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Redirecting…</title>
-    <script>
-        // Fallback in case meta refresh is blocked
-        window.location.replace('diagnostics.html');
-    </script>
+    <link rel="stylesheet" href="/css/app-shared.css" />
+    <title th:text="${pageTitle}">ComposerAI</title>
+    <th:block th:if="${headContent} != null" th:replace="${headContent}"></th:block>
 </head>
 <body>
-    <p>If you are not redirected automatically, <a href="diagnostics.html">click here</a>.</p>
+    <th:block th:replace="${content}"></th:block>
 </body>
 </html>
