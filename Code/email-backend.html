@@ -296,17 +296,18 @@
     </div>
 
     <script>
-        let selectedFile = null;
+        document.addEventListener('DOMContentLoaded', function() {
+            let selectedFile = null;
 
-        // DOM elements
-        const fileInput = document.getElementById('fileInput');
-        const fileInputWrapper = document.getElementById('fileInputWrapper');
-        const fileInfo = document.getElementById('fileInfo');
-        const previewBtn = document.getElementById('previewBtn');
-        const parseBtn = document.getElementById('parseBtn');
-        const rawContent = document.getElementById('rawContent');
-        const parsedContent = document.getElementById('parsedContent');
-        const statusMessage = document.getElementById('statusMessage');
+            // DOM elements
+            const fileInput = document.getElementById('fileInput');
+            const fileInputWrapper = document.getElementById('fileInputWrapper');
+            const fileInfo = document.getElementById('fileInfo');
+            const previewBtn = document.getElementById('previewBtn');
+            const parseBtn = document.getElementById('parseBtn');
+            const rawContent = document.getElementById('rawContent');
+            const parsedContent = document.getElementById('parsedContent');
+            const statusMessage = document.getElementById('statusMessage');
 
         // File input event listeners
         fileInput.addEventListener('change', handleFileSelect);
@@ -452,10 +453,9 @@
                     throw new Error(`Server error (${response.status}): ${errorResult.error}`);
                 }
             } catch (error) {
-
                 // Always show real error - no mock fallback
                 parsedContent.value = `Error: ${error.message}`;
-                showMessage(`Failed to parse email: ${error.message}`, 'error');                }
+                showMessage(`Failed to parse email: ${error.message}`, 'error');
             } finally {
                 parseBtn.innerHTML = '🔄 Send to Backend & Parse';
                 parseBtn.disabled = false;
@@ -492,34 +492,33 @@
 //             parsedContent.value = mockResult;
 //         }
 
-        function showMessage(message, type) {
-            let className = type === 'error' ? 'error-message' : 'success-message';
-            statusMessage.innerHTML = `<div class="${className}">${message}</div>`;
-            
-            // Auto-hide success messages after 5 seconds
-            if (type === 'success') {
-                setTimeout(() => {
-                    if (statusMessage.innerHTML.includes(message)) {
-                        clearMessage();
-                    }
-                }, 5000);
+            function showMessage(message, type) {
+                let className = type === 'error' ? 'error-message' : 'success-message';
+                statusMessage.innerHTML = `<div class="${className}">${message}</div>`;
+                
+                // Auto-hide success messages after 5 seconds
+                if (type === 'success') {
+                    setTimeout(() => {
+                        if (statusMessage.innerHTML.includes(message)) {
+                            clearMessage();
+                        }
+                    }, 5000);
+                }
             }
-        }
 
-        function clearMessage() {
-            statusMessage.innerHTML = '';
-        }
+            function clearMessage() {
+                statusMessage.innerHTML = '';
+            }
 
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
+                // Initialize
             showMessage('Ready to process email files. Select a .eml file to get started.', 'success');
         });
     </script>

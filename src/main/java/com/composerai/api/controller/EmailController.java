@@ -142,7 +142,6 @@ public class EmailController {
                 String htmlText = htmlContent.get();
                 try {
                     String convertedText = htmlToText.convertHtmlToText(htmlText);
-                    result.append("CONTENT (converted from HTML):\n");
                     result.append(convertedText);
                 } catch (Exception e) {
                     // Fallback to raw HTML if conversion fails
