@@ -89,10 +89,13 @@
 
         .file-input {
             position: absolute;
+            top: 0;
+            left: 0;
             opacity: 0;
             width: 100%;
             height: 100%;
             cursor: pointer;
+            z-index: 2;
         }
 
         .file-input-text {
@@ -320,6 +323,12 @@
                 console.log('Added change listener to fileInput');
             }
             if (fileInputWrapper) {
+                // Add click handler as backup
+                fileInputWrapper.addEventListener('click', function(e) {
+                    console.log('Wrapper clicked, triggering file input');
+                    fileInput.click();
+                });
+                
                 fileInputWrapper.addEventListener('dragover', handleDragOver);
                 fileInputWrapper.addEventListener('dragleave', handleDragLeave);
                 fileInputWrapper.addEventListener('drop', handleDrop);
@@ -338,24 +347,36 @@
 
             function handleDragOver(event) {
                 event.preventDefault();
+                event.stopPropagation();
                 fileInputWrapper.classList.add('dragover');
+                console.log('Drag over');
             }
 
             function handleDragLeave(event) {
                 event.preventDefault();
+                event.stopPropagation();
                 fileInputWrapper.classList.remove('dragover');
+                console.log('Drag leave');
             }
 
             function handleDrop(event) {
                 event.preventDefault();
+                event.stopPropagation();
                 fileInputWrapper.classList.remove('dragover');
+                console.log('Drop event', event.dataTransfer.files);
+                
                 const file = event.dataTransfer.files[0];
                 
                 // Sync the file input with the dropped file
                 if (file) {
-                    const dt = new DataTransfer();
-                    dt.items.add(file);
-                    fileInput.files = dt.files;
+                    try {
+                        const dt = new DataTransfer();
+                        dt.items.add(file);
+                        fileInput.files = dt.files;
+                        console.log('Synced dropped file to input');
+                    } catch (e) {
+                        console.log('Could not sync dropped file:', e);
+                    }
                 }
                 
                 processSelectedFile(file);
