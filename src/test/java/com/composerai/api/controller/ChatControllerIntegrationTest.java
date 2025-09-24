@@ -28,7 +28,7 @@ class ChatControllerIntegrationTest {
 
     @Test
     void healthEndpoint_ShouldReturnOk() throws Exception {
-        mockMvc.perform(get("/chat/health"))
+        mockMvc.perform(get("/api/chat/health"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value("UP"));
@@ -38,7 +38,7 @@ class ChatControllerIntegrationTest {
     void chatEndpoint_WithEmptyMessage_ShouldReturnBadRequest() throws Exception {
         ChatRequest request = new ChatRequest("", null, 5);
         
-        mockMvc.perform(post("/chat")
+        mockMvc.perform(post("/api/chat")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
