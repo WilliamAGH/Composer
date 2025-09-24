@@ -5,6 +5,7 @@
 
 package com.composerai.api.service;
 
+import org.springframework.stereotype.Service;
 import jakarta.mail.MessagingException;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -13,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 
+@Service
 public class HtmlToText {
 
     public enum OutputFormat {
@@ -125,6 +127,53 @@ public class HtmlToText {
             throw e;
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Convert HTML string directly to plain text.
+     * This is a convenience method for programmatic use when you have HTML content as a string.
+     * 
+     * @param html The HTML content to convert
+     * @return Plain text representation of the HTML
+     * @throws IOException if conversion fails
+     */
+    public String convertHtmlToText(String html) throws IOException {
+        if (html == null || html.trim().isEmpty()) {
+            return "";
+        }
+        
+        try {
+            // Create a temporary file to store the HTML content
+            Path tempFile = Files.createTempFile("html-convert-", ".html");
+            try {
+                // Write HTML content to temporary file
+                Files.writeString(tempFile, html, StandardCharsets.UTF_8);
+                
+                // Create options for conversion
+                Options options = new Options();
+                options.inputFile = tempFile.toString();
+                options.inputType = "html";
+                options.format = OutputFormat.PLAIN;
+                options.urlsPolicy = UrlPolicy.CLEAN_ONLY;
+                options.includeMetadata = false;
+                options.suppressUtility = true;
+                
+                // Convert using existing pipeline
+                return convert(options);
+                
+            } finally {
+                // Clean up temporary file
+                try {
+                    Files.deleteIfExists(tempFile);
+                } catch (IOException e) {
+                    // Log but don't fail if cleanup fails
+                    System.err.println("Warning: Could not delete temporary file: " + tempFile);
+                }
+            }
+        } catch (Exception e) {
+            // Fallback: return HTML with basic tag stripping if conversion fails
+            return html.replaceAll("<[^>]+>", "").trim();
         }
     }
 

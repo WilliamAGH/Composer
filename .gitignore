@@ -84,6 +84,6 @@ bin/
 
 # Spring Boot specific
 application-local.properties
-
-# Project-specific generated files
 ComposerAI.*
+Code/email-backend.html.backup
+email-test.html
