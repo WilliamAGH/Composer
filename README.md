@@ -40,7 +40,7 @@ Configure the application using `application.properties` or environment variable
 ```properties
 # Server Configuration
 server.port=8080
-server.servlet.context-path=/api
+# server.servlet.context-path=/api  # Commented out for direct static access
 
 # OpenAI Configuration
 openai.api.key=${OPENAI_API_KEY:your-openai-api-key}
@@ -65,12 +65,31 @@ mvn clean compile
 # Run tests
 mvn test
 
-# Start the application
-mvn spring-boot:run
+# Start the application with live reload (recommended for development)
+mvn spring-boot:run -Dspring-boot.run.profiles=local
 
 # With custom configuration
-mvn spring-boot:run -Dspring-boot.run.jvmArguments="-Dopenai.api.key=YOUR_KEY -Dqdrant.host=your-qdrant-host"
+mvn spring-boot:run -Dspring-boot.run.profiles=local -Dspring-boot.run.jvmArguments="-Dopenai.api.key=YOUR_KEY -Dqdrant.host=your-qdrant-host"
+
+# Start without live reload (production-like)
+mvn spring-boot:run
 ```
+
+#### Live Development Features
+
+When running with the `local` profile, you get:
+
+- **Automatic restart** when Java classes change
+- **Live reload** for static resources (HTML, CSS, JS)
+- **Efficient resource usage** with optimized polling intervals
+- **Static files** served from `src/main/resources/static/`
+
+Access the application:
+
+- Main UI: `http://localhost:8080/index.html` (redirects to diagnostics)
+- Email Parser: `http://localhost:8080/email-backend.html`
+- Diagnostics: `http://localhost:8080/diagnostics.html`
+- API Health: `http://localhost:8080/api/health`
 
 ### Production
 
@@ -113,16 +132,25 @@ Notes:
 
 ## API Endpoints
 
-### Health Check
+### System Health Check
 
 ```http
-GET /api/chat/health
+GET /api/health
 ```
 
-### Chat
+### Email Parser
 
 ```http
-POST /api/chat
+POST /api/parse-email
+Content-Type: multipart/form-data
+
+# Upload .eml file for parsing
+```
+
+### Chat (Main Feature)
+
+```http
+POST /chat
 Content-Type: application/json
 
 {
