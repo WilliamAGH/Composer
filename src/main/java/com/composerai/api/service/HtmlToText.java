@@ -107,7 +107,10 @@ public class HtmlToText {
             String result = convert(options);
             Path out = resolveOutputPath(options);
             if (out != null) {
-                Files.createDirectories(out.getParent());
+                Path parent = out.getParent();
+                if (parent != null) {
+                    Files.createDirectories(parent);
+                }
                 Files.writeString(out, result, StandardCharsets.UTF_8);
             } else {
                 System.out.println(result);
