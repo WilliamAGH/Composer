@@ -11,11 +11,7 @@ Follow these standards to deliver clean, DRY implementations that slot into the 
 
 ## Tech Baseline
 
-- **Language**: Java 21 (OpenJDK distribution). Keep runtime images aligned with either upstream OpenJDK or Red Hat UBI builds.
-- **Framework**: Spring Boot 3.3.x with MVC, Validation, and DevTools.
-- **Data & Retrieval**: Qdrant vector search (gRPC client) and OpenAI-compatible chat/embedding APIs.
-- **Templating**: Thymeleaf templates served from Spring MVC controllers.
-- **Styling**: Tailwind CSS via CDN plus `static/css/app-shared.css` for shared tokens.
+Refer to `README.md` (Technology Stack and Requirements) for current runtime versions, dependencies, and tooling expectations. Use those values unless a task explicitly overrides them.
 
 ## Backend Development Principles
 
@@ -50,7 +46,6 @@ Follow these standards to deliver clean, DRY implementations that slot into the 
 - Leverage Tailwind utilities for layout; use `app-shared.css` sparingly for tokens or reset rules
 - Uphold the product aesthetic: layered glass cards over soft gradients, translucent surfaces, diffused midnight/navy accents, rounded 12-24px radii, ultra-light borders, and generous spacing. Typography stays in crisp system sans families with breathable line height and label tracking.
 - Color language: anchor backgrounds in cool off-whites (#F8FAFC, #F5F5F7), use translucent whites with subtle vertical gradients for surfaces, keep primary accents in deep slate blues or charcoal greens (#0F172A, #1A2433), reserve muted lilac/sage/amber for highlights, and apply borders/shadows around #E2E8F0 with rgba(15, 23, 42, 0.1-0.2) for depth without harsh black.
-- Ensure interactive states (hover, focus-visible) are present; rely on Tailwind focus utilities
 - Keep JavaScript modular and progressive-enhancement friendly. Use plain ES modules over large frameworks
 
 ### Design Language Reference
@@ -60,7 +55,7 @@ Follow these standards to deliver clean, DRY implementations that slot into the 
 - **Geometry**: Default to rounded corners between 12-24px and keep iconography flat with minimal stroke weight. Reserve sharper corners for utility elements only.
 - **Typography**: Stick to system sans stacks (`-apple-system`, `BlinkMacSystemFont`, `Segoe UI`, `system-ui`). Pair medium-weight headings with regular body copy; line heights ~1.5 and label tracking +0.2em reinforce clarity.
 - **Shadows & Borders**: Prefer diffuse drop shadows such as `0 25px 50px -12px rgba(15, 23, 42, 0.18)` and hairline borders in the #E2E8F0 family. Avoid hard outlines or solid black shadows.
-- **State Treatments**: Hover/focus states should nudge background opacity, brighten borders slightly, or add soft glows instead of loud color shifts. Motion should be 150-200ms ease-in-out.
+- **State Treatments**: Hover/focus states should nudge background opacity, brighten borders slightly, or add soft glows instead of loud color shifts. Motion should be 150-200ms ease-in-out; rely on Tailwind focus utilities to keep focus rings accessible.
 - **Accessibility**: Ensure contrast ratios hit WCAG AA—deep slate text on off-white surfaces, and lighten translucent layers when stacking content on gradients.
 
 ## Documentation & Communication
