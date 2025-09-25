@@ -1,190 +1,71 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout :: layout(~{::body/content}, 'MailAI - Email Backend Parser', ~{::head/extraHead})}">
+      th:replace="~{layout :: layout(~{::body/content}, 'ComposerAI - Email Backend Parser', ~{::head/extraHead})}">
 <head>
-    <th:block th:fragment="extraHead">
-        <style>
-            .upload-section {
-                border-radius: 12px;
-                padding: 25px;
-                margin-bottom: 30px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-                border: 1px solid #e1e8ed;
-            }
-
-            .upload-section h2 {
-                margin-bottom: 20px;
-                color: #2c3e50;
-                font-size: 1.5em;
-            }
-
-            .file-input-container {
-                margin-bottom: 20px;
-            }
-
-            .file-input-wrapper {
-                position: relative;
-                display: inline-block;
-                cursor: pointer;
-                background: #f8f9fa;
-                border: 2px dashed #dee2e6;
-                border-radius: 8px;
-                padding: 40px;
-                text-align: center;
-                transition: all 0.3s ease;
-                width: 100%;
-            }
-
-            .file-input-wrapper:hover {
-                border-color: #667eea;
-                background: #f0f4ff;
-            }
-
-            .file-input-wrapper.dragover {
-                border-color: #667eea;
-                background: #e3f2fd;
-            }
-
-            .file-input {
-                position: absolute;
-                opacity: 0;
-                width: 100%;
-                height: 100%;
-                cursor: pointer;
-            }
-
-            .file-input-text {
-                font-size: 1.1em;
-                color: #6c757d;
-            }
-
-            .file-info {
-                margin-top: 15px;
-                padding: 10px;
-                background: #e8f5e8;
-                border-radius: 6px;
-                color: #2d5a2d;
-                display: none;
-            }
-
-            .buttons-container {
-                display: flex;
-                gap: 15px;
-                flex-wrap: wrap;
-                margin-bottom: 20px;
-            }
-
-            .btn-primary {
-                background: #667eea;
-                color: white;
-            }
-
-            .btn-primary:hover:not(:disabled) {
-                background: #5a6fd8;
-                transform: translateY(-1px);
-            }
-
-            .btn-secondary {
-                background: #6c757d;
-                color: white;
-            }
-
-            .btn-secondary:hover:not(:disabled) {
-                background: #5a6268;
-                transform: translateY(-1px);
-            }
-
-            .content-sections {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 30px;
-                margin-top: 20px;
-            }
-
-            @media (max-width: 768px) {
-                .content-sections {
-                    grid-template-columns: 1fr;
-                }
-
-                .buttons-container {
-                    flex-direction: column;
-                }
-            }
-
-            .textarea {
-                min-height: 400px;
-                padding: 15px;
-                border: 1px solid #dee2e6;
-                border-radius: 8px;
-                font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-                font-size: 13px;
-                line-height: 1.5;
-                resize: vertical;
-                background: #f8f9fa;
-            }
-
-            .textarea:focus {
-                outline: none;
-                border-color: #667eea;
-                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-            }
-
-            .status-info {
-                margin-top: 10px;
-                padding: 10px;
-                background: #e3f2fd;
-                border-radius: 6px;
-                font-size: 14px;
-                color: #1565c0;
-            }
-        </style>
-    </th:block>
+    <th:block th:fragment="extraHead"></th:block>
 </head>
 <body>
-    <div th:fragment="content">
-        <div class="container">
-            <div class="header">
-                <h1>MailAI Email Parser</h1>
-                <p>Upload and parse .eml email files to extract readable content</p>
-            </div>
+    <div th:fragment="content" class="min-h-screen bg-slate-100/80 py-12">
+        <div class="mx-auto flex max-w-6xl flex-col gap-10 px-4 sm:px-6 lg:px-8">
+            <header class="relative overflow-hidden rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-ultra shadow-slate-900/10 backdrop-blur">
+                <div class="absolute inset-0 bg-subtle-glow"></div>
+                <div class="relative z-10 flex flex-col gap-4">
+                    <h1 class="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">ComposerAI Email Parser</h1>
+                    <p class="max-w-2xl text-base text-slate-600">Upload email archives, preview raw content, and run them through the backend parsing pipeline with a tailored experience inspired by the diagnostics workspace.</p>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">Parser</span>
+                        <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">Supports .eml, .msg, .txt</span>
+                    </div>
+                </div>
+            </header>
 
-            <div class="upload-section">
-                <h2>📧 Upload Email File</h2>
-
-                <div class="file-input-container">
-                    <div class="file-input-wrapper" id="fileInputWrapper">
-                        <input type="file" id="fileInput" class="file-input" accept=".eml,.msg,.txt,text/plain,message/rfc822" />
-                        <div class="file-input-text">
-                            <strong>Click to select</strong> or <strong>drag & drop</strong> your .eml file here
-                            <br><small>Supported formats: .eml, .msg, .txt</small>
+            <main class="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+                <section class="rounded-3xl border border-slate-200 bg-white/90 shadow-lg shadow-slate-900/5">
+                    <div class="flex flex-col gap-4 border-b border-slate-200 px-6 py-5">
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-900">Upload Email File</h2>
+                            <p class="mt-1 text-sm text-slate-500">Drag & drop a supported email file or select one from your device.</p>
                         </div>
                     </div>
-                    <div id="fileInfo" class="file-info"></div>
-                </div>
+                    <div class="px-6 pb-6 pt-4">
+                        <label for="fileInput" class="block">
+                            <div id="fileInputWrapper" class="relative flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/80 px-6 py-12 text-center transition hover:border-slate-300 hover:bg-slate-100/80">
+                                <input type="file" id="fileInput" accept=".eml,.msg,.txt,text/plain,message/rfc822" class="absolute inset-0 cursor-pointer opacity-0" />
+                                <div class="flex h-12 w-12 items-center justify-center rounded-full bg-white text-2xl shadow-sm">📧</div>
+                                <div class="text-sm font-medium text-slate-700">
+                                    Click to select or drag &amp; drop your `.eml` file
+                                </div>
+                                <p class="text-xs text-slate-500">Supported formats: .eml, .msg, .txt</p>
+                            </div>
+                        </label>
+                        <div id="fileInfo" class="mt-4 hidden rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800"></div>
 
-                <div class="buttons-container">
-                    <button id="previewBtn" class="btn btn-secondary" disabled>
-                        📄 Preview Raw Contents
-                    </button>
-                    <button id="parseBtn" class="btn btn-primary" disabled>
-                        🔄 Send to Backend & Parse
-                    </button>
-                </div>
+                        <div class="mt-4 flex flex-col gap-3 sm:flex-row">
+                            <button id="parseBtn" class="inline-flex w-full items-center justify-center rounded-xl border border-slate-900/10 bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:cursor-not-allowed disabled:opacity-60" disabled>
+                                🔄 Parse Email
+                            </button>
+                        </div>
 
-                <div id="statusMessage"></div>
-            </div>
+                        <div id="statusMessage" class="mt-4"></div>
+                    </div>
+                </section>
 
-            <div class="content-sections">
-                <div class="section">
-                    <h3>📝 Raw Email Contents</h3>
-                    <textarea id="rawContent" class="textarea" placeholder="Raw email content will appear here after clicking 'Preview Raw Contents'..." readonly></textarea>
-                </div>
-
-                <div class="section">
-                    <h3>✨ Parsed Email Output</h3>
-                    <textarea id="parsedContent" class="textarea" placeholder="Parsed email content will appear here after clicking 'Send to Backend & Parse'..." readonly></textarea>
-                </div>
-            </div>
+                <section class="rounded-3xl border border-slate-200 bg-white/90 shadow-lg shadow-slate-900/5">
+                    <div class="grid grid-cols-1 gap-6 px-6 py-5">
+                        <div>
+                            <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Raw Email Contents</h3>
+                            <textarea id="rawContent" class="mt-3 h-64 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-800 shadow-inner focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200" placeholder="Raw email content will appear here after clicking 'Preview Raw Contents'..." readonly></textarea>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Parsed Email Output</h3>
+                            <textarea id="parsedContent" class="mt-3 h-64 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-800 shadow-inner focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200" placeholder="Parsed email content will appear here after clicking 'Send to Backend & Parse'..." readonly></textarea>
+                        </div>
+                        <div id="statusInfo" class="text-xs text-slate-500">
+                            Tip: Parsed output uses backend extraction pipeline with HTML to text conversion and chunking strategy to deliver clean summaries.
+                        </div>
+                    </div>
+                </section>
+            </main>
         </div>
 
         <script>
@@ -195,7 +76,6 @@
                 const fileInput = document.getElementById('fileInput');
                 const fileInputWrapper = document.getElementById('fileInputWrapper');
                 const fileInfo = document.getElementById('fileInfo');
-                const previewBtn = document.getElementById('previewBtn');
                 const parseBtn = document.getElementById('parseBtn');
                 const rawContent = document.getElementById('rawContent');
                 const parsedContent = document.getElementById('parsedContent');
@@ -214,7 +94,6 @@
                 fileInputWrapper.addEventListener('drop', handleDrop);
 
                 // Button event listeners
-                previewBtn.addEventListener('click', previewRawContents);
                 parseBtn.addEventListener('click', sendToBackend);
 
                 function handleFileSelect(event) {
@@ -266,7 +145,7 @@
                     selectedFile = file;
 
                     // Update file info display
-                    fileInfo.style.display = 'block';
+                    fileInfo.classList.remove('hidden');
                     fileInfo.innerHTML = `
                         <strong>Selected file:</strong> ${file.name}<br>
                         <strong>Size:</strong> ${formatFileSize(file.size)}<br>
@@ -274,15 +153,16 @@
                     `;
 
                     // Enable buttons
-                    previewBtn.disabled = false;
                     parseBtn.disabled = false;
 
                     // Clear previous content
                     rawContent.value = '';
                     parsedContent.value = '';
-                    clearMessage();
+                    statusMessage.innerHTML = '';
 
-                    showMessage('File selected successfully! You can now preview or parse the email.', 'success');
+                    showMessage('File selected successfully! Preview generated from original file.', 'success');
+
+                    previewRawContents();
                 }
 
                 function previewRawContents() {
@@ -291,22 +171,15 @@
                         return;
                     }
 
-                    previewBtn.innerHTML = '<div class="loading"></div>Reading file...';
-                    previewBtn.disabled = true;
-
                     const reader = new FileReader();
 
                     reader.onload = function (event) {
                         rawContent.value = event.target.result;
-                        previewBtn.innerHTML = '📄 Preview Raw Contents';
-                        previewBtn.disabled = false;
                         showMessage('Raw content loaded successfully!', 'success');
                     };
 
                     reader.onerror = function () {
                         showMessage('Error reading file. Please try again.', 'error');
-                        previewBtn.innerHTML = '📄 Preview Raw Contents';
-                        previewBtn.disabled = false;
                     };
 
                     reader.readAsText(selectedFile);
@@ -318,7 +191,7 @@
                         return;
                     }
 
-                    parseBtn.innerHTML = '<div class="loading"></div>Parsing email...';
+                    parseBtn.innerHTML = '<span class="inline-flex items-center gap-2"><span class="h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600"></span>Parsing email...</span>';
                     parseBtn.disabled = true;
                     parsedContent.value = 'Processing...';
 
@@ -336,6 +209,7 @@
                             const result = await response.json();
                             if (result.status === 'success') {
                                 parsedContent.value = result.parsedText;
+                                parsedContent.dataset.markdown = result.parsedMarkdown || '';
                                 showMessage('Email parsed successfully!', 'success');
                             } else {
                                 throw new Error(result.error || 'Unknown error occurred');
@@ -348,14 +222,17 @@
                         parsedContent.value = `Error: ${error.message}`;
                         showMessage(`Failed to parse email: ${error.message}`, 'error');
                     } finally {
-                        parseBtn.innerHTML = '🔄 Send to Backend & Parse';
+                        parseBtn.innerHTML = '🔄 Parse Email';
                         parseBtn.disabled = false;
                     }
                 }
 
                 function showMessage(message, type) {
-                    const className = type === 'error' ? 'error-message' : 'success-message';
-                    statusMessage.innerHTML = `<div class="${className}">${message}</div>`;
+                    const base = 'rounded-xl px-4 py-3 text-sm font-medium';
+                    const variant = type === 'error'
+                        ? 'border border-rose-200 bg-rose-50 text-rose-700'
+                        : 'border border-emerald-200 bg-emerald-50 text-emerald-700';
+                    statusMessage.innerHTML = `<div class="${base} ${variant}">${message}</div>`;
 
                     // Auto-hide success messages after 5 seconds
                     if (type === 'success') {

@@ -1,138 +1,92 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout :: layout(~{::body/content}, 'MailAI Diagnostics', ~{::head/extraHead})}">
+      th:replace="~{layout :: layout(~{::body/content}, 'ComposerAI Diagnostics', ~{::head/extraHead})}">
 <head>
-    <th:block th:fragment="extraHead">
-        <style>
-            .team-info {
-                background: rgba(255,255,255,0.1);
-                padding: 20px;
-                border-radius: 8px;
-                margin-top: 20px;
-            }
-
-            .team-info h3 {
-                margin: 0 0 15px 0;
-                font-size: 1.3em;
-            }
-
-            .team-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                gap: 15px;
-                margin-top: 15px;
-            }
-
-            .team-item {
-                background: rgba(255,255,255,0.1);
-                padding: 10px 15px;
-                border-radius: 5px;
-            }
-
-            .team-item strong {
-                display: block;
-                margin-bottom: 5px;
-            }
-
-            .main-content {
-                padding: 30px;
-            }
-
-            .section {
-                margin-bottom: 40px;
-                border: 1px solid #e0e0e0;
-                border-radius: 8px;
-                overflow: hidden;
-            }
-
-            .section-header {
-                background: #f8f9fa;
-                padding: 20px;
-                border-bottom: 1px solid #e0e0e0;
-            }
-
-            .section-header h2 {
-                margin: 0;
-                color: #495057;
-                font-size: 1.5em;
-            }
-
-            .section-content {
-                padding: 20px;
-            }
-
-            .input-group input {
-                box-sizing: border-box;
-            }
-
-            .json-display {
-                margin: 10px 0;
-            }
-        </style>
-    </th:block>
+    <th:block th:fragment="extraHead"></th:block>
 </head>
 <body>
-    <div th:fragment="content">
-        <div class="container">
-            <div class="header">
-                <h1>AI for Email Diagnostics</h1>
-                <div class="team-info">
-                    <h3>Project Information</h3>
-                    <div class="team-grid">
-                        <div class="team-item">
-                            <strong>Project Title:</strong>
-                            AI for Email
+    <div th:fragment="content" class="min-h-screen bg-slate-100/80 py-12">
+        <div class="mx-auto flex max-w-6xl flex-col gap-10 px-4 sm:px-6 lg:px-8">
+            <header class="relative overflow-hidden rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-ultra shadow-slate-900/10 backdrop-blur">
+                <div class="absolute inset-0 bg-subtle-glow"></div>
+                <div class="relative z-10 flex flex-col gap-8">
+                    <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                        <div class="flex flex-1 flex-col gap-4">
+                            <div class="flex items-center gap-4">
+                                <div class="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-sm">
+                                    <span class="text-xl font-semibold">AI</span>
+                                </div>
+                                <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">Production</span>
+                            </div>
+                            <div>
+                                <h1 class="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">AI for Email Diagnostics</h1>
+                                <p class="mt-3 max-w-2xl text-base text-slate-600">Monitor system health, inspect retrieval quality, and validate LLM outputs within a refined diagnostics workspace of translucent panels, deep slate accents, and calm typographic hierarchy.</p>
+                            </div>
                         </div>
-                        <div class="team-item">
-                            <strong>Team Name:</strong>
-                            MailAI
-                        </div>
-                        <div class="team-item">
-                            <strong>Team Lead:</strong>
-                            William Callahan
+                        <div class="flex flex-shrink-0 items-center gap-3">
+                            <button type="button" class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400">
+                                Export Report
+                            </button>
                         </div>
                     </div>
-                    <div class="team-grid">
-                        <div class="team-item">
-                            <strong>Team Members:</strong>
-                            William Callahan, Mihir Gupta, Ashish Divakaran
+
+                    <div class="grid grid-cols-1 gap-3 md:grid-cols-3 lg:grid-cols-5">
+                        <div class="rounded-2xl border border-slate-200 bg-white/70 p-5 shadow-inner shadow-slate-900/5">
+                            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Project Title</h3>
+                            <p class="mt-2 text-sm font-medium text-slate-900">AI for Email</p>
                         </div>
-                        <div class="team-item">
-                            <strong>GitHub Usernames:</strong>
-                            ashgithubmaker, Readermihir, WilliamAGH
+                        <div class="rounded-2xl border border-slate-200 bg-white/70 p-5 shadow-inner shadow-slate-900/5">
+                            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Team</h3>
+                            <p class="mt-2 text-sm font-medium text-slate-900">ComposerAI</p>
+                        </div>
+                        <div class="rounded-2xl border border-slate-200 bg-white/70 p-5 shadow-inner shadow-slate-900/5">
+                            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Team Lead</h3>
+                            <p class="mt-2 text-sm font-medium text-slate-900">William Callahan</p>
+                        </div>
+                        <div class="rounded-2xl border border-slate-200 bg-white/70 p-5 shadow-inner shadow-slate-900/5">
+                            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Members</h3>
+                            <p class="mt-2 text-sm font-medium text-slate-900">William Callahan, Mihir Gupta, Ashish Divakaran</p>
+                        </div>
+                        <div class="rounded-2xl border border-slate-200 bg-white/70 p-5 shadow-inner shadow-slate-900/5">
+                            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">GitHub</h3>
+                            <p class="mt-2 text-sm font-medium text-slate-900">ashgithubmaker, Readermihir, WilliamAGH</p>
                         </div>
                     </div>
                 </div>
-            </div>
+            </header>
 
-            <div class="main-content">
-                <!-- System Health Section -->
-                <div class="section">
-                    <div class="section-header">
-                        <h2>System Health</h2>
+            <main class="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                <section class="rounded-3xl border border-slate-200 bg-white/90 shadow-lg shadow-slate-900/5">
+                    <div class="flex flex-col gap-4 border-b border-slate-200 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-900">System Health</h2>
+                            <p class="mt-1 text-sm text-slate-500">Trigger a live health check and inspect the response payload.</p>
+                        </div>
+                        <button id="healthCheckBtn" class="inline-flex items-center justify-center rounded-xl border border-slate-900/10 bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900">Check Health</button>
                     </div>
-                    <div class="section-content">
-                        <button id="healthCheckBtn" class="button">Check Health</button>
-                        <div id="healthStatus"></div>
-                        <div id="healthResults"></div>
+                    <div class="px-6 pb-6 pt-4">
+                        <div id="healthStatus" class="text-sm text-slate-600"></div>
+                        <div id="healthResults" class="mt-5 space-y-4"></div>
                     </div>
-                </div>
+                </section>
 
-                <!-- Run Sample Query Section -->
-                <div class="section">
-                    <div class="section-header">
-                        <h2>Run Sample Query</h2>
+                <section class="rounded-3xl border border-slate-200 bg-white/90 shadow-lg shadow-slate-900/5">
+                    <div class="flex flex-col gap-4 border-b border-slate-200 px-6 py-5">
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-900">Run Sample Query</h2>
+                            <p class="mt-1 text-sm text-slate-500">Explore the retrieval augmented generation pipeline with your own prompt.</p>
+                        </div>
                     </div>
-                    <div class="section-content">
+                    <div class="px-6 pb-6 pt-4">
                         <div class="input-group">
-                            <label for="queryInput">Enter your query:</label>
-                            <input type="text" id="queryInput" placeholder="e.g., How do I schedule a meeting with my team?" />
+                            <label for="queryInput" class="text-sm font-medium text-slate-700">Enter your query</label>
+                            <input type="text" id="queryInput" placeholder="e.g., How do I schedule a meeting with my team?" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 shadow-sm transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200" />
                         </div>
-                        <button id="runQueryBtn" class="button">Run Query</button>
-                        <div id="queryResults"></div>
+                        <button id="runQueryBtn" class="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-slate-900/10 bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900">Run Query</button>
+                        <div id="queryResults" class="mt-6 space-y-6"></div>
                     </div>
-                </div>
-            </div>
+                </section>
+            </main>
         </div>
 
         <script>
@@ -189,23 +143,24 @@
             // Utility functions
             function createCollapsible(title, content, isOpen = false) {
                 const collapsible = document.createElement('div');
-                collapsible.className = 'collapsible';
+                collapsible.className = 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm';
                 
                 const header = document.createElement('div');
-                header.className = 'collapsible-header';
+                header.className = 'flex items-center justify-between gap-4 px-5 py-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 cursor-pointer';
                 header.innerHTML = `
                     <span>${title}</span>
                     <span>${isOpen ? '▼' : '▶'}</span>
                 `;
                 
                 const contentDiv = document.createElement('div');
-                contentDiv.className = `collapsible-content ${isOpen ? 'open' : ''}`;
+                contentDiv.className = `${isOpen ? '' : 'hidden'} border-t border-slate-200 bg-slate-50/70 px-5 py-4 text-sm text-slate-600`;
                 contentDiv.innerHTML = content;
                 
                 header.addEventListener('click', () => {
-                    contentDiv.classList.toggle('open');
+                    const isHidden = contentDiv.classList.toggle('hidden');
+                    const isOpenNow = !isHidden;
                     const arrow = header.querySelector('span:last-child');
-                    arrow.textContent = contentDiv.classList.contains('open') ? '▼' : '▶';
+                    arrow.textContent = isOpenNow ? '▼' : '▶';
                 });
                 
                 collapsible.appendChild(header);
@@ -219,11 +174,11 @@
             }
 
             function showLoading(element) {
-                element.innerHTML = '<div class="loading-spinner"></div>Processing...';
+                element.innerHTML = '<span class="inline-flex items-center gap-2 text-sm text-slate-500"><span class="h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600"></span>Processing...</span>';
             }
 
             function showError(element, message) {
-                element.innerHTML = `<div class="error-message">Error: ${message}</div>`;
+                element.innerHTML = `<div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">Error: ${message}</div>`;
             }
 
             // Health check functionality
@@ -250,12 +205,13 @@
                     }
                     
                     const isHealthy = response.ok && (data.status === 'healthy' || data.status === 'ok');
-                    const statusClass = isHealthy ? 'pass' : 'fail';
-                    const statusText = isHealthy ? 'PASS' : 'FAIL';
+                    const badge = isHealthy
+                        ? '<span class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"><span class="h-2 w-2 rounded-full bg-emerald-500"></span> PASS</span>'
+                        : '<span class="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700"><span class="h-2 w-2 rounded-full bg-rose-500"></span> FAIL</span>';
+
+                    status.innerHTML = `Health Check: ${badge}`;
                     
-                    status.innerHTML = `Health Check: <span class="status ${statusClass}">${statusText}</span>`;
-                    
-                    const jsonDisplay = `<div class="json-display">${formatJSON(data)}</div>`;
+                    const jsonDisplay = `<div class="mt-3 whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-mono text-slate-700">${formatJSON(data)}</div>`;
                     const collapsible = createCollapsible('Health Check Response', jsonDisplay, true);
                     results.appendChild(collapsible);
                     
@@ -284,9 +240,9 @@
                 try {
                     // Step 1: Display initial query
                     results.innerHTML = `
-                        <div class="pipeline-step">
-                            <h4>1. Initial Query</h4>
-                            <div class="json-display">${query}</div>
+                        <div class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+                            <h4 class="text-sm font-semibold text-slate-900">1. Initial Query</h4>
+                            <div class="mt-3 whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-700">${query}</div>
                         </div>
                     `;
                     
@@ -306,29 +262,31 @@
                     
                     // Display search results
                     const searchStep = document.createElement('div');
-                    searchStep.className = 'pipeline-step';
+                    searchStep.className = 'rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm';
                     searchStep.innerHTML = `
-                        <h4>2. Intent/Context Summary</h4>
-                        <p><strong>Intent:</strong> ${searchData.intent || 'N/A'}</p>
-                        <p><strong>Context:</strong> ${searchData.context_summary || 'N/A'}</p>
+                        <h4 class="text-sm font-semibold text-slate-900">2. Intent/Context Summary</h4>
+                        <p class="mt-2 text-sm text-slate-600"><span class="font-semibold text-slate-900">Intent:</span> ${searchData.intent || 'N/A'}</p>
+                        <p class="text-sm text-slate-600"><span class="font-semibold text-slate-900">Context:</span> ${searchData.context_summary || 'N/A'}</p>
                     `;
                     results.appendChild(searchStep);
                     
                     // Display RAG retrieval results
                     const ragStep = document.createElement('div');
-                    ragStep.className = 'pipeline-step';
-                    ragStep.innerHTML = '<h4>3. RAG Retrieval Results</h4>';
+                    ragStep.className = 'rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm';
+                    ragStep.innerHTML = '<h4 class="text-sm font-semibold text-slate-900">3. RAG Retrieval Results</h4>';
                     
                     if (searchData.documents && searchData.documents.length > 0) {
                         const documentsContainer = document.createElement('div');
                         searchData.documents.forEach((doc, index) => {
                             const docElement = document.createElement('div');
-                            docElement.className = 'document-item';
+                            docElement.className = 'mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm';
                             docElement.innerHTML = `
-                                <div class="document-score">${(doc.score * 100).toFixed(1)}%</div>
-                                <strong>${doc.title || `Document ${index + 1}`}</strong>
-                                <p>${doc.content ? doc.content.substring(0, 150) + '...' : 'No content preview'}</p>
-                                <small>Source: ${doc.source || 'Unknown'}</small>
+                                <div class="mb-2 flex items-center justify-between">
+                                    <strong class="text-sm font-semibold text-slate-900">${doc.title || `Document ${index + 1}`}</strong>
+                                    <span class="inline-flex items-center rounded-full bg-slate-900 px-2 py-1 text-xs font-semibold text-white">${(doc.score * 100).toFixed(1)}%</span>
+                                </div>
+                                <p class="text-sm text-slate-600">${doc.content ? doc.content.substring(0, 150) + '...' : 'No content preview'}</p>
+                                <small class="mt-2 inline-block text-xs text-slate-400">Source: ${doc.source || 'Unknown'}</small>
                             `;
                             documentsContainer.appendChild(docElement);
                         });
@@ -336,11 +294,11 @@
                         const ragCollapsible = createCollapsible('Retrieved Documents', documentsContainer.innerHTML, true);
                         ragStep.appendChild(ragCollapsible);
                     } else {
-                        ragStep.innerHTML += '<p>No documents retrieved</p>';
+                        ragStep.innerHTML += '<p class="mt-3 text-sm text-slate-500">No documents retrieved</p>';
                     }
                     
                     const searchJsonCollapsible = createCollapsible('Full Search Response', 
-                        `<div class="json-display">${formatJSON(searchData)}</div>`);
+                        `<div class="mt-3 whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-mono text-slate-700">${formatJSON(searchData)}</div>`);
                     ragStep.appendChild(searchJsonCollapsible);
                     results.appendChild(ragStep);
                     
@@ -363,18 +321,18 @@
                     
                     // Display final answer
                     const generateStep = document.createElement('div');
-                    generateStep.className = 'pipeline-step';
+                    generateStep.className = 'rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm';
                     generateStep.innerHTML = `
-                        <h4>4. Final LLM Answer</h4>
-                        <div style="background: white; padding: 15px; border-radius: 4px; margin: 10px 0;">
+                        <h4 class="text-sm font-semibold text-slate-900">4. Final LLM Answer</h4>
+                        <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                             ${generateData.answer || 'No answer generated'}
                         </div>
-                        <p><strong>Confidence:</strong> ${generateData.confidence ? (generateData.confidence * 100).toFixed(1) + '%' : 'N/A'}</p>
-                        <p><strong>Sources Used:</strong> ${generateData.sources_used ? generateData.sources_used.join(', ') : 'None'}</p>
+                        <p class="mt-3 text-sm text-slate-600"><span class="font-semibold text-slate-900">Confidence:</span> ${generateData.confidence ? (generateData.confidence * 100).toFixed(1) + '%' : 'N/A'}</p>
+                        <p class="text-sm text-slate-600"><span class="font-semibold text-slate-900">Sources Used:</span> ${generateData.sources_used ? generateData.sources_used.join(', ') : 'None'}</p>
                     `;
                     
                     const generateJsonCollapsible = createCollapsible('Full Generate Response',
-                        `<div class="json-display">${formatJSON(generateData)}</div>`);
+                        `<div class="mt-3 whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-mono text-slate-700">${formatJSON(generateData)}</div>`);
                     generateStep.appendChild(generateJsonCollapsible);
                     results.appendChild(generateStep);
                     
