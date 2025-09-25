@@ -2,6 +2,11 @@
 
 Java 21 Spring Boot backend that powers the ComposerAI: a chat interface for reasoning over email mailbox data with LLM assistance and retrieval-augmented context.
 
+## Developer Routes
+
+- `/diagnostics` – internal diagnostics workspace with health checks, mock retrievals, and UI preview controls.
+- `/email-backend` – email parsing tooling for uploading `.eml`/`.txt` files and inspecting normalized output.
+
 ## Feature Highlights
 
 - **Chat Orchestration** – Routes chat requests through OpenAI-compatible models, classifies user intent, and stitches email snippets into responses.
