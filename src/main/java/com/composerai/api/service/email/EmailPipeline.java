@@ -110,8 +110,7 @@ public final class EmailPipeline {
     }
 
     private static String inferInputType(String inputFile) {
-        int idx = inputFile.lastIndexOf('.')
-            ;
+        int idx = inputFile.lastIndexOf('.');
         if (idx < 0) return "";
         return inputFile.substring(idx + 1).toLowerCase(Locale.ROOT);
     }
