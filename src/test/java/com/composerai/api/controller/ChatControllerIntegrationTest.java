@@ -17,6 +17,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(ChatController.class)
 class ChatControllerIntegrationTest {
 
+    private static final String BASE_API_PATH = "/api";
+    private static final String CHAT_ENDPOINT = BASE_API_PATH + "/chat";
+    private static final String HEALTH_ENDPOINT = CHAT_ENDPOINT + "/health";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -28,7 +32,7 @@ class ChatControllerIntegrationTest {
 
     @Test
     void healthEndpoint_ShouldReturnOk() throws Exception {
-        mockMvc.perform(get("/api/chat/health"))
+        mockMvc.perform(get(HEALTH_ENDPOINT))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value("UP"));
@@ -37,8 +41,8 @@ class ChatControllerIntegrationTest {
     @Test
     void chatEndpoint_WithEmptyMessage_ShouldReturnBadRequest() throws Exception {
         ChatRequest request = new ChatRequest("", null, 5);
-        
-        mockMvc.perform(post("/api/chat")
+
+        mockMvc.perform(post(CHAT_ENDPOINT)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
