@@ -14,7 +14,7 @@
                     <p class="max-w-2xl text-base text-slate-600">Upload email archives, preview raw content, and run them through the backend parsing pipeline with a tailored experience inspired by the diagnostics workspace.</p>
                     <div class="flex flex-wrap items-center gap-3">
                         <span class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">Parser</span>
-                        <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">Supports .eml, .msg, .txt</span>
+                        <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">Supports .eml, .txt</span>
                     </div>
                 </div>
             </header>
@@ -32,12 +32,12 @@
                             <div id="fileInputWrapper" class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/80 px-6 py-8 md:py-6 text-center transition hover:border-slate-300 hover:bg-slate-100/80">
                                 <label for="fileInput" class="block">
                                     <div class="relative flex flex-col items-center justify-center gap-2">
-                                        <input type="file" id="fileInput" accept=".eml,.msg,.txt,text/plain,message/rfc822" class="absolute inset-0 z-0 cursor-pointer opacity-0" />
+                                        <input type="file" id="fileInput" accept=".eml,.txt,text/plain,message/rfc822" class="absolute inset-0 z-0 cursor-pointer opacity-0" />
                                         <div class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-xl shadow-sm">📧</div>
                                         <div class="text-sm font-medium text-slate-700">
                                             Click to select or drag &amp; drop your `.eml` file
                                         </div>
-                                        <p class="text-xs text-slate-500">Supported formats: .eml, .msg, .txt</p>
+                                        <p class="text-xs text-slate-500">Supported formats: .eml, .txt</p>
                                     </div>
                                 </label>
                                 <div class="mt-3">
@@ -136,7 +136,7 @@
                     if (!file) return;
 
                     // Validate file type by extension and MIME type
-                    const validExtensions = ['.eml', '.msg', '.txt'];
+                    const validExtensions = ['.eml', '.txt'];
                     const validMimeTypes = ['message/rfc822', 'text/plain', 'application/octet-stream'];
                     const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
 
@@ -144,7 +144,7 @@
                     const isValidMimeType = validMimeTypes.includes(file.type) || file.type === '';
 
                     if (!isValidExtension) {
-                        showMessage('Please select a valid email file (.eml, .msg, or .txt)', 'error');
+                        showMessage('Please select a valid email file (.eml or .txt)', 'error');
                         return;
                     }
 
