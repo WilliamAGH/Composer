@@ -16,7 +16,7 @@ public class WebViewController {
         return "diagnostics";
     }
 
-    @GetMapping({"/email-backend", "/email-backend.html"})
+    @GetMapping({"/email-backend"})
     public String emailBackend() {
         return "email-backend";
     }
