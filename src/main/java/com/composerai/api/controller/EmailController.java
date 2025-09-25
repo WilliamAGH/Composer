@@ -8,6 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 // (no extra java.util.* imports needed)
@@ -18,6 +19,8 @@ import java.nio.file.StandardCopyOption;
 // Import your existing parser classes
 import com.composerai.api.service.HtmlToText;
 // (No direct parsing here; delegated to HtmlToText/EmailPipeline)
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * REST Controller for handling email file uploads and parsing operations.
@@ -90,18 +93,39 @@ public class EmailController {
             options.format = HtmlToText.OutputFormat.PLAIN;
             options.urlsPolicy = HtmlToText.UrlPolicy.CLEAN_ONLY;
             options.includeMetadata = true;
-            options.jsonOutput = false;
+            options.jsonOutput = true; // request structured output with plain & markdown
             options.suppressUtility = true;
 
-            String parsedText;
+            String jsonPayload;
             try {
-                parsedText = HtmlToText.convert(options);
+                jsonPayload = HtmlToText.convert(options);
             } finally {
                 try { Files.deleteIfExists(tempFile); } catch (IOException ignore) { }
             }
 
+            Map<String, Object> parsedDocument;
+            try {
+                parsedDocument = new ObjectMapper().readValue(jsonPayload, new TypeReference<>() {});
+            } catch (IOException e) {
+                response.put("error", "Failed to parse email output: " + e.getMessage());
+                response.put("status", "error");
+                response.put("code", 500);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            }
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> content = parsedDocument.containsKey("content")
+                ? (Map<String, Object>) parsedDocument.get("content")
+                : Collections.emptyMap();
+
+            String plainText = content.getOrDefault("plainText", "").toString();
+            String markdown = content.getOrDefault("markdown", "").toString();
+
             // Build successful response
-            response.put("parsedText", parsedText);
+            response.put("parsedText", markdown); // use markdown for preserved line breaks
+            response.put("parsedPlain", plainText);
+            response.put("parsedMarkdown", markdown);
+            response.put("document", parsedDocument);
             response.put("status", "success");
             response.put("filename", filename);
             response.put("fileSize", file.getSize());
