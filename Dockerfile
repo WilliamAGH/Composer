@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
-ARG BASE_IMAGE=openjdk:21-jdk-slim
-ARG MAVEN_IMAGE=maven:3.9-openjdk-21
+ARG BASE_IMAGE=eclipse-temurin:21-jre-alpine
+ARG MAVEN_IMAGE=maven:3.9-eclipse-temurin-21
 
 FROM ${MAVEN_IMAGE} AS builder
 WORKDIR /workspace
