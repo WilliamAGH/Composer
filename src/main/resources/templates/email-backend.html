@@ -32,7 +32,7 @@
                             <div id="fileInputWrapper" class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/80 px-6 py-8 md:py-6 text-center transition hover:border-slate-300 hover:bg-slate-100/80">
                                 <label for="fileInput" class="block">
                                     <div class="relative flex flex-col items-center justify-center gap-2">
-                                        <input type="file" id="fileInput" accept=".eml,.msg,.txt,text/plain,message/rfc822" class="absolute inset-0 cursor-pointer opacity-0" />
+                                        <input type="file" id="fileInput" accept=".eml,.msg,.txt,text/plain,message/rfc822" class="absolute inset-0 z-0 cursor-pointer opacity-0" />
                                         <div class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-xl shadow-sm">📧</div>
                                         <div class="text-sm font-medium text-slate-700">
                                             Click to select or drag &amp; drop your `.eml` file
@@ -41,7 +41,7 @@
                                     </div>
                                 </label>
                                 <div class="mt-3">
-                                    <button id="parseBtn" class="inline-flex items-center justify-center rounded-xl border border-slate-900/10 bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:cursor-not-allowed disabled:opacity-60" disabled>
+                                    <button id="parseBtn" class="relative z-10 inline-flex items-center justify-center rounded-xl border border-slate-900/10 bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:cursor-not-allowed disabled:opacity-60" disabled>
                                         🔄 Parse Email
                                     </button>
                                 </div>
@@ -57,13 +57,13 @@
                     <section class="rounded-3xl border border-slate-200 bg-white/90 shadow-lg shadow-slate-900/5">
                         <div class="px-6 py-5">
                             <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Raw Email Contents</h3>
-                            <textarea id="rawContent" class="mt-3 h-[32rem] w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-800 shadow-inner focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200" placeholder="Raw email content will appear here after clicking 'Preview Raw Contents'..." readonly></textarea>
+                            <textarea id="rawContent" class="mt-3 h-[32rem] w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-800 shadow-inner focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200" placeholder="Raw email content appears after selecting a file or clicking Parse Email..." readonly></textarea>
                         </div>
                     </section>
                     <section class="rounded-3xl border border-slate-200 bg-white/90 shadow-lg shadow-slate-900/5">
                         <div class="px-6 py-5">
                             <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Parsed Email Output</h3>
-                            <textarea id="parsedContent" class="mt-3 h-[32rem] w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-800 shadow-inner focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200" placeholder="Parsed email content will appear here after clicking 'Send to Backend & Parse'..." readonly></textarea>
+                            <textarea id="parsedContent" class="mt-3 h-[32rem] w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-800 shadow-inner focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200" placeholder="Parsed email output appears here after clicking Parse Email..." readonly></textarea>
                         </div>
                     </section>
                 </div>
@@ -99,6 +99,7 @@
                 fileInputWrapper.addEventListener('drop', handleDrop);
 
                 // Button event listeners
+                parseBtn.addEventListener('click', function (e) { e.stopPropagation(); });
                 parseBtn.addEventListener('click', sendToBackend);
 
                 function handleFileSelect(event) {
@@ -195,6 +196,9 @@
                         showMessage('Please select a file first.', 'error');
                         return;
                     }
+
+                    // Ensure the latest raw preview is visible immediately
+                    previewRawContents();
 
                     parseBtn.innerHTML = '<span class="inline-flex items-center gap-2"><span class="h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600"></span>Parsing email...</span>';
                     parseBtn.disabled = true;
