@@ -1,16 +1,10 @@
-# Compiled class file
+# Compiled classes and logs
 *.class
-
-# Log file
 *.log
+hs_err_pid*
+replay_pid*
 
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
+# Package Files
 *.jar
 *.war
 *.nar
@@ -19,9 +13,8 @@
 *.tar.gz
 *.rar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
+# OS artifacts
+.DS_Store
 
 # Maven
 target/
@@ -35,11 +28,62 @@ buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
 
-# Spring Boot
-.DS_Store
-.vscode/
+# IntelliJ IDEA (share only selected project files)
 .idea/
+!.idea/compiler.xml
+!.idea/editor.xml
+!.idea/encodings.xml
+!.idea/jarRepositories.xml
+!.idea/misc.xml
+!.idea/vcs.xml
+!.idea/inspectionProfiles/
+!.idea/inspectionProfiles/**
+
+# IntelliJ local-only files still ignored even if previously tracked
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/shelf/
+.idea/dictionaries/
+.idea/libraries/
+.idea/httpRequests/
+.idea/copilot*
+.idea/editorJumperProjectSettings.xml
+.idea/git_toolbox_prj.xml
+
+# VS Code - keep settings.json for project config
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# Eclipse - keep project config files
+.metadata/
+.recommenders/
+.target/
+# Keep these Eclipse project files:
+# .classpath
+# .project
+# .settings/
+
+# Build outputs
+out/
+bin/
+
+# IDE-specific and temp files
 *.iml
 *.iws
 *.ipr
+.code-runner
+.claude
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Spring Boot specific
 application-local.properties
+ComposerAI.*
+Code/email-backend.html.backup
+email-test.html
