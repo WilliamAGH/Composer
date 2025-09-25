@@ -249,7 +249,7 @@
                     // Step 2: Search API call
                     let searchData;
                     try {
-                        const searchResponse = await fetch('/api/chat/search', {
+                        const searchResponse = await fetch('/api/chat', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ query })
@@ -305,7 +305,7 @@
                     // Step 4: Generate API call
                     let generateData;
                     try {
-                        const generateResponse = await fetch('/api/chat/generate', {
+                        const generateResponse = await fetch('/api/chat', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ 
