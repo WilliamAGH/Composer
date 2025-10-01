@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 @Service
 public class OpenAiChatService {
@@ -39,7 +40,7 @@ public class OpenAiChatService {
     }
 
     public String generateResponse(String userMessage, String emailContext) {
-        try {
+        return executeWithFallback(() -> {
             if (openAiClient == null) {
                 return OPENAI_MISCONFIGURED_MESSAGE;
             }
@@ -56,15 +57,11 @@ public class OpenAiChatService {
             String aiResponse = extractChoiceContent(response, OPENAI_UNAVAILABLE_MESSAGE);
             logger.info("Generated AI response for user query");
             return aiResponse;
-
-        } catch (Exception e) {
-            logger.warn("OpenAI error while generating response: {}", e.getMessage());
-            return OPENAI_UNAVAILABLE_MESSAGE;
-        }
+        }, OPENAI_UNAVAILABLE_MESSAGE, "OpenAI error while generating response");
     }
 
     public String analyzeIntent(String userMessage) {
-        try {
+        return executeWithFallback(() -> {
             if (openAiClient == null) {
                 return "question";
             }
@@ -80,11 +77,7 @@ public class OpenAiChatService {
 
             logger.info("Analyzed intent: {}", intent);
             return intent.isEmpty() ? "question" : intent;
-
-        } catch (Exception e) {
-            logger.warn("OpenAI error while analyzing intent: {}", e.getMessage());
-            return "question";
-        }
+        }, "question", "OpenAI error while analyzing intent");
     }
 
     public void streamResponse(String userMessage, String emailContext,
@@ -116,7 +109,7 @@ public class OpenAiChatService {
     }
 
     public float[] generateEmbedding(String text) {
-        try {
+        return executeWithFallback(() -> {
             EmbeddingCreateParams params = EmbeddingCreateParams.builder()
                 .model(EmbeddingModel.TEXT_EMBEDDING_3_SMALL)
                 .input(text)
@@ -133,10 +126,7 @@ public class OpenAiChatService {
                 result[i] = vector.get(i);
             }
             return result;
-        } catch (Exception e) {
-            logger.warn("OpenAI error while generating embeddings: {}", e.getMessage());
-            return new float[0];
-        }
+        }, new float[0], "OpenAI error while generating embeddings");
     }
 
     private ChatModel resolveChatModel() {
@@ -178,5 +168,24 @@ public class OpenAiChatService {
             return defaultValue;
         }
         return choices.get(0).message().content().orElse(defaultValue);
+    }
+
+    /**
+     * Execute an action with fallback error handling.
+     * Catches any exceptions, logs a warning, and returns the fallback value.
+     *
+     * @param action     the action to execute
+     * @param fallback   the value to return if an exception occurs
+     * @param errorMsg   the error message to log
+     * @param <T>        the return type
+     * @return the result of the action or the fallback value
+     */
+    private <T> T executeWithFallback(Supplier<T> action, T fallback, String errorMsg) {
+        try {
+            return action.get();
+        } catch (Exception e) {
+            logger.warn("{}: {}", errorMsg, e.getMessage());
+            return fallback;
+        }
     }
 }

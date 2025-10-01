@@ -9,6 +9,7 @@
 package com.composerai.api.service.email;
 
 import com.composerai.api.service.HtmlToText;
+import com.composerai.api.util.StringUtils;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 
@@ -53,11 +54,11 @@ public final class EmailPipeline {
                     String plain = html != null ? HtmlConverter.convertHtml(html, HtmlToText.OutputFormat.PLAIN, options.urlsPolicy, options.suppressUtility) : HtmlConverter.cleanupOutput(text, options.suppressUtility);
                     String markdown = html != null ? HtmlConverter.convertHtml(html, HtmlToText.OutputFormat.MARKDOWN, options.urlsPolicy, options.suppressUtility) : HtmlConverter.cleanupOutput(text, options.suppressUtility);
                     Map<String, Object> meta = new HashMap<>();
-                    meta.put("messageId", safe(message.getMessageID()));
-                    meta.put("subject", safe(message.getSubject()));
-                    meta.put("from", safe(EmailExtractor.formatAddresses(message.getFrom())));
-                    meta.put("to", safe(EmailExtractor.formatAddresses(message.getRecipients(jakarta.mail.Message.RecipientType.TO))));
-                    meta.put("cc", safe(EmailExtractor.formatAddresses(message.getRecipients(jakarta.mail.Message.RecipientType.CC))));
+                    meta.put("messageId", StringUtils.safe(message.getMessageID()));
+                    meta.put("subject", StringUtils.safe(message.getSubject()));
+                    meta.put("from", StringUtils.safe(EmailExtractor.formatAddresses(message.getFrom())));
+                    meta.put("to", StringUtils.safe(EmailExtractor.formatAddresses(message.getRecipients(jakarta.mail.Message.RecipientType.TO))));
+                    meta.put("cc", StringUtils.safe(EmailExtractor.formatAddresses(message.getRecipients(jakarta.mail.Message.RecipientType.CC))));
                     meta.put("source", "eml-file");
                     meta.put("path", Path.of(options.inputFile).getFileName().toString());
 
@@ -114,8 +115,6 @@ public final class EmailPipeline {
         if (idx < 0) return "";
         return inputFile.substring(idx + 1).toLowerCase(Locale.ROOT);
     }
-
-    private static String safe(String s) { return s == null ? "" : s; }
 }
 
 

@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.IntStream;
 
 @Service
 public class VectorSearchService {
@@ -63,14 +64,14 @@ public class VectorSearchService {
             return emailContexts;
             
         } catch (InterruptedException e) {
-            logger.warn("Qdrant search interrupted: {}", e.getMessage());
+            logger.warn("Qdrant search interrupted", e);
             Thread.currentThread().interrupt();
             return new ArrayList<>();
         } catch (ExecutionException e) {
-            logger.warn("Qdrant search failed: {}", (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
+            logger.warn("Qdrant search failed", e.getCause() != null ? e.getCause() : e);
             return new ArrayList<>();
         } catch (Exception e) {
-            logger.warn("Qdrant search error: {}", e.getMessage());
+            logger.warn("Qdrant search error", e);
             return new ArrayList<>();
         }
     }
@@ -80,26 +81,20 @@ public class VectorSearchService {
     }
 
     private List<Float> convertFloatArrayToList(float[] array) {
-        List<Float> list = new ArrayList<>();
-        if (array != null) {
-            for (float value : array) {
-                list.add(value);
-            }
-        }
-        return list;
+        return array == null ? List.of()
+            : IntStream.range(0, array.length)
+                .mapToObj(i -> array[i])
+                .toList();
     }
 
     private EmailContext extractEmailContext(ScoredPoint point) {
         // Extract email metadata from point payload
         // This is a placeholder implementation
         // In a real implementation, you would extract the actual email data from the payload
-        String pointId = "";
-        if (point.getId().hasNum()) {
-            pointId = String.valueOf(point.getId().getNum());
-        } else if (point.getId().hasUuid()) {
-            pointId = point.getId().getUuid();
-        }
-        
+        String pointId = point.getId().hasNum()
+            ? String.valueOf(point.getId().getNum())
+            : point.getId().hasUuid() ? point.getId().getUuid() : "";
+
         return new EmailContext(
             pointId,
             "Sample Subject", // Extract from payload

@@ -9,6 +9,7 @@
 package com.composerai.api.service.email;
 
 import com.composerai.api.service.HtmlToText;
+import com.composerai.api.util.StringUtils;
 import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -30,29 +31,26 @@ public final class HtmlConverter {
 
     public static String convertHtml(String html, HtmlToText.OutputFormat format, HtmlToText.UrlPolicy urlsPolicy, boolean suppressUtility) {
         if (html == null || html.isBlank()) return "";
+
         String preprocessed = preprocessHtml(html, urlsPolicy, suppressUtility);
-        switch (format) {
+        FlexmarkHtmlConverter converter = FlexmarkHtmlConverter.builder().build();
+
+        return switch (format) {
             case MARKDOWN -> {
-                FlexmarkHtmlConverter converter = FlexmarkHtmlConverter.builder().build();
                 String md = converter.convert(preprocessed).trim();
-                return cleanupOutput(md, suppressUtility);
+                yield cleanupOutput(md, suppressUtility);
             }
             case PLAIN -> {
-                FlexmarkHtmlConverter converter = FlexmarkHtmlConverter.builder().build();
                 String md = converter.convert(preprocessed).trim();
                 String txt = markdownToPlain(md);
                 if ((txt == null || txt.isBlank()) && !suppressUtility) {
                     String relaxed = preprocessHtml(html, HtmlToText.UrlPolicy.KEEP, false);
-                    String md2 = converter.convert(relaxed).trim();
-                    txt = markdownToPlain(md2);
+                    txt = markdownToPlain(converter.convert(relaxed).trim());
                 }
-                return cleanupOutput(txt, suppressUtility);
+                yield cleanupOutput(txt, suppressUtility);
             }
-            default -> {
-                String txt = htmlToPlain(preprocessed);
-                return cleanupOutput(txt, suppressUtility);
-            }
-        }
+            default -> cleanupOutput(htmlToPlain(preprocessed), suppressUtility);
+        };
     }
 
     /**
@@ -107,7 +105,7 @@ public final class HtmlConverter {
             } else if (policy == HtmlToText.UrlPolicy.STRIP_ALL) {
                 a.unwrap();
             } else if (policy == HtmlToText.UrlPolicy.CLEAN_ONLY) {
-                String cleaned = sanitizeUrl(a.attr("href"));
+                String cleaned = StringUtils.sanitizeUrl(a.attr("href"));
                 if (cleaned == null || cleaned.isBlank()) a.unwrap();
                 else a.attr("href", cleaned);
             }
@@ -125,7 +123,7 @@ public final class HtmlConverter {
                 if (alt != null && !alt.isBlank()) img.replaceWith(new TextNode(alt));
                 else img.remove();
             } else if (policy == HtmlToText.UrlPolicy.CLEAN_ONLY) {
-                String cleaned = sanitizeUrl(img.attr("src"));
+                String cleaned = StringUtils.sanitizeUrl(img.attr("src"));
                 if (cleaned == null || cleaned.isBlank()) {
                     if (alt != null && !alt.isBlank()) img.replaceWith(new TextNode(alt));
                     else img.remove();
@@ -210,28 +208,6 @@ public final class HtmlConverter {
                     }
                 }
             }
-        }
-    }
-
-    /**
-     * Drop trackers/non-http schemes and query/fragment; limit pathological length.
-     */
-    public static String sanitizeUrl(String url) {
-        try {
-            if (url == null || url.isBlank()) return null;
-            java.net.URI uri = new java.net.URI(url);
-            String scheme = uri.getScheme();
-            if (scheme == null) {
-                String pathOnly = uri.getPath();
-                return (pathOnly == null || pathOnly.isBlank()) ? null : pathOnly;
-            }
-            if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme) && !"mailto".equalsIgnoreCase(scheme)) return null;
-            java.net.URI cleaned = new java.net.URI(uri.getScheme(), uri.getAuthority(), uri.getPath(), null, null);
-            String out = cleaned.toString();
-            if (out.length() > 2048) return null;
-            return out;
-        } catch (Exception e) {
-            return null;
         }
     }
 
