@@ -1,5 +1,6 @@
 package com.composerai.api.config;
 
+import com.composerai.api.util.StringUtils;
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.core.Timeout;
@@ -10,11 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
-import java.util.List;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.context.annotation.Bean;
@@ -27,23 +24,17 @@ public class ClientConfiguration {
 
     @Bean
     public OpenAIClient openAIClient(OpenAiProperties openAiProperties) {
-        String apiKey = sanitize(openAiProperties.getApi().getKey());
+        // spring-dotenv library automatically loads .env file values into environment
+        String apiKey = StringUtils.sanitize(openAiProperties.getApi().getKey());
 
-        if (isMissing(apiKey)) {
-            apiKey = sanitize(System.getenv("OPENAI_API_KEY"));
-            if (!isMissing(apiKey)) {
+        if (StringUtils.isMissing(apiKey)) {
+            apiKey = StringUtils.sanitize(System.getenv("OPENAI_API_KEY"));
+            if (!StringUtils.isMissing(apiKey)) {
                 logger.info("Loaded OpenAI API key from environment variable");
             }
         }
 
-        if (isMissing(apiKey)) {
-            apiKey = sanitize(readFromDotEnv("OPENAI_API_KEY"));
-            if (!isMissing(apiKey)) {
-                logger.info("Loaded OpenAI API key from .env file");
-            }
-        }
-
-        if (isMissing(apiKey)) {
+        if (StringUtils.isMissing(apiKey)) {
             logger.warn("OpenAI API key is not configured; OpenAI features will be disabled");
         }
 
@@ -54,7 +45,7 @@ public class ClientConfiguration {
                 .read(Duration.ofMinutes(5))
                 .write(Duration.ofSeconds(30))
                 .build());
-        if (isMissing(apiKey)) {
+        if (StringUtils.isMissing(apiKey)) {
             // Return a client configured with no credential; services will check and respond gracefully
             return builder.build();
         }
@@ -69,49 +60,6 @@ public class ClientConfiguration {
         return client;
     }
 
-    private boolean isMissing(String value) {
-        if (value == null) {
-            return true;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() || trimmed.equalsIgnoreCase("your-openai-api-key");
-    }
-
-    private String sanitize(String value) {
-        return value == null ? null : value.trim();
-    }
-
-    private String readFromDotEnv(String key) {
-        try {
-            Path p = Path.of(".env");
-            if (!Files.exists(p)) {
-                return null;
-            }
-            List<String> lines = Files.readAllLines(p, StandardCharsets.UTF_8);
-            for (String line : lines) {
-                String trimmed = line.trim();
-                if (trimmed.isEmpty() || trimmed.startsWith("#")) {
-                    continue;
-                }
-                int eq = trimmed.indexOf('=');
-                if (eq <= 0) {
-                    continue;
-                }
-                String k = trimmed.substring(0, eq).trim();
-                if (k.equals(key)) {
-                    String v = trimmed.substring(eq + 1).trim();
-                    if (v.startsWith("\"") && v.endsWith("\"") && v.length() >= 2) {
-                        v = v.substring(1, v.length() - 1);
-                    }
-                    return v;
-                }
-            }
-        } catch (Exception e) {
-            logger.debug("Failed to read {} from .env: {}", key, e.getMessage());
-        }
-        return null;
-    }
-
     @Bean
     public QdrantClient qdrantClient(QdrantProperties qdrantProperties) {
         QdrantGrpcClient.Builder builder = QdrantGrpcClient.newBuilder(
@@ -119,18 +67,12 @@ public class ClientConfiguration {
             qdrantProperties.getPort(),
             qdrantProperties.isUseTls()
         );
-        // Attach API key if provided and supported by the client version
+
+        // Attach API key if provided
         String apiKey = qdrantProperties.getApiKey();
-        if (apiKey != null && !apiKey.trim().isEmpty()) {
-            try {
-                var method = builder.getClass().getMethod("withApiKey", String.class);
-                method.invoke(builder, apiKey.trim());
-                logger.info("Configured Qdrant API key on gRPC client");
-            } catch (NoSuchMethodException e) {
-                logger.warn("Qdrant client version does not support withApiKey; API key not applied");
-            } catch (Exception e) {
-                logger.warn("Failed to set Qdrant API key: {}", e.getMessage());
-            }
+        if (!StringUtils.isBlank(apiKey)) {
+            builder.withApiKey(apiKey.trim());
+            logger.info("Configured Qdrant API key on gRPC client");
         }
 
         return new QdrantClient(builder.build());
