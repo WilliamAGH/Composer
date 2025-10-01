@@ -16,7 +16,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/chat")
-@CrossOrigin(origins = "${app.cors.allowed-origins:*}")
 public class ChatController {
     
     private static final Logger logger = LoggerFactory.getLogger(ChatController.class);
@@ -32,19 +31,8 @@ public class ChatController {
     @PostMapping
     public ResponseEntity<ChatResponse> chat(@Valid @RequestBody ChatRequest request) {
         logger.info("Received chat request from conversation: {}", request.getConversationId());
-        
-        try {
-            ChatResponse response = chatService.processChat(request);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            logger.error("Error processing chat request", e);
-            
-            ChatResponse errorResponse = new ChatResponse();
-            errorResponse.setResponse("An error occurred while processing your request.");
-            errorResponse.setConversationId(request.getConversationId());
-            
-            return ResponseEntity.internalServerError().body(errorResponse);
-        }
+        ChatResponse response = chatService.processChat(request);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/stream")

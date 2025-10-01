@@ -1,6 +1,5 @@
 package com.composerai.api.controller;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,7 +26,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * Provides endpoints for processing .eml files and extracting readable content.
  */
 @RestController
-@CrossOrigin(origins = "${app.cors.allowed-origins:*}")
 @RequestMapping("/api")
 public class EmailController {
 
@@ -41,45 +39,33 @@ public class EmailController {
      */
     @PostMapping(value = "/parse-email", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> parseEmail(@RequestParam("file") MultipartFile file) {
-        
-        Map<String, Object> response = new HashMap<>();
-        
+
+        // Validate file upload
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("No file provided. Please upload a valid .eml file.");
+        }
+
+        // Validate file type
+        String filename = file.getOriginalFilename();
+        if (filename == null || (!filename.toLowerCase().endsWith(".eml") &&
+                               !filename.toLowerCase().endsWith(".msg") &&
+                               !filename.toLowerCase().endsWith(".txt"))) {
+            throw new IllegalArgumentException("Invalid file type. Please upload a .eml, .msg, or .txt file.");
+        }
+
+        // Validate file size (e.g., max 10MB)
+        if (file.getSize() > 10 * 1024 * 1024) {
+            throw new IllegalArgumentException("File too large. Maximum file size is 10MB.");
+        }
+
+        // Determine extension and preempt unsupported formats
+        String lower = filename.toLowerCase();
+        if (lower.endsWith(".msg")) {
+            throw new UnsupportedOperationException(".msg (Outlook) files are not supported yet.");
+        }
+
         try {
-            // Validate file upload
-            if (file == null || file.isEmpty()) {
-                response.put("error", "No file provided. Please upload a valid .eml file.");
-                response.put("status", "error");
-                response.put("code", 400);
-                return ResponseEntity.badRequest().body(response);
-            }
-
-            // Validate file type
-            String filename = file.getOriginalFilename();
-            if (filename == null || (!filename.toLowerCase().endsWith(".eml") && 
-                                   !filename.toLowerCase().endsWith(".msg") && 
-                                   !filename.toLowerCase().endsWith(".txt"))) {
-                response.put("error", "Invalid file type. Please upload a .eml, .msg, or .txt file.");
-                response.put("status", "error");
-                response.put("code", 400);
-                return ResponseEntity.badRequest().body(response);
-            }
-
-            // Validate file size (e.g., max 10MB)
-            if (file.getSize() > 10 * 1024 * 1024) {
-                response.put("error", "File too large. Maximum file size is 10MB.");
-                response.put("status", "error");
-                response.put("code", 400);
-                return ResponseEntity.badRequest().body(response);
-            }
-
-            // Determine extension and preempt unsupported formats
-            String lower = filename.toLowerCase();
-            if (lower.endsWith(".msg")) {
-                response.put("error", ".msg (Outlook) files are not supported yet.");
-                response.put("status", "error");
-                response.put("code", 415);
-                return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(response);
-            }
+            Map<String, Object> response = new HashMap<>();
 
             // Persist upload to a temp file and delegate to HtmlToText/EmailPipeline for DRY parsing
             Path tempFile = Files.createTempFile("upload-", lower.endsWith(".eml") ? ".eml" : ".html");
@@ -103,28 +89,21 @@ public class EmailController {
                 try { Files.deleteIfExists(tempFile); } catch (IOException ignore) { }
             }
 
-            Map<String, Object> parsedDocument;
-            try {
-                parsedDocument = new ObjectMapper().readValue(jsonPayload, new TypeReference<>() {});
-            } catch (IOException e) {
-                response.put("error", "Failed to parse email output: " + e.getMessage());
-                response.put("status", "error");
-                response.put("code", 500);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-            }
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> parsedDocument = mapper.readValue(jsonPayload, new TypeReference<Map<String, Object>>() {});
 
-            @SuppressWarnings("unchecked")
             Map<String, Object> content = parsedDocument.containsKey("content")
-                ? (Map<String, Object>) parsedDocument.get("content")
+                && parsedDocument.get("content") instanceof Map
+                ? mapper.convertValue(parsedDocument.get("content"), new TypeReference<Map<String, Object>>() {})
                 : Collections.emptyMap();
 
             String plainText = content.getOrDefault("plainText", "").toString();
             String markdown = content.getOrDefault("markdown", "").toString();
 
             // Extract email metadata from parsed document
-            @SuppressWarnings("unchecked")
             Map<String, Object> metadata = parsedDocument.containsKey("metadata")
-                ? (Map<String, Object>) parsedDocument.get("metadata")
+                && parsedDocument.get("metadata") instanceof Map
+                ? mapper.convertValue(parsedDocument.get("metadata"), new TypeReference<Map<String, Object>>() {})
                 : Collections.emptyMap();
             
             String subject = metadata.getOrDefault("subject", "No subject").toString();
@@ -145,24 +124,11 @@ public class EmailController {
             response.put("subject", subject);
             response.put("from", from);
             response.put("date", date);
-            
+
             return ResponseEntity.ok(response);
-            
-        } catch (IOException e) {
-            // Handle file reading errors
-            response.put("error", "Failed to read uploaded file: " + e.getMessage());
-            response.put("status", "error");
-            response.put("code", 500);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-            
         } catch (Exception e) {
-            // Handle parsing errors
-            response.put("error", "Failed to parse email: " + e.getMessage());
-            response.put("status", "error");
-            response.put("code", 500);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            throw new RuntimeException("Failed to process email file: " + e.getMessage(), e);
         }
     }
-
     // Intentionally no health/info endpoints here; SystemController exposes /api/health
 }
