@@ -27,6 +27,9 @@ public class OpenAiChatService {
     
     private static final Logger logger = LoggerFactory.getLogger(OpenAiChatService.class);
     
+    private static final String OPENAI_MISCONFIGURED_MESSAGE = "OpenAI is not configured (missing OPENAI_API_KEY).";
+    private static final String OPENAI_UNAVAILABLE_MESSAGE = "OpenAI is unavailable right now. Please try again later.";
+
     private final OpenAIClient openAiClient;
     private final OpenAiProperties openAiProperties;
 
@@ -38,44 +41,25 @@ public class OpenAiChatService {
     public String generateResponse(String userMessage, String emailContext) {
         try {
             if (openAiClient == null) {
-                return "OpenAI is not configured (missing OPENAI_API_KEY).";
-            }
-            List<ChatCompletionMessageParam> messages = new ArrayList<>();
-
-            String systemMessage = "You are an AI assistant that helps users understand and work with their email. " +
-                "Use the following email context to answer the user's question: " + emailContext;
-            messages.add(ChatCompletionMessageParam.ofSystem(
-                ChatCompletionSystemMessageParam.builder().content(systemMessage).build()
-            ));
-
-            messages.add(ChatCompletionMessageParam.ofUser(
-                ChatCompletionUserMessageParam.builder().content(userMessage).build()
-            ));
-
-            ChatModel model;
-            String configuredModel = openAiProperties.getModel();
-            if (configuredModel != null && !configuredModel.isBlank()) {
-                model = ChatModel.of(configuredModel);
-            } else {
-                model = ChatModel.CHATGPT_4O_LATEST;
+                return OPENAI_MISCONFIGURED_MESSAGE;
             }
 
             ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-                .model(model)
-                .messages(messages)
+                .model(resolveChatModel())
+                .messages(buildEmailAssistantMessages(emailContext, userMessage))
                 .maxCompletionTokens(500L)
                 .temperature(0.7)
                 .build();
 
             ChatCompletion response = openAiClient.chat().completions().create(params);
 
-            String aiResponse = response.choices().get(0).message().content().orElse("");
+            String aiResponse = extractChoiceContent(response, OPENAI_UNAVAILABLE_MESSAGE);
             logger.info("Generated AI response for user query");
             return aiResponse;
 
         } catch (Exception e) {
             logger.warn("OpenAI error while generating response: {}", e.getMessage());
-            return "OpenAI is unavailable right now. Please try again later.";
+            return OPENAI_UNAVAILABLE_MESSAGE;
         }
     }
 
@@ -84,38 +68,18 @@ public class OpenAiChatService {
             if (openAiClient == null) {
                 return "question";
             }
-            List<ChatCompletionMessageParam> messages = new ArrayList<>();
-
-            String systemMessage = "Analyze the user's intent and classify it into one of these categories: " +
-                "search, compose, summarize, analyze, question, or other. " +
-                "Respond with just the category name.";
-            messages.add(ChatCompletionMessageParam.ofSystem(
-                ChatCompletionSystemMessageParam.builder().content(systemMessage).build()
-            ));
-            messages.add(ChatCompletionMessageParam.ofUser(
-                ChatCompletionUserMessageParam.builder().content(userMessage).build()
-            ));
-
-            ChatModel model;
-            String configuredModel = openAiProperties.getModel();
-            if (configuredModel != null && !configuredModel.isBlank()) {
-                model = ChatModel.of(configuredModel);
-            } else {
-                model = ChatModel.CHATGPT_4O_LATEST;
-            }
-
             ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-                .model(model)
-                .messages(messages)
+                .model(resolveChatModel())
+                .messages(buildIntentAnalysisMessages(userMessage))
                 .maxCompletionTokens(10L)
                 .temperature(0.1)
                 .build();
 
             ChatCompletion response = openAiClient.chat().completions().create(params);
-            String intent = response.choices().get(0).message().content().orElse("").trim().toLowerCase();
+            String intent = extractChoiceContent(response, "question").trim().toLowerCase();
 
             logger.info("Analyzed intent: {}", intent);
-            return intent;
+            return intent.isEmpty() ? "question" : intent;
 
         } catch (Exception e) {
             logger.warn("OpenAI error while analyzing intent: {}", e.getMessage());
@@ -130,29 +94,9 @@ public class OpenAiChatService {
                 onError.accept(new IllegalStateException("OpenAI is not configured (missing OPENAI_API_KEY)."));
                 return;
             }
-            List<ChatCompletionMessageParam> messages = new ArrayList<>();
-
-            String systemMessage = "You are an AI assistant that helps users understand and work with their email. " +
-                "Use the following email context to answer the user's question: " + emailContext;
-            messages.add(ChatCompletionMessageParam.ofSystem(
-                ChatCompletionSystemMessageParam.builder().content(systemMessage).build()
-            ));
-
-            messages.add(ChatCompletionMessageParam.ofUser(
-                ChatCompletionUserMessageParam.builder().content(userMessage).build()
-            ));
-
-            ChatModel model;
-            String configuredModel = openAiProperties.getModel();
-            if (configuredModel != null && !configuredModel.isBlank()) {
-                model = ChatModel.of(configuredModel);
-            } else {
-                model = ChatModel.CHATGPT_4O_LATEST;
-            }
-
             ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-                .model(model)
-                .messages(messages)
+                .model(resolveChatModel())
+                .messages(buildEmailAssistantMessages(emailContext, userMessage))
                 .maxCompletionTokens(500L)
                 .temperature(0.7)
                 .build();
@@ -193,5 +137,46 @@ public class OpenAiChatService {
             logger.warn("OpenAI error while generating embeddings: {}", e.getMessage());
             return new float[0];
         }
+    }
+
+    private ChatModel resolveChatModel() {
+        String configuredModel = openAiProperties.getModel();
+        if (configuredModel != null && !configuredModel.isBlank()) {
+            return ChatModel.of(configuredModel);
+        }
+        return ChatModel.CHATGPT_4O_LATEST;
+    }
+
+    private List<ChatCompletionMessageParam> buildEmailAssistantMessages(String emailContext, String userMessage) {
+        String safeContext = emailContext == null ? "" : emailContext;
+        String systemMessage = "You are an AI assistant that helps users understand and work with their email. " +
+            "Use the following email context to answer the user's question: " + safeContext;
+        return buildMessages(systemMessage, userMessage);
+    }
+
+    private List<ChatCompletionMessageParam> buildIntentAnalysisMessages(String userMessage) {
+        String systemMessage = "Analyze the user's intent and classify it into one of these categories: " +
+            "search, compose, summarize, analyze, question, or other. Respond with just the category name.";
+        return buildMessages(systemMessage, userMessage);
+    }
+
+    private List<ChatCompletionMessageParam> buildMessages(String systemMessage, String userMessage) {
+        List<ChatCompletionMessageParam> messages = new ArrayList<>(2);
+        messages.add(ChatCompletionMessageParam.ofSystem(
+            ChatCompletionSystemMessageParam.builder().content(systemMessage).build()
+        ));
+        messages.add(ChatCompletionMessageParam.ofUser(
+            ChatCompletionUserMessageParam.builder().content(userMessage).build()
+        ));
+        return messages;
+    }
+
+    private String extractChoiceContent(ChatCompletion response, String defaultValue) {
+        List<ChatCompletion.Choice> choices = response.choices();
+        if (choices == null || choices.isEmpty()) {
+            logger.warn("OpenAI response returned no choices");
+            return defaultValue;
+        }
+        return choices.get(0).message().content().orElse(defaultValue);
     }
 }

@@ -52,9 +52,15 @@ public class VectorSearchService {
             logger.info("Found {} similar emails for query", emailContexts.size());
             return emailContexts;
             
-        } catch (ExecutionException | InterruptedException e) {
-            logger.error("Error searching for similar emails", e);
+        } catch (InterruptedException e) {
+            logger.warn("Qdrant search interrupted: {}", e.getMessage());
             Thread.currentThread().interrupt();
+            return new ArrayList<>();
+        } catch (ExecutionException e) {
+            logger.warn("Qdrant search failed: {}", (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
+            return new ArrayList<>();
+        } catch (Exception e) {
+            logger.warn("Qdrant search error: {}", e.getMessage());
             return new ArrayList<>();
         }
     }

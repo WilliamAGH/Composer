@@ -38,12 +38,16 @@ public class ChatService {
 
             // Generate embedding for the user's message
             float[] queryVector = openAiChatService.generateEmbedding(request.getMessage());
-
-            // Search for relevant emails using vector similarity
-            List<EmailContext> emailContext = vectorSearchService.searchSimilarEmails(
-                queryVector, 
-                request.getMaxResults()
-            );
+            List<EmailContext> emailContext;
+            if (queryVector == null || queryVector.length == 0) {
+                emailContext = List.of();
+            } else {
+                // Search for relevant emails using vector similarity
+                emailContext = vectorSearchService.searchSimilarEmails(
+                    queryVector, 
+                    request.getMaxResults()
+                );
+            }
 
             // Prepare context for AI response
             String contextString = buildContextString(emailContext);
