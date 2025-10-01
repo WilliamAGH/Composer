@@ -1,6 +1,239 @@
-// Chat UI page for ComposerAI
-// We can have index.html forward to this
-// We can later have email-backend.html next have a flow to "seed" a new chat with the uploaded email context, and then
-a follow-up prompt to the user saying I have this email, what would you like to know about it or do next with it?
-// This should use the layout.html template for consistent styling, which relies upon app-shared.css and Tailwind CSS
-// We can add a side panel for the conversation history that also uses app-shared.css/Tailwind
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::body/content}, 'ComposerAI - Email Chat Interface', ~{::head/extraHead})}">
+<head>
+    <th:block th:fragment="extraHead"></th:block>
+</head>
+<body>
+    <div th:fragment="content" class="min-h-screen bg-slate-100/80 py-12">
+        <div class="mx-auto flex max-w-6xl flex-col gap-10 px-4 sm:px-6 lg:px-8">
+            <header class="relative overflow-hidden rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-ultra shadow-slate-900/10 backdrop-blur">
+                <div class="absolute inset-0 bg-subtle-glow"></div>
+                <div class="relative z-10 flex flex-col gap-4">
+                    <h1 class="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">ComposerAI Chat</h1>
+                    <p class="max-w-2xl text-base text-slate-600">Upload an email and chat about it with AI assistance</p>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">Chat Interface</span>
+                        <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">Supports .eml, .msg, .txt</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Email Upload Section -->
+            <section id="uploadSection" class="rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-ultra shadow-slate-900/10 backdrop-blur">
+                <h2 class="mb-4 text-xl font-semibold text-slate-900">Upload Email</h2>
+                <p class="mb-6 text-sm text-slate-600">Drag and drop an email file or click to select one to start a conversation about it.</p>
+                
+                <div id="fileDropArea" class="cursor-pointer rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center transition-all hover:border-slate-400 hover:bg-slate-100">
+                    <div class="text-5xl mb-4">📧</div>
+                    <p class="text-base font-semibold text-slate-700">Drop your email file here</p>
+                    <p class="text-sm text-slate-500 mt-2">or click to browse</p>
+                </div>
+                
+                <input type="file" id="fileInput" class="hidden" accept=".eml,.msg,.txt,.html">
+                <div id="fileInfo" class="mt-4 hidden rounded-lg bg-slate-100 p-3 text-sm text-slate-700"></div>
+                <div id="uploadStatus" class="mt-4"></div>
+            </section>
+
+            <!-- Chat Messages -->
+            <section class="rounded-3xl border border-slate-200 bg-white/90 shadow-ultra shadow-slate-900/10 backdrop-blur overflow-hidden">
+                <div id="messages" class="flex flex-col gap-4 p-8 min-h-[400px] max-h-[500px] overflow-y-auto bg-slate-50">
+                    <div class="message-assistant max-w-[70%] rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
+                        <div class="text-slate-800">Hello! I'm ComposerAI. Upload an email file above and I'll help you analyze and discuss it.</div>
+                    </div>
+                </div>
+
+                <!-- Chat Input -->
+                <div class="border-t border-slate-200 bg-white p-6">
+                    <div class="flex items-center gap-3">
+                        <textarea 
+                            id="messageInput" 
+                            class="flex-1 resize-none rounded-2xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                            placeholder="Type your message about the email..."
+                            rows="1"
+                            disabled></textarea>
+                        <button id="sendButton" class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white transition-all hover:bg-slate-700 disabled:bg-slate-300 disabled:cursor-not-allowed" disabled>
+                            <span class="text-xl">→</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <footer class="rounded-2xl border border-slate-200 bg-white/50 px-6 py-3 text-center text-sm text-slate-600 backdrop-blur">
+                ComposerAI • Professional Email Analysis • Upload an email to begin
+            </footer>
+        </div>
+
+        <script>
+            class ComposerAIChat {
+                constructor() {
+                    this.messages = document.getElementById('messages');
+                    this.messageInput = document.getElementById('messageInput');
+                    this.sendButton = document.getElementById('sendButton');
+                    this.fileDropArea = document.getElementById('fileDropArea');
+                    this.fileInput = document.getElementById('fileInput');
+                    this.fileInfo = document.getElementById('fileInfo');
+                    this.uploadStatus = document.getElementById('uploadStatus');
+                    this.currentEmailContext = null;
+                    
+                    this.initializeEventListeners();
+                }
+                
+                initializeEventListeners() {
+                    this.sendButton.addEventListener('click', () => this.sendMessage());
+                    this.messageInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            this.sendMessage();
+                        }
+                    });
+                    
+                    this.fileDropArea.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.fileInput.click();
+                    });
+                    
+                    this.fileDropArea.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        this.fileDropArea.classList.add('border-slate-500', 'bg-slate-200');
+                    });
+                    
+                    this.fileDropArea.addEventListener('dragleave', () => {
+                        this.fileDropArea.classList.remove('border-slate-500', 'bg-slate-200');
+                    });
+                    
+                    this.fileDropArea.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        this.fileDropArea.classList.remove('border-slate-500', 'bg-slate-200');
+                        const files = e.dataTransfer.files;
+                        if (files.length > 0) {
+                            this.handleFileUpload(files[0]);
+                        }
+                    });
+                    
+                    this.fileInput.addEventListener('change', (e) => {
+                        if (e.target.files.length > 0) {
+                            this.handleFileUpload(e.target.files[0]);
+                        }
+                    });
+                }
+                
+                async handleFileUpload(file) {
+                    this.showFileInfo(file);
+                    
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    this.uploadStatus.innerHTML = '<div class="rounded-lg bg-blue-100 border border-blue-200 p-3 text-sm text-blue-800">Uploading and parsing email...</div>';
+                    
+                    try {
+                        const response = await fetch('/api/parse-email', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        if (response.ok) {
+                            const result = await response.json();
+                            this.currentEmailContext = result;
+                            this.uploadStatus.innerHTML = '<div class="rounded-lg bg-green-100 border border-green-200 p-3 text-sm text-green-800">✅ Email uploaded and parsed successfully!</div>';
+                            this.enableChat();
+                            this.addEmailContextMessage(result);
+                        } else {
+                            throw new Error('Upload failed');
+                        }
+                    } catch (error) {
+                        console.error('Upload error:', error);
+                        this.uploadStatus.innerHTML = '<div class="rounded-lg bg-red-100 border border-red-200 p-3 text-sm text-red-800">❌ Failed to upload email. Please try again.</div>';
+                    }
+                }
+                
+                showFileInfo(file) {
+                    this.fileInfo.innerHTML = \`
+                        <strong>Selected file:</strong> \${file.name}<br>
+                        <strong>Size:</strong> \${(file.size / 1024).toFixed(2)} KB<br>
+                        <strong>Type:</strong> \${file.type || 'Unknown'}
+                    \`;
+                    this.fileInfo.classList.remove('hidden');
+                }
+                
+                enableChat() {
+                    this.messageInput.disabled = false;
+                    this.sendButton.disabled = false;
+                    this.messageInput.placeholder = "Ask me anything about this email...";
+                }
+                
+                addEmailContextMessage(emailData) {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'message-assistant max-w-[70%] rounded-2xl bg-blue-50 border border-blue-200 p-4 shadow-sm';
+                    messageDiv.innerHTML = \`
+                        <h4 class="font-semibold text-slate-900 mb-2">📧 Email Context Loaded</h4>
+                        <p class="text-sm text-slate-700"><strong>Subject:</strong> \${emailData.subject || 'No subject'}</p>
+                        <p class="text-sm text-slate-700"><strong>From:</strong> \${emailData.from || 'Unknown sender'}</p>
+                        <p class="text-sm text-slate-700"><strong>Date:</strong> \${emailData.date || 'Unknown date'}</p>
+                    \`;
+                    
+                    this.messages.appendChild(messageDiv);
+                    this.scrollToBottom();
+                }
+                
+                async sendMessage() {
+                    const message = this.messageInput.value.trim();
+                    if (!message) return;
+                    
+                    this.addMessage(message, 'user');
+                    this.messageInput.value = '';
+                    
+                    const loadingDiv = this.addMessage('', 'assistant');
+                    loadingDiv.innerHTML = '<div class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900"></div>';
+                    
+                    try {
+                        const response = await fetch('/api/chat', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                message: message,
+                                emailContext: this.currentEmailContext
+                            }),
+                        });
+                        
+                        if (response.ok) {
+                            const result = await response.json();
+                            loadingDiv.textContent = result.response || result.message || 'I received your message about the email.';
+                        } else {
+                            throw new Error('Chat request failed');
+                        }
+                    } catch (error) {
+                        console.error('Chat error:', error);
+                        loadingDiv.textContent = 'Sorry, I encountered an error processing your message. Please try again.';
+                    }
+                }
+                
+                addMessage(content, sender) {
+                    const messageDiv = document.createElement('div');
+                    if (sender === 'user') {
+                        messageDiv.className = 'message-user ml-auto max-w-[70%] rounded-2xl bg-slate-900 text-white p-4 shadow-sm';
+                    } else {
+                        messageDiv.className = 'message-assistant max-w-[70%] rounded-2xl bg-white border border-slate-200 p-4 shadow-sm';
+                    }
+                    messageDiv.textContent = content;
+                    
+                    this.messages.appendChild(messageDiv);
+                    this.scrollToBottom();
+                    
+                    return messageDiv;
+                }
+                
+                scrollToBottom() {
+                    this.messages.scrollTop = this.messages.scrollHeight;
+                }
+            }
+            
+            document.addEventListener('DOMContentLoaded', () => {
+                new ComposerAIChat();
+            });
+        </script>
+    </div>
+</body>
+</html>

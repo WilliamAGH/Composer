@@ -20,4 +20,9 @@ public class WebViewController {
     public String emailBackend() {
         return "email-backend";
     }
+
+    @GetMapping("/chat")
+    public String chat() {
+        return "chat";
+    }
 }
