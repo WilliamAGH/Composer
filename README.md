@@ -21,7 +21,7 @@ Java 21 Spring Boot backend that powers the ComposerAI: a chat interface for rea
 - **Build**: Maven 3.9+, Spring Boot Maven Plugin
 - **Web Layer**: Spring MVC, Jakarta Validation, Thymeleaf templates
 - **Frontend Styling**: Tailwind CSS via CDN with soft gradients, translucent panels, and shadowed cards for a polished, product-grade aesthetic
-- **Integrations**: OpenAI Java SDK, Qdrant gRPC client, Flexmark, JSoup, Jakarta Mail
+- **Integrations**: OpenAI Java SDK (official, `com.openai:openai-java:4.0.0`), Qdrant gRPC client, Flexmark, JSoup, Jakarta Mail
 - **Containerization**: Multi-stage Docker build based on OpenJDK 21
 
 ## Requirements
@@ -33,17 +33,37 @@ Java 21 Spring Boot backend that powers the ComposerAI: a chat interface for rea
 
 ## Configuration
 
-Configure via environment variables or `application.properties` equivalents:
+Configure via environment variables or `application.properties` equivalents. The app also supports optional dotenv-style files loaded automatically if present:
+
+```properties
+# src/main/resources/application.properties
+spring.config.import=optional:file:.env.properties,optional:file:.env.local.properties
+```
+
+Precedence: environment variables > `.env.local.properties` > `.env.properties` > bundled `application*.properties` defaults. This lets CI/CD inject secrets while `.env*.properties` provide convenient local overrides.
 
 ```properties
 server.port=${PORT:8080}
 openai.api.key=${OPENAI_API_KEY:your-openai-api-key}
 openai.api.base-url=${OPENAI_API_BASE_URL:https://api.openai.com/v1}
-openai.model=${OPENAI_MODEL:gpt-3.5-turbo}
+# default to 4o latest; override with OPENAI_MODEL if needed
+openai.model=${OPENAI_MODEL:chatgpt-4o-latest}
 qdrant.host=${QDRANT_HOST:localhost}
 qdrant.port=${QDRANT_PORT:6333}
 qdrant.use-tls=${QDRANT_USE_TLS:false}
 qdrant.collection-name=${QDRANT_COLLECTION_NAME:emails}
+```
+
+Example `.env.properties` for local use (do not commit secrets):
+
+```properties
+OPENAI_API_KEY=sk-...redacted...
+OPENAI_API_BASE_URL=https://api.openai.com/v1
+OPENAI_MODEL=chatgpt-4o-latest
+QDRANT_HOST=cluster-abc.us-east-1-0.aws.cloud.qdrant.io
+QDRANT_PORT=6334
+QDRANT_USE_TLS=true
+QDRANT_COLLECTION_NAME=emails
 ```
 
 `application-local.properties` enables Spring DevTools restart/live reload. Production profile disables HSTS headers through `app.hsts.enabled=false` for reverse-proxy compatibility.
@@ -95,6 +115,7 @@ Each workspace follows the house design language: layered glass cards over soft 
 | `GET` | `/api/health` | Service heartbeat with timestamp |
 | `GET` | `/api/chat/health` | Chat-specific heartbeat |
 | `POST` | `/api/chat` | Main chat endpoint accepting message, optional conversation ID, and `maxResults` |
+| `POST` | `/api/chat/stream` | SSE stream of incremental tokens for live responses |
 | `POST` | `/api/parse-email` | Multipart upload for `.eml`/`.txt` files that streams them through the normalization pipeline |
 
 ### Example Chat Request
@@ -109,6 +130,21 @@ Content-Type: application/json
   "maxResults": 5
 }
 ```
+
+### Streaming Chat (SSE)
+
+Request is identical to `/api/chat`, but POST to `/api/chat/stream`. The response is `text/event-stream` with tokens emitted as SSE `data:` frames.
+
+```bash
+curl -N -X POST \
+  -H 'Content-Type: application/json' \
+  -d '{"message":"Summarize updates from my hiring emails","maxResults":5}' \
+  http://localhost:8080/api/chat/stream
+```
+
+Implementation details:
+- Uses official OpenAI Java SDK `com.openai:openai-java:4.0.0` streaming API (`createStreaming`) for Chat Completions on `chatgpt-4o-latest`.
+- Server emits each token as an SSE event. Close when complete.
 
 ### Email Parsing Response
 
@@ -163,7 +199,7 @@ src/main/java/com/composerai/api/
 ├── dto/                               # Chat request/response models
 ├── service/
 │   ├── ChatService.java               # Chat orchestration
-│   ├── OpenAiChatService.java         # OpenAI integration (placeholder embedding)
+│   ├── OpenAiChatService.java         # OpenAI integration (official SDK + embeddings)
 │   ├── VectorSearchService.java       # Qdrant search stub
 │   ├── HtmlToText.java                # CLI entry point
 │   └── email/                         # Email extraction & normalization
@@ -175,7 +211,8 @@ src/main/java/com/composerai/api/
 
 ## Implementation Notes
 
-- Vector payload extraction and embedding generation remain placeholders; wire them to real data sources before production use.
+- Vector payload extraction from Qdrant is still a placeholder; map real subject/snippet metadata from point payloads.
+- Embeddings now use OpenAI's Embeddings API (model configurable; defaults to `text-embedding-3-small`). Ensure Qdrant vector size matches.
 - `ChatService` currently emits UUIDs when a conversation ID is not supplied.
 - The email parser limits uploads to 10 MB and deletes temp files after processing.
 - Security headers only clear existing HSTS when disabled—configure proxies accordingly.

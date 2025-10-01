@@ -85,4 +85,18 @@ public class ChatService {
         
         return context.toString();
     }
+
+    public void streamChat(String message, int maxResults,
+                           java.util.function.Consumer<String> onToken,
+                           Runnable onComplete,
+                           java.util.function.Consumer<Throwable> onError) {
+        try {
+            float[] queryVector = openAiChatService.generateEmbedding(message);
+            List<EmailContext> emailContext = vectorSearchService.searchSimilarEmails(queryVector, maxResults);
+            String contextString = buildContextString(emailContext);
+            openAiChatService.streamResponse(message, contextString, onToken, onComplete, onError);
+        } catch (Exception e) {
+            onError.accept(e);
+        }
+    }
 }

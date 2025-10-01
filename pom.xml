@@ -41,11 +41,11 @@
             <optional>true</optional>
         </dependency>
         
-        <!-- OpenAI Java Client -->
+        <!-- OpenAI Java SDK (official) -->
         <dependency>
-            <groupId>com.theokanning.openai-gpt3-java</groupId>
-            <artifactId>service</artifactId>
-            <version>0.18.2</version>
+            <groupId>com.openai</groupId>
+            <artifactId>openai-java</artifactId>
+            <version>4.0.0</version>
         </dependency>
         
         <!-- Qdrant Java Client -->

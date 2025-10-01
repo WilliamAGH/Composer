@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.Map;
 
@@ -40,6 +41,31 @@ public class ChatController {
             
             return ResponseEntity.internalServerError().body(errorResponse);
         }
+    }
+
+    @PostMapping("/stream")
+    public SseEmitter stream(@Valid @RequestBody ChatRequest request) {
+        SseEmitter emitter = new SseEmitter(0L);
+        new Thread(() -> {
+            try {
+                chatService.streamChat(
+                    request.getMessage(),
+                    request.getMaxResults(),
+                    token -> {
+                        try {
+                            emitter.send(SseEmitter.event().data(token));
+                        } catch (Exception e) {
+                            emitter.completeWithError(e);
+                        }
+                    },
+                    emitter::complete,
+                    emitter::completeWithError
+                );
+            } catch (Exception e) {
+                emitter.completeWithError(e);
+            }
+        }).start();
+        return emitter;
     }
 
     @GetMapping("/health")
