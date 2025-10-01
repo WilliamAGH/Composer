@@ -24,10 +24,10 @@
                 <h2 class="mb-4 text-xl font-semibold text-slate-900">Upload Email</h2>
                 <p class="mb-6 text-sm text-slate-600">Drag and drop an email file or click to select one to start a conversation about it.</p>
                 
-                <div id="fileDropArea" class="cursor-pointer rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center transition-all hover:border-slate-400 hover:bg-slate-100">
+                <div id="fileDropArea" class="cursor-pointer rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center transition-all hover:border-slate-400 hover:bg-slate-100" role="button" tabindex="0" aria-describedby="fileDropHelp">
                     <div class="text-5xl mb-4">📧</div>
                     <p class="text-base font-semibold text-slate-700">Drop your email file here</p>
-                    <p class="text-sm text-slate-500 mt-2">or click to browse</p>
+                    <p id="fileDropHelp" class="text-sm text-slate-500 mt-2">Click or press Enter/Space to browse</p>
                 </div>
                 
                 <input type="file" id="fileInput" class="hidden" accept=".eml,.msg,.txt,.html">
@@ -106,6 +106,13 @@
                         this.fileInput.click();
                     });
                     
+                    this.fileDropArea.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            this.fileInput.click();
+                        }
+                    });
+                    
                     this.fileDropArea.addEventListener('dragover', (e) => {
                         e.preventDefault();
                         this.fileDropArea.classList.add('border-slate-500', 'bg-slate-200');
@@ -159,10 +166,13 @@
                 
                 showFileInfo(file) {
                     this.fileInfo.innerHTML = `
-                        <strong>Selected file:</strong> ${file.name}<br>
-                        <strong>Size:</strong> ${(file.size / 1024).toFixed(2)} KB<br>
-                        <strong>Type:</strong> ${file.type || 'Unknown'}
+                        <strong>Selected file:</strong> <span class="file-name"></span><br>
+                        <strong>Size:</strong> <span class="file-size"></span><br>
+                        <strong>Type:</strong> <span class="file-type"></span>
                     `;
+                    this.fileInfo.querySelector('.file-name').textContent = file.name;
+                    this.fileInfo.querySelector('.file-size').textContent = `${(file.size / 1024).toFixed(2)} KB`;
+                    this.fileInfo.querySelector('.file-type').textContent = file.type || 'Unknown';
                     this.fileInfo.classList.remove('hidden');
                 }
                 

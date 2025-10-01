@@ -9,6 +9,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import java.util.concurrent.Executor;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -29,6 +30,9 @@ class ChatControllerIntegrationTest {
 
     @MockBean
     private ChatService chatService;
+
+    @MockBean(name = "chatStreamExecutor")
+    private Executor chatStreamExecutor;
 
     @Test
     void healthEndpoint_ShouldReturnOk() throws Exception {

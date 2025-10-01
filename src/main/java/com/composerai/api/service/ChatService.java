@@ -23,6 +23,22 @@ public class ChatService {
         this.openAiChatService = openAiChatService;
     }
 
+    private record ChatContext(float[] embedding, List<EmailContext> emailContext, String contextString) {}
+
+    private ChatContext prepareChatContext(String message, int maxResults) {
+        logger.debug("Preparing chat context for message");
+        float[] queryVector = openAiChatService.generateEmbedding(message);
+        List<EmailContext> emailContext;
+        if (queryVector == null || queryVector.length == 0) {
+            logger.warn("Embedding generation returned null/empty, skipping vector search");
+            emailContext = List.of();
+        } else {
+            emailContext = vectorSearchService.searchSimilarEmails(queryVector, maxResults);
+        }
+        String contextString = buildContextString(emailContext);
+        return new ChatContext(queryVector, emailContext, contextString);
+    }
+
     public ChatResponse processChat(ChatRequest request) {
         logger.info("Processing chat request: {}", request.getMessage());
         
@@ -36,21 +52,9 @@ public class ChatService {
             // Analyze user intent
             String intent = openAiChatService.analyzeIntent(request.getMessage());
 
-            // Generate embedding for the user's message
-            float[] queryVector = openAiChatService.generateEmbedding(request.getMessage());
-            List<EmailContext> emailContext;
-            if (queryVector == null || queryVector.length == 0) {
-                emailContext = List.of();
-            } else {
-                // Search for relevant emails using vector similarity
-                emailContext = vectorSearchService.searchSimilarEmails(
-                    queryVector, 
-                    request.getMaxResults()
-                );
-            }
-
             // Prepare context for AI response
-            String contextString = buildContextString(emailContext);
+            ChatContext ctx = prepareChatContext(request.getMessage(), request.getMaxResults());
+            String contextString = ctx.contextString();
             // If client provided raw email context from upload, prepend it so it's prioritized
             if (request.getEmailContext() != null && !request.getEmailContext().isBlank()) {
                 String clientCtx = request.getEmailContext();
@@ -65,7 +69,7 @@ public class ChatService {
             String aiResponse = openAiChatService.generateResponse(request.getMessage(), contextString);
 
             // Create and return response
-            ChatResponse response = new ChatResponse(aiResponse, conversationId, emailContext, intent);
+            ChatResponse response = new ChatResponse(aiResponse, conversationId, ctx.emailContext(), intent);
             
             logger.info("Successfully processed chat request for conversation: {}", conversationId);
             return response;
@@ -104,11 +108,12 @@ public class ChatService {
                            Runnable onComplete,
                            java.util.function.Consumer<Throwable> onError) {
         try {
-            float[] queryVector = openAiChatService.generateEmbedding(message);
-            List<EmailContext> emailContext = vectorSearchService.searchSimilarEmails(queryVector, maxResults);
-            String contextString = buildContextString(emailContext);
-            openAiChatService.streamResponse(message, contextString, onToken, onComplete, onError);
+            logger.info("Processing streaming chat request: {}", message);
+            ChatContext ctx = prepareChatContext(message, maxResults);
+            openAiChatService.streamResponse(message, ctx.contextString(), onToken, onComplete, onError);
+            logger.info("Successfully initiated streaming chat request");
         } catch (Exception e) {
+            logger.error("Error initiating streaming chat request", e);
             onError.accept(e);
         }
     }
