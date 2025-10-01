@@ -286,7 +286,7 @@ public final class HtmlConverter {
             sb.append(line).append('\n');
         }
         String out = sb.toString().trim();
-        out = out.replaceAll("\n\s*,\s*\n", ", ");
+        out = out.replaceAll("\n\\s*,\\s*\n", ", ");
         // Generic: insert paragraph breaks before emphasized By-sections common in newsletters
         out = out.replaceAll("(?<!\n)\\*By\\s", "\n\n*By ");
         return out;

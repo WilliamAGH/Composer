@@ -59,7 +59,7 @@ public final class EmailPipeline {
                     meta.put("to", safe(EmailExtractor.formatAddresses(message.getRecipients(jakarta.mail.Message.RecipientType.TO))));
                     meta.put("cc", safe(EmailExtractor.formatAddresses(message.getRecipients(jakarta.mail.Message.RecipientType.CC))));
                     meta.put("source", "eml-file");
-                    meta.put("path", options.inputFile);
+                    meta.put("path", Path.of(options.inputFile).getFileName().toString());
 
                     Map<String, Object> policies = Map.of(
                         "flattenTables", Boolean.TRUE,
@@ -110,8 +110,7 @@ public final class EmailPipeline {
     }
 
     private static String inferInputType(String inputFile) {
-        int idx = inputFile.lastIndexOf('.')
-            ;
+        int idx = inputFile.lastIndexOf('.');
         if (idx < 0) return "";
         return inputFile.substring(idx + 1).toLowerCase(Locale.ROOT);
     }

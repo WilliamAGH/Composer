@@ -1,176 +1,193 @@
 # ComposerAI API
 
-Java Spring Boot API backend for ComposerAI - a chat interface for interacting with your email mailbox using LLMs and RAG/BM25 retrievals.
+Java 21 Spring Boot backend that powers the ComposerAI: a chat interface for reasoning over email mailbox data with LLM assistance and retrieval-augmented context.
 
-## Features
+## Developer Routes
 
-- **Chat API**: RESTful endpoints for AI-powered chat with email context
-- **Vector Search**: Integration with Qdrant for semantic email search using vector embeddings
-- **OpenAI Integration**: Compatible with OpenAI and OpenAI-compatible LLM endpoints
-- **Intent Analysis**: Automatic classification of user queries
-- **Contextual Responses**: AI responses enriched with relevant email context
+- `/diagnostics` – internal diagnostics workspace with health checks, mock retrievals, and UI preview controls.
+- `/email-backend` – email parsing tooling for uploading `.eml`/`.txt` files and inspecting normalized output.
 
-## Architecture
+## Feature Highlights
 
-This backend API serves as the bridge between:
+- **Chat Orchestration** – Routes chat requests through OpenAI-compatible models, classifies user intent, and stitches email snippets into responses.
+- **Vector Retrieval Stub** – Integrates with Qdrant for similarity search; ships with placeholder extraction logic so teams can map real payloads incrementally.
+- **Email Parsing Workspace** – Provides an interactive HTML workspace for uploading `.eml`/`.txt` files and returning cleaned text output via the `/api/parse-email` endpoint.
+- **Diagnostics Control Panel** – Ships a rich, static diagnostics dashboard tailored for observing health checks, mock retrieval responses, and LLM outputs.
+- **CLI Utilities** – Includes `HtmlToText` tooling for converting raw email sources to Markdown or plain text, enabling batch processing workflows.
 
-- Frontend chat interface
-- Qdrant vector database (for email embeddings and similarity search)
-- OpenAI-compatible LLM endpoints (for chat completion and intent analysis)
+## Technology Stack
 
-## Prerequisites
+- **Runtime**: Java 21 (OpenJDK build) running on Spring Boot 3.3.x
+- **Build**: Maven 3.9+, Spring Boot Maven Plugin
+- **Web Layer**: Spring MVC, Jakarta Validation, Thymeleaf templates
+- **Frontend Styling**: Tailwind CSS via CDN with soft gradients, translucent panels, and shadowed cards for a polished, product-grade aesthetic
+- **Integrations**: OpenAI Java SDK, Qdrant gRPC client, Flexmark, JSoup, Jakarta Mail
+- **Containerization**: Multi-stage Docker build based on OpenJDK 21
 
-- Java 17+
-- Maven 3.6+
-- Qdrant vector database (running instance)
-- OpenAI API key or compatible LLM endpoint
+## Requirements
 
-## Dependencies
-
-- **Spring Boot 3.2.1**: Modern Java framework
-- **OpenAI Java Client**: For LLM integration
-- **Qdrant Java Client**: For vector search operations
-- **Jackson**: JSON processing
-- **Spring Boot Validation**: Request validation
+- Java Development Kit 21
+- Maven 3.9 or newer
+- OpenAI API key (or compatible endpoint) for chat completion and intent classification
+- Qdrant instance for production retrieval (development runs without an active connection)
 
 ## Configuration
 
-Configure the application using `application.properties` or environment variables:
+Configure via environment variables or `application.properties` equivalents:
 
 ```properties
-# Server Configuration
-server.port=8080
-server.servlet.context-path=/api
-
-# OpenAI Configuration
+server.port=${PORT:8080}
 openai.api.key=${OPENAI_API_KEY:your-openai-api-key}
 openai.api.base-url=${OPENAI_API_BASE_URL:https://api.openai.com/v1}
 openai.model=${OPENAI_MODEL:gpt-3.5-turbo}
-
-# Qdrant Configuration
 qdrant.host=${QDRANT_HOST:localhost}
 qdrant.port=${QDRANT_PORT:6333}
 qdrant.use-tls=${QDRANT_USE_TLS:false}
 qdrant.collection-name=${QDRANT_COLLECTION_NAME:emails}
 ```
 
-## Building and Running
+`application-local.properties` enables Spring DevTools restart/live reload. Production profile disables HSTS headers through `app.hsts.enabled=false` for reverse-proxy compatibility.
 
-### Development
+## Local Development
 
 ```bash
-# Build the application
+# Compile sources and resolve dependencies
 mvn clean compile
 
 # Run tests
 mvn test
 
-# Start the application
-mvn spring-boot:run
-
-# With custom configuration
-mvn spring-boot:run -Dspring-boot.run.jvmArguments="-Dopenai.api.key=YOUR_KEY -Dqdrant.host=your-qdrant-host"
+# Launch the API with hot reload (local profile)
+mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-### Production
+Helpful Makefile targets:
+
+- `make run` – `SPRING_PROFILES_ACTIVE=local mvn spring-boot:run`
+- `make build` – Package JAR with tests skipped
+- `make docker-build` – Build `composerai-api:local`
+- `make docker-run-local` – Run container with local profile variables
+
+## Docker Usage
 
 ```bash
-# Build JAR
-mvn clean package
+# Build
+make docker-build TAG=latest
 
-# Run JAR
-java -jar target/composerai-api-0.0.1-SNAPSHOT.jar
+# Run (local)
+make docker-run-local TAG=latest PORT=8080
 ```
 
-## HTML Email Parsing (CLI)
+The runtime stage uses `openjdk:21-jdk-slim` and copies static assets for direct serving alongside the executable JAR. Swap the base images to Red Hat's UBI OpenJDK 21 variants if you prefer their support cadence.
 
-Convert `.eml` or `.html` to plain text or Markdown using `com.composerai.api.service.HtmlToText`.
+## Static Workspaces
 
-- Build once:
-  - `mvn -q -DskipTests package`
-- Run via Maven Exec (example to Markdown):
-  - `mvn -q -DskipTests exec:java -Dexec.mainClass=com.composerai.api.service.HtmlToText -Dexec.args="--input-file 'data/eml/OpenAI is hiring.eml' --urls stripAll --format markdown --output-dir 'data/markdown'"`
- - Run via Spring Boot launcher (fat jar, example to Plain):
-  - `java -Dloader.main=com.composerai.api.service.HtmlToText -cp target/composerai-api-0.0.1-SNAPSHOT.jar org.springframework.boot.loader.PropertiesLauncher -- --input-file "data/eml/OpenAI is hiring.eml" --urls stripAll --format plain --output-dir "data/plain"`
+- Diagnostics dashboard: `http://localhost:8080/diagnostics`
+- Email parser UI: `http://localhost:8080/email-backend`
+- Redirect landing page: `http://localhost:8080/`
 
-Arguments:
+Each workspace follows the house design language: layered glass cards over soft gradients, deep slate or charcoal accents, diffused shadows, disciplined spacing, and crisp system typography.
 
-- `--input-file <path>` (required)
-- `--input-type eml|html` (optional; inferred by extension)
-- `--format plain|markdown` (required)
-- `--output-file <path>` (optional; defaults to stdout)
-- `--output-dir <dir>` (optional; auto-generates normalized file name like `openai-is-hiring.md`)
-- `--charset <name>` (optional; for raw HTML files)
-- `--urls keep|stripAll|cleanOnly` (optional; default `keep`)
-- `--metadata true|false` (optional; default `true`) – when true, prepends Sender, Recipient(s), Date/time (ISO-8601), Subject
- - `--json true|false` (optional; default `false`) – when true, emits a JSON document with metadata, plainText, markdown
+## REST Endpoints
 
-Notes:
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `GET` | `/api/health` | Service heartbeat with timestamp |
+| `GET` | `/api/chat/health` | Chat-specific heartbeat |
+| `POST` | `/api/chat` | Main chat endpoint accepting message, optional conversation ID, and `maxResults` |
+| `POST` | `/api/parse-email` | Multipart upload for `.eml`/`.txt` files that streams them through the normalization pipeline |
 
-- Prefers HTML part in `multipart/alternative`; falls back to text.
-- HTML→Markdown uses Flexmark html2md; HTML→Plain uses JSoup with minimal structure preservation.
-- `stripAll` removes links/images entirely; `cleanOnly` keeps only clean http(s)/mailto URLs and strips tracking params.
-
-## API Endpoints
-
-### Health Check
-
-```http
-GET /api/chat/health
-```
-
-### Chat
+### Example Chat Request
 
 ```http
 POST /api/chat
 Content-Type: application/json
 
 {
-  "message": "What emails did I receive about the project proposal?",
-  "conversationId": "optional-conversation-id",
+  "message": "Summarize updates from my hiring emails",
+  "conversationId": "thread-123",
   "maxResults": 5
 }
 ```
 
-## Project Structure
+### Email Parsing Response
 
-```markdown
-src/main/java/com/composerai/api/
-├── ComposerAiApiApplication.java     # Main Spring Boot application
-├── config/                          # Configuration classes
-│   ├── ClientConfiguration.java     # Bean configurations for clients
-│   ├── OpenAiProperties.java       # OpenAI configuration properties
-│   └── QdrantProperties.java       # Qdrant configuration properties
-├── controller/                      # REST controllers
-│   └── ChatController.java         # Chat API endpoints
-├── dto/                            # Data Transfer Objects
-│   ├── ChatRequest.java           # Request models
-│   └── ChatResponse.java          # Response models
-└── service/                        # Business logic
-    ├── ChatService.java           # Main chat orchestration
-    ├── OpenAiChatService.java     # OpenAI integration
-    ├── VectorSearchService.java   # Qdrant vector search
-    └── email/                     # Email parsing & conversion modules
-        ├── HtmlConverter.java     # HTML → plain/markdown with URL policy & cleanup
-        ├── EmailExtractor.java    # MIME/EML extraction and header decoding
-        ├── EmailPipeline.java     # Orchestration of extract→convert (used by CLI)
-        ├── EmailDocumentBuilder.java # Build normalized JSON-ready documents
-        └── ChunkingStrategy.java  # Interface for text chunking
+Successful responses include `parsedText`, file metadata, and a status marker. `.msg` files currently return HTTP 415 with a descriptive error.
+
+## CLI Email Conversion
+
+`HtmlToText` can be run directly for batch conversions:
+
+```bash
+# Package once
+target/composerai-api-0.0.1-SNAPSHOT.jar  # produced via mvn package
+
+# Convert to Markdown via Maven exec
+dev_args="--input-file data/eml/sample.eml --format markdown --urls stripAll --output-dir data/markdown"
+mvn -q -DskipTests exec:java \
+  -Dexec.mainClass=com.composerai.api.service.HtmlToText \
+  -Dexec.args="$dev_args"
+
+# Convert to plain text via fat JAR loader
+java -Dloader.main=com.composerai.api.service.HtmlToText \
+  -cp target/composerai-api-0.0.1-SNAPSHOT.jar \
+  org.springframework.boot.loader.PropertiesLauncher \
+  -- --input-file "data/eml/sample.eml" --format plain --output-dir "data/plain"
 ```
 
-## Development Notes
+Key arguments:
 
-- The application uses placeholder implementations for vector search operations
-- Email context extraction from Qdrant payloads needs to be implemented based on your data schema
-- The embedding generation currently uses a placeholder - implement actual OpenAI embedding API calls
-- Add proper error handling and logging for production use
-- Consider implementing conversation persistence for multi-turn chat sessions
+- `--input-file <path>` (required)
+- `--input-type eml|html` (auto-detected by extension)
+- `--format plain|markdown` (required)
+- `--urls keep|stripAll|cleanOnly` (defaults to `keep`)
+- `--metadata true|false` (defaults to `true`)
+- `--json true|false` (defaults to `false`)
 
-## Next Steps
+## Project Structure
 
-1. Set up Qdrant with your email data and appropriate collection schema
-2. Implement actual email data indexing pipeline
-3. Configure OpenAI embedding generation for query vectors
-4. Add authentication and authorization
-5. Implement conversation persistence
-6. Add monitoring and observability
+```text
+src/main/java/com/composerai/api/
+├── ComposerAiApiApplication.java
+├── config/
+│   ├── AppProperties.java             # HSTS toggle wiring
+│   ├── ClientConfiguration.java       # OpenAI and Qdrant clients
+│   ├── OpenAiProperties.java          # OpenAI configuration binding
+│   ├── QdrantProperties.java          # Qdrant configuration binding
+│   └── SecurityHeadersConfig.java     # Conditional HSTS filter
+├── controller/
+│   ├── ChatController.java            # REST endpoints for chat
+│   ├── EmailController.java           # Email upload & parsing
+│   ├── SystemController.java          # Service health
+│   └── WebViewController.java         # Static Thymeleaf views
+├── dto/                               # Chat request/response models
+├── service/
+│   ├── ChatService.java               # Chat orchestration
+│   ├── OpenAiChatService.java         # OpenAI integration (placeholder embedding)
+│   ├── VectorSearchService.java       # Qdrant search stub
+│   ├── HtmlToText.java                # CLI entry point
+│   └── email/                         # Email extraction & normalization
+└── resources/
+    ├── templates/                     # Thymeleaf pages
+    ├── static/                        # Shared CSS, icons, manifest
+    └── application-*.properties       # Profile configuration
+```
+
+## Implementation Notes
+
+- Vector payload extraction and embedding generation remain placeholders; wire them to real data sources before production use.
+- `ChatService` currently emits UUIDs when a conversation ID is not supplied.
+- The email parser limits uploads to 10 MB and deletes temp files after processing.
+- Security headers only clear existing HSTS when disabled—configure proxies accordingly.
+
+## Roadmap Considerations
+
+1. Implement real embedding generation via OpenAI or Azure equivalents.
+2. Map Qdrant payloads to `EmailContext` with real subject/snippet data.
+3. Add persistence for conversation history and message threading.
+4. Harden error handling, authentication, and observability.
+5. Extend the email parsing UI to support `.msg` conversion once the pipeline is ready.
+
+## License
+
+Internal project. No explicit license provided.
