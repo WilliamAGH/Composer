@@ -27,7 +27,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * Provides endpoints for processing .eml files and extracting readable content.
  */
 @RestController
-@CrossOrigin(origins = "*") // Allow frontend to call this API
+@CrossOrigin(origins = "${app.cors.allowed-origins:*}")
 @RequestMapping("/api")
 public class EmailController {
 
