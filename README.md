@@ -87,7 +87,7 @@ Helpful Makefile targets:
 
 - `make run` – `SPRING_PROFILES_ACTIVE=local mvn spring-boot:run`
 - `make build` – Package JAR with tests skipped
-- `make test` – Run the full Maven test suite
+- `make test` – Run the full Maven test suite (override with `MAVEN_TEST_FLAGS="-DskipITs"` etc.)
 - `make docker-build` – Build `composerai-api:local`
 - `make docker-run-local` – Run container with local profile variables
 

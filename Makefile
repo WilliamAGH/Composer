@@ -2,6 +2,7 @@ APP_NAME ?= composerai-api
 TAG ?= local
 PORT ?= 8080
 PROFILE ?= local
+MAVEN_TEST_FLAGS ?=
 
 .PHONY: help run build test clean docker-build docker-run-local docker-run-prod
 
@@ -9,7 +10,7 @@ help:
 	@echo "Targets:"
 	@echo "  make run                 - Run locally with profile=local"
 	@echo "  make build               - Build JAR (skip tests)"
-	@echo "  make test               - Run unit/integration tests"
+	@echo "  make test               - Run unit/integration tests (use MAVEN_TEST_FLAGS for overrides)"
 	@echo "  make docker-build        - Build Docker image $(APP_NAME):$(TAG)"
 	@echo "  make docker-run-local    - Run Docker with local profile and static bind mount"
 	@echo "  make docker-run-prod     - Run Docker with prod profile"
@@ -21,7 +22,7 @@ build:
 	mvn -q -DskipTests package
 
 test:
-	mvn test
+	mvn $(MAVEN_TEST_FLAGS) test
 
 clean:
 	mvn -q clean
