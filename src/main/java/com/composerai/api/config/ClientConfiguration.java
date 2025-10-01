@@ -14,10 +14,19 @@ public class ClientConfiguration {
 
     @Bean
     public OpenAIClient openAIClient(OpenAiProperties openAiProperties) {
-        // Build from env, then override with Spring properties when present
+        String apiKey = openAiProperties.getApi().getKey();
+        if (apiKey == null || apiKey.isBlank()) {
+            // Try env fallback explicitly to support .env imports
+            apiKey = System.getenv("OPENAI_API_KEY");
+        }
+        if (apiKey == null || apiKey.isBlank()) {
+            // Return a client configured with no credential; services will check and respond gracefully
+            return OpenAIOkHttpClient.builder().fromEnv().build();
+        }
+
         OpenAIClient client = OpenAIOkHttpClient.builder()
             .fromEnv()
-            .apiKey(openAiProperties.getApi().getKey())
+            .apiKey(apiKey)
             .build();
         String baseUrl = openAiProperties.getApi().getBaseUrl();
         if (baseUrl != null && !baseUrl.isBlank()) {

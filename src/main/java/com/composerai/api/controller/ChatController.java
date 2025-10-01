@@ -59,10 +59,22 @@ public class ChatController {
                         }
                     },
                     emitter::complete,
-                    emitter::completeWithError
+                    error -> {
+                        try {
+                            emitter.send(SseEmitter.event().name("error").data(
+                                "OpenAI is not configured or unavailable"
+                            ));
+                        } catch (Exception ignored) {}
+                        emitter.complete();
+                    }
                 );
             } catch (Exception e) {
-                emitter.completeWithError(e);
+                try {
+                    emitter.send(SseEmitter.event().name("error").data(
+                        "Streaming failed to start"
+                    ));
+                } catch (Exception ignored) {}
+                emitter.complete();
             }
         }).start();
         return emitter;

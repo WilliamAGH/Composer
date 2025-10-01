@@ -37,6 +37,9 @@ public class OpenAiChatService {
 
     public String generateResponse(String userMessage, String emailContext) {
         try {
+            if (openAiClient == null) {
+                return "OpenAI is not configured (missing OPENAI_API_KEY).";
+            }
             List<ChatCompletionMessageParam> messages = new ArrayList<>();
 
             String systemMessage = "You are an AI assistant that helps users understand and work with their email. " +
@@ -71,13 +74,16 @@ public class OpenAiChatService {
             return aiResponse;
 
         } catch (Exception e) {
-            logger.error("Error generating AI response", e);
-            return "I apologize, but I'm having trouble processing your request right now. Please try again later.";
+            logger.warn("OpenAI error while generating response: {}", e.getMessage());
+            return "OpenAI is unavailable right now. Please try again later.";
         }
     }
 
     public String analyzeIntent(String userMessage) {
         try {
+            if (openAiClient == null) {
+                return "question";
+            }
             List<ChatCompletionMessageParam> messages = new ArrayList<>();
 
             String systemMessage = "Analyze the user's intent and classify it into one of these categories: " +
@@ -112,7 +118,7 @@ public class OpenAiChatService {
             return intent;
 
         } catch (Exception e) {
-            logger.error("Error analyzing intent", e);
+            logger.warn("OpenAI error while analyzing intent: {}", e.getMessage());
             return "question";
         }
     }
@@ -120,6 +126,10 @@ public class OpenAiChatService {
     public void streamResponse(String userMessage, String emailContext,
                                Consumer<String> onToken, Runnable onComplete, Consumer<Throwable> onError) {
         try {
+            if (openAiClient == null) {
+                onError.accept(new IllegalStateException("OpenAI is not configured (missing OPENAI_API_KEY)."));
+                return;
+            }
             List<ChatCompletionMessageParam> messages = new ArrayList<>();
 
             String systemMessage = "You are an AI assistant that helps users understand and work with their email. " +
@@ -156,8 +166,8 @@ public class OpenAiChatService {
                 onComplete.run();
             }
         } catch (Exception e) {
-            logger.error("Error streaming AI response", e);
-            onError.accept(e);
+            logger.warn("OpenAI error while streaming: {}", e.getMessage());
+            onError.accept(new RuntimeException("OpenAI is unavailable right now."));
         }
     }
 
@@ -180,7 +190,7 @@ public class OpenAiChatService {
             }
             return result;
         } catch (Exception e) {
-            logger.error("Error generating embeddings", e);
+            logger.warn("OpenAI error while generating embeddings: {}", e.getMessage());
             return new float[0];
         }
     }
