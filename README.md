@@ -48,10 +48,12 @@ openai.api.key=${OPENAI_API_KEY:your-openai-api-key}
 openai.api.base-url=${OPENAI_API_BASE_URL:https://api.openai.com/v1}
 # default to 4o latest; override with OPENAI_MODEL if needed
 openai.model=${OPENAI_MODEL:chatgpt-4o-latest}
+qdrant.enabled=${QDRANT_ENABLED:false}
 qdrant.host=${QDRANT_HOST:localhost}
 qdrant.port=${QDRANT_PORT:6333}
 qdrant.use-tls=${QDRANT_USE_TLS:false}
 qdrant.collection-name=${QDRANT_COLLECTION_NAME:emails}
+qdrant.api-key=${QDRANT_API_KEY:}
 ```
 
 Example `.env` (or `.env.properties`) for local use (do not commit secrets):
@@ -60,13 +62,22 @@ Example `.env` (or `.env.properties`) for local use (do not commit secrets):
 OPENAI_API_KEY=sk-...redacted...
 OPENAI_API_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL=chatgpt-4o-latest
+QDRANT_ENABLED=true
 QDRANT_HOST=cluster-abc.us-east-1-0.aws.cloud.qdrant.io
 QDRANT_PORT=6334
 QDRANT_USE_TLS=true
 QDRANT_COLLECTION_NAME=emails
+QDRANT_API_KEY=qdrant_cloud_api_key_here
 ```
 
-If you rely on a raw `.env` file, the application will load the key during startup even when the property value falls back to the placeholder. For `make run`, ensure your shell exports the variables (e.g. `set -a; source .env; set +a`) or keep the `.env` file present at the project root so the configuration loader can read it.
+If you rely on a raw `.env` file, the application will load the key during startup even when the property value falls back to the placeholder. For `make run`, ensure your shell exports the variables (e.g. `set -a; source .env; set +a`) or keep the `.env` file present at the project root so the configuration loader can read it. Retrieval can be turned off entirely by leaving `QDRANT_ENABLED` unset or set to `false`.
+
+### Qdrant usage modes
+
+- Local development (default): `qdrant.enabled=false` yields no outbound Qdrant calls; vector search is skipped gracefully.
+- Cloud (Qdrant Cloud): set `QDRANT_ENABLED=true`, `QDRANT_HOST`, `QDRANT_PORT` (usually 6334), `QDRANT_USE_TLS=true`, and `QDRANT_API_KEY`.
+
+The app attaches the API key to gRPC requests when supported by the Qdrant Java client version; when not supported, calls are still gated by `qdrant.enabled` to avoid failures.
 
 `application-local.properties` enables Spring DevTools restart/live reload. Production profile disables HSTS headers through `app.hsts.enabled=false` for reverse-proxy compatibility.
 
