@@ -15,6 +15,7 @@ replay_pid*
 .env
 # OS artifacts
 .DS_Store
+tmp/
 
 # Maven
 target/
