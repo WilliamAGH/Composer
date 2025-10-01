@@ -51,6 +51,10 @@ public class ChatService {
 
             // Prepare context for AI response
             String contextString = buildContextString(emailContext);
+            // If client provided raw email context from upload, prepend it so it's prioritized
+            if (request.getEmailContext() != null && !request.getEmailContext().isBlank()) {
+                contextString = ("Uploaded email context:\n" + request.getEmailContext() + "\n\n" + contextString).trim();
+            }
 
             // Generate AI response
             String aiResponse = openAiChatService.generateResponse(request.getMessage(), contextString);

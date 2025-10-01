@@ -13,6 +13,9 @@ public class ChatRequest {
     
     private int maxResults = 5;
 
+    // Optional: raw email context provided by the client (e.g., parsed markdown)
+    private String emailContext;
+
     public ChatRequest() {}
 
     public ChatRequest(String message, String conversationId, int maxResults) {
@@ -43,5 +46,13 @@ public class ChatRequest {
 
     public void setMaxResults(int maxResults) {
         this.maxResults = maxResults;
+    }
+
+    public String getEmailContext() {
+        return emailContext;
+    }
+
+    public void setEmailContext(String emailContext) {
+        this.emailContext = emailContext;
     }
 }

@@ -40,5 +40,23 @@
 </head>
 <body>
     <th:block th:replace="${content}"></th:block>
+    <script>
+        // Minimal shared utilities available to all pages
+        window.ComposerAI = window.ComposerAI || {};
+        // DRY: central email parsing used by chat and backend tools
+        window.ComposerAI.parseEmailFile = async function(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            const response = await fetch('/api/parse-email', {
+                method: 'POST',
+                body: formData
+            });
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => 'Unknown error');
+                throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+            }
+            return await response.json();
+        };
+    </script>
 </body>
 </html>
