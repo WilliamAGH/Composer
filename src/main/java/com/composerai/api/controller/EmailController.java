@@ -121,6 +121,16 @@ public class EmailController {
             String plainText = content.getOrDefault("plainText", "").toString();
             String markdown = content.getOrDefault("markdown", "").toString();
 
+            // Extract email metadata from parsed document
+            @SuppressWarnings("unchecked")
+            Map<String, Object> metadata = parsedDocument.containsKey("metadata")
+                ? (Map<String, Object>) parsedDocument.get("metadata")
+                : Collections.emptyMap();
+            
+            String subject = metadata.getOrDefault("subject", "No subject").toString();
+            String from = metadata.getOrDefault("from", "Unknown sender").toString();
+            String date = metadata.getOrDefault("date", "Unknown date").toString();
+
             // Build successful response
             response.put("parsedText", markdown); // use markdown for preserved line breaks
             response.put("parsedPlain", plainText);
@@ -130,6 +140,11 @@ public class EmailController {
             response.put("filename", filename);
             response.put("fileSize", file.getSize());
             response.put("timestamp", System.currentTimeMillis());
+            
+            // Add email metadata for chat interface
+            response.put("subject", subject);
+            response.put("from", from);
+            response.put("date", date);
             
             return ResponseEntity.ok(response);
             
