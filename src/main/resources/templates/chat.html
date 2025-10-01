@@ -171,11 +171,11 @@
                 }
                 
                 showFileInfo(file) {
-                    this.fileInfo.innerHTML = \`
-                        <strong>Selected file:</strong> \${file.name}<br>
-                        <strong>Size:</strong> \${(file.size / 1024).toFixed(2)} KB<br>
-                        <strong>Type:</strong> \${file.type || 'Unknown'}
-                    \`;
+                    this.fileInfo.innerHTML = `
+                        <strong>Selected file:</strong> ${file.name}<br>
+                        <strong>Size:</strong> ${(file.size / 1024).toFixed(2)} KB<br>
+                        <strong>Type:</strong> ${file.type || 'Unknown'}
+                    `;
                     this.fileInfo.classList.remove('hidden');
                 }
                 
@@ -188,12 +188,12 @@
                 addEmailContextMessage(emailData) {
                     const messageDiv = document.createElement('div');
                     messageDiv.className = 'message-assistant max-w-[70%] rounded-2xl bg-blue-50 border border-blue-200 p-4 shadow-sm';
-                    messageDiv.innerHTML = \`
+                    messageDiv.innerHTML = `
                         <h4 class="font-semibold text-slate-900 mb-2">📧 Email Context Loaded</h4>
-                        <p class="text-sm text-slate-700"><strong>Subject:</strong> \${emailData.subject || 'No subject'}</p>
-                        <p class="text-sm text-slate-700"><strong>From:</strong> \${emailData.from || 'Unknown sender'}</p>
-                        <p class="text-sm text-slate-700"><strong>Date:</strong> \${emailData.date || 'Unknown date'}</p>
-                    \`;
+                        <p class="text-sm text-slate-700"><strong>Subject:</strong> ${emailData.subject || 'No subject'}</p>
+                        <p class="text-sm text-slate-700"><strong>From:</strong> ${emailData.from || 'Unknown sender'}</p>
+                        <p class="text-sm text-slate-700"><strong>Date:</strong> ${emailData.date || 'Unknown date'}</p>
+                    `;
                     
                     this.messages.appendChild(messageDiv);
                     this.scrollToBottom();
