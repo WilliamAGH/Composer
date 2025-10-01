@@ -9,20 +9,24 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import org.springframework.beans.factory.annotation.Qualifier;
+import java.util.concurrent.Executor;
 
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/chat")
-@CrossOrigin(origins = "*") // Configure this properly for production
+@CrossOrigin(origins = "${app.cors.allowed-origins:*}")
 public class ChatController {
     
     private static final Logger logger = LoggerFactory.getLogger(ChatController.class);
     
     private final ChatService chatService;
+    private final Executor chatStreamExecutor;
 
-    public ChatController(ChatService chatService) {
+    public ChatController(ChatService chatService, @Qualifier("chatStreamExecutor") Executor chatStreamExecutor) {
         this.chatService = chatService;
+        this.chatStreamExecutor = chatStreamExecutor;
     }
 
     @PostMapping
@@ -45,8 +49,8 @@ public class ChatController {
 
     @PostMapping("/stream")
     public SseEmitter stream(@Valid @RequestBody ChatRequest request) {
-        SseEmitter emitter = new SseEmitter(0L);
-        new Thread(() -> {
+        SseEmitter emitter = new SseEmitter(5 * 60 * 1000L);
+        chatStreamExecutor.execute(() -> {
             try {
                 chatService.streamChat(
                     request.getMessage(),
@@ -76,7 +80,7 @@ public class ChatController {
                 } catch (Exception ignored) {}
                 emitter.complete();
             }
-        }).start();
+        });
         return emitter;
     }
 
