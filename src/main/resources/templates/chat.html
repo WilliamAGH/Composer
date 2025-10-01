@@ -197,8 +197,8 @@
                     loadingDiv.innerHTML = '<div class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900"></div>';
                     
                     try {
-                        // Prefer markdown (preserves formatting) but fall back to plain
-                        const emailContextString = this.currentEmailContext?.parsedMarkdown || this.currentEmailContext?.parsedText || this.currentEmailContext?.parsedPlain || '';
+                        // Prefer strictly cleaned plain text; if empty, fall back to clean markdown
+                        const emailContextString = this.currentEmailContext?.parsedPlain || this.currentEmailContext?.parsedText || this.currentEmailContext?.parsedMarkdown || '';
                         const response = await fetch('/api/chat', {
                             method: 'POST',
                             headers: {

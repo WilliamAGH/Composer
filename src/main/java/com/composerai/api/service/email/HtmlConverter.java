@@ -238,7 +238,7 @@ public final class HtmlConverter {
     /**
      * Convert Markdown to plain text while preserving line/paragraph breaks.
      */
-    private static String markdownToPlain(String md) {
+    public static String markdownToPlain(String md) {
         if (md == null || md.isBlank()) return md;
         String out = md;
         out = out.replaceAll("!\\[([^\\]]*)\\]\\([^\\)]*\\)", "$1");

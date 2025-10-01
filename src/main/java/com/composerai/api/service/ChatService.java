@@ -53,7 +53,12 @@ public class ChatService {
             String contextString = buildContextString(emailContext);
             // If client provided raw email context from upload, prepend it so it's prioritized
             if (request.getEmailContext() != null && !request.getEmailContext().isBlank()) {
-                contextString = ("Uploaded email context:\n" + request.getEmailContext() + "\n\n" + contextString).trim();
+                String clientCtx = request.getEmailContext();
+                // If looks like markdown (contains links/headings), normalize to plain for safety
+                String sanitized = com.composerai.api.service.email.HtmlConverter.markdownToPlain(clientCtx);
+                if (sanitized == null || sanitized.isBlank()) sanitized = clientCtx;
+                sanitized = com.composerai.api.service.email.HtmlConverter.cleanupOutput(sanitized);
+                contextString = ("Uploaded email context:\n" + sanitized + "\n\n" + contextString).trim();
             }
 
             // Generate AI response

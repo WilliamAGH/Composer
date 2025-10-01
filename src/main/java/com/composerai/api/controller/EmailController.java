@@ -132,7 +132,7 @@ public class EmailController {
             String date = metadata.getOrDefault("date", "Unknown date").toString();
 
             // Build successful response
-            response.put("parsedText", markdown); // use markdown for preserved line breaks
+            response.put("parsedText", plainText); // plain, strictly cleaned text
             response.put("parsedPlain", plainText);
             response.put("parsedMarkdown", markdown);
             response.put("document", parsedDocument);
