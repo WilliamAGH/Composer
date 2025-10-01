@@ -8,7 +8,7 @@ public class WebViewController {
 
     @GetMapping({"/", "/index"})
     public String index() {
-        return "index";
+        return "redirect:/chat";
     }
 
     @GetMapping("/diagnostics")
