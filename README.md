@@ -37,10 +37,10 @@ Configure via environment variables or `application.properties` equivalents. The
 
 ```properties
 # src/main/resources/application.properties
-spring.config.import=optional:file:.env.properties,optional:file:.env.local.properties
+spring.config.import=optional:file:.env,optional:file:.env.local,optional:file:.env.properties,optional:file:.env.local.properties
 ```
 
-Precedence: environment variables > `.env.local.properties` > `.env.properties` > bundled `application*.properties` defaults. This lets CI/CD inject secrets while `.env*.properties` provide convenient local overrides.
+Precedence: environment variables > `.env.local` > `.env` > `.env.local.properties` > `.env.properties` > bundled `application*.properties` defaults. This lets CI/CD inject secrets while dotenv-style files provide convenient local overrides.
 
 ```properties
 server.port=${PORT:8080}
@@ -54,7 +54,7 @@ qdrant.use-tls=${QDRANT_USE_TLS:false}
 qdrant.collection-name=${QDRANT_COLLECTION_NAME:emails}
 ```
 
-Example `.env.properties` for local use (do not commit secrets):
+Example `.env` (or `.env.properties`) for local use (do not commit secrets):
 
 ```properties
 OPENAI_API_KEY=sk-...redacted...
@@ -65,6 +65,8 @@ QDRANT_PORT=6334
 QDRANT_USE_TLS=true
 QDRANT_COLLECTION_NAME=emails
 ```
+
+If you rely on a raw `.env` file, the application will load the key during startup even when the property value falls back to the placeholder. For `make run`, ensure your shell exports the variables (e.g. `set -a; source .env; set +a`) or keep the `.env` file present at the project root so the configuration loader can read it.
 
 `application-local.properties` enables Spring DevTools restart/live reload. Production profile disables HSTS headers through `app.hsts.enabled=false` for reverse-proxy compatibility.
 
@@ -85,6 +87,7 @@ Helpful Makefile targets:
 
 - `make run` – `SPRING_PROFILES_ACTIVE=local mvn spring-boot:run`
 - `make build` – Package JAR with tests skipped
+- `make test` – Run the full Maven test suite
 - `make docker-build` – Build `composerai-api:local`
 - `make docker-run-local` – Run container with local profile variables
 

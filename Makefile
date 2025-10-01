@@ -3,12 +3,13 @@ TAG ?= local
 PORT ?= 8080
 PROFILE ?= local
 
-.PHONY: help run build clean docker-build docker-run-local docker-run-prod
+.PHONY: help run build test clean docker-build docker-run-local docker-run-prod
 
 help:
 	@echo "Targets:"
 	@echo "  make run                 - Run locally with profile=local"
 	@echo "  make build               - Build JAR (skip tests)"
+	@echo "  make test               - Run unit/integration tests"
 	@echo "  make docker-build        - Build Docker image $(APP_NAME):$(TAG)"
 	@echo "  make docker-run-local    - Run Docker with local profile and static bind mount"
 	@echo "  make docker-run-prod     - Run Docker with prod profile"
@@ -18,6 +19,9 @@ run:
 
 build:
 	mvn -q -DskipTests package
+
+test:
+	mvn test
 
 clean:
 	mvn -q clean
