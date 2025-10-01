@@ -11,6 +11,8 @@ public class QdrantProperties {
     private int port = 6333;
     private boolean useTls = false;
     private String collectionName = "emails";
+    private boolean enabled = false;
+    private String apiKey;
 
     public String getHost() {
         return host;
@@ -42,5 +44,21 @@ public class QdrantProperties {
 
     public void setCollectionName(String collectionName) {
         this.collectionName = collectionName;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public String getApiKey() {
+        return apiKey;
+    }
+
+    public void setApiKey(String apiKey) {
+        this.apiKey = apiKey;
     }
 }

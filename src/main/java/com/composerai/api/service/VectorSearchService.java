@@ -21,13 +21,23 @@ public class VectorSearchService {
     
     private final QdrantClient qdrantClient;
     private final QdrantProperties qdrantProperties;
+    private final boolean enabled;
 
     public VectorSearchService(QdrantClient qdrantClient, QdrantProperties qdrantProperties) {
         this.qdrantClient = qdrantClient;
         this.qdrantProperties = qdrantProperties;
+        this.enabled = qdrantProperties != null && qdrantProperties.isEnabled();
     }
 
     public List<EmailContext> searchSimilarEmails(float[] queryVector, int limit) {
+        if (!enabled) {
+            logger.debug("Qdrant vector search disabled by configuration; skipping.");
+            return new ArrayList<>();
+        }
+        if (queryVector == null || queryVector.length == 0) {
+            logger.debug("Empty or null query vector; skipping Qdrant search.");
+            return new ArrayList<>();
+        }
         try {
             // Create WithPayloadSelector to include all payload
             var withPayloadSelector = io.qdrant.client.grpc.Points.WithPayloadSelector.newBuilder()
@@ -65,10 +75,16 @@ public class VectorSearchService {
         }
     }
 
+    public boolean isEnabled() {
+        return enabled;
+    }
+
     private List<Float> convertFloatArrayToList(float[] array) {
         List<Float> list = new ArrayList<>();
-        for (float value : array) {
-            list.add(value);
+        if (array != null) {
+            for (float value : array) {
+                list.add(value);
+            }
         }
         return list;
     }

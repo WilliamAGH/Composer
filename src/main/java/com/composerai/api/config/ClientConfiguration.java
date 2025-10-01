@@ -117,7 +117,20 @@ public class ClientConfiguration {
             qdrantProperties.getPort(),
             qdrantProperties.isUseTls()
         );
-        
+        // Attach API key if provided and supported by the client version
+        String apiKey = qdrantProperties.getApiKey();
+        if (apiKey != null && !apiKey.trim().isEmpty()) {
+            try {
+                var method = builder.getClass().getMethod("withApiKey", String.class);
+                method.invoke(builder, apiKey.trim());
+                logger.info("Configured Qdrant API key on gRPC client");
+            } catch (NoSuchMethodException e) {
+                logger.warn("Qdrant client version does not support withApiKey; API key not applied");
+            } catch (Exception e) {
+                logger.warn("Failed to set Qdrant API key: {}", e.getMessage());
+            }
+        }
+
         return new QdrantClient(builder.build());
     }
 }
