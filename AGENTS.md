@@ -64,6 +64,41 @@ Refer to `README.md` (Technology Stack and Requirements) for current runtime ver
 - Maintain changelog snippets in commit messages; use imperative mood.
 - Leave concise code comments only where intent is not obvious (e.g., tricky algorithms or non-obvious constraints)
 
+## LLM Agent Rules — Mandatory (project-wide)
+
+1. Markdown file handling
+   - ALL markdown files MUST BE CREATED IN tmp/ UNLESS EXPLICITLY REQUESTED BY THE USER.
+   - tmp/ files MUST BE DELETED AFTER THEY ARE NO LONGER REQUIRED/COMPLETED.
+
+2. Use of repository tools and code style
+   - We have the tools in-repo; find and reuse them — maintain a single DRY source of truth.
+   - Use idiomatic Java 21+ and Spring Boot 3.3.x best practices.
+   - Produce light, lean, modern code free of unnecessary or legacy boilerplate.
+
+3. Database migrations and SQL
+   - We DO NOT use Flyway, Liquibase, or any automatic migration tool.
+   - Agents may create temporary .sql migration files for review, but AGENTS ARE NOT PERMITTED TO RUN ANY MIGRATIONS.
+   - Automatic migrations in application code (including on-boot migrations) are NEVER ALLOWED UNDER ANY CIRCUMSTANCES.
+   - All SQL performed by agents must be manual queries crafted by the agent (for review/execution by humans or approved processes).
+
+4. Forbidden shortcuts
+   - The usage of @SuppressWarnings is NEVER AN ALLOWED SOLUTION. EVER.
+
+5. Enforcement & review
+   - Every agent-generated change must include a short compliance note listing:
+     - where temp files were created (tmp/ path),
+     - which repo tools were reused,
+     - confirmation that no migrations were run,
+     - confirmation that @SuppressWarnings was not used.
+   - Pull requests or change summaries should highlight any SQL files produced and explicitly mark them as "DO NOT RUN — REVIEW ONLY".
+
+6. Quick checklist (must be satisfied before marking a task complete)
+   - tmp/ markdown created if needed, and scheduled for deletion.
+   - Reused existing in-repo tools (list them).
+   - No automatic migrations added or executed.
+   - Any .sql files are marked "review only" and not executed.
+   - No @SuppressWarnings used.
+
 ## Delivery Checklist
 
 1. Run `mvn test` and any affected integration checks

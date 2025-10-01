@@ -21,7 +21,7 @@ Java 21 Spring Boot backend that powers the ComposerAI: a chat interface for rea
 - **Build**: Maven 3.9+, Spring Boot Maven Plugin
 - **Web Layer**: Spring MVC, Jakarta Validation, Thymeleaf templates
 - **Frontend Styling**: Tailwind CSS via CDN with soft gradients, translucent panels, and shadowed cards for a polished, product-grade aesthetic
-- **Integrations**: OpenAI Java SDK (official, `com.openai:openai-java:4.0.0`), Qdrant gRPC client, Flexmark, JSoup, Jakarta Mail
+- **Integrations**: OpenAI Java SDK (official, `com.openai:openai-java`—see `pom.xml` for version), Qdrant gRPC client, Flexmark, JSoup, Jakarta Mail
 - **Containerization**: Multi-stage Docker build based on OpenJDK 21
 
 ## Requirements
@@ -143,7 +143,8 @@ curl -N -X POST \
 ```
 
 Implementation details:
-- Uses official OpenAI Java SDK `com.openai:openai-java:4.0.0` streaming API (`createStreaming`) for Chat Completions on `chatgpt-4o-latest`.
+
+- Uses official OpenAI Java SDK (`com.openai:openai-java`, see `pom.xml` for version) streaming API (`createStreaming`) for Chat Completions on `chatgpt-4o-latest`.
 - Server emits each token as an SSE event. Close when complete.
 
 ### Email Parsing Response
