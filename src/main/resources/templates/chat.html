@@ -24,13 +24,21 @@
                 <h2 class="mb-4 text-xl font-semibold text-slate-900">Upload Email</h2>
                 <p class="mb-6 text-sm text-slate-600">Drag and drop an email file or click to select one to start a conversation about it.</p>
                 
-                <div id="fileDropArea" class="cursor-pointer rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center transition-all hover:border-slate-400 hover:bg-slate-100" role="button" tabindex="0" aria-describedby="fileDropHelp">
+                <!-- 
+                    IMPORTANT: File Upload Implementation
+                    - The <label> element is crucial for the click-to-upload functionality. Its `for` attribute
+                      MUST match the `id` of the <input type="file">.
+                    - The <input> is visually hidden with `opacity-0`. Using `display: none` will break functionality.
+                    - The shared FileUploadHandler in layout.html is now robust enough to handle both <label>
+                      and other elements as drop areas, ensuring site-wide consistency.
+                -->
+                <label id="fileDropArea" for="fileInput" class="relative block cursor-pointer rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center transition-all hover:border-slate-400 hover:bg-slate-100" role="button" tabindex="0" aria-describedby="fileDropHelp">
+                    <input type="file" id="fileInput" class="absolute inset-0 h-full w-full opacity-0 cursor-pointer" accept=".eml,.msg,.txt,.html" />
                     <div class="text-5xl mb-4">📧</div>
                     <p class="text-base font-semibold text-slate-700">Drop your email file here</p>
                     <p id="fileDropHelp" class="text-sm text-slate-500 mt-2">Click or press Enter/Space to browse</p>
-                </div>
+                </label>
                 
-                <input type="file" id="fileInput" class="hidden" accept=".eml,.msg,.txt,.html">
                 <div id="fileInfo" class="mt-4 hidden rounded-lg bg-slate-100 p-3 text-sm text-slate-700"></div>
                 <div id="uploadStatus" class="mt-4"></div>
             </section>
@@ -46,18 +54,25 @@
                 <!-- Chat Input -->
                 <div class="border-t border-slate-200 bg-white p-6">
                     <div class="mb-4 flex flex-wrap items-center gap-3 text-xs sm:text-sm text-slate-600">
-                        <div class="flex items-center gap-2">
-                            <label for="thinkingMode" class="font-medium text-slate-500">Thinking</label>
-                            <select id="thinkingMode" class="rounded-xl border border-slate-300 bg-white px-3 py-1 text-slate-700 transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200">
-                                <option value="off" selected>Off</option>
-                                <option value="minimal">Minimal</option>
-                                <option value="light">Light</option>
-                                <option value="standard">Standard</option>
-                                <option value="extended">Extended</option>
-                                <option value="heavy">Heavy</option>
-                            </select>
-                            <span id="thinkingStatus" class="hidden text-slate-500"></span>
+                        <div id="thinkingDropdown" class="relative">
+                            <button id="thinkingMenuButton" type="button" aria-haspopup="listbox" aria-expanded="false" class="inline-flex items-center justify-between gap-2 rounded-xl border border-slate-300 bg-white px-3 py-1 font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200">
+                                <span id="thinkingMenuLabel">Thinking: Off</span>
+                                <svg class="h-3 w-3 text-slate-500 transition-transform" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/>
+                                </svg>
+                            </button>
+                            <div id="thinkingMenu" class="absolute z-50 mt-2 w-64 origin-top-left rounded-xl border border-slate-200 bg-white p-1 shadow-lg ring-1 ring-black/5 hidden">
+                                <div role="listbox" aria-labelledby="thinkingMenuButton" class="max-h-60 overflow-auto">
+                                    <button type="button" data-value="off" class="w-full select-none rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 focus:bg-slate-50">Off</button>
+                                    <div class="my-1 border-t border-slate-200"></div>
+                                    <button type="button" data-value="minimal" class="w-full select-none rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 focus:bg-slate-50">Minimal</button>
+                                    <button type="button" data-value="low" class="w-full select-none rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 focus:bg-slate-50">Low</button>
+                                    <button type="button" data-value="medium" class="w-full select-none rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 focus:bg-slate-50">Medium</button>
+                                    <button type="button" data-value="high" class="w-full select-none rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 focus:bg-slate-50">High</button>
+                                </div>
+                            </div>
                         </div>
+                        <span id="thinkingStatus" class="hidden text-slate-500"></span>
                     </div>
                     <div class="flex items-center gap-3">
                         <textarea 
@@ -93,10 +108,9 @@
                     this.conversationId = null;
                     this.activeStreamController = null;  // For aborting active streams
                     this.isStreaming = false;  // Track streaming state
-                    this.thinkingModeSelect = document.getElementById('thinkingMode');
                     this.thinkingStatus = document.getElementById('thinkingStatus');
                     this.thinkingEnabled = false;
-                    this.thinkingLevel = 'standard';
+                    this.thinkingLevel = 'medium';
 
                     console.log('ComposerAI: Elements found:', {
                         messages: !!this.messages,
@@ -112,36 +126,86 @@
                 initializeEventListeners() {
                     console.log('ComposerAI: Initializing event listeners...');
                     
-                    this.sendButton.addEventListener('click', () => this.sendMessage());
-                    this.messageInput.addEventListener('keypress', (e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            this.sendMessage();
-                        }
-                    });
+                    if (this.sendButton) {
+                        this.sendButton.addEventListener('click', () => this.sendMessage());
+                    }
+                    if (this.messageInput) {
+                        this.messageInput.addEventListener('keypress', (e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                this.sendMessage();
+                            }
+                        });
+                    }
                     
                     // Use shared FileUploadHandler for DRY file upload logic
-                    new window.ComposerAI.FileUploadHandler({
-                        dropArea: this.fileDropArea,
-                        fileInput: this.fileInput,
-                        onFileSelected: (file) => this.handleFileUpload(file),
-                        validExtensions: ['.eml', '.msg', '.txt']
-                    });
-                    
-                    if (this.thinkingModeSelect) {
-                        this.thinkingModeSelect.addEventListener('change', (event) => this.updateThinkingMode(event.target.value));
+                    if (this.fileDropArea && this.fileInput && window.ComposerAI && window.ComposerAI.FileUploadHandler) {
+                        new window.ComposerAI.FileUploadHandler({
+                            dropArea: this.fileDropArea,
+                            fileInput: this.fileInput,
+                            onFileSelected: (file) => this.handleFileUpload(file),
+                            validExtensions: ['.eml', '.msg', '.txt']
+                        });
+                    } else {
+                        console.warn('ComposerAI: Upload elements or handler missing', {
+                            dropArea: !!this.fileDropArea,
+                            fileInput: !!this.fileInput,
+                            handler: !!(window.ComposerAI && window.ComposerAI.FileUploadHandler)
+                        });
                     }
+                    
+                    this.initializeThinkingDropdown();
                     this.updateThinkingControls();
 
                     console.log('ComposerAI: Event listeners initialized successfully');
                 }
                 
+                initializeThinkingDropdown() {
+                    this.thinkingMenuButton = document.getElementById('thinkingMenuButton');
+                    this.thinkingMenu = document.getElementById('thinkingMenu');
+                    this.thinkingMenuLabel = document.getElementById('thinkingMenuLabel');
+                    if (!this.thinkingMenuButton || !this.thinkingMenu) return;
+
+                    const setOpen = (open) => {
+                        this.thinkingMenu.classList.toggle('hidden', !open);
+                        this.thinkingMenuButton.setAttribute('aria-expanded', String(open));
+                        const icon = this.thinkingMenuButton.querySelector('svg');
+                        if (icon) icon.style.transform = open ? 'rotate(180deg)' : 'rotate(0)';
+                    };
+
+                    this.thinkingMenuButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const isOpen = this.thinkingMenuButton.getAttribute('aria-expanded') === 'true';
+                        setOpen(!isOpen);
+                    });
+
+                    document.addEventListener('click', (e) => {
+                        if (!this.thinkingMenu.contains(e.target) && e.target !== this.thinkingMenuButton) {
+                            setOpen(false);
+                        }
+                    });
+
+                    this.thinkingMenu.querySelectorAll('button[data-value]').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const value = btn.getAttribute('data-value');
+                            this.updateThinkingMode(value);
+                            setOpen(false);
+                        });
+                    });
+
+                    // initialize label
+                    this.refreshThinkingMenuLabel();
+                }
+
+                refreshThinkingMenuLabel() {
+                    if (!this.thinkingMenuLabel) return;
+                    const label = this.thinkingEnabled ? `Thinking: ${this.formatThinkingLevel(this.thinkingLevel)}` : 'Thinking: Off';
+                    this.thinkingMenuLabel.textContent = label;
+                }
+
                 async handleFileUpload(file) {
                     console.log('ComposerAI: Starting file upload', file.name, file.size);
                     this.showFileInfo(file);
-                    
-                    const formData = new FormData();
-                    formData.append('file', file);
                     
                     this.uploadStatus.innerHTML = '<div class="rounded-lg bg-blue-100 border border-blue-200 p-3 text-sm text-blue-800">Uploading and parsing email...</div>';
                     
@@ -156,7 +220,10 @@
                         this.addEmailContextMessage(result);
                     } catch (error) {
                         console.error('ComposerAI: Upload error:', error);
-                        this.uploadStatus.innerHTML = `<div class="rounded-lg bg-red-100 border border-red-200 p-3 text-sm text-red-800">❌ Failed to upload email: ${error.message}</div>`;
+                        const errDiv = document.createElement('div');
+                        errDiv.className = 'rounded-lg bg-red-100 border border-red-200 p-3 text-sm text-red-800';
+                        errDiv.textContent = `❌ Failed to upload email: ${String(error?.message || 'Unknown error')}`;
+                        this.uploadStatus.replaceChildren(errDiv);
                     }
                 }
                 
@@ -195,22 +262,18 @@
                         this.thinkingLevel = v;
                     }
                     this.updateThinkingControls();
+                    this.refreshThinkingMenuLabel();
                 }
 
                 updateThinkingControls() {
-                    const interactionEnabled = !this.messageInput?.disabled;
+                    const interactionEnabled = !(this.messageInput?.disabled ?? true);
                     const thinkingActive = this.thinkingEnabled && interactionEnabled;
 
-                    if (this.thinkingModeSelect) {
-                        this.thinkingModeSelect.disabled = !interactionEnabled;
-                        const selectBase = 'rounded-xl border border-slate-300 bg-white px-3 py-1 text-slate-700 transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200';
-                        let selectClasses = selectBase;
-                        if (this.thinkingModeSelect.disabled) {
-                            selectClasses += ' opacity-50 cursor-not-allowed';
-                        }
-                        this.thinkingModeSelect.className = selectClasses;
-                        this.thinkingModeSelect.value = thinkingActive ? this.thinkingLevel : 'off';
+                    if (this.thinkingMenuButton) {
+                        this.thinkingMenuButton.disabled = !interactionEnabled;
                     }
+
+                    this.refreshThinkingMenuLabel();
 
                     if (this.thinkingStatus) {
                         const hiddenWhenUnavailable = !interactionEnabled;
@@ -292,7 +355,7 @@
                     this.messageInput.value = '';
 
                     const assistantDiv = this.addMessage('', 'assistant');
-                    assistantDiv.innerHTML = '
+                    assistantDiv.innerHTML = `
                         <div class="assistant-thinking relative">
                             <div class="phase-badge phase-thinking">Thinking…</div>
                             <div class="thinking-skeleton rounded-xl border border-slate-200 bg-slate-50/80 p-3">
@@ -301,7 +364,7 @@
                                 <div class="thinking-line short"></div>
                                 <div class="thinking-cursor-bar"></div>
                             </div>
-                        </div>';
+                        </div>`;
 
                     const payload = this.buildChatPayload(message);
 

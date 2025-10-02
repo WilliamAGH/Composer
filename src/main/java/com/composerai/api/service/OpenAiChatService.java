@@ -279,15 +279,16 @@ public class OpenAiChatService {
 
         ReasoningEffort effort = switch (normalized) {
             case "minimal" -> ReasoningEffort.MINIMAL;
-            case "light" -> ReasoningEffort.of("light");
             case "low" -> ReasoningEffort.LOW;
-            case "standard" -> ReasoningEffort.of("standard");
             case "medium" -> ReasoningEffort.MEDIUM;
-            case "extended" -> ReasoningEffort.of("extended");
-            case "heavy" -> ReasoningEffort.of("heavy");
-            case "high" -> ReasoningEffort.HIGH;
-            default -> ReasoningEffort.of(normalized);
+            case "high", "heavy" -> ReasoningEffort.HIGH;
+            default -> null;
         };
+
+        if (effort == null) {
+            logger.warn("Unsupported thinking level '{}'; falling back to disabled reasoning", thinkingLevel);
+            return Optional.empty();
+        }
 
         return Optional.of(effort);
     }

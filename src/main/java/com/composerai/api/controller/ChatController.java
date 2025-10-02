@@ -43,7 +43,14 @@ public class ChatController {
         response.setHeader("X-Accel-Buffering", "no");
         response.setHeader("Connection", "keep-alive");
         SseEmitter emitter = new SseEmitter(5 * 60 * 1000L);
-        chatStreamExecutor.execute(() -> {
+        emitter.onTimeout(() -> {
+            logger.warn("SSE timeout for conversationId={}", request.getConversationId());
+            emitter.complete();
+        });
+        emitter.onError(ex -> logger.warn("SSE error for conversationId={}", request.getConversationId(), ex));
+        emitter.onCompletion(() -> logger.info("SSE completed for conversationId={}", request.getConversationId()));
+        try {
+            chatStreamExecutor.execute(() -> {
             try {
                 emitter.send(SseEmitter.event().comment("stream-start"));
                 chatService.streamChat(
@@ -85,7 +92,9 @@ public class ChatController {
                                 : error.getMessage();
                             emitter.send(SseEmitter.event().name("error").data(message));
                             logger.warn("Streaming completed with error: {}", message);
-                        } catch (Exception ignored) {}
+                        } catch (Exception ignored) {
+                            logger.debug("Failed to send SSE error event", ignored);
+                        }
                         emitter.complete();
                     }
                 );
@@ -93,10 +102,20 @@ public class ChatController {
                 try {
                     emitter.send(SseEmitter.event().name("error").data("Streaming failed to start"));
                     logger.error("Streaming failed to start", e);
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                    logger.debug("Failed to send SSE startup error event", ignored);
+                }
                 emitter.complete();
             }
         });
+        } catch (java.util.concurrent.RejectedExecutionException rejection) {
+            try {
+                emitter.send(SseEmitter.event().name("error").data("Server busy — please retry"));
+            } catch (Exception ignored) {
+                logger.debug("Failed to send rejection SSE error", ignored);
+            }
+            emitter.completeWithError(rejection);
+        }
         return emitter;
     }
 

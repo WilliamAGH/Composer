@@ -112,10 +112,13 @@ public class ChatService {
                            Runnable onComplete,
                            java.util.function.Consumer<Throwable> onError) {
         try {
-            logger.info("Processing streaming chat request: {}", message);
+            logger.debug("Processing streaming chat request (len={})", message == null ? 0 : message.length());
             String conversationId = resolveConversationId(conversationIdSeed);
             ChatContext ctx = prepareChatContext(message, maxResults);
             String contextString = mergeClientContext(ctx.contextString(), clientContext);
+            Runnable safeOnComplete = onComplete != null ? onComplete : () -> {};
+            java.util.function.Consumer<Throwable> safeOnError =
+                onError != null ? onError : err -> logger.error("Streaming chat error: conversationId={}", conversationId, err);
             if (onMetadata != null) {
                 onMetadata.accept(new StreamMetadata(conversationId));
             }
@@ -128,19 +131,82 @@ public class ChatService {
                 onToken,
                 () -> {
                     long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
-                    logger.info("Stream completed normally: conversationId={}, elapsedMs={}", conversationId, elapsedMs);
-                    onComplete.run();
+                    logger.info("Stream completed: conversationId={}, elapsedMs={}", conversationId, elapsedMs);
+                    safeOnComplete.run();
                 },
                 err -> {
                     long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
-                    logger.warn("Stream ended with error: conversationId={}, elapsedMs={}, reason={}", conversationId, elapsedMs, err.getMessage());
-                    onError.accept(err);
+                    logger.warn("Stream ended with error: conversationId={}, elapsedMs={}", conversationId, elapsedMs, err);
+                    safeOnError.accept(err);
                 }
             );
             logger.info("Successfully initiated streaming chat request");
         } catch (Exception e) {
             logger.error("Error initiating streaming chat request", e);
-            onError.accept(e);
+            if (onError != null) {
+                onError.accept(e);
+            } else {
+                logger.error("Swallow-proof guard caught streaming failure", e);
+            }
+        }
+    }
+
+    /**
+     * Overload that accepts a ChatRequest to ensure parity with non-streaming processing.
+     * Includes uploaded email context (markdown -> plain -> cleanup) before streaming.
+     */
+    public void streamChat(com.composerai.api.dto.ChatRequest request,
+                           java.util.function.Consumer<String> onToken,
+                           Runnable onComplete,
+                           java.util.function.Consumer<Throwable> onError) {
+        String message = request != null ? request.getMessage() : null;
+        int maxResults = request != null ? request.getMaxResults() : 5;
+        logger.debug("Processing streaming chat request (len={})", message == null ? 0 : message.length());
+
+        String conversationId = resolveConversationId(request != null ? request.getConversationId() : null);
+        ChatContext ctx = prepareChatContext(message, maxResults);
+        String contextString = ctx.contextString();
+
+        // Include uploaded email context when present
+        String uploaded = request != null ? request.getEmailContext() : null;
+        if (uploaded != null && !uploaded.isBlank()) {
+            String plain = com.composerai.api.service.email.HtmlConverter.markdownToPlain(uploaded);
+            if (plain == null || plain.isBlank()) plain = uploaded;
+            String cleaned = com.composerai.api.service.email.HtmlConverter.cleanupOutput(plain);
+            if (cleaned == null || cleaned.isBlank()) cleaned = plain.trim();
+            contextString = ("Uploaded email context:\n" + cleaned + (contextString == null || contextString.isBlank() ? "" : "\n\n" + contextString)).trim();
+        }
+
+        final boolean thinkingEnabled = request != null && request.isThinkingEnabled();
+        final String thinkingLevel = request != null ? request.getThinkingLevel() : null;
+
+        Runnable safeOnComplete = onComplete != null ? onComplete : () -> {};
+        java.util.function.Consumer<Throwable> safeOnError =
+            onError != null ? onError : err -> logger.error("Streaming chat error: conversationId={}", conversationId, err);
+
+        final long startNanos = System.nanoTime();
+        try {
+            openAiChatService.streamResponse(
+                message,
+                contextString,
+                thinkingEnabled,
+                thinkingLevel,
+                onToken,
+                () -> {
+                    long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
+                    logger.info("Stream completed: conversationId={}, elapsedMs={}", conversationId, elapsedMs);
+                    safeOnComplete.run();
+                },
+                err -> {
+                    long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
+                    logger.warn("Stream ended with error: conversationId={}, elapsedMs={}", conversationId, elapsedMs, err);
+                    safeOnError.accept(err);
+                }
+            );
+            logger.info("Successfully initiated streaming chat request");
+        } catch (Exception e) {
+            logger.error("Error initiating streaming chat request", e);
+            safeOnError.accept(e);
         }
     }
 

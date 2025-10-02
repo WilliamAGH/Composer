@@ -134,11 +134,25 @@
             }
             
             init() {
-                // Click to upload
+                /**
+                 * IMPORTANT: Click-to-upload functionality is handled natively by the browser
+                 * when a <label> element's `for` attribute is correctly associated with an
+                 * <input type="file"> element's `id`.
+                 *
+                 * DO NOT add `e.preventDefault()`, `e.stopPropagation()`, or a manual
+                 * `.click()` call in this event listener. Doing so will break the native
+                 * browser behavior and prevent the file dialog from opening. This listener
+                 * is intentionally left sparse to allow the default action to proceed.
+                 */
                 this.dropArea.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.fileInput.click();
+                    // If the dropArea is a <label>, the browser handles activating the input.
+                    // In this case, we must NOT interfere by calling preventDefault() or click().
+                    // If the dropArea is a generic element like a <div>, we need to
+                    // manually trigger the click on the hidden file input.
+                    if (this.dropArea.tagName.toLowerCase() !== 'label') {
+                        e.preventDefault();
+                        this.fileInput.click();
+                    }
                 });
                 
                 // Keyboard accessibility
