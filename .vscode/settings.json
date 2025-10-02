@@ -18,6 +18,9 @@
   "maven.pomfile.autoUpdateEffectivePOM": true,
   "spring-boot.ls.problem.version-validation.UPDATE_LATEST_MINOR_VERSION": "IGNORE",
   "spring-boot.ls.problem.version-validation.UPDATE_LATEST_PATCH_VERSION": "IGNORE",
+  "markdownlint.ignorePatterns": [
+    "tmp/**"
+  ],
   "markdownlint.config": {
     "MD005": false,
     "MD007": false,
