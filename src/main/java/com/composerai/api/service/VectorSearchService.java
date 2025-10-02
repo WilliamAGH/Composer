@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
@@ -25,19 +26,19 @@ public class VectorSearchService {
     private final boolean enabled;
 
     public VectorSearchService(QdrantClient qdrantClient, QdrantProperties qdrantProperties) {
-        this.qdrantClient = qdrantClient;
-        this.qdrantProperties = qdrantProperties;
-        this.enabled = qdrantProperties != null && qdrantProperties.isEnabled();
+        this.qdrantClient = Objects.requireNonNull(qdrantClient, "QdrantClient must not be null");
+        this.qdrantProperties = Objects.requireNonNull(qdrantProperties, "QdrantProperties must not be null");
+        this.enabled = this.qdrantProperties.isEnabled();
     }
 
     public List<EmailContext> searchSimilarEmails(float[] queryVector, int limit) {
         if (!enabled) {
             logger.debug("Qdrant vector search disabled by configuration; skipping.");
-            return new ArrayList<>();
+            return List.of();
         }
         if (queryVector == null || queryVector.length == 0) {
             logger.debug("Empty or null query vector; skipping Qdrant search.");
-            return new ArrayList<>();
+            return List.of();
         }
         try {
             // Create WithPayloadSelector to include all payload
@@ -66,13 +67,13 @@ public class VectorSearchService {
         } catch (InterruptedException e) {
             logger.warn("Qdrant search interrupted", e);
             Thread.currentThread().interrupt();
-            return new ArrayList<>();
+            return List.of();
         } catch (ExecutionException e) {
             logger.warn("Qdrant search failed", e.getCause() != null ? e.getCause() : e);
-            return new ArrayList<>();
+            return List.of();
         } catch (Exception e) {
             logger.warn("Qdrant search error", e);
-            return new ArrayList<>();
+            return List.of();
         }
     }
 
