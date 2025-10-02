@@ -10,12 +10,18 @@ package com.composerai.api.service.email;
 
 import com.composerai.api.service.HtmlToText;
 import com.composerai.api.util.StringUtils;
+import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter;
+import com.vladsch.flexmark.parser.Parser;
+import com.vladsch.flexmark.parser.ParserEmulationProfile;
+import com.vladsch.flexmark.util.data.MutableDataSet;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
+import org.jsoup.safety.Cleaner;
+import org.jsoup.safety.Safelist;
 
 /**
  * HtmlConverter: normalize HTML and convert to plain text or Markdown
@@ -23,7 +29,16 @@ import org.jsoup.nodes.TextNode;
  */
 public final class HtmlConverter {
 
+    private static final MarkdownRenderer MARKDOWN_RENDERER = new MarkdownRenderer();
+
     private HtmlConverter() {}
+
+    /**
+     * Render Markdown content to sanitized HTML using the shared Flexmark + JSoup pipeline.
+     */
+    public static String markdownToSafeHtml(String markdown) {
+        return MARKDOWN_RENDERER.render(markdown);
+    }
 
     public static String convertHtml(String html, HtmlToText.OutputFormat format, HtmlToText.UrlPolicy urlsPolicy) {
         return convertHtml(html, format, urlsPolicy, true);
@@ -274,6 +289,43 @@ public final class HtmlConverter {
     private static String normalizeInvisible(String s) {
         return s.replaceAll("[\\u200B\\u200C\\u200D\\uFEFF\\u2060\\u00AD]", "");
     }
+
+    private static final class MarkdownRenderer {
+        private final Parser parser;
+        private final HtmlRenderer renderer;
+        private final Cleaner cleaner;
+
+        MarkdownRenderer() {
+            MutableDataSet options = new MutableDataSet();
+            ParserEmulationProfile.GITHUB_DOC.setIn(options);
+            this.parser = Parser.builder(options).build();
+            this.renderer = HtmlRenderer.builder(options)
+                .escapeHtml(true)
+                .percentEncodeUrls(true)
+                .softBreak("<br />\n")
+                .build();
+
+            Safelist safelist = Safelist.basicWithImages();
+            safelist.addTags("table", "thead", "tbody", "tfoot", "tr", "th", "td", "pre", "code");
+            safelist.addAttributes("a", "href", "title", "rel", "target");
+            safelist.addAttributes("code", "class");
+            this.cleaner = new Cleaner(safelist);
+        }
+
+        synchronized String render(String markdown) {
+            if (markdown == null || markdown.isBlank()) {
+                return "";
+            }
+            com.vladsch.flexmark.util.ast.Node document = parser.parse(markdown);
+            String renderedHtml = renderer.render(document);
+            Document dirty = Jsoup.parseBodyFragment(renderedHtml);
+            Document clean = cleaner.clean(dirty);
+            clean.outputSettings().prettyPrint(false);
+            for (Element anchor : clean.select("a[href]")) {
+                anchor.attr("rel", "noopener noreferrer");
+                anchor.attr("target", "_blank");
+            }
+            return clean.body().html();
+        }
+    }
 }
-
-

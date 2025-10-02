@@ -11,7 +11,9 @@ package com.composerai.api.service.email;
 import com.composerai.api.service.HtmlToText;
 import com.composerai.api.util.StringUtils;
 import jakarta.mail.Session;
+import jakarta.mail.internet.MailDateFormat;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.MessagingException;
 
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
@@ -20,6 +22,10 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.HashMap;
@@ -38,6 +44,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * - Return the final string result
  */
 public final class EmailPipeline {
+
+    private static final DateTimeFormatter DISPLAY_DATE_FORMAT =
+        DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' h:mm a XXX");
 
     private EmailPipeline() {}
 
@@ -59,6 +68,16 @@ public final class EmailPipeline {
                     meta.put("from", StringUtils.safe(EmailExtractor.formatAddresses(message.getFrom())));
                     meta.put("to", StringUtils.safe(EmailExtractor.formatAddresses(message.getRecipients(jakarta.mail.Message.RecipientType.TO))));
                     meta.put("cc", StringUtils.safe(EmailExtractor.formatAddresses(message.getRecipients(jakarta.mail.Message.RecipientType.CC))));
+                    
+                    // Extract and format date for user-friendly display
+                    DateMetadata dateMetadata = extractDateMetadata(message);
+                    meta.put("date", StringUtils.safe(dateMetadata.displayLabel()));
+                    meta.put("dateIso", StringUtils.safe(dateMetadata.isoTimestamp()));
+                    meta.put("dateHeader", dateMetadata.originalHeader());
+                    if (dateMetadata.source() != null) {
+                        meta.put("dateSource", dateMetadata.source());
+                    }
+                    
                     meta.put("source", "eml-file");
                     meta.put("path", Path.of(options.inputFile).getFileName().toString());
 
@@ -115,6 +134,98 @@ public final class EmailPipeline {
         if (idx < 0) return "";
         return inputFile.substring(idx + 1).toLowerCase(Locale.ROOT);
     }
+
+    private static OffsetDateTime parseDateHeader(String headerValue) {
+        if (headerValue == null || headerValue.isBlank()) {
+            return null;
+        }
+        try {
+            return OffsetDateTime.parse(headerValue.trim(), DateTimeFormatter.RFC_1123_DATE_TIME);
+        } catch (DateTimeParseException ignored) {
+            try {
+                java.util.Date parsed = new MailDateFormat().parse(headerValue);
+                if (parsed == null) {
+                    return null;
+                }
+                return OffsetDateTime.ofInstant(parsed.toInstant(), ZoneOffset.UTC);
+            } catch (Exception ex) {
+                return null;
+            }
+        }
+    }
+
+    private static DateMetadata extractDateMetadata(MimeMessage message) throws MessagingException {
+        String originalDateHeader = StringUtils.safe(message.getHeader("Date", null));
+        OffsetDateTime headerDate = parseDateHeader(originalDateHeader);
+        if (headerDate != null) {
+            return new DateMetadata(
+                headerDate,
+                DISPLAY_DATE_FORMAT.format(headerDate),
+                headerDate.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
+                originalDateHeader,
+                "Date"
+            );
+        }
+
+        OffsetDateTime receivedDate = parseReceivedDate(message);
+        if (receivedDate != null) {
+            return new DateMetadata(
+                receivedDate,
+                DISPLAY_DATE_FORMAT.format(receivedDate),
+                receivedDate.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
+                originalDateHeader,
+                "Received"
+            );
+        }
+
+        java.util.Date sentDate = message.getSentDate();
+        if (sentDate != null) {
+            OffsetDateTime utcFallback = OffsetDateTime.ofInstant(sentDate.toInstant(), ZoneOffset.UTC);
+            return new DateMetadata(
+                utcFallback,
+                DISPLAY_DATE_FORMAT.format(utcFallback),
+                utcFallback.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
+                originalDateHeader,
+                "SentDate"
+            );
+        }
+
+        return new DateMetadata(null, null, null, originalDateHeader, null);
+    }
+
+    private static OffsetDateTime parseReceivedDate(MimeMessage message) throws MessagingException {
+        String[] receivedHeaders = message.getHeader("Received");
+        if (receivedHeaders == null || receivedHeaders.length == 0) {
+            return null;
+        }
+        // Iterate from most recent (bottom-most) to earliest
+        for (int i = receivedHeaders.length - 1; i >= 0; i--) {
+            String header = receivedHeaders[i];
+            if (header == null || header.isBlank()) {
+                continue;
+            }
+            int semicolonIndex = header.lastIndexOf(';');
+            if (semicolonIndex < 0 || semicolonIndex == header.length() - 1) {
+                continue;
+            }
+            String datePortion = header.substring(semicolonIndex + 1).trim();
+            OffsetDateTime parsed = parseDateHeader(datePortion);
+            if (parsed != null) {
+                return parsed;
+            }
+        }
+        return null;
+    }
+
+    private record DateMetadata(OffsetDateTime timestamp, String displayLabel, String isoTimestamp,
+                                String originalHeader, String source) {
+        DateMetadata {
+            if (timestamp != null && (displayLabel == null || displayLabel.isBlank())) {
+                displayLabel = DISPLAY_DATE_FORMAT.format(timestamp);
+            }
+            if (timestamp != null && (isoTimestamp == null || isoTimestamp.isBlank())) {
+                isoTimestamp = timestamp.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+            }
+        }
+    }
 }
-
-

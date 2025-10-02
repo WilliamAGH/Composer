@@ -9,17 +9,24 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 // (no extra java.util.* imports needed)
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 // Import your existing parser classes
 import com.composerai.api.service.HtmlToText;
+import com.composerai.api.service.email.HtmlConverter;
 // (No direct parsing here; delegated to HtmlToText/EmailPipeline)
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * REST Controller for handling email file uploads and parsing operations.
@@ -28,6 +35,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @RestController
 @RequestMapping("/api")
 public class EmailController {
+
+    private static final Logger logger = LoggerFactory.getLogger(EmailController.class);
+    private static final DateTimeFormatter DATE_WITH_OFFSET_FORMATTER = DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' h:mm a xxx", Locale.US);
 
     // Thin controller: delegates parsing to HtmlToText/EmailPipeline
 
@@ -84,7 +94,7 @@ public class EmailController {
 
             String jsonPayload;
             try {
-                jsonPayload = HtmlToText.convert(options);
+                jsonPayload = convertEmail(options);
             } finally {
                 try { Files.deleteIfExists(tempFile); } catch (IOException ignore) { }
             }
@@ -106,14 +116,25 @@ public class EmailController {
                 ? mapper.convertValue(parsedDocument.get("metadata"), new TypeReference<Map<String, Object>>() {})
                 : Collections.emptyMap();
             
-            String subject = metadata.getOrDefault("subject", "No subject").toString();
-            String from = metadata.getOrDefault("from", "Unknown sender").toString();
-            String date = metadata.getOrDefault("date", "Unknown date").toString();
+            String subject = firstNonBlank(metadata, "subject");
+            if (subject == null) {
+                subject = "No subject";
+            }
+            String from = firstNonBlank(metadata, "from");
+            if (from == null) {
+                from = "Unknown sender";
+            }
+            String date = firstNonBlank(metadata, "date", "dateHeader", "dateIso");
+            if (date == null) {
+                date = "Unknown date";
+            }
+            String dateIso = firstNonBlank(metadata, "dateIso", "date");
+            date = enrichDateWithOffset(date, dateIso);
 
-            // Build successful response
-            response.put("parsedText", plainText); // plain, strictly cleaned text
+            // Build successful response (DRY: use parsedPlain as canonical plain text field)
             response.put("parsedPlain", plainText);
             response.put("parsedMarkdown", markdown);
+            response.put("parsedHtml", HtmlConverter.markdownToSafeHtml(markdown.isBlank() ? plainText : markdown));
             response.put("document", parsedDocument);
             response.put("status", "success");
             response.put("filename", filename);
@@ -124,11 +145,76 @@ public class EmailController {
             response.put("subject", subject);
             response.put("from", from);
             response.put("date", date);
+            if (dateIso != null) {
+                response.put("dateIso", dateIso.trim());
+            }
 
             return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            // Rethrow validation errors as-is for proper error response
+            throw e;
+        } catch (UnsupportedOperationException e) {
+            // Rethrow unsupported operations as-is
+            throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to process email file: " + e.getMessage(), e);
+            // Provide more specific error message with cause
+            String detailedMessage = "Failed to process email file";
+            if (e.getMessage() != null && !e.getMessage().isBlank()) {
+                detailedMessage += ": " + e.getMessage();
+            }
+            logger.error("Email parsing failed for file: {}", filename, e);
+            throw new RuntimeException(detailedMessage, e);
         }
     }
     // Intentionally no health/info endpoints here; SystemController exposes /api/health
+
+    private static String enrichDateWithOffset(String currentDisplay, String isoCandidate) {
+        String display = currentDisplay == null ? "Unknown date" : currentDisplay;
+        if (displayHasOffset(display)) {
+            return display;
+        }
+
+        if (isoCandidate == null || isoCandidate.isBlank()) {
+            return display;
+        }
+
+        String trimmedIso = isoCandidate.trim();
+        try {
+            OffsetDateTime offsetDateTime = OffsetDateTime.parse(trimmedIso);
+            return offsetDateTime.format(DATE_WITH_OFFSET_FORMATTER);
+        } catch (DateTimeParseException ignored) {
+            return display;
+        }
+    }
+
+    private static boolean displayHasOffset(String value) {
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        return value.matches(".*[+-]\\d{2}:?\\d{2}.*");
+    }
+
+    private static String firstNonBlank(Map<String, Object> source, String... keys) {
+        if (source == null || keys == null) {
+            return null;
+        }
+        for (String key : keys) {
+            if (key == null) {
+                continue;
+            }
+            Object value = source.get(key);
+            if (value == null) {
+                continue;
+            }
+            String text = value.toString();
+            if (text != null && !text.isBlank()) {
+                return text;
+            }
+        }
+        return null;
+    }
+
+    protected String convertEmail(HtmlToText.Options options) throws Exception {
+        return HtmlToText.convert(options);
+    }
 }
