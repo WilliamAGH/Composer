@@ -35,20 +35,18 @@ public class ClientConfiguration {
         }
 
         if (StringUtils.isMissing(apiKey)) {
-            logger.warn("OpenAI API key is not configured; OpenAI features will be disabled");
+            logger.error("OpenAI API key is not configured; set OPENAI_API_KEY or openai.api.key");
+            throw new IllegalStateException(
+                "OpenAI API key is not configured; set OPENAI_API_KEY or openai.api.key"
+            );
         }
 
         OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder()
-            .fromEnv()
             .timeout(Timeout.builder()
                 .connect(Duration.ofSeconds(10))
                 .read(Duration.ofMinutes(5))
                 .write(Duration.ofSeconds(30))
                 .build());
-        if (StringUtils.isMissing(apiKey)) {
-            // Return a client configured with no credential; services will check and respond gracefully
-            return builder.build();
-        }
 
         OpenAIClient client = builder
             .apiKey(apiKey)

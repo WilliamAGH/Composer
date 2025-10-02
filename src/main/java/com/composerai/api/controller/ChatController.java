@@ -3,9 +3,11 @@ package com.composerai.api.controller;
 import com.composerai.api.dto.ChatRequest;
 import com.composerai.api.dto.ChatResponse;
 import com.composerai.api.service.ChatService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -35,36 +37,62 @@ public class ChatController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/stream")
-    public SseEmitter stream(@Valid @RequestBody ChatRequest request) {
+    @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter stream(@Valid @RequestBody ChatRequest request, HttpServletResponse response) {
+        response.setHeader("Cache-Control", "no-cache");
+        response.setHeader("X-Accel-Buffering", "no");
+        response.setHeader("Connection", "keep-alive");
         SseEmitter emitter = new SseEmitter(5 * 60 * 1000L);
         chatStreamExecutor.execute(() -> {
             try {
+                emitter.send(SseEmitter.event().comment("stream-start"));
                 chatService.streamChat(
                     request.getMessage(),
                     request.getMaxResults(),
-                    token -> {
+                    request.getEmailContext(),
+                    request.getConversationId(),
+                    request.isThinkingEnabled(),
+                    request.getThinkingLevel(),
+                    metadata -> {
                         try {
-                            emitter.send(SseEmitter.event().data(token));
+                            emitter.send(SseEmitter.event().name("metadata").data(Map.of(
+                                "conversationId", metadata.conversationId()
+                            )));
                         } catch (Exception e) {
                             emitter.completeWithError(e);
                         }
                     },
-                    emitter::complete,
+                    token -> {
+                        try {
+                            emitter.send(SseEmitter.event().name("rendered_html").data(token));
+                        } catch (Exception e) {
+                            emitter.completeWithError(e);
+                        }
+                    },
+                    () -> {
+                        try {
+                            emitter.send(SseEmitter.event().name("done").data("[DONE]"));
+                        } catch (Exception e) {
+                            emitter.completeWithError(e);
+                            return;
+                        }
+                        emitter.complete();
+                    },
                     error -> {
                         try {
-                            emitter.send(SseEmitter.event().name("error").data(
-                                "OpenAI is not configured or unavailable"
-                            ));
+                            String message = error.getMessage() == null || error.getMessage().isBlank()
+                                ? "OpenAI is not configured or unavailable"
+                                : error.getMessage();
+                            emitter.send(SseEmitter.event().name("error").data(message));
+                            logger.warn("Streaming completed with error: {}", message);
                         } catch (Exception ignored) {}
                         emitter.complete();
                     }
                 );
             } catch (Exception e) {
                 try {
-                    emitter.send(SseEmitter.event().name("error").data(
-                        "Streaming failed to start"
-                    ));
+                    emitter.send(SseEmitter.event().name("error").data("Streaming failed to start"));
+                    logger.error("Streaming failed to start", e);
                 } catch (Exception ignored) {}
                 emitter.complete();
             }

@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 public class OpenAiProperties {
     
     private Api api = new Api();
-    private String model = "gpt-3.5-turbo";
+    private String model = "gpt-5-mini";
 
     public Api getApi() {
         return api;
