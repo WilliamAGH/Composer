@@ -95,6 +95,11 @@ public class SecurityHeadersConfig {
             }
         }
 
+        /**
+         * Heuristic to detect CORS failures based on origin header presence and
+         * exception message content. May miss some CORS issues or match noise, but
+         * keeps logging focused on the most likely scenarios.
+         */
         private boolean isCorsFailure(HttpServletRequest request, Exception e) {
             String origin = request.getHeader("Origin");
             if (origin == null) return false;

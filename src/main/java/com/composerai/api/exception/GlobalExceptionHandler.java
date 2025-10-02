@@ -145,9 +145,15 @@ public class GlobalExceptionHandler {
 
         logger.warn("File upload size exceeded for {}", request.getRequestURI(), ex);
 
+        String message = "File size exceeds maximum allowed limit";
+        long maxUploadSize = ex.getMaxUploadSize();
+        if (maxUploadSize > 0) {
+            message += String.format(" (%d bytes)", maxUploadSize);
+        }
+
         ErrorResponse errorResponse = new ErrorResponse(
             "file_too_large",
-            "File size exceeds maximum allowed limit",
+            message,
             HttpStatus.PAYLOAD_TOO_LARGE.value(),
             request.getRequestURI()
         );
