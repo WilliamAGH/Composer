@@ -86,76 +86,31 @@
                 const parsedContent = document.getElementById('parsedContent');
                 const statusMessage = document.getElementById('statusMessage');
 
-                // File input event listeners
-                fileInput.addEventListener('change', handleFileSelect);
-                fileInputWrapper.addEventListener('click', function (event) {
-                    // Only trigger file input if clicking on the wrapper itself, not the file input
-                    if (event.target !== fileInput) {
-                        fileInput.click();
-                    }
+                // Use shared FileUploadHandler for DRY file upload logic
+                new window.ComposerAI.FileUploadHandler({
+                    dropArea: fileInputWrapper,
+                    fileInput: fileInput,
+                    onFileSelected: processSelectedFile,
+                    validExtensions: ['.eml', '.txt']
                 });
-                fileInputWrapper.addEventListener('dragover', handleDragOver);
-                fileInputWrapper.addEventListener('dragleave', handleDragLeave);
-                fileInputWrapper.addEventListener('drop', handleDrop);
 
                 // Button event listeners
-                parseBtn.addEventListener('click', function (e) { e.stopPropagation(); });
-                parseBtn.addEventListener('click', sendToBackend);
-
-                function handleFileSelect(event) {
-                    const file = event.target.files[0];
-                    processSelectedFile(file);
-                }
-
-                function handleDragOver(event) {
-                    event.preventDefault();
-                    fileInputWrapper.classList.add('dragover');
-                }
-
-                function handleDragLeave(event) {
-                    event.preventDefault();
-                    fileInputWrapper.classList.remove('dragover');
-                }
-
-                function handleDrop(event) {
-                    event.preventDefault();
-                    fileInputWrapper.classList.remove('dragover');
-                    const file = event.dataTransfer.files[0];
-
-                    // Sync the file input with the dropped file
-                    if (file) {
-                        const dt = new DataTransfer();
-                        dt.items.add(file);
-                        fileInput.files = dt.files;
-                    }
-
-                    processSelectedFile(file);
-                }
+                parseBtn.addEventListener('click', function (e) { 
+                    e.stopPropagation(); 
+                    sendToBackend();
+                });
 
                 function processSelectedFile(file) {
                     if (!file) return;
-
-                    // Validate file type by extension and MIME type
-                    const validExtensions = ['.eml', '.txt'];
-                    const validMimeTypes = ['message/rfc822', 'text/plain', 'application/octet-stream'];
-                    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
-
-                    const isValidExtension = validExtensions.includes(fileExtension);
-                    const isValidMimeType = validMimeTypes.includes(file.type) || file.type === '';
-
-                    if (!isValidExtension) {
-                        showMessage('Please select a valid email file (.eml or .txt)', 'error');
-                        return;
-                    }
 
                     selectedFile = file;
 
                     // Update file info display
                     fileInfo.classList.remove('hidden');
                     fileInfo.innerHTML = `
-                        <strong>Selected file:</strong> ${file.name}<br>
-                        <strong>Size:</strong> ${formatFileSize(file.size)}<br>
-                        <strong>Type:</strong> ${file.type || 'Unknown'}
+                        <strong>Selected file:</strong> ${window.ComposerAI.escapeHtml(file.name)}<br>
+                        <strong>Size:</strong> ${window.ComposerAI.formatFileSize(file.size)}<br>
+                        <strong>Type:</strong> ${window.ComposerAI.escapeHtml(file.type || 'Unknown')}
                     `;
 
                     // Enable buttons
@@ -207,7 +162,7 @@
                     try {
                         const result = await window.ComposerAI.parseEmailFile(selectedFile);
                         if (result.status === 'success') {
-                            parsedContent.value = result.parsedText;
+                            parsedContent.value = result.parsedPlain || '';
                             parsedContent.dataset.markdown = result.parsedMarkdown || '';
                             showMessage('Email parsed successfully!', 'success');
                         } else {
@@ -241,14 +196,6 @@
 
                 function clearMessage() {
                     statusMessage.innerHTML = '';
-                }
-
-                function formatFileSize(bytes) {
-                    if (bytes === 0) return '0 Bytes';
-                    const k = 1024;
-                    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-                    const i = Math.floor(Math.log(bytes) / Math.log(k));
-                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
                 }
 
                 // Initialize
