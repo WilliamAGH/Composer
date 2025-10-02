@@ -16,6 +16,10 @@ public class ChatRequest {
     // Optional: raw email context provided by the client (e.g., parsed markdown)
     private String emailContext;
 
+    // Optional: server-side reasoning configuration
+    private Boolean thinkingEnabled = Boolean.FALSE;
+    private String thinkingLevel;
+
     public ChatRequest() {}
 
     public ChatRequest(String message, String conversationId, int maxResults) {
@@ -54,5 +58,21 @@ public class ChatRequest {
 
     public void setEmailContext(String emailContext) {
         this.emailContext = emailContext;
+    }
+
+    public boolean isThinkingEnabled() {
+        return Boolean.TRUE.equals(thinkingEnabled);
+    }
+
+    public void setThinkingEnabled(Boolean thinkingEnabled) {
+        this.thinkingEnabled = thinkingEnabled;
+    }
+
+    public String getThinkingLevel() {
+        return thinkingLevel;
+    }
+
+    public void setThinkingLevel(String thinkingLevel) {
+        this.thinkingLevel = thinkingLevel;
     }
 }
