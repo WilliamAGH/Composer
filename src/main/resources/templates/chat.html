@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::body/content}, 'ComposerAI - Email Chat Interface', ~{::head/extraHead})}">
+<head>
+    <th:block th:fragment="extraHead"></th:block>
+</head>
+<body>
+    <div th:fragment="content" class="min-h-screen bg-slate-100/80 py-12">
+        <div class="mx-auto flex max-w-6xl flex-col gap-10 px-4 sm:px-6 lg:px-8">
+            <header class="relative overflow-hidden rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-ultra shadow-slate-900/10 backdrop-blur">
+                <div class="absolute inset-0 bg-subtle-glow"></div>
+                <div class="relative z-10 flex flex-col gap-4">
+                    <h1 class="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">ComposerAI Chat</h1>
+                    <p class="max-w-2xl text-base text-slate-600">Upload an email and chat about it with AI assistance</p>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">Chat Interface</span>
+                        <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">Supports .eml, .msg, .txt</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Email Upload Section -->
+            <section id="uploadSection" class="rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-ultra shadow-slate-900/10 backdrop-blur">
+                <h2 class="mb-4 text-xl font-semibold text-slate-900">Upload Email</h2>
+                <p class="mb-6 text-sm text-slate-600">Drag and drop an email file or click to select one to start a conversation about it.</p>
+                
+                <!-- 
+                    IMPORTANT: File Upload Implementation
+                    - The <label> element is crucial for the click-to-upload functionality. Its `for` attribute
+                      MUST match the `id` of the <input type="file">.
+                    - The <input> is visually hidden with `opacity-0`. Using `display: none` will break functionality.
+                    - The shared FileUploadHandler in layout.html is now robust enough to handle both <label>
+                      and other elements as drop areas, ensuring site-wide consistency.
+                -->
+                <label id="fileDropArea" for="fileInput" class="relative block cursor-pointer rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center transition-all hover:border-slate-400 hover:bg-slate-100" role="button" tabindex="0" aria-describedby="fileDropHelp">
+                    <input type="file" id="fileInput" class="absolute inset-0 h-full w-full opacity-0 cursor-pointer" accept=".eml,.msg,.txt,.html" />
+                    <div class="text-5xl mb-4" aria-hidden="true">&#9993;</div>
+                    <p class="text-base font-semibold text-slate-700">Drop your email file here</p>
+                    <p id="fileDropHelp" class="text-sm text-slate-500 mt-2">Click or press Enter/Space to browse</p>
+                </label>
+                
+                <div id="fileInfo" class="mt-4 hidden rounded-lg bg-slate-100 p-3 text-sm text-slate-700"></div>
+                <div id="uploadStatus" class="mt-4"></div>
+            </section>
+
+            <!-- Chat Messages -->
+            <section class="rounded-3xl border border-slate-200 bg-white/90 shadow-ultra shadow-slate-900/10 backdrop-blur overflow-hidden">
+                <div id="messages" class="flex flex-col gap-4 p-8 min-h-[400px] max-h-[500px] overflow-y-auto bg-slate-50">
+                    <div class="message-assistant max-w-[70%] rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
+                        <div class="text-slate-800">Hello! I'm ComposerAI. Upload an email file above and I'll help you analyze and discuss it.</div>
+                    </div>
+                </div>
+
+                <!-- Chat Input -->
+                <div class="border-t border-slate-200 bg-white p-6">
+                    <div class="mb-4 flex flex-wrap items-center gap-3 text-xs sm:text-sm text-slate-600">
+                    <div id="thinkingDropdown" class="relative">
+                        <button id="thinkingMenuButton" type="button" aria-haspopup="listbox" aria-expanded="false" class="inline-flex items-center justify-between gap-2 rounded-xl border border-slate-300 bg-white px-3 py-1 font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200">
+                            <span id="thinkingMenuLabel">Thinking: Off</span>
+                            <svg class="h-3 w-3 text-slate-500 transition-transform" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <!-- Dropdown menu portal - positioned fixed to escape overflow constraints -->
+                    <div id="thinkingMenu" class="fixed z-[9999] w-64 rounded-xl border border-slate-200 bg-white p-1 shadow-xl ring-1 ring-black/5 hidden" style="max-height: calc(100vh - 120px);">
+                        <div role="listbox" aria-labelledby="thinkingMenuButton" class="max-h-full overflow-auto">
+                            <button type="button" data-value="off" class="w-full select-none rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 focus:bg-slate-50">Off</button>
+                            <div class="my-1 border-t border-slate-200"></div>
+                            <button type="button" data-value="minimal" class="w-full select-none rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 focus:bg-slate-50">Minimal</button>
+                            <button type="button" data-value="low" class="w-full select-none rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 focus:bg-slate-50">Low</button>
+                            <button type="button" data-value="medium" class="w-full select-none rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 focus:bg-slate-50">Medium</button>
+                            <button type="button" data-value="high" class="w-full select-none rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 focus:bg-slate-50">High</button>
+                        </div>
+                    </div>
+                        <span id="thinkingStatus" class="hidden text-slate-500"></span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <textarea 
+                            id="messageInput" 
+                            class="flex-1 resize-none rounded-2xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                            placeholder="Type your message about the email..."
+                            rows="1"
+                            disabled></textarea>
+                        <button id="sendButton" class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white transition-all hover:bg-slate-700 disabled:bg-slate-300 disabled:cursor-not-allowed" disabled>
+                            <span class="text-xl">&rarr;</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <footer class="rounded-2xl border border-slate-200 bg-white/50 px-6 py-3 text-center text-sm text-slate-600 backdrop-blur">
+                ComposerAI &bull; Professional Email Analysis &bull; Upload an email to begin
+            </footer>
+        </div>
+
+        <script>
+            class ComposerAIChat {
+                constructor() {
+                    console.log('ComposerAI: Initializing chat interface...');
+                    this.messages = document.getElementById('messages');
+                    this.messageInput = document.getElementById('messageInput');
+                    this.sendButton = document.getElementById('sendButton');
+                    this.fileDropArea = document.getElementById('fileDropArea');
+                    this.fileInput = document.getElementById('fileInput');
+                    this.fileInfo = document.getElementById('fileInfo');
+                    this.uploadStatus = document.getElementById('uploadStatus');
+                    this.currentEmailContext = null;
+                    this.conversationId = null;
+                    this.activeStreamController = null;  // For aborting active streams
+                    this.isStreaming = false;  // Track streaming state
+                    this.thinkingStatus = document.getElementById('thinkingStatus');
+                    this.thinkingEnabled = false;
+                    this.thinkingLevel = 'medium';
+
+                    console.log('ComposerAI: Elements found:', {
+                        messages: !!this.messages,
+                        messageInput: !!this.messageInput,
+                        sendButton: !!this.sendButton,
+                        fileDropArea: !!this.fileDropArea,
+                        fileInput: !!this.fileInput
+                    });
+                    
+                    this.initializeEventListeners();
+                }
+                
+                initializeEventListeners() {
+                    console.log('ComposerAI: Initializing event listeners...');
+                    
+                    if (this.sendButton) {
+                        this.sendButton.addEventListener('click', () => this.sendMessage());
+                    }
+                    if (this.messageInput) {
+                        this.messageInput.addEventListener('keypress', (e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                this.sendMessage();
+                            }
+                        });
+                    }
+                    
+                    // Use shared FileUploadHandler for DRY file upload logic
+                    if (this.fileDropArea && this.fileInput && window.ComposerAI && window.ComposerAI.FileUploadHandler) {
+                        new window.ComposerAI.FileUploadHandler({
+                            dropArea: this.fileDropArea,
+                            fileInput: this.fileInput,
+                            onFileSelected: (file) => this.handleFileUpload(file),
+                            validExtensions: ['.eml', '.msg', '.txt']
+                        });
+                    } else {
+                        console.warn('ComposerAI: Upload elements or handler missing', {
+                            dropArea: !!this.fileDropArea,
+                            fileInput: !!this.fileInput,
+                            handler: !!(window.ComposerAI && window.ComposerAI.FileUploadHandler)
+                        });
+                    }
+                    
+                    this.initializeThinkingDropdown();
+                    this.updateThinkingControls();
+
+                    console.log('ComposerAI: Event listeners initialized successfully');
+                }
+                
+                initializeThinkingDropdown() {
+                    this.thinkingMenuButton = document.getElementById('thinkingMenuButton');
+                    this.thinkingMenu = document.getElementById('thinkingMenu');
+                    this.thinkingMenuLabel = document.getElementById('thinkingMenuLabel');
+                    if (!this.thinkingMenuButton || !this.thinkingMenu) return;
+
+                    const positionMenu = () => {
+                        // Get button position relative to viewport
+                        const buttonRect = this.thinkingMenuButton.getBoundingClientRect();
+                        const menuHeight = this.thinkingMenu.scrollHeight || 300; // fallback estimate
+                        const spaceBelow = window.innerHeight - buttonRect.bottom;
+                        const spaceAbove = buttonRect.top;
+                        
+                        // Decide whether to open above or below
+                        const openAbove = spaceBelow < menuHeight && spaceAbove > spaceBelow;
+                        
+                        if (openAbove) {
+                            // Position above the button
+                            this.thinkingMenu.style.bottom = `${window.innerHeight - buttonRect.top + 8}px`;
+                            this.thinkingMenu.style.top = 'auto';
+                        } else {
+                            // Position below the button
+                            this.thinkingMenu.style.top = `${buttonRect.bottom + 8}px`;
+                            this.thinkingMenu.style.bottom = 'auto';
+                        }
+                        
+                        // Horizontal positioning - align with button, but ensure it stays on screen
+                        const menuWidth = 256; // w-64 = 16rem = 256px
+                        let left = buttonRect.left;
+                        
+                        // If menu would go off right edge, align it to the right instead
+                        if (left + menuWidth > window.innerWidth - 16) {
+                            left = Math.max(16, window.innerWidth - menuWidth - 16);
+                        }
+                        
+                        this.thinkingMenu.style.left = `${left}px`;
+                    };
+
+                    const setOpen = (open) => {
+                        if (open) {
+                            positionMenu();
+                            this.thinkingMenu.classList.remove('hidden');
+                        } else {
+                            this.thinkingMenu.classList.add('hidden');
+                        }
+                        this.thinkingMenuButton.setAttribute('aria-expanded', String(open));
+                        const icon = this.thinkingMenuButton.querySelector('svg');
+                        if (icon) icon.style.transform = open ? 'rotate(180deg)' : 'rotate(0)';
+                    };
+
+                    this.thinkingMenuButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const isOpen = this.thinkingMenuButton.getAttribute('aria-expanded') === 'true';
+                        setOpen(!isOpen);
+                    });
+
+                    document.addEventListener('click', (e) => {
+                        if (!this.thinkingMenu.contains(e.target) && !this.thinkingMenuButton.contains(e.target)) {
+                            setOpen(false);
+                        }
+                    });
+
+                    // Reposition on window resize
+                    window.addEventListener('resize', () => {
+                        if (this.thinkingMenuButton.getAttribute('aria-expanded') === 'true') {
+                            positionMenu();
+                        }
+                    });
+
+                    this.thinkingMenu.querySelectorAll('button[data-value]').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const value = btn.getAttribute('data-value');
+                            this.updateThinkingMode(value);
+                            setOpen(false);
+                        });
+                    });
+
+                    // initialize label
+                    this.refreshThinkingMenuLabel();
+                }
+
+                refreshThinkingMenuLabel() {
+                    if (!this.thinkingMenuLabel) return;
+                    const label = this.thinkingEnabled ? `Thinking: ${this.formatThinkingLevel(this.thinkingLevel)}` : 'Thinking: Off';
+                    this.thinkingMenuLabel.textContent = label;
+                }
+
+                async handleFileUpload(file) {
+                    console.log('ComposerAI: Starting file upload', file.name, file.size);
+                    this.showFileInfo(file);
+                    
+                    this.uploadStatus.innerHTML = '<div class="rounded-lg bg-blue-100 border border-blue-200 p-3 text-sm text-blue-800">Uploading and parsing email...</div>';
+                    
+                    try {
+                        console.log('ComposerAI: Sending file to shared parser');
+                        const result = await window.ComposerAI.parseEmailFile(file);
+                        console.log('ComposerAI: Parse result:', result);
+                        this.currentEmailContext = result;
+                        this.conversationId = null;
+                        this.uploadStatus.innerHTML = '<div class="rounded-lg bg-green-100 border border-green-200 p-3 text-sm text-green-800">Email uploaded and parsed successfully!</div>';
+                        this.enableChat();
+                        this.addEmailContextMessage(result);
+                    } catch (error) {
+                        console.error('ComposerAI: Upload error:', error);
+                        const errDiv = document.createElement('div');
+                        errDiv.className = 'rounded-lg bg-red-100 border border-red-200 p-3 text-sm text-red-800';
+                        errDiv.textContent = `Failed to upload email: ${String((error && error.message) || 'Unknown error')}`;
+                        this.uploadStatus.replaceChildren(errDiv);
+                    }
+                }
+                
+                showFileInfo(file) {
+                    this.fileInfo.innerHTML = `
+                        <strong>Selected file:</strong> <span class="file-name"></span><br>
+                        <strong>Size:</strong> <span class="file-size"></span><br>
+                        <strong>Type:</strong> <span class="file-type"></span>
+                    `;
+                    this.fileInfo.querySelector('.file-name').textContent = file.name;
+                    this.fileInfo.querySelector('.file-size').textContent = window.ComposerAI.formatFileSize(file.size);
+                    
+                    // Show friendly file type based on extension
+                    const fileName = file.name.toLowerCase();
+                    let friendlyType = 'Unknown';
+                    if (fileName.endsWith('.eml')) {
+                        friendlyType = 'Email (.eml)';
+                    } else if (fileName.endsWith('.msg')) {
+                        friendlyType = 'Outlook Message (.msg)';
+                    } else if (fileName.endsWith('.txt')) {
+                        friendlyType = 'Text File (.txt)';
+                    } else if (fileName.endsWith('.html') || fileName.endsWith('.htm')) {
+                        friendlyType = 'HTML File';
+                    }
+                    this.fileInfo.querySelector('.file-type').textContent = friendlyType;
+                    this.fileInfo.classList.remove('hidden');
+                }
+
+                updateThinkingMode(value) {
+                    const v = (value || 'off').toLowerCase();
+                    if (v === 'off') {
+                        this.thinkingEnabled = false;
+                        // keep previous level selection for convenience
+                    } else {
+                        this.thinkingEnabled = true;
+                        this.thinkingLevel = v;
+                    }
+                    this.updateThinkingControls();
+                    this.refreshThinkingMenuLabel();
+                }
+
+                updateThinkingControls() {
+                    const interactionEnabled = !(this.messageInput?.disabled ?? true);
+                    const thinkingActive = this.thinkingEnabled && interactionEnabled;
+
+                    if (this.thinkingMenuButton) {
+                        this.thinkingMenuButton.disabled = !interactionEnabled;
+                    }
+
+                    this.refreshThinkingMenuLabel();
+
+                    if (this.thinkingStatus) {
+                        const hiddenWhenUnavailable = !interactionEnabled;
+                        this.thinkingStatus.classList.toggle('hidden', hiddenWhenUnavailable);
+                        if (!hiddenWhenUnavailable) {
+                            if (thinkingActive) {
+                                this.thinkingStatus.textContent = `Model thinking: ${this.formatThinkingLevel(this.thinkingLevel)}`;
+                            } else {
+                                this.thinkingStatus.textContent = 'Thinking disabled for faster responses.';
+                            }
+                        }
+                    }
+                }
+
+                formatThinkingLevel(level) {
+                    if (!level) {
+                        return '';
+                    }
+                    return level.charAt(0).toUpperCase() + level.slice(1);
+                }
+
+                enableChat() {
+                    this.messageInput.disabled = false;
+                    this.sendButton.disabled = false;
+                    this.messageInput.placeholder = "Ask me anything about this email...";
+                    this.updateThinkingControls();
+                }
+
+                addEmailContextMessage(emailData) {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'message-assistant max-w-[70%] rounded-2xl bg-blue-50 border border-blue-200 p-4 shadow-sm';
+
+                    const subject = window.ComposerAI.escapeHtml(emailData.subject || 'No subject');
+                    const from = window.ComposerAI.escapeHtml(emailData.from || 'Unknown sender');
+                    const dateLabel = window.ComposerAI.escapeHtml(emailData.date || 'Unknown date');
+                    const iso = (emailData.dateIso || '').trim();
+
+                    messageDiv.innerHTML = `
+                        <h4 class="font-semibold text-slate-900 mb-2">&#128231; Email Context Loaded</h4>
+                        <p class="text-sm text-slate-700"><strong>Subject:</strong> ${subject}</p>
+                        <p class="text-sm text-slate-700"><strong>From:</strong> ${from}</p>
+                        <p class="text-sm text-slate-700" data-role="email-date" data-original-label="${dateLabel}" ${iso ? `data-date-iso="${window.ComposerAI.escapeHtml(iso)}"` : ''}><strong>Date:</strong> ${dateLabel}</p>
+                    `;
+
+                    const previewMarkdown = (emailData.parsedMarkdown || emailData.parsedPlain || '').trim();
+                    if (previewMarkdown.length > 0) {
+                        const truncatedMarkdown = previewMarkdown.length > 400
+                            ? `${previewMarkdown.substring(0, 400).trim()}...`
+                            : previewMarkdown;
+                        const previewHtml = window.ComposerAI.renderMarkdown(truncatedMarkdown);
+                        const previewDiv = document.createElement('div');
+                        previewDiv.className = 'mt-3 pt-3 border-t border-blue-300';
+                        previewDiv.innerHTML = `
+                            <p class="text-xs font-semibold text-slate-600 mb-1">Preview:</p>
+                            <div class="prose prose-sm text-slate-600 max-w-none opacity-80">${previewHtml}</div>
+                        `;
+                        messageDiv.appendChild(previewDiv);
+                    }
+
+                    this.messages.appendChild(messageDiv);
+                    const dateElement = messageDiv.querySelector('[data-role="email-date"]');
+                    if (dateElement) {
+                        this.applyLocalizedDate(dateElement);
+                    }
+                    this.scrollToBottom();
+                }
+                
+                async sendMessage() {
+                    const message = this.messageInput.value.trim();
+                    if (!message || this.isStreaming) {
+                        return;
+                    }
+
+                    if (this.activeStreamController) {
+                        this.activeStreamController.abort();
+                    }
+
+                    this.addMessage(message, 'user');
+                    this.messageInput.value = '';
+
+                    const assistantDiv = this.addMessage('', 'assistant');
+                    assistantDiv.innerHTML = `
+                        <div class="assistant-thinking relative">
+                            <div class="phase-badge phase-thinking">Thinking...</div>
+                            <div class="thinking-skeleton rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+                                <div class="thinking-line"></div>
+                                <div class="thinking-line"></div>
+                                <div class="thinking-line short"></div>
+                                <div class="thinking-cursor-bar"></div>
+                            </div>
+                        </div>`;
+
+                    const payload = this.buildChatPayload(message);
+
+                    this.setInputEnabled(false);
+                    this.isStreaming = true;
+
+                    this.activeStreamController = new AbortController();
+                    const timeoutId = setTimeout(() => {
+                        try {
+                            this.activeStreamController?.abort();
+                        } catch (err) {
+                            console.warn('ComposerAI: Stream abort failed', err);
+                        }
+                    }, 60000);
+
+                    try {
+                        await this.streamResponse(payload, assistantDiv, this.activeStreamController.signal);
+                    } catch (error) {
+                        console.error('Stream error:', error);
+                        if (error.name === 'AbortError') {
+                            assistantDiv.innerHTML = window.ComposerAI.renderMarkdown('Request timed out. Please try again.');
+                        } else {
+                            try {
+                                await this.sendChatRequest(payload, assistantDiv);
+                            } catch (fallbackError) {
+                                console.error('Fallback chat error:', fallbackError);
+                                assistantDiv.innerHTML = window.ComposerAI.renderMarkdown('Sorry, I encountered an error. Please try again.');
+                            }
+                        }
+                    } finally {
+                        clearTimeout(timeoutId);
+                        this.isStreaming = false;
+                        this.activeStreamController = null;
+                        this.setInputEnabled(true);
+                        this.scrollToBottom();
+                    }
+                }
+                
+                buildChatPayload(message) {
+                    const markdownContext = this.currentEmailContext?.parsedMarkdown || '';
+                    const plainContext = this.currentEmailContext?.parsedPlain || '';
+                    const thinkingActive = this.thinkingEnabled && !this.messageInput.disabled;
+                    return {
+                        message,
+                        conversationId: this.conversationId || this.currentEmailContext?.document?.metadata?.messageId || undefined,
+                        maxResults: 5,
+                        emailContext: markdownContext || plainContext || '',
+                        thinkingEnabled: thinkingActive,
+                        thinkingLevel: thinkingActive ? this.thinkingLevel : null
+                    };
+                }
+
+                async sendChatRequest(payload, targetDiv) {
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    this.handleAssistantResponse(targetDiv, result);
+                }
+
+                async streamResponse(payload, targetDiv, signal) {
+                    const response = await fetch('/api/chat/stream', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(payload),
+                        signal: signal
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let accumulatedHtml = '';
+                    let buffer = '';
+                    let firstToken = true;
+                    let conversationIdFromServer = null;
+                    let chunkCount = 0;
+                    let idleTimer = null;
+                    const MIN_CHUNKS_BEFORE_FINALIZE = 3; // guard against ultra-short replies
+                    const IDLE_GRACE_MS = 400; // finalize if no data for this window
+                    
+                    while (true) {
+                        const {done, value} = await reader.read();
+                        if (done) break;
+                        
+                        buffer += decoder.decode(value, {stream: true});
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+                        
+                        let currentEvent = null;
+                        for (const line of lines) {
+                            if (line.startsWith('event:')) {
+                                currentEvent = line.substring(6).trim();
+                            } else if (line.startsWith('data:')) {
+                                const data = line.substring(5).trim();
+                                
+                                if (currentEvent === 'metadata' && data) {
+                                    try {
+                                        const metadata = JSON.parse(data);
+                                        if (metadata.conversationId) {
+                                            conversationIdFromServer = metadata.conversationId;
+                                        }
+                                    } catch (err) {
+                                        console.warn('ComposerAI: Failed to parse metadata event', err);
+                                    }
+                                } else if (currentEvent === 'rendered_html' && data) {
+                                    // Remove spinner on first token
+                                    if (firstToken) {
+                                        targetDiv.innerHTML = '<div class="phase-badge phase-streaming">Streaming...</div>';
+                                        firstToken = false;
+                                    }
+                                    
+                                    // Accumulate HTML (already sanitized by backend)
+                                    accumulatedHtml += data;
+                                    chunkCount++;
+                                    // Add streaming cursor indicator
+                                    targetDiv.innerHTML = accumulatedHtml + '<span class="streaming-cursor">|</span>';
+                                    this.scrollIfAtBottom();
+                                    // reset idle timer after each chunk
+                                    if (idleTimer) clearTimeout(idleTimer);
+                                    idleTimer = setTimeout(() => {
+                                        if (chunkCount < MIN_CHUNKS_BEFORE_FINALIZE) {
+                                            // not enough chunks; keep cursor but don't finalize
+                                            return;
+                                        }
+                                        targetDiv.innerHTML = accumulatedHtml;
+                                    }, IDLE_GRACE_MS);
+                                    
+                                } else if (currentEvent === 'done') {
+                                    console.log('Stream completed successfully, chunks=', chunkCount);
+                                    if (!accumulatedHtml.trim()) {
+                                        targetDiv.innerHTML = window.ComposerAI.renderMarkdown('I don\'t have a response to that.');
+                                    } else {
+                                        // Remove streaming cursor on completion, but ensure minimum chunks or grace elapsed
+                                        if (chunkCount >= MIN_CHUNKS_BEFORE_FINALIZE) {
+                                            targetDiv.innerHTML = accumulatedHtml;
+                                        } else {
+                                            // give a short grace and then finalize
+                                            setTimeout(() => {
+                                                targetDiv.innerHTML = accumulatedHtml;
+                                            }, IDLE_GRACE_MS);
+                                        }
+                                    }
+                                    this.conversationId = conversationIdFromServer || payload.conversationId || this.conversationId;
+                                    return;
+                                    
+                                } else if (currentEvent === 'error') {
+                                    throw new Error(data || 'Stream error occurred');
+                                }
+                                
+                                currentEvent = null; // Reset after processing
+                            }
+                        }
+                    }
+                    
+                    // Handle case where stream ends without 'done' event
+                    if (!accumulatedHtml.trim()) {
+                        targetDiv.innerHTML = window.ComposerAI.renderMarkdown('No response received.');
+                    } else {
+                        // Remove streaming cursor if stream ended unexpectedly
+                        targetDiv.innerHTML = accumulatedHtml;
+                    }
+                    this.conversationId = conversationIdFromServer || payload.conversationId || this.conversationId;
+                }
+                
+                setInputEnabled(enabled) {
+                    this.messageInput.disabled = !enabled;
+                    this.sendButton.disabled = !enabled;
+                    this.updateThinkingControls();
+                }
+                
+                scrollIfAtBottom() {
+                    // Only auto-scroll if user is near bottom (within 50px)
+                    const isNearBottom = this.messages.scrollTop + this.messages.clientHeight >= this.messages.scrollHeight - 50;
+                    if (isNearBottom) {
+                        this.messages.scrollTop = this.messages.scrollHeight;
+                    }
+                }
+
+                handleAssistantResponse(targetDiv, result) {
+                    if (!result) {
+                        targetDiv.innerHTML = window.ComposerAI.renderMarkdown('I received your message about the email.');
+                        return;
+                    }
+
+                    const sanitizedHtml = (result.sanitizedHtml || result.sanitizedHTML || result.renderedHtml || result.renderedHTML || '').trim();
+                    const rawMessage = (result.rawMarkdown || result.response || result.message || '').trim();
+
+                    if (sanitizedHtml) {
+                        targetDiv.innerHTML = sanitizedHtml;
+                    } else {
+                        targetDiv.innerHTML = window.ComposerAI.renderMarkdown(rawMessage || 'I received your message about the email.');
+                    }
+
+                    if (result.conversationId) {
+                        this.conversationId = result.conversationId;
+                    }
+                }
+
+                applyLocalizedDate(dateElement) {
+                    const iso = dateElement.getAttribute('data-date-iso');
+                    if (!iso) return;
+
+                    try {
+                        const localDate = new Date(iso);
+                        if (Number.isNaN(localDate.getTime())) {
+                            return;
+                        }
+                        const formatted = localDate.toLocaleString(undefined, {
+                            dateStyle: 'medium',
+                            timeStyle: 'short'
+                        });
+                        const original = dateElement.getAttribute('data-original-label') || formatted;
+                        dateElement.innerHTML = `<strong>Date:</strong> ${window.ComposerAI.escapeHtml(formatted)}`;
+                        dateElement.setAttribute('title', `Original: ${original}\nISO: ${iso}`);
+                    } catch (err) {
+                        console.warn('ComposerAI: Failed to localize email date', err);
+                    }
+                }
+
+                addMessage(content, sender) {
+                    const messageDiv = document.createElement('div');
+                    if (sender === 'user') {
+                        messageDiv.className = 'message-user ml-auto max-w-[70%] rounded-2xl bg-slate-900 text-white p-4 shadow-sm';
+                        // User messages: safely escape HTML
+                        messageDiv.textContent = content;
+                    } else {
+                        messageDiv.className = 'message-assistant max-w-[70%] rounded-2xl bg-white border border-slate-200 p-4 shadow-sm';
+                        if (content && content.trim()) {
+                            this.updateMessageContent(messageDiv, content, 'assistant');
+                        }
+                    }
+                    
+                    this.messages.appendChild(messageDiv);
+                    this.scrollToBottom();
+                    
+                    return messageDiv;
+                }
+                
+                updateMessageContent(messageDiv, content, sender, options = {}) {
+                    const { treatAsHtml = false } = options;
+                    if (sender === 'user') {
+                        messageDiv.textContent = content;
+                        return;
+                    }
+
+                    if (treatAsHtml) {
+                        messageDiv.innerHTML = content || '';
+                    } else {
+                        messageDiv.innerHTML = window.ComposerAI.renderMarkdown(content || '');
+                    }
+                }
+                
+                scrollToBottom() {
+                    this.messages.scrollTop = this.messages.scrollHeight;
+                }
+                
+            }
+            
+            // Dependencies are loaded before this script (in layout.html head), so we can initialize immediately
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('ComposerAI: DOM ready, initializing chat interface...');
+                console.log('ComposerAI: Dependencies status:', {
+                    DOMPurify: typeof DOMPurify !== 'undefined',
+                    marked: typeof marked !== 'undefined',
+                    ComposerAI: !!window.ComposerAI,
+                    parseEmailFile: window.ComposerAI && typeof window.ComposerAI.parseEmailFile === 'function'
+                });
+                
+                try {
+                    new ComposerAIChat();
+                    console.log('ComposerAI: Chat interface initialized successfully');
+                } catch (error) {
+                    console.error('ComposerAI: Failed to initialize chat interface:', error);
+                }
+            });
+        </script>
+    </div>
+</body>
+</html>

@@ -8,7 +8,7 @@ public class WebViewController {
 
     @GetMapping({"/", "/index"})
     public String index() {
-        return "index";
+        return "redirect:/chat";
     }
 
     @GetMapping("/diagnostics")
@@ -19,5 +19,10 @@ public class WebViewController {
     @GetMapping({"/email-backend"})
     public String emailBackend() {
         return "email-backend";
+    }
+
+    @GetMapping("/chat")
+    public String chat() {
+        return "chat";
     }
 }

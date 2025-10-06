@@ -34,11 +34,181 @@
             },
         };
     </script>
+    <style>
+        .assistant-thinking .thinking-skeleton{position:relative;overflow:hidden}
+        .assistant-thinking .thinking-line{height:10px;margin:6px 0;border-radius:6px;background:linear-gradient(90deg,rgba(226,232,240,.4) 0%,rgba(226,232,240,.8) 50%,rgba(226,232,240,.4) 100%);background-size:200% 100%;animation:shimmer 1200ms ease-in-out infinite}
+        .assistant-thinking .thinking-line.short{width:60%}
+        .assistant-thinking .thinking-line:not(.short){width:100%}
+        .assistant-thinking .thinking-cursor-bar{position:absolute;top:0;left:0;height:100%;width:3px;background:rgba(15,23,42,.25);animation:cursor-sweep 1500ms ease-in-out infinite}
+        .streaming-cursor{display:inline-block;animation:blink 900ms steps(1,end) infinite}
+        .phase-badge{display:inline-flex;align-items:center;gap:.4rem;font-size:.7rem;letter-spacing:.08em;margin-bottom:.5rem;border-radius:9999px;padding:.15rem .6rem;border:1px solid rgba(148,163,184,.45);background:rgba(241,245,249,.7);color:#334155}
+        .phase-badge.phase-thinking{background:rgba(241,245,249,.8)}
+        .phase-badge.phase-streaming{background:rgba(226,232,240,.7)}
+        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+        @keyframes cursor-sweep{0%{left:0}100%{left:100%}}
+        @keyframes blink{0%{opacity:1}50%{opacity:.2}100%{opacity:1}}
+    </style>
     <link rel="stylesheet" href="/css/app-shared.css" />
     <title th:text="${pageTitle}">ComposerAI</title>
     <th:block th:if="${headContent} != null" th:replace="${headContent}"></th:block>
 </head>
 <body>
+    <!-- Load critical dependencies FIRST before any page content -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js" integrity="sha256-8zoteDYr3gAWcOOimwH9DcFqf5GU0EKnda+JJwqzi3Q=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js" integrity="sha256-0kaYYq3qitkkVZpP/6uKTJwfTpqFNM6OHDbsaYzw9Uw=" crossorigin="anonymous"></script>
+    <script>
+        // Minimal shared utilities available to all pages
+        window.ComposerAI = window.ComposerAI || {};
+        
+        /**
+         * Safely render markdown to HTML with XSS protection
+         * Uses marked.js for parsing and DOMPurify for sanitization
+         */
+        window.ComposerAI.renderMarkdown = function(markdown) {
+            if (!markdown || typeof markdown !== 'string') return '';
+            try {
+                const rawHtml = marked.parse(markdown);
+                return DOMPurify.sanitize(rawHtml, {
+                    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 
+                                   'ul', 'ol', 'li', 'a', 'code', 'pre', 'blockquote', 'table', 'thead', 
+                                   'tbody', 'tr', 'th', 'td', 'hr', 'div', 'span'],
+                    ALLOWED_ATTR: ['href', 'title', 'target', 'rel', 'class'],
+                    ALLOW_DATA_ATTR: false
+                });
+            } catch (e) {
+                console.error('Markdown rendering error:', e);
+                return DOMPurify.sanitize(markdown);
+            }
+        };
+        
+        /**
+         * Safely escape HTML for plain text display
+         */
+        window.ComposerAI.escapeHtml = function(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        };
+        
+        /**
+         * Format file size in human-readable format
+         */
+        window.ComposerAI.formatFileSize = function(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        };
+        
+        /**
+         * DRY: central email parsing used by chat and backend tools
+         */
+        window.ComposerAI.parseEmailFile = async function(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            const response = await fetch('/api/parse-email', {
+                method: 'POST',
+                body: formData
+            });
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => 'Unknown error');
+                throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+            }
+            return await response.json();
+        };
+        
+        /**
+         * Shared file upload handler for drag-and-drop and click-to-upload
+         * Usage: new window.ComposerAI.FileUploadHandler(options)
+         */
+        window.ComposerAI.FileUploadHandler = class {
+            constructor(options) {
+                this.dropArea = options.dropArea;
+                this.fileInput = options.fileInput;
+                this.onFileSelected = options.onFileSelected;
+                this.validExtensions = options.validExtensions || ['.eml', '.msg', '.txt'];
+                this.validMimeTypes = options.validMimeTypes || ['message/rfc822', 'text/plain', 'application/octet-stream'];
+                
+                this.init();
+            }
+            
+            init() {
+                /**
+                 * IMPORTANT: Click-to-upload functionality is handled natively by the browser
+                 * when a <label> element's `for` attribute is correctly associated with an
+                 * <input type="file"> element's `id`.
+                 *
+                 * DO NOT add `e.preventDefault()`, `e.stopPropagation()`, or a manual
+                 * `.click()` call in this event listener. Doing so will break the native
+                 * browser behavior and prevent the file dialog from opening. This listener
+                 * is intentionally left sparse to allow the default action to proceed.
+                 */
+                this.dropArea.addEventListener('click', (e) => {
+                    // If the dropArea is a <label>, the browser handles activating the input.
+                    // In this case, we must NOT interfere by calling preventDefault() or click().
+                    // If the dropArea is a generic element like a <div>, we need to
+                    // manually trigger the click on the hidden file input.
+                    if (this.dropArea.tagName.toLowerCase() !== 'label') {
+                        e.preventDefault();
+                        this.fileInput.click();
+                    }
+                });
+                
+                // Keyboard accessibility
+                this.dropArea.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        this.fileInput.click();
+                    }
+                });
+                
+                // Drag and drop
+                this.dropArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    this.dropArea.classList.add('border-slate-500', 'bg-slate-200');
+                });
+                
+                this.dropArea.addEventListener('dragleave', () => {
+                    this.dropArea.classList.remove('border-slate-500', 'bg-slate-200');
+                });
+                
+                this.dropArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    this.dropArea.classList.remove('border-slate-500', 'bg-slate-200');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        this.handleFile(files[0]);
+                    }
+                });
+                
+                // File input change
+                this.fileInput.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        this.handleFile(e.target.files[0]);
+                    }
+                });
+            }
+            
+            handleFile(file) {
+                if (!file) return;
+                
+                // Validate file extension
+                const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+                if (!this.validExtensions.includes(fileExtension)) {
+                    throw new Error(`Invalid file type. Please upload one of: ${this.validExtensions.join(', ')}`);
+                }
+                
+                // Call the provided callback
+                if (this.onFileSelected) {
+                    this.onFileSelected(file);
+                }
+            }
+        };
+    </script>
+    
+    <!-- Page content inserted here by Thymeleaf -->
     <th:block th:replace="${content}"></th:block>
+
 </body>
 </html>

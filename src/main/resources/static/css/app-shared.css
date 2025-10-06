@@ -27,3 +27,39 @@ body {
 
 /* Forms: spacing for input groups used in diagnostics and email-backend forms */
 /* Legacy form and component styles removed; Tailwind utilities now handle UI */
+
+/* Chat: Streaming cursor animation */
+.streaming-cursor {
+    display: inline-block;
+    color: #0f172a;
+    font-weight: 500;
+    animation: blink 1s infinite;
+    margin-left: 2px;
+}
+
+@keyframes blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+}
+
+/* Chat: Ensure line breaks are preserved in assistant messages */
+.message-assistant p {
+    margin: 0.5em 0;
+}
+
+.message-assistant p:first-child {
+    margin-top: 0;
+}
+
+.message-assistant p:last-child {
+    margin-bottom: 0;
+}
+
+.message-assistant ul, .message-assistant ol {
+    margin: 0.5em 0;
+    padding-left: 1.5em;
+}
+
+.message-assistant li {
+    margin: 0.25em 0;
+}

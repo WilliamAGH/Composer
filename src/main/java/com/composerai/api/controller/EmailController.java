@@ -1,6 +1,5 @@
 package com.composerai.api.controller;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,26 +9,35 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 // (no extra java.util.* imports needed)
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 // Import your existing parser classes
 import com.composerai.api.service.HtmlToText;
+import com.composerai.api.service.email.HtmlConverter;
 // (No direct parsing here; delegated to HtmlToText/EmailPipeline)
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * REST Controller for handling email file uploads and parsing operations.
  * Provides endpoints for processing .eml files and extracting readable content.
  */
 @RestController
-@CrossOrigin(origins = "*") // Allow frontend to call this API
 @RequestMapping("/api")
 public class EmailController {
+
+    private static final Logger logger = LoggerFactory.getLogger(EmailController.class);
+    private static final DateTimeFormatter DATE_WITH_OFFSET_FORMATTER = DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' h:mm a xxx", Locale.US);
 
     // Thin controller: delegates parsing to HtmlToText/EmailPipeline
 
@@ -41,45 +49,33 @@ public class EmailController {
      */
     @PostMapping(value = "/parse-email", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> parseEmail(@RequestParam("file") MultipartFile file) {
-        
-        Map<String, Object> response = new HashMap<>();
-        
+
+        // Validate file upload
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("No file provided. Please upload a valid .eml file.");
+        }
+
+        // Validate file type
+        String filename = file.getOriginalFilename();
+        if (filename == null || (!filename.toLowerCase().endsWith(".eml") &&
+                               !filename.toLowerCase().endsWith(".msg") &&
+                               !filename.toLowerCase().endsWith(".txt"))) {
+            throw new IllegalArgumentException("Invalid file type. Please upload a .eml, .msg, or .txt file.");
+        }
+
+        // Validate file size (e.g., max 10MB)
+        if (file.getSize() > 10 * 1024 * 1024) {
+            throw new IllegalArgumentException("File too large. Maximum file size is 10MB.");
+        }
+
+        // Determine extension and preempt unsupported formats
+        String lower = filename.toLowerCase();
+        if (lower.endsWith(".msg")) {
+            throw new UnsupportedOperationException(".msg (Outlook) files are not supported yet.");
+        }
+
         try {
-            // Validate file upload
-            if (file == null || file.isEmpty()) {
-                response.put("error", "No file provided. Please upload a valid .eml file.");
-                response.put("status", "error");
-                response.put("code", 400);
-                return ResponseEntity.badRequest().body(response);
-            }
-
-            // Validate file type
-            String filename = file.getOriginalFilename();
-            if (filename == null || (!filename.toLowerCase().endsWith(".eml") && 
-                                   !filename.toLowerCase().endsWith(".msg") && 
-                                   !filename.toLowerCase().endsWith(".txt"))) {
-                response.put("error", "Invalid file type. Please upload a .eml, .msg, or .txt file.");
-                response.put("status", "error");
-                response.put("code", 400);
-                return ResponseEntity.badRequest().body(response);
-            }
-
-            // Validate file size (e.g., max 10MB)
-            if (file.getSize() > 10 * 1024 * 1024) {
-                response.put("error", "File too large. Maximum file size is 10MB.");
-                response.put("status", "error");
-                response.put("code", 400);
-                return ResponseEntity.badRequest().body(response);
-            }
-
-            // Determine extension and preempt unsupported formats
-            String lower = filename.toLowerCase();
-            if (lower.endsWith(".msg")) {
-                response.put("error", ".msg (Outlook) files are not supported yet.");
-                response.put("status", "error");
-                response.put("code", 415);
-                return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(response);
-            }
+            Map<String, Object> response = new HashMap<>();
 
             // Persist upload to a temp file and delegate to HtmlToText/EmailPipeline for DRY parsing
             Path tempFile = Files.createTempFile("upload-", lower.endsWith(".eml") ? ".eml" : ".html");
@@ -98,56 +94,127 @@ public class EmailController {
 
             String jsonPayload;
             try {
-                jsonPayload = HtmlToText.convert(options);
+                jsonPayload = convertEmail(options);
             } finally {
                 try { Files.deleteIfExists(tempFile); } catch (IOException ignore) { }
             }
 
-            Map<String, Object> parsedDocument;
-            try {
-                parsedDocument = new ObjectMapper().readValue(jsonPayload, new TypeReference<>() {});
-            } catch (IOException e) {
-                response.put("error", "Failed to parse email output: " + e.getMessage());
-                response.put("status", "error");
-                response.put("code", 500);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-            }
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> parsedDocument = mapper.readValue(jsonPayload, new TypeReference<Map<String, Object>>() {});
 
-            @SuppressWarnings("unchecked")
             Map<String, Object> content = parsedDocument.containsKey("content")
-                ? (Map<String, Object>) parsedDocument.get("content")
+                && parsedDocument.get("content") instanceof Map
+                ? mapper.convertValue(parsedDocument.get("content"), new TypeReference<Map<String, Object>>() {})
                 : Collections.emptyMap();
 
             String plainText = content.getOrDefault("plainText", "").toString();
             String markdown = content.getOrDefault("markdown", "").toString();
 
-            // Build successful response
-            response.put("parsedText", markdown); // use markdown for preserved line breaks
+            // Extract email metadata from parsed document
+            Map<String, Object> metadata = parsedDocument.containsKey("metadata")
+                && parsedDocument.get("metadata") instanceof Map
+                ? mapper.convertValue(parsedDocument.get("metadata"), new TypeReference<Map<String, Object>>() {})
+                : Collections.emptyMap();
+            
+            String subject = firstNonBlank(metadata, "subject");
+            if (subject == null) {
+                subject = "No subject";
+            }
+            String from = firstNonBlank(metadata, "from");
+            if (from == null) {
+                from = "Unknown sender";
+            }
+            String date = firstNonBlank(metadata, "date", "dateHeader", "dateIso");
+            if (date == null) {
+                date = "Unknown date";
+            }
+            String dateIso = firstNonBlank(metadata, "dateIso", "date");
+            date = enrichDateWithOffset(date, dateIso);
+
+            // Build successful response (DRY: use parsedPlain as canonical plain text field)
             response.put("parsedPlain", plainText);
             response.put("parsedMarkdown", markdown);
+            response.put("parsedHtml", HtmlConverter.markdownToSafeHtml(markdown.isBlank() ? plainText : markdown));
             response.put("document", parsedDocument);
             response.put("status", "success");
             response.put("filename", filename);
             response.put("fileSize", file.getSize());
             response.put("timestamp", System.currentTimeMillis());
             
+            // Add email metadata for chat interface
+            response.put("subject", subject);
+            response.put("from", from);
+            response.put("date", date);
+            if (dateIso != null) {
+                response.put("dateIso", dateIso.trim());
+            }
+
             return ResponseEntity.ok(response);
-            
-        } catch (IOException e) {
-            // Handle file reading errors
-            response.put("error", "Failed to read uploaded file: " + e.getMessage());
-            response.put("status", "error");
-            response.put("code", 500);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-            
+        } catch (IllegalArgumentException e) {
+            // Rethrow validation errors as-is for proper error response
+            throw e;
+        } catch (UnsupportedOperationException e) {
+            // Rethrow unsupported operations as-is
+            throw e;
         } catch (Exception e) {
-            // Handle parsing errors
-            response.put("error", "Failed to parse email: " + e.getMessage());
-            response.put("status", "error");
-            response.put("code", 500);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            // Provide more specific error message with cause
+            String detailedMessage = "Failed to process email file";
+            if (e.getMessage() != null && !e.getMessage().isBlank()) {
+                detailedMessage += ": " + e.getMessage();
+            }
+            logger.error("Email parsing failed for file: {}", filename, e);
+            throw new RuntimeException(detailedMessage, e);
+        }
+    }
+    // Intentionally no health/info endpoints here; SystemController exposes /api/health
+
+    private static String enrichDateWithOffset(String currentDisplay, String isoCandidate) {
+        String display = currentDisplay == null ? "Unknown date" : currentDisplay;
+        if (displayHasOffset(display)) {
+            return display;
+        }
+
+        if (isoCandidate == null || isoCandidate.isBlank()) {
+            return display;
+        }
+
+        String trimmedIso = isoCandidate.trim();
+        try {
+            OffsetDateTime offsetDateTime = OffsetDateTime.parse(trimmedIso);
+            return offsetDateTime.format(DATE_WITH_OFFSET_FORMATTER);
+        } catch (DateTimeParseException ignored) {
+            return display;
         }
     }
 
-    // Intentionally no health/info endpoints here; SystemController exposes /api/health
+    private static boolean displayHasOffset(String value) {
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        return value.matches(".*[+-]\\d{2}:?\\d{2}.*");
+    }
+
+    private static String firstNonBlank(Map<String, Object> source, String... keys) {
+        if (source == null || keys == null) {
+            return null;
+        }
+        for (String key : keys) {
+            if (key == null) {
+                continue;
+            }
+            Object value = source.get(key);
+            if (value == null) {
+                continue;
+            }
+            String text = value.toString();
+            if (text != null && !text.isBlank()) {
+                return text;
+            }
+        }
+        return null;
+    }
+
+    protected String convertEmail(HtmlToText.Options options) throws Exception {
+        return HtmlToText.convert(options);
+    }
 }

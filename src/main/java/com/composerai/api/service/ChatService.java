@@ -3,6 +3,7 @@ package com.composerai.api.service;
 import com.composerai.api.dto.ChatRequest;
 import com.composerai.api.dto.ChatResponse;
 import com.composerai.api.dto.ChatResponse.EmailContext;
+import com.composerai.api.service.email.HtmlConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,36 +24,52 @@ public class ChatService {
         this.openAiChatService = openAiChatService;
     }
 
+    private record ChatContext(float[] embedding, List<EmailContext> emailContext, String contextString) {}
+
+    public record StreamMetadata(String conversationId) {}
+
+    private ChatContext prepareChatContext(String message, int maxResults) {
+        logger.debug("Preparing chat context for message");
+        float[] queryVector = openAiChatService.generateEmbedding(message);
+        List<EmailContext> emailContext;
+        if (queryVector == null || queryVector.length == 0) {
+            logger.warn("Embedding generation returned null/empty, skipping vector search");
+            emailContext = List.of();
+        } else {
+            emailContext = vectorSearchService.searchSimilarEmails(queryVector, maxResults);
+        }
+        String contextString = buildContextString(emailContext);
+        return new ChatContext(queryVector, emailContext, contextString);
+    }
+
     public ChatResponse processChat(ChatRequest request) {
         logger.info("Processing chat request: {}", request.getMessage());
         
         try {
-            // Generate conversation ID if not provided
-            String conversationId = request.getConversationId();
-            if (conversationId == null || conversationId.isEmpty()) {
-                conversationId = UUID.randomUUID().toString();
-            }
+            String conversationId = resolveConversationId(request.getConversationId());
 
             // Analyze user intent
             String intent = openAiChatService.analyzeIntent(request.getMessage());
 
-            // Generate embedding for the user's message
-            float[] queryVector = openAiChatService.generateEmbedding(request.getMessage());
+            // Prepare context for AI response
+            ChatContext ctx = prepareChatContext(request.getMessage(), request.getMaxResults());
+            String contextString = mergeClientContext(ctx.contextString(), request.getEmailContext());
 
-            // Search for relevant emails using vector similarity
-            List<EmailContext> emailContext = vectorSearchService.searchSimilarEmails(
-                queryVector, 
-                request.getMaxResults()
+            // Generate AI response with sanitized HTML
+            OpenAiChatService.ChatCompletionResult aiResult = openAiChatService.generateResponse(
+                request.getMessage(),
+                contextString,
+                request.isThinkingEnabled(),
+                request.getThinkingLevel()
             );
 
-            // Prepare context for AI response
-            String contextString = buildContextString(emailContext);
-
-            // Generate AI response
-            String aiResponse = openAiChatService.generateResponse(request.getMessage(), contextString);
-
-            // Create and return response
-            ChatResponse response = new ChatResponse(aiResponse, conversationId, emailContext, intent);
+            ChatResponse response = new ChatResponse(
+                aiResult.rawText(),
+                conversationId,
+                ctx.emailContext(),
+                intent,
+                aiResult.sanitizedHtml()
+            );
             
             logger.info("Successfully processed chat request for conversation: {}", conversationId);
             return response;
@@ -61,10 +78,12 @@ public class ChatService {
             logger.error("Error processing chat request", e);
             
             // Return error response
+            String fallbackMessage = "I apologize, but I encountered an error while processing your request. Please try again.";
             ChatResponse errorResponse = new ChatResponse();
-            errorResponse.setResponse("I apologize, but I encountered an error while processing your request. Please try again.");
-            errorResponse.setConversationId(request.getConversationId());
+            errorResponse.setResponse(fallbackMessage);
+            errorResponse.setConversationId(resolveConversationId(request.getConversationId()));
             errorResponse.setIntent("error");
+            errorResponse.setRenderedHtml(HtmlConverter.markdownToSafeHtml(fallbackMessage));
             return errorResponse;
         }
     }
@@ -84,5 +103,138 @@ public class ChatService {
         }
         
         return context.toString();
+    }
+
+    public void streamChat(String message, int maxResults, String clientContext, String conversationIdSeed,
+                           boolean thinkingEnabled, String thinkingLevel,
+                           java.util.function.Consumer<StreamMetadata> onMetadata,
+                           java.util.function.Consumer<String> onToken,
+                           Runnable onComplete,
+                           java.util.function.Consumer<Throwable> onError) {
+        try {
+            logger.debug("Processing streaming chat request (len={})", message == null ? 0 : message.length());
+            String conversationId = resolveConversationId(conversationIdSeed);
+            ChatContext ctx = prepareChatContext(message, maxResults);
+            String contextString = mergeClientContext(ctx.contextString(), clientContext);
+            Runnable safeOnComplete = onComplete != null ? onComplete : () -> {};
+            java.util.function.Consumer<Throwable> safeOnError =
+                onError != null ? onError : err -> logger.error("Streaming chat error: conversationId={}", conversationId, err);
+            if (onMetadata != null) {
+                onMetadata.accept(new StreamMetadata(conversationId));
+            }
+            final long startNanos = System.nanoTime();
+            openAiChatService.streamResponse(
+                message,
+                contextString,
+                thinkingEnabled,
+                thinkingLevel,
+                onToken,
+                () -> {
+                    long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
+                    logger.info("Stream completed: conversationId={}, elapsedMs={}", conversationId, elapsedMs);
+                    safeOnComplete.run();
+                },
+                err -> {
+                    long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
+                    logger.warn("Stream ended with error: conversationId={}, elapsedMs={}", conversationId, elapsedMs, err);
+                    safeOnError.accept(err);
+                }
+            );
+            logger.info("Successfully initiated streaming chat request");
+        } catch (Exception e) {
+            logger.error("Error initiating streaming chat request", e);
+            if (onError != null) {
+                onError.accept(e);
+            } else {
+                logger.error("Swallow-proof guard caught streaming failure", e);
+            }
+        }
+    }
+
+    /**
+     * Overload that accepts a ChatRequest to ensure parity with non-streaming processing.
+     * Includes uploaded email context (markdown -> plain -> cleanup) before streaming.
+     */
+    public void streamChat(com.composerai.api.dto.ChatRequest request,
+                           java.util.function.Consumer<String> onToken,
+                           Runnable onComplete,
+                           java.util.function.Consumer<Throwable> onError) {
+        String message = request != null ? request.getMessage() : null;
+        int maxResults = request != null ? request.getMaxResults() : 5;
+        logger.debug("Processing streaming chat request (len={})", message == null ? 0 : message.length());
+
+        String conversationId = resolveConversationId(request != null ? request.getConversationId() : null);
+        ChatContext ctx = prepareChatContext(message, maxResults);
+        String contextString = ctx.contextString();
+
+        // Include uploaded email context when present
+        String uploaded = request != null ? request.getEmailContext() : null;
+        if (uploaded != null && !uploaded.isBlank()) {
+            String plain = com.composerai.api.service.email.HtmlConverter.markdownToPlain(uploaded);
+            if (plain == null || plain.isBlank()) plain = uploaded;
+            String cleaned = com.composerai.api.service.email.HtmlConverter.cleanupOutput(plain);
+            if (cleaned == null || cleaned.isBlank()) cleaned = plain.trim();
+            contextString = ("Uploaded email context:\n" + cleaned + (contextString == null || contextString.isBlank() ? "" : "\n\n" + contextString)).trim();
+        }
+
+        final boolean thinkingEnabled = request != null && request.isThinkingEnabled();
+        final String thinkingLevel = request != null ? request.getThinkingLevel() : null;
+
+        Runnable safeOnComplete = onComplete != null ? onComplete : () -> {};
+        java.util.function.Consumer<Throwable> safeOnError =
+            onError != null ? onError : err -> logger.error("Streaming chat error: conversationId={}", conversationId, err);
+
+        final long startNanos = System.nanoTime();
+        try {
+            openAiChatService.streamResponse(
+                message,
+                contextString,
+                thinkingEnabled,
+                thinkingLevel,
+                onToken,
+                () -> {
+                    long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
+                    logger.info("Stream completed: conversationId={}, elapsedMs={}", conversationId, elapsedMs);
+                    safeOnComplete.run();
+                },
+                err -> {
+                    long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
+                    logger.warn("Stream ended with error: conversationId={}, elapsedMs={}", conversationId, elapsedMs, err);
+                    safeOnError.accept(err);
+                }
+            );
+            logger.info("Successfully initiated streaming chat request");
+        } catch (Exception e) {
+            logger.error("Error initiating streaming chat request", e);
+            safeOnError.accept(e);
+        }
+    }
+
+    private String resolveConversationId(String incoming) {
+        if (incoming == null || incoming.isBlank()) {
+            return UUID.randomUUID().toString();
+        }
+        return incoming;
+    }
+
+    private String mergeClientContext(String baseContext, String rawClientContext) {
+        if (rawClientContext == null || rawClientContext.isBlank()) {
+            return baseContext;
+        }
+
+        String sanitized = HtmlConverter.cleanupOutput(rawClientContext);
+        if (sanitized == null || sanitized.isBlank()) {
+            sanitized = rawClientContext.trim();
+        }
+        if (sanitized == null || sanitized.isBlank()) {
+            return baseContext;
+        }
+
+        StringBuilder combined = new StringBuilder();
+        combined.append("Uploaded email context:\n").append(sanitized.trim());
+        if (baseContext != null && !baseContext.isBlank()) {
+            combined.append("\n\n").append(baseContext.trim());
+        }
+        return combined.toString();
     }
 }

@@ -3,16 +3,16 @@
       th:replace="~{layout :: layout(~{::body/content}, 'Redirecting…', ~{::head/extraHead})}">
 <head>
     <th:block th:fragment="extraHead">
-        <meta http-equiv="refresh" content="0; url=/diagnostics">
+        <meta http-equiv="refresh" content="0; url=/chat">
         <script>
             // Fallback in case meta refresh is blocked
-            window.location.replace('/diagnostics');
+            window.location.replace('/chat');
         </script>
     </th:block>
 </head>
 <body>
     <div th:fragment="content">
-        <p>If you are not redirected automatically, <a href="/diagnostics">click here</a>.</p>
+        <p>If you are not redirected automatically, <a href="/chat">click here</a>.</p>
     </div>
 </body>
 </html>

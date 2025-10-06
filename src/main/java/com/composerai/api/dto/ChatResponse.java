@@ -1,11 +1,14 @@
 package com.composerai.api.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
 public class ChatResponse {
     
     private String response;
+    private String sanitizedHtml;
     private String conversationId;
     private List<EmailContext> emailContext;
     private LocalDateTime timestamp;
@@ -16,11 +19,16 @@ public class ChatResponse {
     }
 
     public ChatResponse(String response, String conversationId, List<EmailContext> emailContext, String intent) {
+        this(response, conversationId, emailContext, intent, null);
+    }
+
+    public ChatResponse(String response, String conversationId, List<EmailContext> emailContext, String intent, String sanitizedHtml) {
         this.response = response;
         this.conversationId = conversationId;
         this.emailContext = emailContext;
         this.intent = intent;
         this.timestamp = LocalDateTime.now();
+        setSanitizedHtml(sanitizedHtml);
     }
 
     public String getResponse() {
@@ -29,6 +37,37 @@ public class ChatResponse {
 
     public void setResponse(String response) {
         this.response = response;
+    }
+
+    @JsonProperty("sanitizedHtml")
+    public String getSanitizedHtml() {
+        return sanitizedHtml == null ? "" : sanitizedHtml;
+    }
+
+    @JsonProperty("sanitizedHtml")
+    public void setSanitizedHtml(String sanitizedHtml) {
+        this.sanitizedHtml = sanitizedHtml == null ? "" : sanitizedHtml;
+    }
+
+    /**
+     * Backwards-compatible alias for clients still expecting the legacy renderedHtml property.
+     */
+    @JsonProperty("renderedHtml")
+    public String getRenderedHtml() {
+        return getSanitizedHtml();
+    }
+
+    @JsonProperty("renderedHtml")
+    public void setRenderedHtml(String renderedHtml) {
+        setSanitizedHtml(renderedHtml);
+    }
+
+    public String getRawMarkdown() {
+        return getResponse();
+    }
+
+    public void setRawMarkdown(String rawMarkdown) {
+        setResponse(rawMarkdown);
     }
 
     public String getConversationId() {

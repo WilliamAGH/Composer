@@ -12,7 +12,9 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.IntStream;
 
 @Service
 public class VectorSearchService {
@@ -21,13 +23,23 @@ public class VectorSearchService {
     
     private final QdrantClient qdrantClient;
     private final QdrantProperties qdrantProperties;
+    private final boolean enabled;
 
     public VectorSearchService(QdrantClient qdrantClient, QdrantProperties qdrantProperties) {
-        this.qdrantClient = qdrantClient;
-        this.qdrantProperties = qdrantProperties;
+        this.qdrantClient = Objects.requireNonNull(qdrantClient, "QdrantClient must not be null");
+        this.qdrantProperties = Objects.requireNonNull(qdrantProperties, "QdrantProperties must not be null");
+        this.enabled = this.qdrantProperties.isEnabled();
     }
 
     public List<EmailContext> searchSimilarEmails(float[] queryVector, int limit) {
+        if (!enabled) {
+            logger.debug("Qdrant vector search disabled by configuration; skipping.");
+            return List.of();
+        }
+        if (queryVector == null || queryVector.length == 0) {
+            logger.debug("Empty or null query vector; skipping Qdrant search.");
+            return List.of();
+        }
         try {
             // Create WithPayloadSelector to include all payload
             var withPayloadSelector = io.qdrant.client.grpc.Points.WithPayloadSelector.newBuilder()
@@ -52,32 +64,38 @@ public class VectorSearchService {
             logger.info("Found {} similar emails for query", emailContexts.size());
             return emailContexts;
             
-        } catch (ExecutionException | InterruptedException e) {
-            logger.error("Error searching for similar emails", e);
+        } catch (InterruptedException e) {
+            logger.warn("Qdrant search interrupted", e);
             Thread.currentThread().interrupt();
-            return new ArrayList<>();
+            return List.of();
+        } catch (ExecutionException e) {
+            logger.warn("Qdrant search failed", e.getCause() != null ? e.getCause() : e);
+            return List.of();
+        } catch (Exception e) {
+            logger.warn("Qdrant search error", e);
+            return List.of();
         }
     }
 
+    public boolean isEnabled() {
+        return enabled;
+    }
+
     private List<Float> convertFloatArrayToList(float[] array) {
-        List<Float> list = new ArrayList<>();
-        for (float value : array) {
-            list.add(value);
-        }
-        return list;
+        return array == null ? List.of()
+            : IntStream.range(0, array.length)
+                .mapToObj(i -> array[i])
+                .toList();
     }
 
     private EmailContext extractEmailContext(ScoredPoint point) {
         // Extract email metadata from point payload
         // This is a placeholder implementation
         // In a real implementation, you would extract the actual email data from the payload
-        String pointId = "";
-        if (point.getId().hasNum()) {
-            pointId = String.valueOf(point.getId().getNum());
-        } else if (point.getId().hasUuid()) {
-            pointId = point.getId().getUuid();
-        }
-        
+        String pointId = point.getId().hasNum()
+            ? String.valueOf(point.getId().getNum())
+            : point.getId().hasUuid() ? point.getId().getUuid() : "";
+
         return new EmailContext(
             pointId,
             "Sample Subject", // Extract from payload
