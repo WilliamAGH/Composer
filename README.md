@@ -81,6 +81,10 @@ The app attaches the API key to gRPC requests when supported by the Qdrant Java 
 
 `application-local.properties` enables Spring DevTools restart/live reload. Production profile disables HSTS headers through `app.hsts.enabled=false` for reverse-proxy compatibility.
 
+### Using alternative OpenAI-compatible providers
+
+To use OpenRouter, Groq, LM Studio, or other providers, set `OPENAI_API_BASE_URL`, `OPENAI_API_KEY`, and `OPENAI_MODEL`. Provider capabilities are auto-detected from the base URL.
+
 ## Local Development
 
 ```bash
