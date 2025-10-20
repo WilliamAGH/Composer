@@ -63,3 +63,8 @@ body {
 .message-assistant li {
     margin: 0.25em 0;
 }
+
+/* Dropdown: thinking mode menu positioning and constraints */
+.thinking-dropdown-menu {
+    max-height: min(300px, calc(100vh - 200px));
+}

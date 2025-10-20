@@ -84,7 +84,12 @@ Refer to `README.md` (Technology Stack and Requirements) for current runtime ver
 4. Forbidden shortcuts
    - The usage of @SuppressWarnings is NEVER AN ALLOWED SOLUTION. EVER.
 
-5. Enforcement & review
+5. OpenAI Java SDK awareness
+   - Before modifying any OpenAI integration, read the current SDK version from `pom.xml` and treat it as the source of truth (presently `4.5.0`).
+   - Inspect the matching local artifact at `~/.m2/repository/com/openai/openai-java-core/<VERSION>/openai-java-core-<VERSION>.jar` for API behavior, using the exact version from `pom.xml`.
+   - Review the latest examples under [`openai-java-example`](https://github.com/openai/openai-java/tree/main/openai-java-example/src/main/java/com/openai/example) for up-to-date usage patterns and reasoning/streaming guidance.
+
+6. Enforcement & review
    - Every agent-generated change must include a short compliance note listing:
      - where temp files were created (tmp/ path),
      - which repo tools were reused,
@@ -92,7 +97,7 @@ Refer to `README.md` (Technology Stack and Requirements) for current runtime ver
      - confirmation that @SuppressWarnings was not used.
    - Pull requests or change summaries should highlight any SQL files produced and explicitly mark them as "DO NOT RUN — REVIEW ONLY".
 
-6. Quick checklist (must be satisfied before marking a task complete)
+7. Quick checklist (must be satisfied before marking a task complete)
    - tmp/ markdown created if needed, and scheduled for deletion.
    - Reused existing in-repo tools (list them).
    - No automatic migrations added or executed.

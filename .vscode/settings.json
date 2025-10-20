@@ -33,5 +33,16 @@
     "MD001": false,
     "MD003": false,
     "MD026": false
-  }
+  },
+  "webhint.disabledHints": [
+    "meta-viewport",
+    "meta-charset-utf-8",
+    "no-inline-styles"
+  ],
+  "axe-linter.disabledRules": [
+    "document-title"
+  ],
+  "html.customData": [
+    ".vscode/thymeleaf.html-data.json"
+  ]
 }
