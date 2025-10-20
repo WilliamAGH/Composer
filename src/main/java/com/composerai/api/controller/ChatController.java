@@ -5,7 +5,6 @@ import com.composerai.api.dto.ChatRequest;
 import com.composerai.api.dto.ChatResponse;
 import com.composerai.api.dto.SseEventType;
 import com.composerai.api.service.ChatService;
-import com.composerai.api.service.OpenAiChatService;
 import com.composerai.api.util.StringUtils;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;

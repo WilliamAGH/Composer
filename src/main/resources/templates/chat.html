@@ -133,6 +133,7 @@
 
                     this.initializeThinkingDropdown();
                     this.updateThinkingControls();
+                    this.resetReasoningState();
                 }
 
                 initializeThinkingDropdown() {
@@ -425,6 +426,7 @@
                     if (!streamFinished) {
                         targetDiv.innerHTML = html || window.ComposerAI.renderMarkdown('No response received.');
                         this.conversationId = conversationIdFromServer || payload.conversationId || this.conversationId;
+                        this.resetReasoningState();
                     }
                 }
 
@@ -462,56 +464,27 @@
                     return div;
                 }
 
-                updateStreamState(event) {
-                    if (!event || !event.type) return;
-                    const type = String(event.type).toUpperCase();
-                    const phase = String(event.phase || '').toLowerCase();
-                    switch (phase) {
-                        case 'thinking':
-                            this.streamState.thinking = { active: true, phase: 'thinking', lastType: type };
-                            break;
-                        case 'progress':
-                            this.streamState.thinking = { active: true, phase: 'progress', lastType: type };
-                            break;
-                        case 'streaming':
-                            this.streamState.thinking = { active: true, phase: 'streaming', lastType: type };
-                            break;
-                        case 'failed':
-                            this.streamState.thinking = { active: true, phase: 'failed', lastType: type };
-                            break;
-                        default:
-                            return;
-                    }
-                    this.renderThinkingStatus(event.payload || {}, type, phase);
+                updateStreamState(message) {
+                    if (!message || !message.type || !message.phase) return;
+                    const phase = String(message.phase).toLowerCase();
+                    const type = String(message.type).toUpperCase();
+                    this.streamState.thinking = { active: true, phase, lastType: type, message };
+                    this.renderThinkingStatus(message);
                 }
 
-                renderThinkingStatus(payload = {}, eventType = null, eventPhase = null) {
+                renderThinkingStatus(message = {}) {
                     if (!this.thinkingStatus) return;
                     const {active, phase} = this.streamState.thinking || {};
                     if (!active) {
                         this.thinkingStatus.textContent = 'Thinking disabled for faster responses.';
                         return;
                     }
-                    let label;
-                    switch (phase) {
-                        case 'thinking':
-                            label = 'Reasoning… ' + this.formatThinkingLevel(this.thinkingLevel) + ' effort';
-                            break;
-                        case 'progress': {
-                            const step = Number.isFinite(payload.sequenceNumber)
-                                ? payload.sequenceNumber
-                                : (Number.isFinite(payload.summaryIndex) ? payload.summaryIndex : null);
-                            label = step ? 'Reasoning step ' + step : 'Reasoning in progress…';
-                            break;
+                    let label = (message.displayLabel || 'Reasoning…').trim();
+                    if (phase === 'thinking') {
+                        const effort = this.formatThinkingLevel(this.thinkingLevel);
+                        if (effort && effort.toLowerCase() !== 'off') {
+                            label = `${label} ${effort} effort`;
                         }
-                        case 'streaming':
-                            label = 'Reasoning complete — drafting response';
-                            break;
-                        case 'failed':
-                            label = 'Reasoning failed — reverting to fast response';
-                            break;
-                        default:
-                            label = 'Thinking: ' + this.formatThinkingLevel(this.thinkingLevel);
                     }
                     this.thinkingStatus.textContent = label;
                 }
@@ -523,8 +496,10 @@
                 }
 
                 resetReasoningState() {
-                    this.streamState.thinking = { active: false, phase: 'idle', lastType: null };
-                    this.renderThinkingStatus();
+                    this.streamState.thinking = { active: false, phase: 'idle', lastType: null, message: null };
+                    if (this.thinkingStatus) {
+                        this.thinkingStatus.textContent = 'Thinking disabled for faster responses.';
+                    }
                 }
             }
 

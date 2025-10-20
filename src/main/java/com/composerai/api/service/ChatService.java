@@ -3,25 +3,33 @@ package com.composerai.api.service;
 import com.composerai.api.dto.ChatRequest;
 import com.composerai.api.dto.ChatResponse;
 import com.composerai.api.dto.ChatResponse.EmailContext;
+import com.composerai.api.dto.SseEventType;
 import com.composerai.api.service.email.HtmlConverter;
+import com.composerai.api.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Consumer;
+import java.io.IOException;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Service
 public class ChatService {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(ChatService.class);
-    
+
     private final VectorSearchService vectorSearchService;
     private final OpenAiChatService openAiChatService;
+    private final ExecutorService streamingExecutor;
 
     public ChatService(VectorSearchService vectorSearchService, OpenAiChatService openAiChatService) {
         this.vectorSearchService = vectorSearchService;
         this.openAiChatService = openAiChatService;
+        this.streamingExecutor = Executors.newSingleThreadExecutor();
     }
 
     private record ChatContext(float[] embedding, List<EmailContext> emailContext, String contextString) {}
@@ -29,212 +37,119 @@ public class ChatService {
     public record StreamMetadata(String conversationId) {}
 
     private ChatContext prepareChatContext(String message, int maxResults) {
-        logger.debug("Preparing chat context for message");
         float[] queryVector = openAiChatService.generateEmbedding(message);
-        List<EmailContext> emailContext;
-        if (queryVector == null || queryVector.length == 0) {
-            logger.warn("Embedding generation returned null/empty, skipping vector search");
-            emailContext = List.of();
-        } else {
-            emailContext = vectorSearchService.searchSimilarEmails(queryVector, maxResults);
-        }
-        String contextString = buildContextString(emailContext);
-        return new ChatContext(queryVector, emailContext, contextString);
+        List<EmailContext> emailContext = (queryVector == null || queryVector.length == 0)
+            ? List.of()
+            : vectorSearchService.searchSimilarEmails(queryVector, maxResults);
+        return new ChatContext(queryVector, emailContext, buildContextString(emailContext));
     }
 
     public ChatResponse processChat(ChatRequest request) {
         logger.info("Processing chat request: {}", request.getMessage());
-        
+        String conversationId = StringUtils.ensureConversationId(request.getConversationId());
         try {
-            String conversationId = resolveConversationId(request.getConversationId());
-
-            // Analyze user intent
             String intent = openAiChatService.analyzeIntent(request.getMessage());
-
-            // Prepare context for AI response
             ChatContext ctx = prepareChatContext(request.getMessage(), request.getMaxResults());
-            String contextString = mergeClientContext(ctx.contextString(), request.getEmailContext());
-
-            // Generate AI response with sanitized HTML
             OpenAiChatService.ChatCompletionResult aiResult = openAiChatService.generateResponse(
-                request.getMessage(),
-                contextString,
-                request.isThinkingEnabled(),
-                request.getThinkingLevel()
-            );
-
-            ChatResponse response = new ChatResponse(
-                aiResult.rawText(),
-                conversationId,
-                ctx.emailContext(),
-                intent,
-                aiResult.sanitizedHtml()
-            );
-            
+                request.getMessage(), prepareFullContext(ctx, request.getEmailContext()),
+                request.isThinkingEnabled(), request.getThinkingLevel());
             logger.info("Successfully processed chat request for conversation: {}", conversationId);
-            return response;
-            
+            return new ChatResponse(aiResult.rawText(), conversationId, ctx.emailContext(), intent, aiResult.sanitizedHtml());
         } catch (Exception e) {
             logger.error("Error processing chat request", e);
-            
-            // Return error response
-            String fallbackMessage = "I apologize, but I encountered an error while processing your request. Please try again.";
-            ChatResponse errorResponse = new ChatResponse();
-            errorResponse.setResponse(fallbackMessage);
-            errorResponse.setConversationId(resolveConversationId(request.getConversationId()));
-            errorResponse.setIntent("error");
-            errorResponse.setRenderedHtml(HtmlConverter.markdownToSafeHtml(fallbackMessage));
-            return errorResponse;
+            String fallback = "I apologize, but I encountered an error while processing your request. Please try again.";
+            return new ChatResponse(fallback, conversationId, List.of(), "error", HtmlConverter.markdownToSafeHtml(fallback));
         }
     }
 
     private String buildContextString(List<EmailContext> emailContexts) {
-        if (emailContexts == null || emailContexts.isEmpty()) {
-            return "No relevant emails found.";
-        }
+        if (emailContexts == null || emailContexts.isEmpty()) return "";
 
-        StringBuilder context = new StringBuilder();
-        context.append("Relevant emails:\n");
-        
+        StringBuilder context = new StringBuilder("Relevant emails:\n");
         for (int i = 0; i < emailContexts.size(); i++) {
             EmailContext email = emailContexts.get(i);
-            context.append(String.format("%d. From: %s, Subject: %s, Snippet: %s\n", 
-                i + 1, email.getSender(), email.getSubject(), email.getSnippet()));
+            context.append(String.format("%d. From: %s, Subject: %s, Snippet: %s\n",
+                i + 1, email.sender(), email.subject(), email.snippet()));
         }
-        
         return context.toString();
     }
 
-    public void streamChat(String message, int maxResults, String clientContext, String conversationIdSeed,
-                           boolean thinkingEnabled, String thinkingLevel,
-                           java.util.function.Consumer<StreamMetadata> onMetadata,
-                           java.util.function.Consumer<String> onToken,
-                           Runnable onComplete,
-                           java.util.function.Consumer<Throwable> onError) {
-        try {
-            logger.debug("Processing streaming chat request (len={})", message == null ? 0 : message.length());
-            String conversationId = resolveConversationId(conversationIdSeed);
-            ChatContext ctx = prepareChatContext(message, maxResults);
-            String contextString = mergeClientContext(ctx.contextString(), clientContext);
-            Runnable safeOnComplete = onComplete != null ? onComplete : () -> {};
-            java.util.function.Consumer<Throwable> safeOnError =
-                onError != null ? onError : err -> logger.error("Streaming chat error: conversationId={}", conversationId, err);
-            if (onMetadata != null) {
-                onMetadata.accept(new StreamMetadata(conversationId));
-            }
-            final long startNanos = System.nanoTime();
-            openAiChatService.streamResponse(
-                message,
-                contextString,
-                thinkingEnabled,
-                thinkingLevel,
-                onToken,
-                () -> {
-                    long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
-                    logger.info("Stream completed: conversationId={}, elapsedMs={}", conversationId, elapsedMs);
-                    safeOnComplete.run();
-                },
-                err -> {
-                    long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
-                    logger.warn("Stream ended with error: conversationId={}, elapsedMs={}", conversationId, elapsedMs, err);
-                    safeOnError.accept(err);
-                }
-            );
-            logger.info("Successfully initiated streaming chat request");
-        } catch (Exception e) {
-            logger.error("Error initiating streaming chat request", e);
-            if (onError != null) {
-                onError.accept(e);
-            } else {
-                logger.error("Swallow-proof guard caught streaming failure", e);
-            }
-        }
+    /** Merge vector search context with uploaded client context. */
+    private String prepareFullContext(ChatContext vectorContext, String uploadedContext) {
+        String baseContext = vectorContext.contextString();
+        if (StringUtils.isBlank(uploadedContext)) return baseContext;
+        String plain = HtmlConverter.markdownToPlain(uploadedContext);
+        String cleaned = HtmlConverter.cleanupOutput(StringUtils.isBlank(plain) ? uploadedContext : plain);
+        if (StringUtils.isBlank(cleaned)) cleaned = StringUtils.safe(plain).isEmpty() ? uploadedContext : plain;
+        return cleaned.isBlank() ? baseContext : "Uploaded email context:\n" + cleaned + (StringUtils.isBlank(baseContext) ? "" : "\n\n" + baseContext);
     }
 
-    /**
-     * Overload that accepts a ChatRequest to ensure parity with non-streaming processing.
-     * Includes uploaded email context (markdown -> plain -> cleanup) before streaming.
-     */
-    public void streamChat(com.composerai.api.dto.ChatRequest request,
-                           java.util.function.Consumer<String> onToken,
-                           Runnable onComplete,
-                           java.util.function.Consumer<Throwable> onError) {
-        String message = request != null ? request.getMessage() : null;
-        int maxResults = request != null ? request.getMaxResults() : 5;
-        logger.debug("Processing streaming chat request (len={})", message == null ? 0 : message.length());
-
-        String conversationId = resolveConversationId(request != null ? request.getConversationId() : null);
-        ChatContext ctx = prepareChatContext(message, maxResults);
-        String contextString = ctx.contextString();
-
-        // Include uploaded email context when present
-        String uploaded = request != null ? request.getEmailContext() : null;
-        if (uploaded != null && !uploaded.isBlank()) {
-            String plain = com.composerai.api.service.email.HtmlConverter.markdownToPlain(uploaded);
-            if (plain == null || plain.isBlank()) plain = uploaded;
-            String cleaned = com.composerai.api.service.email.HtmlConverter.cleanupOutput(plain);
-            if (cleaned == null || cleaned.isBlank()) cleaned = plain.trim();
-            contextString = ("Uploaded email context:\n" + cleaned + (contextString == null || contextString.isBlank() ? "" : "\n\n" + contextString)).trim();
-        }
-
-        final boolean thinkingEnabled = request != null && request.isThinkingEnabled();
-        final String thinkingLevel = request != null ? request.getThinkingLevel() : null;
-
-        Runnable safeOnComplete = onComplete != null ? onComplete : () -> {};
-        java.util.function.Consumer<Throwable> safeOnError =
-            onError != null ? onError : err -> logger.error("Streaming chat error: conversationId={}", conversationId, err);
-
-        final long startNanos = System.nanoTime();
+    /** Internal helper for streaming chat with consolidated timing and error handling. */
+    private void doStreamChat(String message, String conversationId, String contextString,
+                              boolean thinkingEnabled, String thinkingLevel,
+                              Consumer<String> onToken, Consumer<ReasoningStreamAdapter.ReasoningMessage> onReasoning,
+                              Runnable onComplete, Consumer<Throwable> onError) {
+        Consumer<Throwable> safeOnError = onError != null ? onError : err -> logger.error("Streaming error: convId={}", conversationId, err);
+        long startNanos = System.nanoTime();
         try {
-            openAiChatService.streamResponse(
-                message,
-                contextString,
-                thinkingEnabled,
-                thinkingLevel,
-                onToken,
-                () -> {
-                    long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
-                    logger.info("Stream completed: conversationId={}, elapsedMs={}", conversationId, elapsedMs);
-                    safeOnComplete.run();
-                },
-                err -> {
-                    long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
-                    logger.warn("Stream ended with error: conversationId={}, elapsedMs={}", conversationId, elapsedMs, err);
-                    safeOnError.accept(err);
-                }
-            );
-            logger.info("Successfully initiated streaming chat request");
+            openAiChatService.streamResponse(message, contextString, thinkingEnabled, thinkingLevel,
+                event -> handleStreamEvent(event, onToken, onReasoning),
+                () -> { logger.info("Stream completed: {}ms", (System.nanoTime() - startNanos) / 1_000_000L); if (onComplete != null) onComplete.run(); },
+                err -> { logger.warn("Stream failed: {}ms", (System.nanoTime() - startNanos) / 1_000_000L, err); safeOnError.accept(err); });
         } catch (Exception e) {
-            logger.error("Error initiating streaming chat request", e);
+            logger.error("Error initiating stream", e);
             safeOnError.accept(e);
         }
     }
 
-    private String resolveConversationId(String incoming) {
-        if (incoming == null || incoming.isBlank()) {
-            return UUID.randomUUID().toString();
-        }
-        return incoming;
+    /** Public API: Stream chat with callback functions. */
+    public void streamChat(ChatRequest request, Consumer<String> onToken,
+                           Consumer<ReasoningStreamAdapter.ReasoningMessage> onReasoning,
+                           Runnable onComplete, Consumer<Throwable> onError) {
+        String conversationId = StringUtils.ensureConversationId(request.getConversationId());
+        ChatContext ctx = prepareChatContext(request.getMessage(), request.getMaxResults());
+        doStreamChat(request.getMessage(), conversationId, prepareFullContext(ctx, request.getEmailContext()),
+            request.isThinkingEnabled(), request.getThinkingLevel(), onToken, onReasoning, onComplete, onError);
     }
 
-    private String mergeClientContext(String baseContext, String rawClientContext) {
-        if (rawClientContext == null || rawClientContext.isBlank()) {
-            return baseContext;
-        }
+    /** Public API: Stream chat with SseEmitter (for SSE endpoints). */
+    public void streamChat(ChatRequest request, SseEmitter emitter) {
+        String conversationId = StringUtils.ensureConversationId(request.getConversationId());
+        emitter.onCompletion(() -> logger.info("SSE completed: {}", conversationId));
+        emitter.onTimeout(() -> logger.warn("SSE timeout: {}", conversationId));
+        emitter.onError(e -> logger.error("SSE error: {}", conversationId, e));
+        streamingExecutor.execute(() -> {
+            try {
+                ChatContext ctx = prepareChatContext(request.getMessage(), request.getMaxResults());
+                doStreamChat(request.getMessage(), conversationId, prepareFullContext(ctx, request.getEmailContext()),
+                    request.isThinkingEnabled(), request.getThinkingLevel(),
+                    chunk -> { try { emitter.send(SseEmitter.event().data(chunk)); } catch (IOException e) { logger.warn("Error sending chunk: {}", conversationId, e); emitter.completeWithError(e); } },
+                    message -> sendReasoning(emitter, conversationId, message), emitter::complete, emitter::completeWithError);
+            } catch (Exception e) {
+                logger.error("Async processing failed: {}", conversationId, e);
+                emitter.completeWithError(e);
+            }
+        });
+    }
 
-        String sanitized = HtmlConverter.cleanupOutput(rawClientContext);
-        if (sanitized == null || sanitized.isBlank()) {
-            sanitized = rawClientContext.trim();
+    private void handleStreamEvent(OpenAiChatService.StreamEvent event,
+                                   Consumer<String> onToken,
+                                   Consumer<ReasoningStreamAdapter.ReasoningMessage> onReasoning) {
+        if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
+            onToken.accept(rendered.html());
+            return;
         }
-        if (sanitized == null || sanitized.isBlank()) {
-            return baseContext;
-        }
+        if (onReasoning == null) return;
+        ReasoningStreamAdapter.ReasoningMessage message = ReasoningStreamAdapter.toMessage(event);
+        if (message != null) onReasoning.accept(message);
+    }
 
-        StringBuilder combined = new StringBuilder();
-        combined.append("Uploaded email context:\n").append(sanitized.trim());
-        if (baseContext != null && !baseContext.isBlank()) {
-            combined.append("\n\n").append(baseContext.trim());
+    private void sendReasoning(SseEmitter emitter, String conversationId, ReasoningStreamAdapter.ReasoningMessage message) {
+        if (message == null) return;
+        try {
+            emitter.send(SseEmitter.event().name(SseEventType.REASONING.getEventName()).data(message));
+        } catch (IOException e) {
+            logger.warn("Error sending reasoning event: conv={}, type={}", conversationId, message.type(), e);
         }
-        return combined.toString();
     }
 }
