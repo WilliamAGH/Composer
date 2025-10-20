@@ -67,16 +67,11 @@ public final class ReasoningStreamAdapter {
         Type type();
         String eventName();
         Object payload();
-        default ReasoningMessage toMessage() {
+        default ReasoningMessage toMessage() { return toMessage(null); }
+        default ReasoningMessage toMessage(String thinkingLevel) {
             Phase phase = type().phase();
             Object payload = payload();
-            return new ReasoningMessage(
-                type(),
-                phase,
-                computeDisplayLabel(phase, payload),
-                extractStep(payload),
-                payload
-            );
+            return buildMessage(type(), phase, payload, thinkingLevel);
         }
     }
 
@@ -156,20 +151,50 @@ public final class ReasoningStreamAdapter {
     public record ReasoningMessage(Type type, Phase phase, String displayLabel, Long step, Object payload) {}
 
     public static ReasoningMessage toMessage(OpenAiChatService.StreamEvent event) {
+        return toMessage(event, null);
+    }
+
+    public static ReasoningMessage toMessage(OpenAiChatService.StreamEvent event, String thinkingLevel) {
         if (event == null) return null;
         return switch (event) {
-            case OpenAiChatService.StreamEvent.Reasoning reasoning -> reasoning.value().toMessage();
+            case OpenAiChatService.StreamEvent.Reasoning reasoning ->
+                reasoning.value().toMessage(thinkingLevel);
             case OpenAiChatService.StreamEvent.Failed failed -> {
                 ReasoningEvent failure = failure(failed.value());
-                yield failure != null ? failure.toMessage() : null;
+                yield failure != null ? failure.toMessage(thinkingLevel) : null;
             }
             case OpenAiChatService.StreamEvent.RenderedHtml ignored -> null;
         };
     }
 
-    private static String computeDisplayLabel(Phase phase, Object payload) {
+    public static String normalizeThinkingLabel(String thinkingLevel) {
+        if (thinkingLevel == null) return null;
+        String trimmed = thinkingLevel.trim();
+        if (trimmed.isEmpty() || trimmed.equalsIgnoreCase("off")) return null;
+        return switch (trimmed.toLowerCase()) {
+            case "minimal" -> "Minimal";
+            case "low" -> "Low";
+            case "medium" -> "Medium";
+            case "high", "heavy" -> "High";
+            default -> trimmed.substring(0, 1).toUpperCase() + trimmed.substring(1);
+        };
+    }
+
+    private static ReasoningMessage buildMessage(Type type, Phase phase, Object payload, String thinkingLevel) {
+        return new ReasoningMessage(
+            type,
+            phase,
+            computeDisplayLabel(phase, payload, normalizeThinkingLabel(thinkingLevel)),
+            extractStep(payload),
+            payload
+        );
+    }
+
+    private static String computeDisplayLabel(Phase phase, Object payload, String normalizedThinkingLabel) {
         return switch (phase) {
-            case THINKING -> "Reasoning…";
+            case THINKING -> normalizedThinkingLabel == null || normalizedThinkingLabel.isBlank()
+                ? "Reasoning…"
+                : "Reasoning… " + normalizedThinkingLabel + " effort";
             case PROGRESS -> {
                 Long step = extractStep(payload);
                 yield step != null ? "Reasoning step " + step : "Reasoning in progress…";

@@ -84,4 +84,24 @@ class ReasoningStreamAdapterTest {
         assertEquals(2L, payload.sequenceNumber());
         assertEquals("Evaluating the email tone.", payload.content());
     }
+
+    @Test
+    void thinkingPhaseIncludesEffortLabelWhenProvided() {
+        ResponseReasoningSummaryTextDeltaEvent partAddedEvent = ResponseReasoningSummaryTextDeltaEvent.builder()
+            .delta("Brainstorming next step")
+            .itemId("item-5")
+            .outputIndex(0L)
+            .sequenceNumber(3L)
+            .summaryIndex(1L)
+            .build();
+
+        var extracted = ReasoningStreamAdapter.extract(ResponseStreamEvent.ofReasoningSummaryTextDelta(partAddedEvent));
+        assertEquals(1, extracted.size());
+
+        var message = extracted.getFirst().toMessage("high");
+        assertEquals("Reasoning… High effort", message.displayLabel());
+        assertEquals(ReasoningStreamAdapter.Phase.THINKING, message.phase());
+        assertNull(message.step());
+    }
+
 }

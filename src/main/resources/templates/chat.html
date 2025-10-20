@@ -65,13 +65,22 @@
             </footer>
         </div>
 
+        <div id="sse-event-names"
+             th:attr="data-metadata=${T(com.composerai.api.dto.SseEventType).METADATA.eventName},
+                      data-rendered_html=${T(com.composerai.api.dto.SseEventType).RENDERED_HTML.eventName},
+                      data-done=${T(com.composerai.api.dto.SseEventType).DONE.eventName},
+                      data-error=${T(com.composerai.api.dto.SseEventType).ERROR.eventName},
+                      data-reasoning=${T(com.composerai.api.dto.SseEventType).REASONING.eventName}"
+             hidden></div>
+
         <script>
+            const eventDataset = document.getElementById('sse-event-names')?.dataset || {};
             const SSE_EVENTS = Object.freeze({
-                METADATA: 'metadata',
-                RENDERED_HTML: 'rendered_html',
-                DONE: 'done',
-                ERROR: 'error',
-                REASONING: 'reasoning'
+                METADATA: eventDataset.metadata || 'metadata',
+                RENDERED_HTML: eventDataset.rendered_html || 'rendered_html',
+                DONE: eventDataset.done || 'done',
+                ERROR: eventDataset.error || 'error',
+                REASONING: eventDataset.reasoning || 'reasoning'
             });
 
             class SSEEventRouter {
@@ -105,7 +114,7 @@
                     this.conversationId = null;
                     this.activeStreamController = null;
                     this.isStreaming = false;
-                    this.streamState = { thinking: { active: false, phase: 'idle', lastType: null } };
+                    this.streamState = { thinking: { active: false, phase: 'idle', lastType: null, message: null } };
                     this.thinkingStatus = document.getElementById('thinkingStatus');
                     this.thinkingEnabled = false;
                     this.thinkingLevel = 'medium';
@@ -474,25 +483,13 @@
 
                 renderThinkingStatus(message = {}) {
                     if (!this.thinkingStatus) return;
-                    const {active, phase} = this.streamState.thinking || {};
+                    const {active} = this.streamState.thinking || {};
                     if (!active) {
                         this.thinkingStatus.textContent = 'Thinking disabled for faster responses.';
                         return;
                     }
-                    let label = (message.displayLabel || 'Reasoning…').trim();
-                    if (phase === 'thinking') {
-                        const effort = this.formatThinkingLevel(this.thinkingLevel);
-                        if (effort && effort.toLowerCase() !== 'off') {
-                            label = `${label} ${effort} effort`;
-                        }
-                    }
+                    const label = (message.displayLabel || 'Reasoning…').trim();
                     this.thinkingStatus.textContent = label;
-                }
-
-                formatThinkingLevel(level) {
-                    const normalized = (level || '').toString().trim();
-                    if (!normalized) return 'off';
-                    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
                 }
 
                 resetReasoningState() {
