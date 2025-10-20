@@ -252,6 +252,17 @@ public class OpenAiChatService {
         String fullPrompt = systemMessage +
             (StringUtils.isBlank(safeContext) ? "" : "\n\nEmail Context:\n" + safeContext) +
             "\n\nQuestion: " + userMessage;
+        
+        // Log context length to detect potential truncation issues
+        int promptTokenEstimate = (int)(fullPrompt.split("\\s+").length * 1.3);
+        int contextTokenEstimate = (int)(safeContext.split("\\s+").length * 1.3);
+        logger.debug("Building prompt: total=~{}tok, context=~{}tok, contextChars={}", 
+            promptTokenEstimate, contextTokenEstimate, safeContext.length());
+        
+        if (promptTokenEstimate > 100000) {
+            logger.warn("Large prompt detected: ~{}tok may approach model limits", promptTokenEstimate);
+        }
+        
         return List.of(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
             .role(EasyInputMessage.Role.USER)
             .content(fullPrompt)

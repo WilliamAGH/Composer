@@ -28,14 +28,17 @@ public class ChatService {
     private final OpenAiChatService openAiChatService;
     private final OpenAiProperties openAiProperties;
     private final ErrorMessagesProperties errorMessages;
+    private final ContextBuilder contextBuilder;
     private final ExecutorService streamingExecutor;
 
     public ChatService(VectorSearchService vectorSearchService, OpenAiChatService openAiChatService,
-                       OpenAiProperties openAiProperties, ErrorMessagesProperties errorMessages) {
+                       OpenAiProperties openAiProperties, ErrorMessagesProperties errorMessages,
+                       ContextBuilder contextBuilder) {
         this.vectorSearchService = vectorSearchService;
         this.openAiChatService = openAiChatService;
         this.openAiProperties = openAiProperties;
         this.errorMessages = errorMessages;
+        this.contextBuilder = contextBuilder;
         this.streamingExecutor = Executors.newSingleThreadExecutor();
     }
 
@@ -58,7 +61,7 @@ public class ChatService {
         List<EmailContext> emailContext = (queryVector == null || queryVector.length == 0)
             ? List.of()
             : vectorSearchService.searchSimilarEmails(queryVector, maxResults);
-        return new ChatContext(queryVector, emailContext, buildContextString(emailContext));
+        return new ChatContext(queryVector, emailContext, contextBuilder.buildFromEmailList(emailContext));
     }
 
     public ChatResponse processChat(ChatRequest request) {
@@ -68,8 +71,21 @@ public class ChatService {
             String intent = openAiChatService.analyzeIntent(request.getMessage());
             int maxResults = applyMaxResultsDefault(request.getMaxResults());
             ChatContext ctx = prepareChatContext(request.getMessage(), maxResults);
+            String fullContext = contextBuilder.mergeContexts(ctx.contextString(), request.getEmailContext());
+            
+            // Debug log context structure for troubleshooting
+            if (logger.isDebugEnabled()) {
+                int uploadedChars = request.getEmailContext() != null ? request.getEmailContext().length() : 0;
+                logger.debug("Context prepared: uploadedChars={}, vectorResults={}, mergedChars={}",
+                    uploadedChars, ctx.emailContext().size(), fullContext.length());
+                if (uploadedChars > 0) {
+                    String preview = request.getEmailContext().substring(0, Math.min(200, request.getEmailContext().length()));
+                    logger.debug("Uploaded context preview (first 200 chars): {}", preview);
+                }
+            }
+            
             OpenAiChatService.ChatCompletionResult aiResult = openAiChatService.generateResponse(
-                request.getMessage(), prepareFullContext(ctx, request.getEmailContext()),
+                request.getMessage(), fullContext,
                 request.isThinkingEnabled(), request.getThinkingLevel());
             logger.info("Successfully processed chat request for conversation: {}", conversationId);
             return new ChatResponse(aiResult.rawText(), conversationId, ctx.emailContext(), intent, aiResult.sanitizedHtml());
@@ -80,27 +96,6 @@ public class ChatService {
         }
     }
 
-    private String buildContextString(List<EmailContext> emailContexts) {
-        if (emailContexts == null || emailContexts.isEmpty()) return "";
-
-        StringBuilder context = new StringBuilder("Relevant emails:\n");
-        for (int i = 0; i < emailContexts.size(); i++) {
-            EmailContext email = emailContexts.get(i);
-            context.append(String.format("%d. From: %s, Subject: %s, Snippet: %s\n",
-                i + 1, email.sender(), email.subject(), email.snippet()));
-        }
-        return context.toString();
-    }
-
-    /** Merge vector search context with uploaded client context. */
-    private String prepareFullContext(ChatContext vectorContext, String uploadedContext) {
-        String baseContext = vectorContext.contextString();
-        if (StringUtils.isBlank(uploadedContext)) return baseContext;
-        String plain = HtmlConverter.markdownToPlain(uploadedContext);
-        String cleaned = HtmlConverter.cleanupOutput(StringUtils.isBlank(plain) ? uploadedContext : plain);
-        if (StringUtils.isBlank(cleaned)) cleaned = StringUtils.safe(plain).isEmpty() ? uploadedContext : plain;
-        return cleaned.isBlank() ? baseContext : "Uploaded email context:\n" + cleaned + (StringUtils.isBlank(baseContext) ? "" : "\n\n" + baseContext);
-    }
 
     /** Internal helper for streaming chat with consolidated timing and error handling. */
     private void doStreamChat(String message, String conversationId, String contextString,
@@ -130,7 +125,8 @@ public class ChatService {
         String conversationId = StringUtils.ensureConversationId(request.getConversationId());
         int maxResults = applyMaxResultsDefault(request.getMaxResults());
         ChatContext ctx = prepareChatContext(request.getMessage(), maxResults);
-        doStreamChat(request.getMessage(), conversationId, prepareFullContext(ctx, request.getEmailContext()),
+        String fullContext = contextBuilder.mergeContexts(ctx.contextString(), request.getEmailContext());
+        doStreamChat(request.getMessage(), conversationId, fullContext,
             request.isThinkingEnabled(), request.getThinkingLevel(), onToken, onReasoning, onComplete, onError);
     }
 
@@ -144,7 +140,8 @@ public class ChatService {
             try {
                 int maxResults = applyMaxResultsDefault(request.getMaxResults());
                 ChatContext ctx = prepareChatContext(request.getMessage(), maxResults);
-                doStreamChat(request.getMessage(), conversationId, prepareFullContext(ctx, request.getEmailContext()),
+                String fullContext = contextBuilder.mergeContexts(ctx.contextString(), request.getEmailContext());
+                doStreamChat(request.getMessage(), conversationId, fullContext,
                     request.isThinkingEnabled(), request.getThinkingLevel(),
                     chunk -> { try { emitter.send(SseEmitter.event().data(chunk)); } catch (IOException e) { logger.warn("Error sending chunk: {}", conversationId, e); emitter.completeWithError(e); } },
                     message -> sendReasoning(emitter, conversationId, message), emitter::complete, emitter::completeWithError);

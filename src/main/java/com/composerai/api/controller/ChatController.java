@@ -51,12 +51,14 @@ public class ChatController {
         response.setHeader("Cache-Control", "no-cache");
         response.setHeader("X-Accel-Buffering", "no");
         response.setHeader("Connection", "keep-alive");
-        response.setHeader("X-Stream-Timeout-Hint", String.valueOf(openAiProperties.getStream().getTimeoutSeconds() * 1000));
+        // Timeout hint for frontend - single source of truth from OpenAiProperties
+        response.setHeader("X-Stream-Timeout-Hint", String.valueOf(openAiProperties.getStream().getTimeoutMillis()));
 
         request.setConversationId(StringUtils.ensureConversationId(request.getConversationId()));
         final String conversationId = request.getConversationId();
 
-        SseEmitter emitter = new SseEmitter((long) openAiProperties.getStream().getTimeoutSeconds() * 1000);
+        // Timeout from single source of truth - OpenAiProperties.Stream
+        SseEmitter emitter = new SseEmitter(openAiProperties.getStream().getTimeoutMillis());
         // Send periodic keepalive comments to prevent proxies from closing idle streams
         // Configuration source of truth: OpenAiProperties.Stream.getHeartbeatIntervalSeconds() - 10 seconds
         final java.util.concurrent.ScheduledExecutorService heartbeatExecutor = java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
@@ -83,13 +85,14 @@ public class ChatController {
             chatStreamExecutor.execute(() -> {
             try {
                 emitter.send(SseEmitter.event().comment("stream-start"));
-                // Send metadata event immediately
                 emitter.send(SseEmitter.event().name(SseEventType.METADATA.getEventName()).data(Map.of(
                     "conversationId", conversationId
                 )));
-                
+
+                // SSE Event Routing: StreamEvents → SSE named events → Frontend SSEEventRouter
                 chatService.streamChat(
                     request,
+                    // Route HTML chunks: StreamEvent.RenderedHtml → SSE "rendered_html"
                     token -> {
                         try {
                             emitter.send(SseEmitter.event().name(SseEventType.RENDERED_HTML.getEventName()).data(token));
@@ -97,6 +100,7 @@ public class ChatController {
                             emitter.completeWithError(e);
                         }
                     },
+                    // Route thinking progress: StreamEvent.Reasoning → SSE "reasoning"
                     message -> {
                         try {
                             if (message != null) {
@@ -108,6 +112,7 @@ public class ChatController {
                             log.debug("Failed to forward reasoning event", e);
                         }
                     },
+                    // Route completion: onComplete → SSE "done"
                     () -> {
                         completed.set(true);
                         heartbeatExecutor.shutdownNow();
@@ -118,6 +123,7 @@ public class ChatController {
                             emitter.completeWithError(e);
                         }
                     },
+                    // Route errors: onError → SSE "error"
                     error -> {
                         String message = StringUtils.isBlank(error.getMessage())
                             ? "OpenAI is not configured or unavailable" : error.getMessage();
