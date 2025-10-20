@@ -150,8 +150,12 @@
                     // If the dropArea is a generic element like a <div>, we need to
                     // manually trigger the click on the hidden file input.
                     if (this.dropArea.tagName.toLowerCase() !== 'label') {
-                        e.preventDefault();
-                        this.fileInput.click();
+                        // Don't prevent default if the click target is the input itself
+                        // This allows the native file dialog to open when clicking the transparent input
+                        if (e.target !== this.fileInput) {
+                            e.preventDefault();
+                            this.fileInput.click();
+                        }
                     }
                 });
                 

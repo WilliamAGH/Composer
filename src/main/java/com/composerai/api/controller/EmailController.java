@@ -25,18 +25,17 @@ import com.composerai.api.service.email.HtmlConverter;
 // (No direct parsing here; delegated to HtmlToText/EmailPipeline)
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * REST Controller for handling email file uploads and parsing operations.
  * Provides endpoints for processing .eml files and extracting readable content.
  */
+@Slf4j
 @RestController
 @RequestMapping("/api")
 public class EmailController {
 
-    private static final Logger logger = LoggerFactory.getLogger(EmailController.class);
     private static final DateTimeFormatter DATE_WITH_OFFSET_FORMATTER = DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' h:mm a xxx", Locale.US);
 
     // Thin controller: delegates parsing to HtmlToText/EmailPipeline
@@ -135,12 +134,17 @@ public class EmailController {
             response.put("parsedPlain", plainText);
             response.put("parsedMarkdown", markdown);
             response.put("parsedHtml", HtmlConverter.markdownToSafeHtml(markdown.isBlank() ? plainText : markdown));
+
+            // Backend determines best context format for AI (prefer markdown > plain)
+            String contextForAI = (!markdown.isBlank()) ? markdown : plainText;
+            response.put("contextForAI", contextForAI);
+
             response.put("document", parsedDocument);
             response.put("status", "success");
             response.put("filename", filename);
             response.put("fileSize", file.getSize());
             response.put("timestamp", System.currentTimeMillis());
-            
+
             // Add email metadata for chat interface
             response.put("subject", subject);
             response.put("from", from);
@@ -162,7 +166,7 @@ public class EmailController {
             if (e.getMessage() != null && !e.getMessage().isBlank()) {
                 detailedMessage += ": " + e.getMessage();
             }
-            logger.error("Email parsing failed for file: {}", filename, e);
+            log.error("Email parsing failed for file: {}", filename, e);
             throw new RuntimeException(detailedMessage, e);
         }
     }
