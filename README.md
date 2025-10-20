@@ -46,8 +46,8 @@ Precedence: environment variables > `.env.local` > `.env` > `.env.local.properti
 server.port=${PORT:8080}
 openai.api.key=${OPENAI_API_KEY:your-openai-api-key}
 openai.api.base-url=${OPENAI_API_BASE_URL:https://api.openai.com/v1}
-# default to 4o latest; override with OPENAI_MODEL if needed
-openai.model=${OPENAI_MODEL:o4-mini}
+# default OpenAI model; override with OPENAI_MODEL if needed
+openai.model=${OPENAI_MODEL:gpt-4o-mini}
 qdrant.enabled=${QDRANT_ENABLED:false}
 qdrant.host=${QDRANT_HOST:localhost}
 qdrant.port=${QDRANT_PORT:6333}
