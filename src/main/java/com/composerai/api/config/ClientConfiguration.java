@@ -23,37 +23,43 @@ public class ClientConfiguration {
 
     @Bean
     public OpenAIClient openAIClient(OpenAiProperties openAiProperties) {
-        // Use fromEnv() - automatically handles OPENAI_API_KEY and AZURE_OPENAI_KEY
-        // spring-dotenv library automatically loads .env file values into environment
-        
+        String apiKey = openAiProperties.getApi().getKey();
+        if (StringUtils.isMissing(apiKey)) {
+            apiKey = System.getenv("OPENAI_API_KEY");
+        }
+
+        if (StringUtils.isMissing(apiKey)) {
+            log.warn("OpenAI API key not configured via openai.api.key or OPENAI_API_KEY. Service will operate in degraded mode.");
+            return null;
+        }
+
+        String trimmedKey = apiKey.trim();
+
         try {
-            OpenAIClient client = OpenAIOkHttpClient.fromEnv();
-            
-            // Apply custom timeout configuration
-            client = client.withOptions(opts -> opts
+            OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder()
+                .apiKey(trimmedKey)
                 .timeout(Timeout.builder()
                     .connect(Duration.ofSeconds(10))
                     .read(Duration.ofMinutes(5))
                     .write(Duration.ofSeconds(30))
-                    .build()));
-            
-            // Apply custom base URL if configured
+                    .build());
+
             String baseUrl = openAiProperties.getApi().getBaseUrl();
-            if (baseUrl != null && !baseUrl.isBlank()) {
-                client = client.withOptions(opts -> opts.baseUrl(baseUrl));
+            if (!StringUtils.isBlank(baseUrl)) {
+                builder.baseUrl(baseUrl.trim());
             }
-            
+
+            OpenAIClient client = builder.build();
             log.info("OpenAI client configured successfully");
             return client;
         } catch (Exception e) {
-            log.warn("OpenAI API key not configured: {}. Service will operate in degraded mode.", e.getMessage());
-            // Return null - service methods will handle null client gracefully
+            log.warn("Failed to configure OpenAI client: {}. Service will operate in degraded mode.", e.getMessage());
             return null;
         }
     }
 
 
-    @Bean
+    @Bean(destroyMethod = "close")
     public QdrantClient qdrantClient(QdrantProperties qdrantProperties) {
         QdrantGrpcClient.Builder builder = QdrantGrpcClient.newBuilder(
             qdrantProperties.getHost(),
@@ -68,7 +74,9 @@ public class ClientConfiguration {
             log.info("Configured Qdrant API key on gRPC client");
         }
 
-        return new QdrantClient(builder.build());
+        QdrantClient client = new QdrantClient(builder.build());
+        log.info("Qdrant client configured for {}:{}", qdrantProperties.getHost(), qdrantProperties.getPort());
+        return client;
     }
 
     @Bean(name = "chatStreamExecutor")

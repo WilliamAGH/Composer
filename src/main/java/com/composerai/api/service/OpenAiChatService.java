@@ -56,13 +56,11 @@ public class OpenAiChatService {
 
     /** Validated thinking configuration. Backend validates against model capabilities. */
     public record ValidatedThinkingConfig(boolean enabled, ReasoningEffort effort) {
-        static ValidatedThinkingConfig resolve(String modelId, boolean requestedEnabled, String requestedLevel) {
-            return (modelId == null || !supportsReasoningForModel(modelId) || !requestedEnabled)
+        static ValidatedThinkingConfig resolve(OpenAiProperties properties, String modelId,
+                                               boolean requestedEnabled, String requestedLevel) {
+            return (modelId == null || !properties.supportsReasoning(modelId) || !requestedEnabled)
                 ? new ValidatedThinkingConfig(false, null)
                 : new ValidatedThinkingConfig(true, parseEffort(requestedLevel).orElse(ReasoningEffort.MINIMAL));
-        }
-        private static boolean supportsReasoningForModel(String model) {
-            return model != null && (model.toLowerCase().startsWith("o1") || model.toLowerCase().startsWith("o4") || model.toLowerCase().startsWith("gpt-5"));
         }
         private static Optional<ReasoningEffort> parseEffort(String level) {
             if (level == null || level.isBlank()) return Optional.of(ReasoningEffort.MINIMAL);
@@ -139,7 +137,7 @@ public class OpenAiChatService {
 
         String modelId = openAiProperties.getModel() != null && !openAiProperties.getModel().isBlank()
             ? openAiProperties.getModel() : "o4-mini";
-        ValidatedThinkingConfig config = ValidatedThinkingConfig.resolve(modelId, thinkingEnabled, thinkingLevel);
+        ValidatedThinkingConfig config = ValidatedThinkingConfig.resolve(openAiProperties, modelId, thinkingEnabled, thinkingLevel);
         if (config.enabled() && config.effort() != null) {
             builder.reasoning(Reasoning.builder().effort(config.effort()).build());
             logger.info("Reasoning enabled: {}", config.effort());
@@ -226,7 +224,7 @@ public class OpenAiChatService {
         String safeContext = StringUtils.sanitize(emailContext);
         String systemMessage = "You are ComposerAI, a helpful email analysis assistant. " +
             "Use the provided email context strictly as evidence. " +
-            "First, briefly restate only essential context in 1-2 sentences if it helps, then answer the question. " +
+            "Respond with the level of detail the user's request requires—summaries when asked, but thorough explanations and specifics when the question calls for them. " +
             "Do not invent details not present in the context.";
         String fullPrompt = systemMessage +
             (StringUtils.isBlank(safeContext) ? "" : "\n\nEmail Context:\n" + safeContext) +
