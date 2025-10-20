@@ -47,6 +47,7 @@ Refer to `README.md` (Technology Stack and Requirements) for current runtime ver
 - Uphold the product aesthetic: layered glass cards over soft gradients, translucent surfaces, diffused midnight/navy accents, rounded 12-24px radii, ultra-light borders, and generous spacing. Typography stays in crisp system sans families with breathable line height and label tracking.
 - Color language: anchor backgrounds in cool off-whites (#F8FAFC, #F5F5F7), use translucent whites with subtle vertical gradients for surfaces, keep primary accents in deep slate blues or charcoal greens (#0F172A, #1A2433), reserve muted lilac/sage/amber for highlights, and apply borders/shadows around #E2E8F0 with rgba(15, 23, 42, 0.1-0.2) for depth without harsh black.
 - Keep JavaScript modular and progressive-enhancement friendly. Use plain ES modules over large frameworks
+- **NEVER duplicate backend constants/enums in HTML/JS**: Use `@ControllerAdvice` + `@ModelAttribute` + `th:inline="javascript"` to inject Java enums directly into templates. See `GlobalModelAttributes.java` and `WebViewControllerTest.java` for the canonical pattern.
 
 ### Design Language Reference
 

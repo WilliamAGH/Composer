@@ -65,23 +65,14 @@
             </footer>
         </div>
 
-        <div id="sse-event-names"
-             th:attr="data-metadata=${T(com.composerai.api.dto.SseEventType).METADATA.eventName},
-                      data-rendered_html=${T(com.composerai.api.dto.SseEventType).RENDERED_HTML.eventName},
-                      data-done=${T(com.composerai.api.dto.SseEventType).DONE.eventName},
-                      data-error=${T(com.composerai.api.dto.SseEventType).ERROR.eventName},
-                      data-reasoning=${T(com.composerai.api.dto.SseEventType).REASONING.eventName}"
-             hidden></div>
+        <script th:inline="javascript">
+            // Auto-generated from backend Java enums - single source of truth
+            // See: GlobalModelAttributes.java → SseEventType.java, ReasoningStreamAdapter.Phase
+            const SSE_EVENTS = /*[[${sseEvents}]]*/ {};
+            Object.freeze(SSE_EVENTS);
 
-        <script>
-            const eventDataset = document.getElementById('sse-event-names')?.dataset || {};
-            const SSE_EVENTS = Object.freeze({
-                METADATA: eventDataset.metadata || 'metadata',
-                RENDERED_HTML: eventDataset.rendered_html || 'rendered_html',
-                DONE: eventDataset.done || 'done',
-                ERROR: eventDataset.error || 'error',
-                REASONING: eventDataset.reasoning || 'reasoning'
-            });
+            const REASONING_PHASES = /*[[${reasoningPhases}]]*/ {};
+            Object.freeze(REASONING_PHASES);
 
             class SSEEventRouter {
                 constructor() {
