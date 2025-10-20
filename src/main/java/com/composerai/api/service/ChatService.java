@@ -65,8 +65,9 @@ public class ChatService {
     }
 
     public ChatResponse processChat(ChatRequest request) {
-        logger.info("Processing chat request: {}", request.getMessage());
         String conversationId = StringUtils.ensureConversationId(request.getConversationId());
+        int msgLen = request.getMessage() == null ? 0 : request.getMessage().length();
+        logger.info("Processing chat: convId={}, msgLen={}", conversationId, msgLen);
         try {
             String intent = openAiChatService.analyzeIntent(request.getMessage());
             int maxResults = applyMaxResultsDefault(request.getMaxResults());
