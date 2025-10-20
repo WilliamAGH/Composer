@@ -1,5 +1,7 @@
 package com.composerai.api.service;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import com.composerai.api.config.OpenAiProperties;
 import com.composerai.api.service.email.HtmlConverter;
 import com.openai.client.OpenAIClient;
@@ -7,10 +9,13 @@ import com.openai.core.http.StreamResponse;
 import com.openai.models.responses.ResponseCreateParams;
 import com.openai.models.responses.ResponseStreamEvent;
 import com.openai.models.responses.ResponseTextDeltaEvent;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +28,20 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 
 class OpenAiChatServiceStreamingTest {
+
+    private static final Logger SERVICE_LOGGER = (Logger) LoggerFactory.getLogger(OpenAiChatService.class);
+    private Level originalLogLevel;
+
+    @AfterEach
+    void resetLogging() {
+        SERVICE_LOGGER.setLevel(originalLogLevel);
+    }
+
+    @BeforeEach
+    void quietServiceLogs() {
+        originalLogLevel = SERVICE_LOGGER.getLevel();
+        SERVICE_LOGGER.setLevel(Level.OFF);
+    }
 
     @Test
     void markdownRenderingEscapesHtml() {
@@ -74,7 +93,7 @@ class OpenAiChatServiceStreamingTest {
             .thenReturn(eventStream);
 
         OpenAiProperties properties = new OpenAiProperties();
-        properties.setModel("gpt-4o-mini");
+        properties.getModel().setChat("gpt-4o-mini");
         
         OpenAiChatService service = new OpenAiChatService(client, properties);
 
@@ -111,7 +130,7 @@ class OpenAiChatServiceStreamingTest {
             .thenThrow(new RuntimeException("rate limited"));
 
         OpenAiProperties properties = new OpenAiProperties();
-        properties.setModel("gpt-4o-mini");
+        properties.getModel().setChat("gpt-4o-mini");
         
         OpenAiChatService service = new OpenAiChatService(client, properties);
 
@@ -159,7 +178,7 @@ class OpenAiChatServiceStreamingTest {
             .thenReturn(mockStreamResponse);
 
         OpenAiProperties customProperties = new OpenAiProperties();
-        customProperties.setModel("o4-mini");
+        customProperties.getModel().setChat("o4-mini");
         
         OpenAiChatService customModelService = new OpenAiChatService(client, customProperties);
 
@@ -205,7 +224,7 @@ class OpenAiChatServiceStreamingTest {
             .thenReturn(mockStreamResponse);
 
         OpenAiProperties standardProperties = new OpenAiProperties();
-        standardProperties.setModel("gpt-4o-mini");
+        standardProperties.getModel().setChat("gpt-4o-mini");
         
         OpenAiChatService standardModelService = new OpenAiChatService(client, standardProperties);
 

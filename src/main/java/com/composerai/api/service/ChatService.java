@@ -1,5 +1,6 @@
 package com.composerai.api.service;
 
+import com.composerai.api.config.OpenAiProperties;
 import com.composerai.api.dto.ChatRequest;
 import com.composerai.api.dto.ChatResponse;
 import com.composerai.api.dto.ChatResponse.EmailContext;
@@ -24,17 +25,29 @@ public class ChatService {
 
     private final VectorSearchService vectorSearchService;
     private final OpenAiChatService openAiChatService;
+    private final OpenAiProperties openAiProperties;
     private final ExecutorService streamingExecutor;
 
-    public ChatService(VectorSearchService vectorSearchService, OpenAiChatService openAiChatService) {
+    public ChatService(VectorSearchService vectorSearchService, OpenAiChatService openAiChatService,
+                       OpenAiProperties openAiProperties) {
         this.vectorSearchService = vectorSearchService;
         this.openAiChatService = openAiChatService;
+        this.openAiProperties = openAiProperties;
         this.streamingExecutor = Executors.newSingleThreadExecutor();
     }
 
     private record ChatContext(float[] embedding, List<EmailContext> emailContext, String contextString) {}
 
     public record StreamMetadata(String conversationId) {}
+
+    /**
+     * Applies defaults from configuration to request parameters.
+     * Configuration source: {@link OpenAiProperties.Defaults#getMaxSearchResults()}
+     * Default: 5 (configurable via openai.defaults.max-search-results)
+     */
+    private int applyMaxResultsDefault(int requestedMaxResults) {
+        return requestedMaxResults > 0 ? requestedMaxResults : openAiProperties.getDefaults().getMaxSearchResults();
+    }
 
     private ChatContext prepareChatContext(String message, int maxResults) {
         float[] queryVector = openAiChatService.generateEmbedding(message);
@@ -49,7 +62,8 @@ public class ChatService {
         String conversationId = StringUtils.ensureConversationId(request.getConversationId());
         try {
             String intent = openAiChatService.analyzeIntent(request.getMessage());
-            ChatContext ctx = prepareChatContext(request.getMessage(), request.getMaxResults());
+            int maxResults = applyMaxResultsDefault(request.getMaxResults());
+            ChatContext ctx = prepareChatContext(request.getMessage(), maxResults);
             OpenAiChatService.ChatCompletionResult aiResult = openAiChatService.generateResponse(
                 request.getMessage(), prepareFullContext(ctx, request.getEmailContext()),
                 request.isThinkingEnabled(), request.getThinkingLevel());
@@ -107,7 +121,8 @@ public class ChatService {
                            Consumer<ReasoningStreamAdapter.ReasoningMessage> onReasoning,
                            Runnable onComplete, Consumer<Throwable> onError) {
         String conversationId = StringUtils.ensureConversationId(request.getConversationId());
-        ChatContext ctx = prepareChatContext(request.getMessage(), request.getMaxResults());
+        int maxResults = applyMaxResultsDefault(request.getMaxResults());
+        ChatContext ctx = prepareChatContext(request.getMessage(), maxResults);
         doStreamChat(request.getMessage(), conversationId, prepareFullContext(ctx, request.getEmailContext()),
             request.isThinkingEnabled(), request.getThinkingLevel(), onToken, onReasoning, onComplete, onError);
     }
@@ -120,7 +135,8 @@ public class ChatService {
         emitter.onError(e -> logger.error("SSE error: {}", conversationId, e));
         streamingExecutor.execute(() -> {
             try {
-                ChatContext ctx = prepareChatContext(request.getMessage(), request.getMaxResults());
+                int maxResults = applyMaxResultsDefault(request.getMaxResults());
+                ChatContext ctx = prepareChatContext(request.getMessage(), maxResults);
                 doStreamChat(request.getMessage(), conversationId, prepareFullContext(ctx, request.getEmailContext()),
                     request.isThinkingEnabled(), request.getThinkingLevel(),
                     chunk -> { try { emitter.send(SseEmitter.event().data(chunk)); } catch (IOException e) { logger.warn("Error sending chunk: {}", conversationId, e); emitter.completeWithError(e); } },

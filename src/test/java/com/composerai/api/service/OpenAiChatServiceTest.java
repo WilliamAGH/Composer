@@ -1,5 +1,7 @@
 package com.composerai.api.service;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import com.composerai.api.config.OpenAiProperties;
 import com.openai.client.OpenAIClient;
 import com.openai.models.embeddings.CreateEmbeddingResponse;
@@ -10,12 +12,15 @@ import com.openai.models.responses.ResponseCreateParams;
 import com.openai.models.responses.ResponseOutputItem;
 import com.openai.models.responses.ResponseOutputMessage;
 import com.openai.models.responses.ResponseOutputText;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Optional;
@@ -32,11 +37,25 @@ class OpenAiChatServiceTest {
 
     private OpenAiChatService service;
 
+    private static final Logger SERVICE_LOGGER = (Logger) LoggerFactory.getLogger(OpenAiChatService.class);
+    private static Level originalLogLevel;
+
+    @BeforeAll
+    static void suppressServiceErrorLogs() {
+        originalLogLevel = SERVICE_LOGGER.getLevel();
+        SERVICE_LOGGER.setLevel(Level.OFF);
+    }
+
+    @AfterAll
+    static void restoreServiceLogLevel() {
+        SERVICE_LOGGER.setLevel(originalLogLevel);
+    }
+
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
         OpenAiProperties properties = new OpenAiProperties();
-        properties.setModel("gpt-test");
+        properties.getModel().setChat("gpt-test");
         service = new OpenAiChatService(openAIClient, properties);
     }
 
@@ -93,7 +112,7 @@ class OpenAiChatServiceTest {
     @Test
     void generateResponse_withCustomModel_isHandledCorrectly() {
         OpenAiProperties customProperties = new OpenAiProperties();
-        customProperties.setModel("o4-mini");
+        customProperties.getModel().setChat("o4-mini");
         OpenAiChatService customModelService = new OpenAiChatService(openAIClient, customProperties);
 
         Response mockResponse = buildResponseWithText("Custom model response");

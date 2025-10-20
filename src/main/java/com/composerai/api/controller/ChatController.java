@@ -58,6 +58,8 @@ public class ChatController {
 
         SseEmitter emitter = new SseEmitter((long) openAiProperties.getStream().getTimeoutSeconds() * 1000);
         // Send periodic keepalive comments to prevent proxies from closing idle streams
+        // Configuration source: OpenAiProperties.Stream.getHeartbeatIntervalSeconds()
+        // Default: 10 seconds (configurable via openai.stream.heartbeat-interval-seconds)
         final java.util.concurrent.ScheduledExecutorService heartbeatExecutor = java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
         final java.util.concurrent.atomic.AtomicBoolean completed = new java.util.concurrent.atomic.AtomicBoolean(false);
         heartbeatExecutor.scheduleAtFixedRate(() -> {
@@ -67,7 +69,7 @@ public class ChatController {
             } catch (Exception ignored) {
                 // ignore intermittent heartbeat failures
             }
-        }, 0L, 10L, java.util.concurrent.TimeUnit.SECONDS);
+        }, 0L, openAiProperties.getStream().getHeartbeatIntervalSeconds(), java.util.concurrent.TimeUnit.SECONDS);
         emitter.onTimeout(() -> {
             log.warn("SSE timeout for conversationId={}", conversationId);
             emitter.complete();

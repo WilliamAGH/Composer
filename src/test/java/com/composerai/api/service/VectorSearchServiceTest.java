@@ -1,12 +1,17 @@
 package com.composerai.api.service;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import com.composerai.api.config.QdrantProperties;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.grpc.Points.SearchPoints;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -25,6 +30,20 @@ class VectorSearchServiceTest {
     private QdrantClient qdrantClient;
 
     private QdrantProperties properties;
+
+    private static final Logger SERVICE_LOGGER = (Logger) LoggerFactory.getLogger(VectorSearchService.class);
+    private static Level originalLogLevel;
+
+    @BeforeAll
+    static void silenceVectorSearchLogs() {
+        originalLogLevel = SERVICE_LOGGER.getLevel();
+        SERVICE_LOGGER.setLevel(Level.OFF);
+    }
+
+    @AfterAll
+    static void restoreVectorSearchLogs() {
+        SERVICE_LOGGER.setLevel(originalLogLevel);
+    }
 
     @BeforeEach
     void setUp() {

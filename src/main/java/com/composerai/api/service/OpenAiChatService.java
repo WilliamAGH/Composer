@@ -102,14 +102,21 @@ public class OpenAiChatService {
         }, ChatCompletionResult.fromRaw(OPENAI_UNAVAILABLE_MESSAGE), "OpenAI error while generating response");
     }
 
+    /**
+     * Analyzes user intent and classifies it into predefined categories.
+     * Configuration sources:
+     * - Default category: {@link OpenAiProperties.Intent#getDefaultCategory()}
+     * - Max tokens: {@link OpenAiProperties.Intent#getMaxOutputTokens()}
+     * Defaults: Configurable via openai.intent.default-category and openai.intent.max-output-tokens
+     */
     public String analyzeIntent(String userMessage) {
         return executeWithFallback(() -> {
-            if (openAiClient == null) return "question";
+            if (openAiClient == null) return openAiProperties.getIntent().getDefaultCategory();
 
             String intent = openAiClient.responses().create(ResponseCreateParams.builder()
                 .model(resolveChatModel())
                 .inputOfResponse(buildIntentAnalysisMessages(userMessage))
-                .maxOutputTokens(10L)
+                .maxOutputTokens(openAiProperties.getIntent().getMaxOutputTokens())
                 .build()).output().stream()
                 .flatMap(item -> item.message().stream())
                 .flatMap(message -> message.content().stream())
@@ -119,8 +126,8 @@ public class OpenAiChatService {
                 .trim().toLowerCase();
 
             logger.info("Analyzed intent: {}", intent);
-            return intent.isEmpty() ? "question" : intent;
-        }, "question", "OpenAI error while analyzing intent");
+            return intent.isEmpty() ? openAiProperties.getIntent().getDefaultCategory() : intent;
+        }, openAiProperties.getIntent().getDefaultCategory(), "OpenAI error while analyzing intent");
     }
 
     public void streamResponse(String userMessage, String emailContext,
@@ -135,8 +142,7 @@ public class OpenAiChatService {
             .model(resolveChatModel())
             .inputOfResponse(buildEmailAssistantMessages(emailContext, userMessage));
 
-        String modelId = openAiProperties.getModel() != null && !openAiProperties.getModel().isBlank()
-            ? openAiProperties.getModel() : "o4-mini";
+        String modelId = openAiProperties.getModel().getChat();
         ValidatedThinkingConfig config = ValidatedThinkingConfig.resolve(openAiProperties, modelId, thinkingEnabled, thinkingLevel);
         if (config.enabled() && config.effort() != null) {
             builder.reasoning(Reasoning.builder().effort(config.effort()).build());
@@ -198,12 +204,17 @@ public class OpenAiChatService {
             onEvent.accept(StreamEvent.reasoning(reasoningEvent));
     }
 
+    /**
+     * Generates vector embeddings for the given text.
+     * Configuration source: {@link OpenAiProperties.Embedding#getModel()}
+     * Default: text-embedding-3-small (configurable via openai.embedding.model)
+     */
     public float[] generateEmbedding(String text) {
         if (text == null || text.isBlank()) return new float[0];
         return executeWithFallback(() -> {
             List<Embedding> data = openAiClient.embeddings().create(
                 EmbeddingCreateParams.builder()
-                    .model(EmbeddingModel.TEXT_EMBEDDING_3_SMALL)
+                    .model(EmbeddingModel.of(openAiProperties.getEmbedding().getModel()))
                     .input(text)
                     .build()).data();
             if (data.isEmpty()) return new float[0];
@@ -214,18 +225,23 @@ public class OpenAiChatService {
         }, new float[0], "OpenAI error while generating embeddings");
     }
 
-
+    /**
+     * Resolves the chat model to use for completion requests.
+     * Configuration source: {@link OpenAiProperties.Model#getChat()}
+     * Default: o4-mini (configurable via openai.model.chat)
+     */
     private ChatModel resolveChatModel() {
-        String configuredModel = openAiProperties.getModel();
-        return ChatModel.of(configuredModel != null && !configuredModel.isBlank() ? configuredModel : "o4-mini");
+        return ChatModel.of(openAiProperties.getModel().getChat());
     }
 
+    /**
+     * Builds email assistant messages for the OpenAI API.
+     * Configuration source: {@link OpenAiProperties.Prompts#getEmailAssistantSystem()}
+     * Default: Configurable via openai.prompts.email-assistant-system
+     */
     private List<ResponseInputItem> buildEmailAssistantMessages(String emailContext, String userMessage) {
         String safeContext = StringUtils.sanitize(emailContext);
-        String systemMessage = "You are ComposerAI, a helpful email analysis assistant. " +
-            "Use the provided email context strictly as evidence. " +
-            "Respond with the level of detail the user's request requires—summaries when asked, but thorough explanations and specifics when the question calls for them. " +
-            "Do not invent details not present in the context.";
+        String systemMessage = openAiProperties.getPrompts().getEmailAssistantSystem();
         String fullPrompt = systemMessage +
             (StringUtils.isBlank(safeContext) ? "" : "\n\nEmail Context:\n" + safeContext) +
             "\n\nQuestion: " + userMessage;
@@ -235,9 +251,16 @@ public class OpenAiChatService {
             .build()));
     }
 
+    /**
+     * Builds intent analysis messages for the OpenAI API.
+     * Configuration sources:
+     * - Prompt: {@link OpenAiProperties.Prompts#getIntentAnalysisSystem()}
+     * - Categories: {@link OpenAiProperties.Intent#getCategories()}
+     * Defaults: Configurable via openai.prompts.intent-analysis-system and openai.intent.categories
+     */
     private List<ResponseInputItem> buildIntentAnalysisMessages(String userMessage) {
-        String systemMessage = "Analyze the user's intent and classify it into one of these categories: " +
-            "search, compose, summarize, analyze, question, or other. Respond with just the category name.";
+        String systemMessage = openAiProperties.getPrompts().getIntentAnalysisSystem()
+            .replace("{categories}", openAiProperties.getIntent().getCategories());
         return List.of(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
             .role(EasyInputMessage.Role.USER)
             .content(systemMessage + "\n\n" + userMessage)

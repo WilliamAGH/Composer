@@ -180,12 +180,8 @@ public final class ReasoningStreamAdapter {
     }
 
     private static Long extractStep(Object payload) {
-        if (payload instanceof SummaryPartPayload summary) {
-            return summary.sequenceNumber();
-        }
-        if (payload instanceof SummaryTextPayload summaryText) {
-            return summaryText.sequenceNumber();
-        }
+        // Only TEXT_DELTA (PROGRESS phase) and FAILED phase should show step numbers.
+        // THINKING phase (SUMMARY events) should not show step numbers.
         if (payload instanceof TextPayload textPayload) {
             return textPayload.sequenceNumber();
         }
