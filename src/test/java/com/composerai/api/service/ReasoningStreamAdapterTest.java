@@ -74,7 +74,7 @@ class ReasoningStreamAdapterTest {
         assertEquals(ReasoningStreamAdapter.Type.TEXT_DELTA, message.type());
         assertEquals(ReasoningStreamAdapter.Phase.PROGRESS, message.phase());
         assertEquals("Reasoning step 2", message.displayLabel());
-        assertEquals(2L, message.step());
+        assertEquals(Long.valueOf(2L), message.step());
         assertEquals(ReasoningStreamAdapter.Phase.PROGRESS, message.phase());
         assertTrue(message.payload() instanceof ReasoningStreamAdapter.TextPayload);
 
