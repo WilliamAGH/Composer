@@ -58,6 +58,16 @@ public final class StringUtils {
     }
 
     /**
+     * Ensure a conversation ID exists; generate UUIDv7 if blank.
+     *
+     * @param existing the existing conversation ID (may be null/blank)
+     * @return trimmed existing ID or new UUIDv7
+     */
+    public static String ensureConversationId(String existing) {
+        return isBlank(existing) ? IdGenerator.uuidV7() : existing.trim();
+    }
+
+    /**
      * Sanitize a URL by removing trackers, query parameters, and fragments.
      * Only allows http, https, and mailto schemes.
      * Limits URL length to 2048 characters.
