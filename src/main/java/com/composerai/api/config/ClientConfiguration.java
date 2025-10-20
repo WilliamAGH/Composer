@@ -11,8 +11,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration;
 
 import java.time.Duration;
-import java.util.concurrent.ThreadPoolExecutor;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.context.annotation.Bean;
 
 @Slf4j
@@ -40,25 +38,9 @@ public class ClientConfiguration {
         String trimmedKey = apiKey.trim();
 
         try {
-            // Check for base URL - priority: env vars first, then properties
-            String llmBaseUrl = System.getenv("LLM_BASE_URL");
-            String openaiBaseUrl = System.getenv("OPENAI_BASE_URL");
-            String openaiApiBaseUrl = System.getenv("OPENAI_API_BASE_URL");
-            String propsBaseUrl = openAiProperties.getApi().getBaseUrl();
-
-            log.debug("Base URL sources: LLM_BASE_URL={}, OPENAI_BASE_URL={}, OPENAI_API_BASE_URL={}, properties={}",
-                llmBaseUrl, openaiBaseUrl, openaiApiBaseUrl, propsBaseUrl);
-
-            String baseUrl = llmBaseUrl;
-            if (StringUtils.isBlank(baseUrl)) {
-                baseUrl = openaiBaseUrl;
-            }
-            if (StringUtils.isBlank(baseUrl)) {
-                baseUrl = openaiApiBaseUrl;
-            }
-            if (StringUtils.isBlank(baseUrl)) {
-                baseUrl = propsBaseUrl;
-            }
+            // Base URL comes from properties (which handles env var fallback chain)
+            String baseUrl = openAiProperties.getApi().getBaseUrl();
+            log.debug("Using base URL: {}", baseUrl);
 
             // Detect provider capabilities for logging
             ProviderCapabilities capabilities = ProviderCapabilities.detect(baseUrl);
@@ -111,8 +93,8 @@ public class ClientConfiguration {
      * Virtual threads (Java 21+) are ideal for I/O-bound streaming tasks
      * as they scale better than platform threads and don't block carriers.
      */
-    @Bean(name = "streamingExecutor")
-    public java.util.concurrent.ExecutorService streamingExecutor() {
+    @Bean(name = "chatStreamExecutor")
+    public java.util.concurrent.ExecutorService chatStreamExecutor() {
         return java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
     }
 }
