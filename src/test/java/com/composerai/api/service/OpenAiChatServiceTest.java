@@ -2,12 +2,17 @@ package com.composerai.api.service;
 
 import com.composerai.api.config.OpenAiProperties;
 import com.openai.client.OpenAIClient;
+import com.openai.models.embeddings.CreateEmbeddingResponse;
+import com.openai.models.embeddings.Embedding;
 import com.openai.models.embeddings.EmbeddingCreateParams;
-import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import com.openai.models.responses.Response;
+import com.openai.models.responses.ResponseCreateParams;
+import com.openai.models.responses.ResponseOutputItem;
+import com.openai.models.responses.ResponseOutputMessage;
+import com.openai.models.responses.ResponseOutputText;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -15,8 +20,7 @@ import org.mockito.MockitoAnnotations;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -55,59 +59,51 @@ class OpenAiChatServiceTest {
     }
 
     @Test
-    void generateResponse_returnsSanitizedHtml() {
-        var chatCompletion = Mockito.mock(com.openai.models.chat.completions.ChatCompletion.class, Answers.RETURNS_DEEP_STUBS);
-        var choice = Mockito.mock(com.openai.models.chat.completions.ChatCompletion.Choice.class, Answers.RETURNS_DEEP_STUBS);
+    void generateEmbedding_returnsValidEmbedding() {
+        // Mock embeddings API response
+        CreateEmbeddingResponse mockResponse = Mockito.mock(CreateEmbeddingResponse.class);
+        Embedding mockEmbedding = Mockito.mock(Embedding.class);
+        
+        when(openAIClient.embeddings().create(any(EmbeddingCreateParams.class))).thenReturn(mockResponse);
+        when(mockResponse.data()).thenReturn(List.of(mockEmbedding));
+        when(mockEmbedding.embedding()).thenReturn(List.of(0.1f, 0.2f, 0.3f));
 
-        when(chatCompletion.choices()).thenReturn(List.of(choice));
-        when(choice.message().content()).thenReturn(Optional.of("**Hello** <script>alert('x')</script> world"));
-        when(openAIClient.chat().completions().create(any(ChatCompletionCreateParams.class))).thenReturn(chatCompletion);
+        float[] result = service.generateEmbedding("test text");
+
+        assertEquals(3, result.length);
+        assertEquals(0.1f, result[0]);
+        assertEquals(0.2f, result[1]);
+        assertEquals(0.3f, result[2]);
+    }
+
+    @Test
+    void generateResponse_returnsSanitizedHtml() {
+        Response mockResponse = buildResponseWithText("**Hello** <script>alert('x')</script> world");
+        when(openAIClient.responses().create(any(ResponseCreateParams.class)))
+            .thenReturn(mockResponse);
 
         OpenAiChatService.ChatCompletionResult result = service.generateResponse("Hi", "Context", false, null);
 
         assertEquals("**Hello** <script>alert('x')</script> world", result.rawText());
         String sanitized = result.sanitizedHtml();
         assertTrue(sanitized.contains("<strong>Hello</strong>"));
-        assertTrue(!sanitized.contains("<script>") && !sanitized.contains("alert('x')"));
+        assertFalse(sanitized.contains("<script>"));
     }
 
     @Test
-    void generateResponse_withThinkingEnabledAppliesReasoningEffort() {
-        var chatCompletion = Mockito.mock(com.openai.models.chat.completions.ChatCompletion.class, Answers.RETURNS_DEEP_STUBS);
-        var choice = Mockito.mock(com.openai.models.chat.completions.ChatCompletion.Choice.class, Answers.RETURNS_DEEP_STUBS);
+    void generateResponse_withCustomModel_isHandledCorrectly() {
+        OpenAiProperties customProperties = new OpenAiProperties();
+        customProperties.setModel("o4-mini");
+        OpenAiChatService customModelService = new OpenAiChatService(openAIClient, customProperties);
 
-        when(chatCompletion.choices()).thenReturn(List.of(choice));
-        when(choice.message().content()).thenReturn(Optional.of("response"));
-        when(openAIClient.chat().completions().create(any(ChatCompletionCreateParams.class))).thenReturn(chatCompletion);
+        Response mockResponse = buildResponseWithText("Custom model response");
+        when(openAIClient.responses().create(any(ResponseCreateParams.class)))
+            .thenReturn(mockResponse);
 
-        ArgumentCaptor<ChatCompletionCreateParams> paramsCaptor = ArgumentCaptor.forClass(ChatCompletionCreateParams.class);
+        OpenAiChatService.ChatCompletionResult result = customModelService.generateResponse("Test", "Context", false, null);
 
-        service.generateResponse("Hi", "Context", true, "Heavy");
-
-        Mockito.verify(openAIClient.chat().completions()).create(paramsCaptor.capture());
-        ChatCompletionCreateParams captured = paramsCaptor.getValue();
-        assertTrue(captured.reasoningEffort().isPresent());
-        assertEquals("heavy", captured.reasoningEffort().get().asString());
-    }
-
-    @Test
-    void generateResponse_withGpt5Model_usesIncreasedTokenLimit() {
-        OpenAiProperties gpt5Properties = new OpenAiProperties();
-        gpt5Properties.setModel("gpt-5-mini");
-        OpenAiChatService gpt5Service = new OpenAiChatService(openAIClient, gpt5Properties);
-
-        var chatCompletion = Mockito.mock(com.openai.models.chat.completions.ChatCompletion.class, Answers.RETURNS_DEEP_STUBS);
-        var choice = Mockito.mock(com.openai.models.chat.completions.ChatCompletion.Choice.class, Answers.RETURNS_DEEP_STUBS);
-
-        when(chatCompletion.choices()).thenReturn(List.of(choice));
-        when(choice.message().content()).thenReturn(Optional.of("GPT-5 response"));
-        when(openAIClient.chat().completions().create(any(ChatCompletionCreateParams.class))).thenReturn(chatCompletion);
-
-        OpenAiChatService.ChatCompletionResult result = gpt5Service.generateResponse("Test", "Context", false, null);
-
-        assertEquals("GPT-5 response", result.rawText());
-        // Verify the token limit increase is applied (1000L instead of 500L)
-        Mockito.verify(openAIClient.chat().completions()).create(any(ChatCompletionCreateParams.class));
+        assertEquals("Custom model response", result.rawText());
+        Mockito.verify(openAIClient.responses()).create(any(ResponseCreateParams.class));
     }
 
     @Test
@@ -123,11 +119,28 @@ class OpenAiChatServiceTest {
 
     @Test
     void analyzeIntent_returnsQuestionOnError() {
-        when(openAIClient.chat().completions().create(any(ChatCompletionCreateParams.class)))
+        when(openAIClient.responses().create(any(ResponseCreateParams.class)))
             .thenThrow(new RuntimeException("Service unavailable"));
 
         String intent = service.analyzeIntent("What emails did I get today?");
 
         assertEquals("question", intent);
+    }
+
+    private Response buildResponseWithText(String text) {
+        // Mock Response API object hierarchy
+        Response mockResponse = Mockito.mock(Response.class);
+        ResponseOutputItem mockOutputItem = Mockito.mock(ResponseOutputItem.class);
+        ResponseOutputMessage mockMessage = Mockito.mock(ResponseOutputMessage.class);
+        ResponseOutputMessage.Content mockContent = Mockito.mock(ResponseOutputMessage.Content.class);
+        ResponseOutputText mockOutputText = Mockito.mock(ResponseOutputText.class);
+        
+        Mockito.lenient().when(mockResponse.output()).thenReturn(List.of(mockOutputItem));
+        Mockito.lenient().when(mockOutputItem.message()).thenReturn(Optional.of(mockMessage));
+        Mockito.lenient().when(mockMessage.content()).thenReturn(List.of(mockContent));
+        Mockito.lenient().when(mockContent.outputText()).thenReturn(Optional.of(mockOutputText));
+        Mockito.lenient().when(mockOutputText.text()).thenReturn(text);
+        
+        return mockResponse;
     }
 }

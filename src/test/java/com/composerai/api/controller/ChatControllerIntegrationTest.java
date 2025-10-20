@@ -3,7 +3,6 @@ package com.composerai.api.controller;
 import com.composerai.api.dto.ChatRequest;
 import com.composerai.api.dto.ChatResponse;
 import com.composerai.api.service.ChatService;
-import com.composerai.api.service.ChatService.StreamMetadata;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -13,13 +12,11 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.UUID;
 import java.util.concurrent.Executor;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doAnswer;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -44,6 +41,9 @@ class ChatControllerIntegrationTest {
 
     @MockBean(name = "chatStreamExecutor")
     private Executor chatStreamExecutor;
+
+    @MockBean
+    private com.composerai.api.config.OpenAiProperties openAiProperties;
 
     @Test
     void healthEndpoint_ShouldReturnOk() throws Exception {
@@ -81,6 +81,11 @@ class ChatControllerIntegrationTest {
 
     @Test
     void streamEndpoint_ShouldEmitSanitizedHtmlChunks() throws Exception {
+        // Configure openAiProperties mock
+        var streamConfig = new com.composerai.api.config.OpenAiProperties.Stream();
+        streamConfig.setTimeoutSeconds(120);
+        Mockito.when(openAiProperties.getStream()).thenReturn(streamConfig);
+
         doAnswer(invocation -> {
             Runnable runnable = invocation.getArgument(0);
             runnable.run();
@@ -88,12 +93,17 @@ class ChatControllerIntegrationTest {
         }).when(chatStreamExecutor).execute(any(Runnable.class));
 
         doAnswer(invocation -> {
-            StreamMetadata metadata = new StreamMetadata(UUID.randomUUID().toString());
-            invocation.<java.util.function.Consumer<StreamMetadata>>getArgument(6).accept(metadata);
-            invocation.<java.util.function.Consumer<String>>getArgument(7).accept("<p>Hello <strong>World</strong></p>");
-            invocation.<Runnable>getArgument(8).run();
+            invocation.<java.util.function.Consumer<String>>getArgument(1).accept("<p>Hello <strong>World</strong></p>");
+            invocation.<java.util.function.Consumer<?>>getArgument(2).accept(null);
+            invocation.<Runnable>getArgument(3).run();
             return null;
-        }).when(chatService).streamChat(any(), any(Integer.class), any(), any(), anyBoolean(), any(), any(), any(), any(), any());
+        }).when(chatService).streamChat(
+            any(ChatRequest.class),
+            org.mockito.ArgumentMatchers.<java.util.function.Consumer<String>>any(),
+            org.mockito.ArgumentMatchers.any(),
+            any(Runnable.class),
+            org.mockito.ArgumentMatchers.<java.util.function.Consumer<Throwable>>any()
+        );
 
         ChatRequest request = new ChatRequest("Summarize", null, 5);
 
@@ -105,6 +115,12 @@ class ChatControllerIntegrationTest {
             .andExpect(content().string(containsString("<strong>World</strong>")))
             .andExpect(content().string(not(containsString("<script>"))));
 
-        Mockito.verify(chatService).streamChat(any(), any(Integer.class), any(), any(), anyBoolean(), any(), any(), any(), any(), any());
+        Mockito.verify(chatService).streamChat(
+            any(ChatRequest.class),
+            org.mockito.ArgumentMatchers.<java.util.function.Consumer<String>>any(),
+            org.mockito.ArgumentMatchers.any(),
+            any(Runnable.class),
+            org.mockito.ArgumentMatchers.<java.util.function.Consumer<Throwable>>any()
+        );
     }
 }

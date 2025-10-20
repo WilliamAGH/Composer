@@ -6,57 +6,52 @@ import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.core.Timeout;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.QdrantGrpcClient;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.context.annotation.Bean;
 
+@Slf4j
 @Configuration
 @EnableConfigurationProperties({OpenAiProperties.class, QdrantProperties.class})
 public class ClientConfiguration {
 
-    private static final Logger logger = LoggerFactory.getLogger(ClientConfiguration.class);
 
     @Bean
     public OpenAIClient openAIClient(OpenAiProperties openAiProperties) {
+        // Use fromEnv() - automatically handles OPENAI_API_KEY and AZURE_OPENAI_KEY
         // spring-dotenv library automatically loads .env file values into environment
-        String apiKey = StringUtils.sanitize(openAiProperties.getApi().getKey());
-
-        if (StringUtils.isMissing(apiKey)) {
-            apiKey = StringUtils.sanitize(System.getenv("OPENAI_API_KEY"));
-            if (!StringUtils.isMissing(apiKey)) {
-                logger.info("Loaded OpenAI API key from environment variable");
+        
+        try {
+            OpenAIClient client = OpenAIOkHttpClient.fromEnv();
+            
+            // Apply custom timeout configuration
+            client = client.withOptions(opts -> opts
+                .timeout(Timeout.builder()
+                    .connect(Duration.ofSeconds(10))
+                    .read(Duration.ofMinutes(5))
+                    .write(Duration.ofSeconds(30))
+                    .build()));
+            
+            // Apply custom base URL if configured
+            String baseUrl = openAiProperties.getApi().getBaseUrl();
+            if (baseUrl != null && !baseUrl.isBlank()) {
+                client = client.withOptions(opts -> opts.baseUrl(baseUrl));
             }
+            
+            log.info("OpenAI client configured successfully");
+            return client;
+        } catch (Exception e) {
+            log.warn("OpenAI API key not configured: {}. Service will operate in degraded mode.", e.getMessage());
+            // Return null - service methods will handle null client gracefully
+            return null;
         }
-
-        if (StringUtils.isMissing(apiKey)) {
-            logger.error("OpenAI API key is not configured; set OPENAI_API_KEY or openai.api.key");
-            throw new IllegalStateException(
-                "OpenAI API key is not configured; set OPENAI_API_KEY or openai.api.key"
-            );
-        }
-
-        OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder()
-            .timeout(Timeout.builder()
-                .connect(Duration.ofSeconds(10))
-                .read(Duration.ofMinutes(5))
-                .write(Duration.ofSeconds(30))
-                .build());
-
-        OpenAIClient client = builder
-            .apiKey(apiKey)
-            .build();
-        String baseUrl = openAiProperties.getApi().getBaseUrl();
-        if (baseUrl != null && !baseUrl.isBlank()) {
-            client = client.withOptions(opts -> opts.baseUrl(baseUrl));
-        }
-        return client;
     }
+
 
     @Bean
     public QdrantClient qdrantClient(QdrantProperties qdrantProperties) {
@@ -70,7 +65,7 @@ public class ClientConfiguration {
         String apiKey = qdrantProperties.getApiKey();
         if (!StringUtils.isBlank(apiKey)) {
             builder.withApiKey(apiKey.trim());
-            logger.info("Configured Qdrant API key on gRPC client");
+            log.info("Configured Qdrant API key on gRPC client");
         }
 
         return new QdrantClient(builder.build());
