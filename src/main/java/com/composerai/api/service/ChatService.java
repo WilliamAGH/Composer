@@ -1,5 +1,6 @@
 package com.composerai.api.service;
 
+import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
 import com.composerai.api.dto.ChatRequest;
 import com.composerai.api.dto.ChatResponse;
@@ -26,13 +27,15 @@ public class ChatService {
     private final VectorSearchService vectorSearchService;
     private final OpenAiChatService openAiChatService;
     private final OpenAiProperties openAiProperties;
+    private final ErrorMessagesProperties errorMessages;
     private final ExecutorService streamingExecutor;
 
     public ChatService(VectorSearchService vectorSearchService, OpenAiChatService openAiChatService,
-                       OpenAiProperties openAiProperties) {
+                       OpenAiProperties openAiProperties, ErrorMessagesProperties errorMessages) {
         this.vectorSearchService = vectorSearchService;
         this.openAiChatService = openAiChatService;
         this.openAiProperties = openAiProperties;
+        this.errorMessages = errorMessages;
         this.streamingExecutor = Executors.newSingleThreadExecutor();
     }
 
@@ -42,8 +45,9 @@ public class ChatService {
 
     /**
      * Applies defaults from configuration to request parameters.
-     * Configuration source: {@link OpenAiProperties.Defaults#getMaxSearchResults()}
-     * Default: 5 (configurable via openai.defaults.max-search-results)
+     *
+     * Configuration source of truth: OpenAiProperties.java
+     * Max search results: {@link OpenAiProperties.Defaults#getMaxSearchResults()} - 5
      */
     private int applyMaxResultsDefault(int requestedMaxResults) {
         return requestedMaxResults > 0 ? requestedMaxResults : openAiProperties.getDefaults().getMaxSearchResults();
@@ -71,7 +75,7 @@ public class ChatService {
             return new ChatResponse(aiResult.rawText(), conversationId, ctx.emailContext(), intent, aiResult.sanitizedHtml());
         } catch (Exception e) {
             logger.error("Error processing chat request", e);
-            String fallback = "I apologize, but I encountered an error while processing your request. Please try again.";
+            String fallback = errorMessages.getChat().getProcessingError();
             return new ChatResponse(fallback, conversationId, List.of(), "error", HtmlConverter.markdownToSafeHtml(fallback));
         }
     }
@@ -104,10 +108,13 @@ public class ChatService {
                               Consumer<String> onToken, Consumer<ReasoningStreamAdapter.ReasoningMessage> onReasoning,
                               Runnable onComplete, Consumer<Throwable> onError) {
         Consumer<Throwable> safeOnError = onError != null ? onError : err -> logger.error("Streaming error: convId={}", conversationId, err);
+        String normalizedThinkingLabel = thinkingEnabled
+            ? ReasoningStreamAdapter.normalizeThinkingLabel(thinkingLevel)
+            : null;
         long startNanos = System.nanoTime();
         try {
             openAiChatService.streamResponse(message, contextString, thinkingEnabled, thinkingLevel,
-                event -> handleStreamEvent(event, onToken, onReasoning),
+                event -> handleStreamEvent(event, onToken, onReasoning, normalizedThinkingLabel),
                 () -> { logger.info("Stream completed: {}ms", (System.nanoTime() - startNanos) / 1_000_000L); if (onComplete != null) onComplete.run(); },
                 err -> { logger.warn("Stream failed: {}ms", (System.nanoTime() - startNanos) / 1_000_000L, err); safeOnError.accept(err); });
         } catch (Exception e) {
@@ -150,13 +157,14 @@ public class ChatService {
 
     private void handleStreamEvent(OpenAiChatService.StreamEvent event,
                                    Consumer<String> onToken,
-                                   Consumer<ReasoningStreamAdapter.ReasoningMessage> onReasoning) {
+                                   Consumer<ReasoningStreamAdapter.ReasoningMessage> onReasoning,
+                                   String thinkingLabel) {
         if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
             onToken.accept(rendered.html());
             return;
         }
         if (onReasoning == null) return;
-        ReasoningStreamAdapter.ReasoningMessage message = ReasoningStreamAdapter.toMessage(event);
+        ReasoningStreamAdapter.ReasoningMessage message = ReasoningStreamAdapter.toMessage(event, thinkingLabel);
         if (message != null) onReasoning.accept(message);
     }
 

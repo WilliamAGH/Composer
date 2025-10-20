@@ -1,5 +1,6 @@
 package com.composerai.api.service;
 
+import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
 import com.composerai.api.util.StringUtils;
 import com.openai.client.OpenAIClient;
@@ -36,12 +37,11 @@ import java.util.regex.Pattern;
 public class OpenAiChatService {
 
     private static final Logger logger = LoggerFactory.getLogger(OpenAiChatService.class);
-    private static final String OPENAI_MISCONFIGURED_MESSAGE = "OpenAI is not configured (missing OPENAI_API_KEY).";
-    private static final String OPENAI_UNAVAILABLE_MESSAGE = "OpenAI is unavailable right now. Please try again later.";
     private static final Pattern DANGEROUS_BLOCK_TAGS = Pattern.compile("(?is)<(script|style|iframe)[^>]*>.*?</\\1>");
 
     private final OpenAIClient openAiClient;
     private final OpenAiProperties openAiProperties;
+    private final ErrorMessagesProperties errorMessages;
 
     public record ChatCompletionResult(String rawText, String sanitizedHtml) {
         public ChatCompletionResult {
@@ -75,15 +75,17 @@ public class OpenAiChatService {
     }
 
     public OpenAiChatService(@Autowired(required = false) @Nullable OpenAIClient openAiClient,
-                              OpenAiProperties openAiProperties) {
+                              OpenAiProperties openAiProperties,
+                              ErrorMessagesProperties errorMessages) {
         this.openAiClient = openAiClient;
         this.openAiProperties = openAiProperties;
+        this.errorMessages = errorMessages;
     }
 
     public ChatCompletionResult generateResponse(String userMessage, String emailContext,
                                                  boolean thinkingEnabled, String thinkingLevel) {
         return executeWithFallback(() -> {
-            if (openAiClient == null) return ChatCompletionResult.fromRaw(OPENAI_MISCONFIGURED_MESSAGE);
+            if (openAiClient == null) return ChatCompletionResult.fromRaw(errorMessages.getOpenai().getMisconfigured());
 
             String aiResponse = openAiClient.responses().create(ResponseCreateParams.builder()
                 .model(resolveChatModel())
@@ -99,15 +101,15 @@ public class OpenAiChatService {
                 (long)(userMessage != null ? userMessage.split("\\s+").length * 1.25 : 0),
                 (long)(aiResponse != null ? aiResponse.split("\\s+").length * 1.25 : 0));
             return ChatCompletionResult.fromRaw(aiResponse);
-        }, ChatCompletionResult.fromRaw(OPENAI_UNAVAILABLE_MESSAGE), "OpenAI error while generating response");
+        }, ChatCompletionResult.fromRaw(errorMessages.getOpenai().getUnavailable()), "OpenAI error while generating response");
     }
 
     /**
      * Analyzes user intent and classifies it into predefined categories.
-     * Configuration sources:
-     * - Default category: {@link OpenAiProperties.Intent#getDefaultCategory()}
-     * - Max tokens: {@link OpenAiProperties.Intent#getMaxOutputTokens()}
-     * Defaults: Configurable via openai.intent.default-category and openai.intent.max-output-tokens
+     *
+     * Configuration source of truth: OpenAiProperties.java
+     * Default category: {@link OpenAiProperties.Intent#getDefaultCategory()} - "question"
+     * Max tokens: {@link OpenAiProperties.Intent#getMaxOutputTokens()} - 10
      */
     public String analyzeIntent(String userMessage) {
         return executeWithFallback(() -> {
@@ -134,7 +136,7 @@ public class OpenAiChatService {
                                boolean thinkingEnabled, String thinkingLevel,
                                Consumer<StreamEvent> onEvent, Runnable onComplete, Consumer<Throwable> onError) {
         if (openAiClient == null) {
-            onError.accept(new IllegalStateException(OPENAI_MISCONFIGURED_MESSAGE));
+            onError.accept(new IllegalStateException(errorMessages.getOpenai().getMisconfigured()));
             return;
         }
 
@@ -175,8 +177,10 @@ public class OpenAiChatService {
             onComplete.run();
         } catch (Exception e) {
             logger.error("Streaming failed after {}ms", (System.nanoTime() - startNanos) / 1_000_000L, e);
-            onError.accept(new RuntimeException(e.getMessage() != null && !e.getMessage().trim().isEmpty()
-                ? e.getMessage().trim() : OPENAI_UNAVAILABLE_MESSAGE, e));
+            String fallbackMessage = (e.getMessage() != null && !e.getMessage().trim().isEmpty())
+                ? e.getMessage().trim()
+                : errorMessages.getOpenai().getUnavailable();
+            onError.accept(new RuntimeException(fallbackMessage, e));
         }
     }
 
@@ -206,8 +210,9 @@ public class OpenAiChatService {
 
     /**
      * Generates vector embeddings for the given text.
-     * Configuration source: {@link OpenAiProperties.Embedding#getModel()}
-     * Default: text-embedding-3-small (configurable via openai.embedding.model)
+     *
+     * Configuration source of truth: OpenAiProperties.java
+     * Embedding model: {@link OpenAiProperties.Embedding#getModel()} - "text-embedding-3-small"
      */
     public float[] generateEmbedding(String text) {
         if (text == null || text.isBlank()) return new float[0];
@@ -227,8 +232,9 @@ public class OpenAiChatService {
 
     /**
      * Resolves the chat model to use for completion requests.
-     * Configuration source: {@link OpenAiProperties.Model#getChat()}
-     * Default: o4-mini (configurable via openai.model.chat)
+     *
+     * Configuration source of truth: OpenAiProperties.java
+     * Chat model: {@link OpenAiProperties.Model#getChat()} - "o4-mini"
      */
     private ChatModel resolveChatModel() {
         return ChatModel.of(openAiProperties.getModel().getChat());
@@ -236,8 +242,9 @@ public class OpenAiChatService {
 
     /**
      * Builds email assistant messages for the OpenAI API.
-     * Configuration source: {@link OpenAiProperties.Prompts#getEmailAssistantSystem()}
-     * Default: Configurable via openai.prompts.email-assistant-system
+     *
+     * Configuration source of truth: OpenAiProperties.java
+     * System prompt: {@link OpenAiProperties.Prompts#getEmailAssistantSystem()}
      */
     private List<ResponseInputItem> buildEmailAssistantMessages(String emailContext, String userMessage) {
         String safeContext = StringUtils.sanitize(emailContext);
@@ -253,10 +260,10 @@ public class OpenAiChatService {
 
     /**
      * Builds intent analysis messages for the OpenAI API.
-     * Configuration sources:
-     * - Prompt: {@link OpenAiProperties.Prompts#getIntentAnalysisSystem()}
-     * - Categories: {@link OpenAiProperties.Intent#getCategories()}
-     * Defaults: Configurable via openai.prompts.intent-analysis-system and openai.intent.categories
+     *
+     * Configuration source of truth: OpenAiProperties.java
+     * System prompt: {@link OpenAiProperties.Prompts#getIntentAnalysisSystem()}
+     * Categories: {@link OpenAiProperties.Intent#getCategories()}
      */
     private List<ResponseInputItem> buildIntentAnalysisMessages(String userMessage) {
         String systemMessage = openAiProperties.getPrompts().getIntentAnalysisSystem()
