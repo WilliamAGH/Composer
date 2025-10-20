@@ -147,4 +147,15 @@ Content-Type: application/json
 
 ### Streaming Chat (SSE)
 
-Request is identical to `/api/chat`, but POST to `/api/chat/stream`. The response is `text/event-stream` with tokens emitted as SSE `
+Request is identical to `/api/chat`, but POST to `/api/chat/stream`. The response is `text/event-stream` with tokens emitted as SSE (Server-Sent Events). Each token is sent as a separate event, allowing clients to display incremental results in real time.
+
+Example SSE response:
+
+```text
+data: Hello
+
+data: , how can I help you today?
+
+data:
+
+```
