@@ -1,5 +1,6 @@
 package com.composerai.api.controller;
 
+import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
 import com.composerai.api.dto.ChatRequest;
 import com.composerai.api.dto.ChatResponse;
@@ -30,13 +31,16 @@ public class ChatController {
     private final ChatService chatService;
     private final Executor chatStreamExecutor;
     private final OpenAiProperties openAiProperties;
+    private final ErrorMessagesProperties errorMessages;
 
     public ChatController(ChatService chatService,
                           @Qualifier("chatStreamExecutor") Executor chatStreamExecutor,
-                          OpenAiProperties openAiProperties) {
+                          OpenAiProperties openAiProperties,
+                          ErrorMessagesProperties errorMessages) {
         this.chatService = chatService;
         this.chatStreamExecutor = chatStreamExecutor;
         this.openAiProperties = openAiProperties;
+        this.errorMessages = errorMessages;
     }
 
     @PostMapping
@@ -125,11 +129,11 @@ public class ChatController {
                     },
                     // Route errors: onError → SSE "error"
                     error -> {
-                        String message = StringUtils.isBlank(error.getMessage())
-                            ? "OpenAI is not configured or unavailable" : error.getMessage();
+                        // Use safe, predefined error message to avoid leaking backend internals
+                        String safeMessage = errorMessages.getStream().getError();
                         try {
-                            emitter.send(SseEmitter.event().name(SseEventType.ERROR.getEventName()).data(message));
-                            log.warn("Streaming completed with error: {}", message);
+                            emitter.send(SseEmitter.event().name(SseEventType.ERROR.getEventName()).data(safeMessage));
+                            log.warn("Streaming completed with error: {} (original: {})", safeMessage, error.getMessage());
                         } catch (Exception ignored) {
                             log.debug("Failed to send SSE error event", ignored);
                         }

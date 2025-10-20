@@ -45,6 +45,9 @@ class ChatControllerIntegrationTest {
     @MockBean
     private com.composerai.api.config.OpenAiProperties openAiProperties;
 
+    @MockBean
+    private com.composerai.api.config.ErrorMessagesProperties errorMessagesProperties;
+
     @Test
     void healthEndpoint_ShouldReturnOk() throws Exception {
         mockMvc.perform(get(HEALTH_ENDPOINT))
