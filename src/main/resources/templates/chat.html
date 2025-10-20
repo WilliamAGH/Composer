@@ -277,7 +277,9 @@
                     const message = this.messageInput.value.trim();
                     if (!message || this.isStreaming) return;
 
-                    if (this.activeStreamController) this.activeStreamController.abort();
+                    if (this.activeStreamController) {
+                        try { this.activeStreamController.abort(); } catch (_) {}
+                    }
                     this.addMessage(message, 'user');
                     this.messageInput.value = '';
 
@@ -298,7 +300,9 @@
                     this.updateThinkingControls();
                     this.isStreaming = true;
                     this.activeStreamController = new AbortController();
-                    const timeoutId = setTimeout(() => this.activeStreamController?.abort().catch(() => {}), this.streamTimeoutMs);
+                    const timeoutId = setTimeout(() => {
+                        try { this.activeStreamController?.abort(); } catch (_) {}
+                    }, this.streamTimeoutMs);
 
                     try {
                         await this.streamResponse(payload, assistantDiv, this.activeStreamController.signal);
