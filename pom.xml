@@ -165,6 +165,74 @@
                     <argLine>-XX:+EnableDynamicAgentLoading -Djdk.attach.allowAttachSelf=true -Dmockito.mock-maker=subclass --add-opens java.base/java.lang=ALL-UNNAMED</argLine>
                 </configuration>
             </plugin>
+
+            <!-- SpotBugs - Static analysis for bug detection -->
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>4.8.6.4</version>
+                <configuration>
+                    <effort>Max</effort>
+                    <threshold>Low</threshold>
+                    <failOnError>true</failOnError>
+                    <plugins>
+                        <plugin>
+                            <groupId>com.h3xstream.findsecbugs</groupId>
+                            <artifactId>findsecbugs-plugin</artifactId>
+                            <version>1.13.0</version>
+                        </plugin>
+                    </plugins>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Maven Enforcer - Build rules and dependency management -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>enforce-maven</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <!-- Require Java 21+ -->
+                                <requireJavaVersion>
+                                    <version>[21,)</version>
+                                    <message>Java 21 or higher is required</message>
+                                </requireJavaVersion>
+                                <!-- Require Maven 3.6+ -->
+                                <requireMavenVersion>
+                                    <version>[3.6,)</version>
+                                    <message>Maven 3.6 or higher is required</message>
+                                </requireMavenVersion>
+                                <!-- Prevent dependency version conflicts -->
+                                <dependencyConvergence/>
+                                <!-- Ban dangerous/deprecated dependencies -->
+                                <bannedDependencies>
+                                    <excludes>
+                                        <!-- Ban log4j 1.x (security vulnerabilities) -->
+                                        <exclude>log4j:log4j</exclude>
+                                        <!-- Ban commons-logging (prefer SLF4J) -->
+                                        <exclude>commons-logging:commons-logging</exclude>
+                                        <!-- Ban old servlet API -->
+                                        <exclude>javax.servlet:servlet-api</exclude>
+                                    </excludes>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
