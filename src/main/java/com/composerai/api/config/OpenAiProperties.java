@@ -56,6 +56,9 @@ public class OpenAiProperties {
     private Intent intent = new Intent();
     private Prompts prompts = new Prompts();
     private Defaults defaults = new Defaults();
+    
+    // Lazily initialized provider capabilities based on base URL
+    private ProviderCapabilities providerCapabilities;
 
     // ===== Configuration Type Definitions =====
 
@@ -147,26 +150,26 @@ public class OpenAiProperties {
     @Setter
     public static class Prompts {
         private String emailAssistantSystem = """
-            You are ComposerAI, a helpful email analysis assistant. \
-            \
-            The email context is provided in structured format (markdown/plain text). \
-            Preserve and reference specific details including: \
-            - Lists and bullet points (company names, amounts, dates) \
-            - Tables and structured data (transactions, financings) \
-            - Section headers and organization \
-            - Links and references \
-            \
-            Use the provided email context strictly as evidence. \
-            When the user asks "what does this email say" or similar comprehensive questions, \
-            provide a thorough, complete summary covering ALL major sections and key details. \
-            \
-            For specific questions, respond with precise, relevant information. \
-            Always cite specific details from the context (company names, amounts, dates, etc.).\
+            You are ComposerAI, a helpful email analysis assistant.
+
+            The email context is provided in structured format (markdown/plain text).
+            Preserve and reference specific details including:
+            - Lists and bullet points (company names, amounts, dates)
+            - Tables and structured data (transactions, financings)
+            - Section headers and organization
+            - Links and references
+
+            Use the provided email context strictly as evidence.
+            When the user asks "what does this email say" or similar comprehensive questions,
+            provide a thorough, complete summary covering ALL major sections and key details.
+
+            For specific questions, respond with precise, relevant information.
+            Always cite specific details from the context (company names, amounts, dates, etc.).
             """;
 
         private String intentAnalysisSystem = """
-            Analyze the user's intent and classify it into one of these categories: {categories}. \
-            Respond with just the category name.\
+            Analyze the user's intent and classify it into one of these categories: {categories}.
+            Respond with just the category name.
             """;
     }
 
@@ -185,16 +188,37 @@ public class OpenAiProperties {
     // ===== Utility Methods =====
 
     /**
+     * Get provider capabilities based on configured base URL.
+     * Detects provider type (OpenAI, OpenRouter, Groq, etc.) and available features.
+     * 
+     * @return provider capabilities instance
+     */
+    public ProviderCapabilities getProviderCapabilities() {
+        if (providerCapabilities == null) {
+            providerCapabilities = ProviderCapabilities.detect(api.getBaseUrl());
+        }
+        return providerCapabilities;
+    }
+    
+    /**
      * Checks if the given model supports reasoning capabilities.
      * Reasoning models include: o1, o3, o4, gpt-5 series (configurable).
+     * 
+     * Also checks that the provider supports reasoning features.
      *
      * @param modelId the model identifier to check (e.g., "o4-mini", "gpt-4")
-     * @return true if the model supports reasoning, false otherwise
+     * @return true if the model AND provider support reasoning, false otherwise
      */
     public boolean supportsReasoning(String modelId) {
         if (modelId == null || reasoning == null || reasoning.supportedModelPrefixes == null) {
             return false;
         }
+        
+        // First check if provider supports reasoning at all
+        if (!getProviderCapabilities().supportsReasoning()) {
+            return false;
+        }
+        
         String lowerModel = modelId.toLowerCase();
         return reasoning.supportedModelPrefixes.stream()
             .anyMatch(prefix -> lowerModel.startsWith(prefix.toLowerCase()));
