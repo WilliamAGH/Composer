@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.io.IOException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -133,7 +132,6 @@ public class ChatService {
 
     /** Public API: Stream chat with SseEmitter (for SSE endpoints). */
     public void streamChat(ChatRequest request, SseEmitter emitter) {
-        emitter.setTimeout(openAiProperties.getStream().getTimeoutSeconds() * 1000L);
         String conversationId = StringUtils.ensureConversationId(request.getConversationId());
         emitter.onCompletion(() -> logger.info("SSE completed: {}", conversationId));
         emitter.onTimeout(() -> logger.warn("SSE timeout: {}", conversationId));
