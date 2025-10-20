@@ -2,6 +2,7 @@ package com.composerai.api.service;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
 import com.composerai.api.service.email.HtmlConverter;
 import com.openai.client.OpenAIClient;
@@ -31,6 +32,7 @@ class OpenAiChatServiceStreamingTest {
 
     private static final Logger SERVICE_LOGGER = (Logger) LoggerFactory.getLogger(OpenAiChatService.class);
     private Level originalLogLevel;
+    private final ErrorMessagesProperties errorMessagesProperties = new ErrorMessagesProperties();
 
     @AfterEach
     void resetLogging() {
@@ -95,7 +97,7 @@ class OpenAiChatServiceStreamingTest {
         OpenAiProperties properties = new OpenAiProperties();
         properties.getModel().setChat("gpt-4o-mini");
         
-        OpenAiChatService service = new OpenAiChatService(client, properties);
+        OpenAiChatService service = new OpenAiChatService(client, properties, errorMessagesProperties);
 
         List<String> chunks = new ArrayList<>();
         AtomicBoolean completed = new AtomicBoolean(false);
@@ -132,7 +134,7 @@ class OpenAiChatServiceStreamingTest {
         OpenAiProperties properties = new OpenAiProperties();
         properties.getModel().setChat("gpt-4o-mini");
         
-        OpenAiChatService service = new OpenAiChatService(client, properties);
+        OpenAiChatService service = new OpenAiChatService(client, properties, errorMessagesProperties);
 
         List<String> chunks = new ArrayList<>();
         AtomicBoolean completed = new AtomicBoolean(false);
@@ -154,7 +156,8 @@ class OpenAiChatServiceStreamingTest {
             .thenThrow(new RuntimeException("insufficient_quota"));
 
         OpenAiProperties properties = new OpenAiProperties();
-        OpenAiChatService service = new OpenAiChatService(client, properties);
+        properties.getModel().setChat("gpt-4o-mini");
+        OpenAiChatService service = new OpenAiChatService(client, properties, errorMessagesProperties);
 
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
@@ -180,7 +183,7 @@ class OpenAiChatServiceStreamingTest {
         OpenAiProperties customProperties = new OpenAiProperties();
         customProperties.getModel().setChat("o4-mini");
         
-        OpenAiChatService customModelService = new OpenAiChatService(client, customProperties);
+        OpenAiChatService customModelService = new OpenAiChatService(client, customProperties, errorMessagesProperties);
 
         List<String> chunks = new ArrayList<>();
         AtomicBoolean completed = new AtomicBoolean(false);
@@ -226,7 +229,7 @@ class OpenAiChatServiceStreamingTest {
         OpenAiProperties standardProperties = new OpenAiProperties();
         standardProperties.getModel().setChat("gpt-4o-mini");
         
-        OpenAiChatService standardModelService = new OpenAiChatService(client, standardProperties);
+        OpenAiChatService standardModelService = new OpenAiChatService(client, standardProperties, errorMessagesProperties);
 
         List<String> chunks = new ArrayList<>();
         AtomicBoolean completed = new AtomicBoolean(false);
@@ -252,7 +255,7 @@ class OpenAiChatServiceStreamingTest {
     @Test
     void streamResponse_withNullClient_callsErrorHandler() {
         OpenAiProperties properties = new OpenAiProperties();
-        OpenAiChatService nullClientService = new OpenAiChatService(null, properties);
+        OpenAiChatService nullClientService = new OpenAiChatService(null, properties, errorMessagesProperties);
 
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
         AtomicBoolean completed = new AtomicBoolean(false);

@@ -2,6 +2,7 @@ package com.composerai.api.service;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
 import com.openai.client.OpenAIClient;
 import com.openai.models.embeddings.CreateEmbeddingResponse;
@@ -40,6 +41,8 @@ class OpenAiChatServiceTest {
     private static final Logger SERVICE_LOGGER = (Logger) LoggerFactory.getLogger(OpenAiChatService.class);
     private static Level originalLogLevel;
 
+    private ErrorMessagesProperties errorMessages;
+
     @BeforeAll
     static void suppressServiceErrorLogs() {
         originalLogLevel = SERVICE_LOGGER.getLevel();
@@ -56,7 +59,8 @@ class OpenAiChatServiceTest {
         MockitoAnnotations.openMocks(this);
         OpenAiProperties properties = new OpenAiProperties();
         properties.getModel().setChat("gpt-test");
-        service = new OpenAiChatService(openAIClient, properties);
+        errorMessages = new ErrorMessagesProperties();
+        service = new OpenAiChatService(openAIClient, properties, errorMessages);
     }
 
     @Test
@@ -113,7 +117,7 @@ class OpenAiChatServiceTest {
     void generateResponse_withCustomModel_isHandledCorrectly() {
         OpenAiProperties customProperties = new OpenAiProperties();
         customProperties.getModel().setChat("o4-mini");
-        OpenAiChatService customModelService = new OpenAiChatService(openAIClient, customProperties);
+        OpenAiChatService customModelService = new OpenAiChatService(openAIClient, customProperties, errorMessages);
 
         Response mockResponse = buildResponseWithText("Custom model response");
         when(openAIClient.responses().create(any(ResponseCreateParams.class)))
@@ -128,7 +132,7 @@ class OpenAiChatServiceTest {
     @Test
     void generateResponse_withNullClient_returnsMisconfiguredMessage() {
         OpenAiProperties properties = new OpenAiProperties();
-        OpenAiChatService nullClientService = new OpenAiChatService(null, properties);
+        OpenAiChatService nullClientService = new OpenAiChatService(null, properties, errorMessages);
 
         OpenAiChatService.ChatCompletionResult result = nullClientService.generateResponse("Hi", "Context", true, "minimal");
 
