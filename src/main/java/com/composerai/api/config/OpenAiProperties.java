@@ -1,5 +1,7 @@
 package com.composerai.api.config;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -40,6 +42,8 @@ import java.util.List;
  *
  * See: https://docs.spring.io/spring-boot/reference/features/external-config.html
  */
+@Getter
+@Setter
 @Configuration
 @ConfigurationProperties(prefix = "openai")
 public class OpenAiProperties {
@@ -53,85 +57,61 @@ public class OpenAiProperties {
     private Prompts prompts = new Prompts();
     private Defaults defaults = new Defaults();
 
-    // ===== Getters / Setters (required for Spring binding) =====
-
-    public Api getApi() { return api; }
-    public void setApi(Api api) { this.api = api; }
-
-    public Model getModel() { return model; }
-    public void setModel(Model model) { this.model = model; }
-
-    public Embedding getEmbedding() { return embedding; }
-    public void setEmbedding(Embedding embedding) { this.embedding = embedding; }
-
-    public Stream getStream() { return stream; }
-    public void setStream(Stream stream) { this.stream = stream; }
-
-    public Reasoning getReasoning() { return reasoning; }
-    public void setReasoning(Reasoning reasoning) { this.reasoning = reasoning; }
-
-    public Intent getIntent() { return intent; }
-    public void setIntent(Intent intent) { this.intent = intent; }
-
-    public Prompts getPrompts() { return prompts; }
-    public void setPrompts(Prompts prompts) { this.prompts = prompts; }
-
-    public Defaults getDefaults() { return defaults; }
-    public void setDefaults(Defaults defaults) { this.defaults = defaults; }
-
     // ===== Configuration Type Definitions =====
 
     /**
      * OpenAI API credentials and connection settings.
      * Default base URL: https://api.openai.com/v1
      */
+    @Getter
+    @Setter
     public static class Api {
         private String key;
         private String baseUrl = "https://api.openai.com/v1";
-
-        public String getKey() { return key; }
-        public void setKey(String key) { this.key = key; }
-
-        public String getBaseUrl() { return baseUrl; }
-        public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
     }
 
     /**
      * Chat completion model configuration.
      * Default: o4-mini (OpenAI's reasoning model)
      */
+    @Getter
+    @Setter
     public static class Model {
         private String chat = "o4-mini";
-
-        public String getChat() { return chat; }
-        public void setChat(String chat) { this.chat = chat; }
     }
 
     /**
      * Vector embedding model configuration.
      * Default: text-embedding-3-small (1536 dimensions, cost-effective)
      */
+    @Getter
+    @Setter
     public static class Embedding {
         private String model = "text-embedding-3-small";
-
-        public String getModel() { return model; }
-        public void setModel(String model) { this.model = model; }
     }
 
     /**
      * Server-Sent Events (SSE) streaming configuration.
+     *
+     * Timeout flow (single source of truth):
+     *  1. OpenAiProperties.Stream.timeoutSeconds (default 120) - Java source of truth
+     *  2. ChatController sends timeout hint header to frontend (X-Stream-Timeout-Hint)
+     *  3. ChatController sets SseEmitter timeout (timeoutSeconds * 1000 ms)
+     *  4. Frontend reads hint header and sets AbortController timeout accordingly
+     *
      * Defaults: 120 seconds timeout, 10 seconds heartbeat interval
      */
+    @Getter
+    @Setter
     public static class Stream {
         private int timeoutSeconds = 120;
         private int heartbeatIntervalSeconds = 10;
 
-        public int getTimeoutSeconds() { return timeoutSeconds; }
-        public void setTimeoutSeconds(int timeoutSeconds) { this.timeoutSeconds = timeoutSeconds; }
-
-        public int getHeartbeatIntervalSeconds() { return heartbeatIntervalSeconds; }
-        public void setHeartbeatIntervalSeconds(int heartbeatIntervalSeconds) {
-            this.heartbeatIntervalSeconds = heartbeatIntervalSeconds;
+        /**
+         * Gets timeout in milliseconds for JavaScript/frontend use.
+         */
+        public long getTimeoutMillis() {
+            return (long) timeoutSeconds * 1000;
         }
     }
 
@@ -140,83 +120,66 @@ public class OpenAiProperties {
      * Default supported prefixes: o1, o3, o4, gpt-5
      * Default effort level: minimal
      */
+    @Getter
+    @Setter
     public static class Reasoning {
         private List<String> supportedModelPrefixes = List.of("o1", "o3", "o4", "gpt-5");
         private String defaultEffort = "minimal";
-
-        public List<String> getSupportedModelPrefixes() { return supportedModelPrefixes; }
-        public void setSupportedModelPrefixes(List<String> supportedModelPrefixes) {
-            this.supportedModelPrefixes = supportedModelPrefixes;
-        }
-
-        public String getDefaultEffort() { return defaultEffort; }
-        public void setDefaultEffort(String defaultEffort) { this.defaultEffort = defaultEffort; }
     }
 
     /**
      * Intent analysis configuration.
      * Defaults: "question" category, 10 max tokens, standard categories
      */
+    @Getter
+    @Setter
     public static class Intent {
         private String defaultCategory = "question";
         private long maxOutputTokens = 10L;
         private String categories = "search, compose, summarize, analyze, question, or other";
-
-        public String getDefaultCategory() { return defaultCategory; }
-        public void setDefaultCategory(String defaultCategory) { this.defaultCategory = defaultCategory; }
-
-        public long getMaxOutputTokens() { return maxOutputTokens; }
-        public void setMaxOutputTokens(long maxOutputTokens) { this.maxOutputTokens = maxOutputTokens; }
-
-        public String getCategories() { return categories; }
-        public void setCategories(String categories) { this.categories = categories; }
     }
 
     /**
      * System prompts for AI interactions.
      * Define assistant behavior and response format.
      */
+    @Getter
+    @Setter
     public static class Prompts {
         private String emailAssistantSystem = """
             You are ComposerAI, a helpful email analysis assistant. \
+            \
+            The email context is provided in structured format (markdown/plain text). \
+            Preserve and reference specific details including: \
+            - Lists and bullet points (company names, amounts, dates) \
+            - Tables and structured data (transactions, financings) \
+            - Section headers and organization \
+            - Links and references \
+            \
             Use the provided email context strictly as evidence. \
-            Respond with the level of detail the user's request requires—summaries when asked, \
-            but thorough explanations and specifics when the question calls for them.\
+            When the user asks "what does this email say" or similar comprehensive questions, \
+            provide a thorough, complete summary covering ALL major sections and key details. \
+            \
+            For specific questions, respond with precise, relevant information. \
+            Always cite specific details from the context (company names, amounts, dates, etc.).\
             """;
 
         private String intentAnalysisSystem = """
             Analyze the user's intent and classify it into one of these categories: {categories}. \
             Respond with just the category name.\
             """;
-
-        public String getEmailAssistantSystem() { return emailAssistantSystem; }
-        public void setEmailAssistantSystem(String emailAssistantSystem) {
-            this.emailAssistantSystem = emailAssistantSystem;
-        }
-
-        public String getIntentAnalysisSystem() { return intentAnalysisSystem; }
-        public void setIntentAnalysisSystem(String intentAnalysisSystem) {
-            this.intentAnalysisSystem = intentAnalysisSystem;
-        }
     }
 
     /**
      * Default values for chat requests.
      * Defaults: 5 search results, 4000 char limit, thinking disabled
      */
+    @Getter
+    @Setter
     public static class Defaults {
         private int maxSearchResults = 5;
         private int maxMessageLength = 4000;
         private boolean thinkingEnabled = false;
-
-        public int getMaxSearchResults() { return maxSearchResults; }
-        public void setMaxSearchResults(int maxSearchResults) { this.maxSearchResults = maxSearchResults; }
-
-        public int getMaxMessageLength() { return maxMessageLength; }
-        public void setMaxMessageLength(int maxMessageLength) { this.maxMessageLength = maxMessageLength; }
-
-        public boolean isThinkingEnabled() { return thinkingEnabled; }
-        public void setThinkingEnabled(boolean thinkingEnabled) { this.thinkingEnabled = thinkingEnabled; }
     }
 
     // ===== Utility Methods =====
