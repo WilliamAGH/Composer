@@ -302,7 +302,7 @@ public final class HtmlConverter {
             this.renderer = HtmlRenderer.builder(options)
                 .escapeHtml(true)
                 .percentEncodeUrls(true)
-                .softBreak("<br />\n")
+                .softBreak("\n")
                 .build();
 
             Safelist safelist = Safelist.basicWithImages();
@@ -321,11 +321,34 @@ public final class HtmlConverter {
             Document dirty = Jsoup.parseBodyFragment(renderedHtml);
             Document clean = cleaner.clean(dirty);
             clean.outputSettings().prettyPrint(false);
+
+            // Collapse soft line breaks rendered as <br> when models emit single newlines mid-sentence.
+            // Preserve explicit breaks in semantic containers (lists, tables, code blocks).
+            clean.select("body > br").remove();
+            clean.select("p").forEach(p -> {
+                p.select("br").stream()
+                    .filter(br -> !hasStructuralParent(br))
+                    .forEach(org.jsoup.nodes.Element::remove);
+                normalizeWhitespace(p);
+            });
             for (Element anchor : clean.select("a[href]")) {
                 anchor.attr("rel", "noopener noreferrer");
                 anchor.attr("target", "_blank");
             }
             return clean.body().html();
+        }
+
+        private boolean hasStructuralParent(Element element) {
+            for (Element parent = element.parent(); parent != null; parent = parent.parent()) {
+                if (parent.normalName().matches("pre|code|ul|ol|li|table|thead|tbody|tfoot|tr|th|td")) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private void normalizeWhitespace(Element element) {
+            element.textNodes().forEach(node -> node.text(node.text().replaceAll("\\s+", " ")));
         }
     }
 }
