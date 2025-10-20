@@ -13,7 +13,6 @@ import com.openai.models.responses.ResponseCreateParams;
 import com.openai.models.responses.ResponseInputItem;
 import com.openai.models.responses.ResponseFailedEvent;
 import com.openai.models.responses.ResponseStreamEvent;
-import com.openai.models.embeddings.CreateEmbeddingResponse;
 import com.openai.models.embeddings.Embedding;
 import com.openai.models.embeddings.EmbeddingCreateParams;
 import com.openai.models.embeddings.EmbeddingModel;
@@ -148,12 +147,15 @@ public class OpenAiChatService {
         ValidatedThinkingConfig config = ValidatedThinkingConfig.resolve(openAiProperties, modelId, thinkingEnabled, thinkingLevel);
         if (config.enabled() && config.effort() != null) {
             builder.reasoning(Reasoning.builder().effort(config.effort()).build());
-            logger.info("Reasoning enabled: {}", config.effort());
+            logger.info("Reasoning enabled: {} (provider: {})", config.effort(), openAiProperties.getProviderCapabilities().getType());
+        } else if (thinkingEnabled && !openAiProperties.getProviderCapabilities().supportsReasoning()) {
+            logger.debug("Reasoning requested but provider {} does not support it", openAiProperties.getProviderCapabilities().getType());
         }
 
         MarkdownStreamAssembler assembler = new MarkdownStreamAssembler();
         long startNanos = System.nanoTime();
         final long[] tokenCount = new long[]{0};
+        final boolean[] failed = {false};
 
         try {
             try (StreamResponse<ResponseStreamEvent> streamResponse = openAiClient.responses().createStreaming(builder.build())) {
@@ -161,7 +163,10 @@ public class OpenAiChatService {
                     try {
                         event.outputTextDelta().ifPresent(textDelta -> emitHtmlDelta(textDelta.delta(), assembler, onEvent, tokenCount));
                         emitReasoningEvents(event, onEvent);
-                        event.failed().ifPresent(failedEvent -> onEvent.accept(StreamEvent.failed(failedEvent)));
+                        event.failed().ifPresent(failedEvent -> {
+                            failed[0] = true;
+                            onEvent.accept(StreamEvent.failed(failedEvent));
+                        });
                     } catch (Exception processingError) {
                         logger.warn("Failed to process stream event", processingError);
                     }
@@ -174,7 +179,11 @@ public class OpenAiChatService {
                 });
             }
             logger.info("Streaming completed: tokens={} elapsed={}ms", tokenCount[0], (System.nanoTime() - startNanos) / 1_000_000L);
-            onComplete.run();
+            if (failed[0]) {
+                onError.accept(new RuntimeException(errorMessages.getOpenai().getUnavailable()));
+            } else {
+                onComplete.run();
+            }
         } catch (Exception e) {
             logger.error("Streaming failed after {}ms", (System.nanoTime() - startNanos) / 1_000_000L, e);
             String fallbackMessage = (e.getMessage() != null && !e.getMessage().trim().isEmpty())
@@ -213,9 +222,19 @@ public class OpenAiChatService {
      *
      * Configuration source of truth: OpenAiProperties.java
      * Embedding model: {@link OpenAiProperties.Embedding#getModel()} - "text-embedding-3-small"
+     * 
+     * Note: Not all providers support embeddings. Returns empty array if provider doesn't support it.
      */
     public float[] generateEmbedding(String text) {
         if (text == null || text.isBlank()) return new float[0];
+        
+        // Check if provider supports embeddings
+        if (!openAiProperties.getProviderCapabilities().supportsEmbeddings()) {
+            logger.debug("Provider {} does not support embeddings, returning empty vector",
+                openAiProperties.getProviderCapabilities().getType());
+            return new float[0];
+        }
+        
         return executeWithFallback(() -> {
             List<Embedding> data = openAiClient.embeddings().create(
                 EmbeddingCreateParams.builder()
