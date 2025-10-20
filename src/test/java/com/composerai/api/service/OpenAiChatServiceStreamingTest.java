@@ -170,15 +170,13 @@ class OpenAiChatServiceStreamingTest {
     @Test
     void streamResponse_withCustomModel_appliesReasoningEffort() {
         OpenAIClient client = Mockito.mock(OpenAIClient.class, Answers.RETURNS_DEEP_STUBS);
-        StreamResponse<ResponseStreamEvent> mockStreamResponse = Mockito.mock(StreamResponse.class);
         Stream<ResponseStreamEvent> eventStream = Stream.of(
             createMockEvent("This is a response.\n\n"),
             createMockEvent("With reasoning.")
         );
         
-        Mockito.when(mockStreamResponse.stream()).thenReturn(eventStream);
         Mockito.when(client.responses().createStreaming(any(ResponseCreateParams.class)))
-            .thenReturn(mockStreamResponse);
+            .thenReturn(streamResponse(eventStream));
 
         OpenAiProperties customProperties = new OpenAiProperties();
         customProperties.getModel().setChat("o4-mini");
@@ -219,12 +217,10 @@ class OpenAiChatServiceStreamingTest {
     @Test
     void streamResponse_withStandardModel_streamsWithoutReasoningEffort() {
         OpenAIClient client = Mockito.mock(OpenAIClient.class, Answers.RETURNS_DEEP_STUBS);
-        StreamResponse<ResponseStreamEvent> mockStreamResponse = Mockito.mock(StreamResponse.class);
         Stream<ResponseStreamEvent> eventStream = Stream.of(createMockEvent("Standard response here."));
         
-        Mockito.when(mockStreamResponse.stream()).thenReturn(eventStream);
         Mockito.when(client.responses().createStreaming(any(ResponseCreateParams.class)))
-            .thenReturn(mockStreamResponse);
+            .thenReturn(streamResponse(eventStream));
 
         OpenAiProperties standardProperties = new OpenAiProperties();
         standardProperties.getModel().setChat("gpt-4o-mini");
@@ -283,5 +279,19 @@ class OpenAiChatServiceStreamingTest {
         Mockito.when(event.outputTextDelta()).thenReturn(Optional.of(textDelta));
         
         return event;
+    }
+
+    private StreamResponse<ResponseStreamEvent> streamResponse(Stream<ResponseStreamEvent> events) {
+        return new StreamResponse<>() {
+            @Override
+            public Stream<ResponseStreamEvent> stream() {
+                return events;
+            }
+
+            @Override
+            public void close() {
+                // no-op
+            }
+        };
     }
 }

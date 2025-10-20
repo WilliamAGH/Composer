@@ -89,7 +89,7 @@ class OpenAiChatServiceTest {
         
         when(openAIClient.embeddings().create(any(EmbeddingCreateParams.class))).thenReturn(mockResponse);
         when(mockResponse.data()).thenReturn(List.of(mockEmbedding));
-        when(mockEmbedding.embedding()).thenReturn(List.of(0.1f, 0.2f, 0.3f));
+        when(mockEmbedding.embedding()).thenReturn(List.of(0.1d, 0.2d, 0.3d));
 
         float[] result = service.generateEmbedding("test text");
 
