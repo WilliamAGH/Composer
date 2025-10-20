@@ -33,13 +33,13 @@ public class ChatService {
 
     public ChatService(VectorSearchService vectorSearchService, OpenAiChatService openAiChatService,
                        OpenAiProperties openAiProperties, ErrorMessagesProperties errorMessages,
-                       ContextBuilder contextBuilder) {
+                       ContextBuilder contextBuilder, ExecutorService streamingExecutor) {
         this.vectorSearchService = vectorSearchService;
         this.openAiChatService = openAiChatService;
         this.openAiProperties = openAiProperties;
         this.errorMessages = errorMessages;
         this.contextBuilder = contextBuilder;
-        this.streamingExecutor = Executors.newSingleThreadExecutor();
+        this.streamingExecutor = streamingExecutor;
     }
 
     private record ChatContext(float[] embedding, List<EmailContext> emailContext, String contextString) {}
