@@ -4,13 +4,14 @@ PORT ?= 8080
 PROFILE ?= local
 MAVEN_TEST_FLAGS ?=
 
-.PHONY: help run build test clean docker-build docker-run-local docker-run-prod
+.PHONY: help run build test clean lint docker-build docker-run-local docker-run-prod
 
 help:
 	@echo "Targets:"
 	@echo "  make run                 - Run locally with profile=local"
 	@echo "  make build               - Build JAR (skip tests)"
 	@echo "  make test               - Run unit/integration tests (use MAVEN_TEST_FLAGS for overrides)"
+	@echo "  make lint                - Run linters (SpotBugs + maven-enforcer)"
 	@echo "  make docker-build        - Build Docker image $(APP_NAME):$(TAG)"
 	@echo "  make docker-run-local    - Run Docker with local profile and static bind mount"
 	@echo "  make docker-run-prod     - Run Docker with prod profile"
@@ -26,6 +27,13 @@ test:
 
 clean:
 	mvn -q clean
+
+lint:
+	@echo "Running maven-enforcer (dependency checks)..."
+	@mvn enforcer:enforce
+	@echo "Running SpotBugs (static analysis)..."
+	@mvn spotbugs:check
+	@echo "✅ All lint checks passed!"
 
 docker-build:
 	docker build --build-arg APP_NAME=$(APP_NAME) -t $(APP_NAME):$(TAG) .
