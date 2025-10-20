@@ -133,6 +133,7 @@ public class ChatService {
 
     /** Public API: Stream chat with SseEmitter (for SSE endpoints). */
     public void streamChat(ChatRequest request, SseEmitter emitter) {
+        emitter.setTimeout(openAiProperties.getStream().getTimeoutSeconds() * 1000L);
         String conversationId = StringUtils.ensureConversationId(request.getConversationId());
         emitter.onCompletion(() -> logger.info("SSE completed: {}", conversationId));
         emitter.onTimeout(() -> logger.warn("SSE timeout: {}", conversationId));
