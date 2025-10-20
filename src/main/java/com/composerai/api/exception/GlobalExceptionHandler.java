@@ -34,7 +34,7 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException ex,
             HttpServletRequest request) {
 
-        log.warn("Validation failed for request to {}", request.getRequestURI(), ex);
+        log.debug("Validation failed for request to {} - {}", request.getRequestURI(), ex.getMessage());
 
         List<ErrorResponse.ValidationError> validationErrors = ex.getBindingResult()
             .getFieldErrors()
@@ -65,7 +65,7 @@ public class GlobalExceptionHandler {
             ConstraintViolationException ex,
             HttpServletRequest request) {
 
-        log.warn("Constraint violation for request to {}", request.getRequestURI(), ex);
+        log.debug("Constraint violation for request to {} - {}", request.getRequestURI(), ex.getMessage());
 
         List<ErrorResponse.ValidationError> validationErrors = ex.getConstraintViolations()
             .stream()
@@ -95,7 +95,7 @@ public class GlobalExceptionHandler {
             HttpMessageNotReadableException ex,
             HttpServletRequest request) {
 
-        log.warn("Malformed request body for {}", request.getRequestURI(), ex);
+        log.debug("Malformed request body for {} - {}", request.getRequestURI(), ex.getMessage());
 
         ErrorResponse errorResponse = new ErrorResponse(
             "malformed_request",
@@ -115,8 +115,8 @@ public class GlobalExceptionHandler {
             MethodArgumentTypeMismatchException ex,
             HttpServletRequest request) {
 
-        log.warn("Type mismatch for parameter '{}' in request to {}",
-            ex.getName(), request.getRequestURI(), ex);
+        log.debug("Type mismatch for parameter '{}' in request to {} - {}",
+            ex.getName(), request.getRequestURI(), ex.getMessage());
 
         String message = String.format(
             "Parameter '%s' must be of type %s",
@@ -142,7 +142,7 @@ public class GlobalExceptionHandler {
             MaxUploadSizeExceededException ex,
             HttpServletRequest request) {
 
-        log.warn("File upload size exceeded for {}", request.getRequestURI(), ex);
+        log.debug("File upload size exceeded for {}", request.getRequestURI());
 
         String message = "File size exceeds maximum allowed limit";
         long maxUploadSize = ex.getMaxUploadSize();
@@ -168,7 +168,7 @@ public class GlobalExceptionHandler {
             NoHandlerFoundException ex,
             HttpServletRequest request) {
 
-        log.warn("No handler found for {} {}", ex.getHttpMethod(), ex.getRequestURL());
+        log.debug("No handler found for {} {}", ex.getHttpMethod(), ex.getRequestURL());
 
         ErrorResponse errorResponse = new ErrorResponse(
             "not_found",
@@ -188,7 +188,7 @@ public class GlobalExceptionHandler {
             IllegalArgumentException ex,
             HttpServletRequest request) {
 
-        log.warn("Illegal argument for request to {}", request.getRequestURI(), ex);
+        log.debug("Illegal argument for request to {} - {}", request.getRequestURI(), ex.getMessage());
 
         ErrorResponse errorResponse = new ErrorResponse(
             "invalid_argument",
@@ -208,7 +208,7 @@ public class GlobalExceptionHandler {
             IllegalStateException ex,
             HttpServletRequest request) {
 
-        log.error("Illegal state encountered for request to {}", request.getRequestURI(), ex);
+        log.warn("Illegal state encountered for request to {}", request.getRequestURI(), ex);
 
         ErrorResponse errorResponse = new ErrorResponse(
             "server_error",
@@ -228,7 +228,7 @@ public class GlobalExceptionHandler {
             UnsupportedOperationException ex,
             HttpServletRequest request) {
 
-        log.warn("Unsupported operation for request to {}", request.getRequestURI(), ex);
+        log.debug("Unsupported operation for request to {} - {}", request.getRequestURI(), ex.getMessage());
 
         ErrorResponse errorResponse = new ErrorResponse(
             "unsupported_operation",
