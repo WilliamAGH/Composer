@@ -105,6 +105,7 @@ Helpful Makefile targets:
 - `make test` – Run the full Maven test suite (override with `MAVEN_TEST_FLAGS="-DskipITs"` etc.)
 - `make docker-build` – Build `composerai-api:local`
 - `make docker-run-local` – Run container with local profile variables
+- `make deps-refresh` – Purge cached OpenAI SDK artifacts and rebuild to pull fresh dependencies
 
 ## Docker Usage
 
