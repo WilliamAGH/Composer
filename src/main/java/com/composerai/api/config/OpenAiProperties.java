@@ -5,6 +5,41 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 
+/**
+ * OpenAI Configuration Properties - Single Source of Truth
+ *
+ * All default values are defined here. Override via application.properties or environment variables.
+ * Example: OPENAI_MODEL=gpt-4 or openai.model.chat=gpt-4
+ *
+ * Configuration structure:
+ *   openai:
+ *     api:
+ *       key: ${OPENAI_API_KEY}
+ *       base-url: ${OPENAI_API_BASE_URL}
+ *     model:
+ *       chat: ${OPENAI_MODEL}
+ *     embedding:
+ *       model: ${OPENAI_EMBEDDING_MODEL}
+ *     stream:
+ *       timeout-seconds: ${OPENAI_STREAM_TIMEOUT}
+ *       heartbeat-interval-seconds: ${OPENAI_STREAM_HEARTBEAT}
+ *     reasoning:
+ *       supported-model-prefixes: ${OPENAI_REASONING_MODELS}
+ *       default-effort: ${OPENAI_REASONING_EFFORT}
+ *     intent:
+ *       default-category: ${OPENAI_INTENT_DEFAULT}
+ *       max-output-tokens: ${OPENAI_INTENT_MAX_TOKENS}
+ *       categories: ${OPENAI_INTENT_CATEGORIES}
+ *     defaults:
+ *       max-search-results: ${OPENAI_MAX_SEARCH_RESULTS}
+ *       max-message-length: ${OPENAI_MAX_MESSAGE_LENGTH}
+ *       thinking-enabled: ${OPENAI_THINKING_ENABLED}
+ *     prompts:
+ *       email-assistant-system: ${OPENAI_PROMPT_EMAIL}
+ *       intent-analysis-system: ${OPENAI_PROMPT_INTENT}
+ *
+ * See: https://docs.spring.io/spring-boot/reference/features/external-config.html
+ */
 @Configuration
 @ConfigurationProperties(prefix = "openai")
 public class OpenAiProperties {
@@ -17,6 +52,8 @@ public class OpenAiProperties {
     private Intent intent = new Intent();
     private Prompts prompts = new Prompts();
     private Defaults defaults = new Defaults();
+
+    // ===== Getters / Setters (required for Spring binding) =====
 
     public Api getApi() { return api; }
     public void setApi(Api api) { this.api = api; }
@@ -42,22 +79,12 @@ public class OpenAiProperties {
     public Defaults getDefaults() { return defaults; }
     public void setDefaults(Defaults defaults) { this.defaults = defaults; }
 
+    // ===== Configuration Type Definitions =====
+
     /**
-     * Checks if the given model supports reasoning capabilities.
-     * @param modelId the model identifier to check
-     * @return true if the model supports reasoning, false otherwise
+     * OpenAI API credentials and connection settings.
+     * Default base URL: https://api.openai.com/v1
      */
-    public boolean supportsReasoning(String modelId) {
-        if (modelId == null || reasoning == null || reasoning.supportedModelPrefixes == null) {
-            return false;
-        }
-        String lowerModel = modelId.toLowerCase();
-        return reasoning.supportedModelPrefixes.stream()
-            .anyMatch(prefix -> lowerModel.startsWith(prefix.toLowerCase()));
-    }
-
-    // ===== Nested Configuration Classes =====
-
     public static class Api {
         private String key;
         private String baseUrl = "https://api.openai.com/v1";
@@ -69,6 +96,10 @@ public class OpenAiProperties {
         public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
     }
 
+    /**
+     * Chat completion model configuration.
+     * Default: o4-mini (OpenAI's reasoning model)
+     */
     public static class Model {
         private String chat = "o4-mini";
 
@@ -76,6 +107,10 @@ public class OpenAiProperties {
         public void setChat(String chat) { this.chat = chat; }
     }
 
+    /**
+     * Vector embedding model configuration.
+     * Default: text-embedding-3-small (1536 dimensions, cost-effective)
+     */
     public static class Embedding {
         private String model = "text-embedding-3-small";
 
@@ -83,6 +118,10 @@ public class OpenAiProperties {
         public void setModel(String model) { this.model = model; }
     }
 
+    /**
+     * Server-Sent Events (SSE) streaming configuration.
+     * Defaults: 120 seconds timeout, 10 seconds heartbeat interval
+     */
     public static class Stream {
         private int timeoutSeconds = 120;
         private int heartbeatIntervalSeconds = 10;
@@ -96,6 +135,11 @@ public class OpenAiProperties {
         }
     }
 
+    /**
+     * Reasoning/thinking model configuration.
+     * Default supported prefixes: o1, o3, o4, gpt-5
+     * Default effort level: minimal
+     */
     public static class Reasoning {
         private List<String> supportedModelPrefixes = List.of("o1", "o3", "o4", "gpt-5");
         private String defaultEffort = "minimal";
@@ -109,6 +153,10 @@ public class OpenAiProperties {
         public void setDefaultEffort(String defaultEffort) { this.defaultEffort = defaultEffort; }
     }
 
+    /**
+     * Intent analysis configuration.
+     * Defaults: "question" category, 10 max tokens, standard categories
+     */
     public static class Intent {
         private String defaultCategory = "question";
         private long maxOutputTokens = 10L;
@@ -124,6 +172,10 @@ public class OpenAiProperties {
         public void setCategories(String categories) { this.categories = categories; }
     }
 
+    /**
+     * System prompts for AI interactions.
+     * Define assistant behavior and response format.
+     */
     public static class Prompts {
         private String emailAssistantSystem = """
             You are ComposerAI, a helpful email analysis assistant. \
@@ -148,6 +200,10 @@ public class OpenAiProperties {
         }
     }
 
+    /**
+     * Default values for chat requests.
+     * Defaults: 5 search results, 4000 char limit, thinking disabled
+     */
     public static class Defaults {
         private int maxSearchResults = 5;
         private int maxMessageLength = 4000;
@@ -161,5 +217,23 @@ public class OpenAiProperties {
 
         public boolean isThinkingEnabled() { return thinkingEnabled; }
         public void setThinkingEnabled(boolean thinkingEnabled) { this.thinkingEnabled = thinkingEnabled; }
+    }
+
+    // ===== Utility Methods =====
+
+    /**
+     * Checks if the given model supports reasoning capabilities.
+     * Reasoning models include: o1, o3, o4, gpt-5 series (configurable).
+     *
+     * @param modelId the model identifier to check (e.g., "o4-mini", "gpt-4")
+     * @return true if the model supports reasoning, false otherwise
+     */
+    public boolean supportsReasoning(String modelId) {
+        if (modelId == null || reasoning == null || reasoning.supportedModelPrefixes == null) {
+            return false;
+        }
+        String lowerModel = modelId.toLowerCase();
+        return reasoning.supportedModelPrefixes.stream()
+            .anyMatch(prefix -> lowerModel.startsWith(prefix.toLowerCase()));
     }
 }
