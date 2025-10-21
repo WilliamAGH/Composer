@@ -99,4 +99,17 @@ public class ClientConfiguration {
     public java.util.concurrent.ExecutorService chatStreamExecutor() {
         return java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
     }
+
+    /**
+     * Provides a shared ScheduledExecutorService for SSE heartbeat management.
+     * Using a shared thread pool prevents resource exhaustion from creating
+     * ad-hoc executors for each streaming request.
+     *
+     * Pool size of 4 is sufficient for heartbeat scheduling across many concurrent
+     * SSE connections, as scheduling tasks are lightweight.
+     */
+    @Bean(name = "sseHeartbeatExecutor", destroyMethod = "shutdown")
+    public java.util.concurrent.ScheduledExecutorService sseHeartbeatExecutor() {
+        return java.util.concurrent.Executors.newScheduledThreadPool(4);
+    }
 }
