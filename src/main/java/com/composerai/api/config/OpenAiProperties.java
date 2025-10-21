@@ -56,6 +56,7 @@ public class OpenAiProperties {
     private Intent intent = new Intent();
     private Prompts prompts = new Prompts();
     private Defaults defaults = new Defaults();
+    private boolean localDebugEnabled = false;
     
     // Lazily initialized provider capabilities based on base URL
     private ProviderCapabilities providerCapabilities;
