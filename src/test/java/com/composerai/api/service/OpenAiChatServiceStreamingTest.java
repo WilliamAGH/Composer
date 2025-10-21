@@ -84,6 +84,17 @@ class OpenAiChatServiceStreamingTest {
     }
 
     @Test
+    void assemblerRendersMarkdownTablesToHtml() {
+        OpenAiChatService.MarkdownStreamAssembler assembler = new OpenAiChatService.MarkdownStreamAssembler(false);
+
+        List<String> chunks = assembler.onDelta("| Col A | Col B |\n| --- | --- |\n| 1 | 2 |\n\n");
+        assertEquals(1, chunks.size());
+        String html = chunks.getFirst();
+        assertTrue(html.contains("<table"), "expected rendered HTML table");
+        assertTrue(html.contains("<td"));
+    }
+
+    @Test
     void streamResponseEmitsSanitizedHtmlChunks() {
         OpenAIClient client = Mockito.mock(OpenAIClient.class, Answers.RETURNS_DEEP_STUBS);
         Stream<ResponseStreamEvent> eventStream = Stream.of(
@@ -106,6 +117,7 @@ class OpenAiChatServiceStreamingTest {
         service.streamResponse(
             "What is new?",
             "Context",
+            List.of(),
             false,
             null,
             false,
@@ -141,7 +153,7 @@ class OpenAiChatServiceStreamingTest {
         AtomicBoolean completed = new AtomicBoolean(false);
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
-        service.streamResponse("msg", "ctx", false, null, false, event -> {}, () -> completed.set(true), errorRef::set);
+        service.streamResponse("msg", "ctx", List.of(), false, null, false, event -> {}, () -> completed.set(true), errorRef::set);
 
         assertTrue(chunks.isEmpty());
         assertFalse(completed.get());
@@ -162,7 +174,7 @@ class OpenAiChatServiceStreamingTest {
 
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
-        service.streamResponse("msg", "ctx", false, null, false, event -> {}, () -> {}, errorRef::set);
+        service.streamResponse("msg", "ctx", List.of(), false, null, false, event -> {}, () -> {}, errorRef::set);
 
         assertNotNull(errorRef.get());
         assertTrue(errorRef.get().getMessage().contains("insufficient_quota"));
@@ -191,6 +203,7 @@ class OpenAiChatServiceStreamingTest {
         customModelService.streamResponse(
             "Analyze this email",
             "Email context here",
+            List.of(),
             true,
             "minimal",
             false,
@@ -235,6 +248,7 @@ class OpenAiChatServiceStreamingTest {
         standardModelService.streamResponse(
             "Test message",
             "Context",
+            List.of(),
             false,
             null,
             false,
@@ -262,6 +276,7 @@ class OpenAiChatServiceStreamingTest {
         nullClientService.streamResponse(
             "Test",
             "Context",
+            List.of(),
             true,
             "standard",
             false,
@@ -333,6 +348,7 @@ class OpenAiChatServiceStreamingTest {
         service.streamResponse(
             "Complex analysis question",
             "Context",
+            List.of(),
             true,
             "high",
             false,
@@ -379,6 +395,7 @@ class OpenAiChatServiceStreamingTest {
         service.streamResponse(
             "Long analysis",
             "Context",
+            List.of(),
             false,
             null,
             false,
@@ -419,6 +436,7 @@ class OpenAiChatServiceStreamingTest {
         service.streamResponse(
             "Test",
             "Context",
+            List.of(),
             false,
             null,
             false,

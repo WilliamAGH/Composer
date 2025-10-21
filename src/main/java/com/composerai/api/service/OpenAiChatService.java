@@ -59,6 +59,21 @@ public class OpenAiChatService {
         }
     }
 
+    public record ConversationTurn(EasyInputMessage.Role role, String content) {
+        public ConversationTurn {
+            role = role == null ? EasyInputMessage.Role.USER : role;
+            content = content == null ? "" : content;
+        }
+
+        public static ConversationTurn user(String content) {
+            return new ConversationTurn(EasyInputMessage.Role.USER, content);
+        }
+
+        public static ConversationTurn assistant(String content) {
+            return new ConversationTurn(EasyInputMessage.Role.ASSISTANT, content);
+        }
+    }
+
     /** Validated thinking configuration. Backend validates against model capabilities. */
     public record ValidatedThinkingConfig(boolean enabled, ReasoningEffort effort) {
         static ValidatedThinkingConfig resolve(OpenAiProperties properties, String modelId,
@@ -88,14 +103,19 @@ public class OpenAiChatService {
     }
 
     public ChatCompletionResult generateResponse(String userMessage, String emailContext,
+                                                 List<ConversationTurn> conversationHistory,
                                                  boolean thinkingEnabled, String thinkingLevel,
                                                  boolean jsonOutput) {
         return executeWithFallback(() -> {
-            if (openAiClient == null) return ChatCompletionResult.fromRaw(errorMessages.getOpenai().getMisconfigured());
+            if (openAiClient == null) {
+                return ChatCompletionResult.fromRaw(errorMessages.getOpenai().getMisconfigured(), jsonOutput);
+            }
+
+            List<ResponseInputItem> messages = buildEmailAssistantMessages(emailContext, userMessage, conversationHistory, jsonOutput);
 
             String aiResponse = openAiClient.responses().create(ResponseCreateParams.builder()
                 .model(resolveChatModel())
-                .inputOfResponse(buildEmailAssistantMessages(emailContext, userMessage, jsonOutput))
+                .inputOfResponse(messages)
                 .build()).output().stream()
                 .flatMap(item -> item.message().stream())
                 .flatMap(message -> message.content().stream())
@@ -139,6 +159,7 @@ public class OpenAiChatService {
     }
 
     public void streamResponse(String userMessage, String emailContext,
+                               List<ConversationTurn> conversationHistory,
                                boolean thinkingEnabled, String thinkingLevel,
                                boolean jsonOutput,
                                Consumer<StreamEvent> onEvent, Runnable onComplete, Consumer<Throwable> onError) {
@@ -149,7 +170,7 @@ public class OpenAiChatService {
 
         ResponseCreateParams.Builder builder = ResponseCreateParams.builder()
             .model(resolveChatModel())
-            .inputOfResponse(buildEmailAssistantMessages(emailContext, userMessage, jsonOutput));
+            .inputOfResponse(buildEmailAssistantMessages(emailContext, userMessage, conversationHistory, jsonOutput));
 
         String modelId = openAiProperties.getModel().getChat();
         ValidatedThinkingConfig config = ValidatedThinkingConfig.resolve(openAiProperties, modelId, thinkingEnabled, thinkingLevel);
@@ -210,15 +231,17 @@ public class OpenAiChatService {
         }
     }
 
-    public sealed interface StreamEvent permits StreamEvent.RenderedHtml, StreamEvent.RawJson, StreamEvent.Reasoning, StreamEvent.Failed {
+    public sealed interface StreamEvent permits StreamEvent.RenderedHtml, StreamEvent.RawJson, StreamEvent.Reasoning, StreamEvent.Failed, StreamEvent.RawText {
         static StreamEvent renderedHtml(String htmlChunk) { return new RenderedHtml(htmlChunk); }
         static StreamEvent rawJson(String jsonChunk) { return new RawJson(jsonChunk); }
         static StreamEvent reasoning(ReasoningStreamAdapter.ReasoningEvent event) { return new Reasoning(event); }
         static StreamEvent failed(ResponseFailedEvent event) { return new Failed(event); }
+        static StreamEvent rawText(String value) { return new RawText(value); }
         record RenderedHtml(String html) implements StreamEvent {}
         record RawJson(String value) implements StreamEvent {}
         record Reasoning(ReasoningStreamAdapter.ReasoningEvent value) implements StreamEvent {}
         record Failed(ResponseFailedEvent value) implements StreamEvent {}
+        record RawText(String value) implements StreamEvent {}
     }
 
     private void emitHtmlDelta(String deltaText, MarkdownStreamAssembler assembler, Consumer<StreamEvent> onEvent, long[] tokenCount, boolean debugEnabled) {
@@ -226,6 +249,7 @@ public class OpenAiChatService {
         if (debugEnabled) {
             logger.debug("Streaming delta ({} chars): {}", deltaText.length(), preview(deltaText));
         }
+        onEvent.accept(StreamEvent.rawText(deltaText));
         for (String htmlChunk : assembler.onDelta(deltaText)) {
             if (htmlChunk != null && !htmlChunk.isBlank()) {
                 if (debugEnabled) {
@@ -299,31 +323,73 @@ public class OpenAiChatService {
      * Configuration source of truth: OpenAiProperties.java
      * System prompt: {@link OpenAiProperties.Prompts#getEmailAssistantSystem()}
      */
-    private List<ResponseInputItem> buildEmailAssistantMessages(String emailContext, String userMessage, boolean jsonOutput) {
-        String safeContext = StringUtils.sanitize(emailContext);
-        String systemMessage = openAiProperties.getPrompts().getEmailAssistantSystem();
-        String fullPrompt = systemMessage +
-            (StringUtils.isBlank(safeContext) ? "" : "\n\nEmail Context:\n" + safeContext) +
-            "\n\nQuestion: " + userMessage;
+    private List<ResponseInputItem> buildEmailAssistantMessages(String emailContext,
+                                                                String userMessage,
+                                                                List<ConversationTurn> conversationHistory,
+                                                                boolean jsonOutput) {
+        List<ResponseInputItem> messages = new ArrayList<>();
+        int totalTokenEstimate = 0;
 
+        String systemPrompt = openAiProperties.getPrompts().getEmailAssistantSystem();
+        if (!StringUtils.isBlank(systemPrompt)) {
+            String sanitizedSystem = StringUtils.sanitize(systemPrompt);
+            messages.add(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
+                .role(EasyInputMessage.Role.SYSTEM)
+                .content(sanitizedSystem)
+                .build()));
+            totalTokenEstimate += estimateTokens(sanitizedSystem);
+        }
+
+        String safeContext = StringUtils.sanitize(emailContext);
+        if (!StringUtils.isBlank(safeContext)) {
+            String contextMessage = "Email Context:\n" + safeContext;
+            messages.add(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
+                .role(EasyInputMessage.Role.SYSTEM)
+                .content(contextMessage)
+                .build()));
+            totalTokenEstimate += estimateTokens(contextMessage);
+        }
+
+        if (conversationHistory != null && !conversationHistory.isEmpty()) {
+            for (ConversationTurn turn : conversationHistory) {
+                if (turn == null || StringUtils.isBlank(turn.content())) continue;
+                String sanitized = StringUtils.sanitize(turn.content());
+                if (StringUtils.isBlank(sanitized)) continue;
+                messages.add(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
+                    .role(turn.role())
+                    .content(sanitized)
+                    .build()));
+                totalTokenEstimate += estimateTokens(sanitized);
+            }
+        }
+
+        String prompt = userMessage == null ? "" : userMessage;
         if (jsonOutput) {
-            fullPrompt = fullPrompt + "\n\nRespond strictly as a JSON object. Do not include markdown fences or explanatory text.";
+            String normalized = prompt.toLowerCase(Locale.ROOT);
+            if (!normalized.contains("respond strictly as a json object")
+                && !normalized.contains("respond with a single valid json object")) {
+                prompt = prompt.isBlank()
+                    ? "Respond strictly as a JSON object. Do not include markdown fences or explanatory text."
+                    : prompt + "\n\nRespond strictly as a JSON object. Do not include markdown fences or explanatory text.";
+            }
         }
-        
-        // Log context length to detect potential truncation issues
-        int promptTokenEstimate = (int)(fullPrompt.split("\\s+").length * 1.3);
-        int contextTokenEstimate = (int)(safeContext.split("\\s+").length * 1.3);
-        logger.debug("Building prompt: total=~{}tok, context=~{}tok, contextChars={}", 
-            promptTokenEstimate, contextTokenEstimate, safeContext.length());
-        
-        if (promptTokenEstimate > 100000) {
-            logger.warn("Large prompt detected: ~{}tok may approach model limits", promptTokenEstimate);
-        }
-        
-        return List.of(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
+
+        String sanitizedPrompt = StringUtils.sanitize(prompt);
+        messages.add(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
             .role(EasyInputMessage.Role.USER)
-            .content(fullPrompt)
+            .content(sanitizedPrompt)
             .build()));
+        totalTokenEstimate += estimateTokens(sanitizedPrompt);
+
+        logger.debug("Building prompt: total=~{}tok, contextChars={}, priorTurns={}",
+            totalTokenEstimate, safeContext.length(),
+            conversationHistory != null ? conversationHistory.size() : 0);
+
+        if (totalTokenEstimate > 100000) {
+            logger.warn("Large prompt detected: ~{}tok may approach model limits", totalTokenEstimate);
+        }
+
+        return messages;
     }
 
     /**
@@ -359,6 +425,13 @@ public class OpenAiChatService {
             logger.warn("{}: {}", errorMsg, e.getMessage());
             return fallback;
         }
+    }
+
+    private int estimateTokens(String text) {
+        if (text == null || text.isBlank()) {
+            return 0;
+        }
+        return (int) (text.split("\\s+").length * 1.3);
     }
 
 
