@@ -241,7 +241,6 @@
                         this.currentEmailContext = result;
                         this.conversationId = null;
                         this.showUploadStatus('<div class="rounded-lg bg-green-100 border border-green-200 p-3 text-sm text-green-800">Email uploaded and parsed successfully!</div>');
-                        await new Promise(resolve => setTimeout(resolve, 50));
                         this.enableChat();
                         this.addEmailContextMessage(result);
                     } catch (error) {
@@ -427,7 +426,11 @@
                         targetDiv.innerHTML = '';
                         targetDiv.appendChild(pre);
                     } else {
-                        targetDiv.innerHTML = html || window.ComposerAI.renderMarkdown(raw || 'I received your message about the email.');
+                        if (html) {
+                            targetDiv.innerHTML = html;
+                        } else {
+                            targetDiv.innerHTML = window.ComposerAI.renderMarkdown(raw || 'I received your message about the email.');
+                        }
                     }
                     if (result.conversationId) this.conversationId = result.conversationId;
                 }
@@ -484,7 +487,11 @@
                                 targetDiv.innerHTML = window.ComposerAI.renderMarkdown('No response received.');
                             }
                         } else {
-                            targetDiv.innerHTML = html || window.ComposerAI.renderMarkdown("I don't have a response to that.");
+                            if (html) {
+                                targetDiv.innerHTML = html;
+                            } else {
+                                targetDiv.innerHTML = window.ComposerAI.renderMarkdown("I don't have a response to that.");
+                            }
                         }
                         this.conversationId = conversationIdFromServer || payload.conversationId || this.conversationId;
                         this.resetReasoningState();
@@ -510,7 +517,7 @@
                                 targetDiv.innerHTML = '<div class="phase-badge phase-streaming">Streaming...</div>';
                                 firstToken = false;
                             }
-                            html += chunk;
+                            html += chunk || '';
                             targetDiv.innerHTML = html + '<span class="streaming-cursor">|</span>';
                             this.scrollIfAtBottom();
                         })
@@ -573,9 +580,9 @@
 
                             if (cleanedLine === '') {
                                 if (currentEvent) {
-                                    const payload = currentEventData.length > 1
+                                    const payload = currentEventData.length > 0
                                         ? currentEventData.join('\n')
-                                        : (currentEventData[0] ?? '');
+                                        : '';
                                     router.route(currentEvent, payload);
                                 }
                                 currentEvent = null;
