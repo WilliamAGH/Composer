@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 
@@ -181,6 +182,31 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handle static resource lookup failures. Only emit JSON for API requests; otherwise let the
+     * default resource handling respond (prevents browsers requesting favicons from triggering
+     * JSON serialization errors).
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleResourceNotFound(
+            NoResourceFoundException ex,
+            HttpServletRequest request) throws NoResourceFoundException {
+
+        if (!isApiRequest(request)) {
+            // Non-API static asset – allow container to generate the usual 404 without JSON body.
+            throw ex;
+        }
+
+        ErrorResponse errorResponse = new ErrorResponse(
+            "not_found",
+            "Requested resource was not found",
+            HttpStatus.NOT_FOUND.value(),
+            request.getRequestURI()
+        );
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    /**
      * Handle illegal argument exceptions (bad input).
      */
     @ExceptionHandler(IllegalArgumentException.class)
@@ -251,10 +277,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(
             Exception ex,
-            HttpServletRequest request) {
+            HttpServletRequest request) throws Exception {
 
         String requestUri = request.getRequestURI();
-        
+
         // Silently ignore browser diagnostic/devtools requests to prevent log pollution
         if (isBrowserDiagnosticRequest(requestUri)) {
             ErrorResponse errorResponse = new ErrorResponse(
@@ -264,6 +290,11 @@ public class GlobalExceptionHandler {
                 requestUri
             );
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        }
+
+        if (!isApiRequest(request)) {
+            // Allow non-API requests (e.g., static assets) to bubble up to the default handlers.
+            throw ex;
         }
 
         // Log full exception with stack trace for debugging
@@ -299,5 +330,10 @@ public class GlobalExceptionHandler {
             uri.contains("/sourcemap") ||
             uri.contains("/__webpack_hmr")
         );
+    }
+
+    private boolean isApiRequest(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        return uri != null && uri.startsWith("/api/");
     }
 }
