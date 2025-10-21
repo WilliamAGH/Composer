@@ -166,6 +166,22 @@ class OpenAiChatServiceTest {
     }
 
     @Test
+    void generateResponse_withJsonOutputAddsDirective() {
+        Response mockResponse = buildResponseWithText("{\"result\":true}");
+        when(openAIClient.responses().create(any(ResponseCreateParams.class)))
+            .thenReturn(mockResponse);
+
+        service.generateResponse("Return structured data", "Context payload", List.of(), false, null, true);
+
+        ArgumentCaptor<ResponseCreateParams> captor = ArgumentCaptor.forClass(ResponseCreateParams.class);
+        Mockito.verify(openAIClient.responses()).create(captor.capture());
+        String serialized = captor.getValue()._body().toString();
+
+        assertTrue(serialized.contains("JSON output mode"));
+        assertTrue(serialized.contains("best-estimate schema"));
+    }
+
+    @Test
     void analyzeIntent_returnsQuestionOnError() {
         when(openAIClient.responses().create(any(ResponseCreateParams.class)))
             .thenThrow(new RuntimeException("Service unavailable"));

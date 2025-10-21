@@ -346,6 +346,22 @@ public class OpenAiChatService {
             totalTokenEstimate += estimateTokens(sanitizedSystem);
         }
 
+        if (jsonOutput) {
+            String jsonOutputDirective = """
+                JSON output mode:
+                - Apply every rule above without modification while you craft the JSON.
+                - Answer the user's latest request by returning a single JSON object that reflects your best-estimate schema for their question using the provided email context and conversation history.
+                - Include fields, nested objects, or arrays only when they help communicate the email-backed facts; prefer null or empty values instead of inventing data.
+                - Do not wrap the JSON in markdown fences or add commentary before or after the object.
+                """;
+            String sanitizedDirective = StringUtils.sanitize(jsonOutputDirective);
+            messages.add(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
+                .role(EasyInputMessage.Role.SYSTEM)
+                .content(sanitizedDirective)
+                .build()));
+            totalTokenEstimate += estimateTokens(sanitizedDirective);
+        }
+
         String safeContext = StringUtils.sanitize(emailContext);
         if (!StringUtils.isBlank(safeContext)) {
             String contextMessage = "Email Context:\n" + safeContext;
