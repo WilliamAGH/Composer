@@ -55,7 +55,7 @@ class OpenAiChatServiceStreamingTest {
 
     @Test
     void assemblerFlushesOnDoubleNewlineOutsideCodeFence() {
-        OpenAiChatService.MarkdownStreamAssembler assembler = new OpenAiChatService.MarkdownStreamAssembler();
+        OpenAiChatService.MarkdownStreamAssembler assembler = new OpenAiChatService.MarkdownStreamAssembler(false);
 
         List<String> firstChunk = assembler.onDelta("First paragraph.\n\nSecond paragraph start");
         assertEquals(1, firstChunk.size());
@@ -71,7 +71,7 @@ class OpenAiChatServiceStreamingTest {
 
     @Test
     void assemblerDefersFlushInsideCodeFence() {
-        OpenAiChatService.MarkdownStreamAssembler assembler = new OpenAiChatService.MarkdownStreamAssembler();
+        OpenAiChatService.MarkdownStreamAssembler assembler = new OpenAiChatService.MarkdownStreamAssembler(false);
 
         List<String> beforeFence = assembler.onDelta("```java\nSystem.out.println(\"hi\");\n");
         assertTrue(beforeFence.isEmpty());
