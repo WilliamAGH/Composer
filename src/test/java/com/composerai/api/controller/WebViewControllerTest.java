@@ -6,6 +6,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -79,11 +80,15 @@ class WebViewControllerTest {
         // Verify the actual rendered content has the injected values, not empty objects
         // Thymeleaf serializes Map to JSON, so format is: {METADATA:"metadata",...}
         // This proves GlobalModelAttributes is working
-        assert response.contains("METADATA") && response.contains("metadata")
-            && response.contains("RENDERED_HTML") && response.contains("rendered_html")
-            && !response.contains("const SSE_EVENTS = {};")
-            : "SSE_EVENTS should contain injected backend enum values, not empty fallback. Found: "
-                + response.substring(response.indexOf("const SSE_EVENTS"), Math.min(response.indexOf("const SSE_EVENTS") + 200, response.length()));
+        assertTrue(
+            response.contains("METADATA") && response.contains("metadata")
+                && response.contains("RENDERED_HTML") && response.contains("rendered_html")
+                && !response.contains("const SSE_EVENTS = {};"),
+            () -> "SSE_EVENTS should contain injected backend enum values, not empty fallback. Found: "
+                + response.substring(
+                    response.indexOf("const SSE_EVENTS"),
+                    Math.min(response.indexOf("const SSE_EVENTS") + 200, response.length()))
+        );
     }
 
     @Test
