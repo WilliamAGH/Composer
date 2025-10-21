@@ -39,7 +39,7 @@ public final class ReasoningStreamAdapter {
         return event == null ? null : new Failure(event);
     }
 
-    enum Type {
+    public enum Type {
         SUMMARY_PART_ADDED("reasoning-summary-part-added"),
         SUMMARY_PART_DONE("reasoning-summary-part-done"),
         SUMMARY_TEXT_DELTA("reasoning-summary-text-delta"),
