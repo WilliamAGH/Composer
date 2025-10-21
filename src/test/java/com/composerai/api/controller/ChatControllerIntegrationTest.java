@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.ScheduledExecutorService;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -41,6 +42,9 @@ class ChatControllerIntegrationTest {
 
     @MockBean(name = "chatStreamExecutor")
     private Executor chatStreamExecutor;
+
+    @MockBean(name = "sseHeartbeatExecutor")
+    private ScheduledExecutorService sseHeartbeatExecutor;
 
     @MockBean
     private com.composerai.api.config.OpenAiProperties openAiProperties;
@@ -88,6 +92,16 @@ class ChatControllerIntegrationTest {
         var streamConfig = new com.composerai.api.config.OpenAiProperties.Stream();
         streamConfig.setTimeoutSeconds(120);
         Mockito.when(openAiProperties.getStream()).thenReturn(streamConfig);
+
+        // Mock the heartbeat executor to return a mock ScheduledFuture
+        @SuppressWarnings("unchecked")
+        java.util.concurrent.ScheduledFuture<Object> mockFuture = Mockito.mock(java.util.concurrent.ScheduledFuture.class);
+        Mockito.when(sseHeartbeatExecutor.scheduleAtFixedRate(
+            any(Runnable.class),
+            org.mockito.ArgumentMatchers.anyLong(),
+            org.mockito.ArgumentMatchers.anyLong(),
+            any(java.util.concurrent.TimeUnit.class)
+        )).thenReturn((java.util.concurrent.ScheduledFuture)mockFuture);
 
         doAnswer(invocation -> {
             Runnable runnable = invocation.getArgument(0);
