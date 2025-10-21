@@ -294,4 +294,144 @@ class OpenAiChatServiceStreamingTest {
             }
         };
     }
+
+    /**
+     * Test case for long-running stream with delays between chunks.
+     * This simulates reasoning models that have pauses while "thinking".
+     *
+     * Expected behavior: Stream should continue despite delays
+     * Current issue: May timeout after 5 minutes due to read timeout
+     */
+    @Test
+    void streamResponse_withDelayedChunks_shouldNotTimeout() throws InterruptedException {
+        OpenAIClient client = Mockito.mock(OpenAIClient.class, Answers.RETURNS_DEEP_STUBS);
+
+        // Simulate chunks with delays (like reasoning model thinking)
+        Stream<ResponseStreamEvent> eventStream = Stream.of(
+            createMockEvent("Initial response...\n\n"),
+            delayedEvent(createMockEvent("After delay 1...\n\n"), 100), // 100ms delay
+            delayedEvent(createMockEvent("After delay 2...\n\n"), 200), // 200ms delay
+            createMockEvent("Final response.")
+        );
+
+        Mockito.when(client.responses().createStreaming(any(ResponseCreateParams.class)))
+            .thenReturn(streamResponse(eventStream));
+
+        OpenAiProperties properties = new OpenAiProperties();
+        properties.getModel().setChat("o4-mini");
+
+        OpenAiChatService service = new OpenAiChatService(client, properties, errorMessagesProperties);
+
+        List<String> chunks = new ArrayList<>();
+        AtomicBoolean completed = new AtomicBoolean(false);
+        AtomicReference<Throwable> errorRef = new AtomicReference<>();
+
+        service.streamResponse(
+            "Complex analysis question",
+            "Context",
+            true,
+            "high",
+            event -> {
+                if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
+                    chunks.add(rendered.html());
+                }
+            },
+            () -> completed.set(true),
+            errorRef::set
+        );
+
+        assertEquals(4, chunks.size(), "Should receive all 4 chunks despite delays");
+        assertTrue(completed.get(), "Stream should complete successfully");
+        assertNull(errorRef.get(), "Should not have errors");
+    }
+
+    /**
+     * Test case for very long stream simulation.
+     * Tests whether the stream can handle many chunks over extended time.
+     */
+    @Test
+    void streamResponse_withManyChunks_shouldProcessAll() {
+        OpenAIClient client = Mockito.mock(OpenAIClient.class, Answers.RETURNS_DEEP_STUBS);
+
+        // Generate many chunks
+        List<ResponseStreamEvent> events = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            events.add(createMockEvent("Chunk " + i + " "));
+        }
+
+        Mockito.when(client.responses().createStreaming(any(ResponseCreateParams.class)))
+            .thenReturn(streamResponse(events.stream()));
+
+        OpenAiProperties properties = new OpenAiProperties();
+        properties.getModel().setChat("o4-mini");
+
+        OpenAiChatService service = new OpenAiChatService(client, properties, errorMessagesProperties);
+
+        List<String> chunks = new ArrayList<>();
+        AtomicBoolean completed = new AtomicBoolean(false);
+        AtomicReference<Throwable> errorRef = new AtomicReference<>();
+
+        service.streamResponse(
+            "Long analysis",
+            "Context",
+            false,
+            null,
+            event -> {
+                if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
+                    chunks.add(rendered.html());
+                }
+            },
+            () -> completed.set(true),
+            errorRef::set
+        );
+
+        assertFalse(chunks.isEmpty(), "Should receive chunks");
+        assertTrue(completed.get(), "Stream should complete");
+        assertNull(errorRef.get(), "Should not have errors");
+    }
+
+    /**
+     * Test case for stream that encounters timeout.
+     * This simulates what happens when read timeout is exceeded.
+     */
+    @Test
+    void streamResponse_whenTimeoutOccurs_shouldCallErrorHandler() {
+        OpenAIClient client = Mockito.mock(OpenAIClient.class, Answers.RETURNS_DEEP_STUBS);
+
+        // Simulate timeout by throwing SocketTimeoutException
+        Mockito.when(client.responses().createStreaming(any(ResponseCreateParams.class)))
+            .thenThrow(new RuntimeException("Read timed out"));
+
+        OpenAiProperties properties = new OpenAiProperties();
+        properties.getModel().setChat("o4-mini");
+
+        OpenAiChatService service = new OpenAiChatService(client, properties, errorMessagesProperties);
+
+        AtomicBoolean completed = new AtomicBoolean(false);
+        AtomicReference<Throwable> errorRef = new AtomicReference<>();
+
+        service.streamResponse(
+            "Test",
+            "Context",
+            false,
+            null,
+            event -> {},
+            () -> completed.set(true),
+            errorRef::set
+        );
+
+        assertFalse(completed.get(), "Stream should not complete on timeout");
+        assertNotNull(errorRef.get(), "Should have error");
+        assertTrue(errorRef.get().getMessage().contains("timed out"),
+            "Error should indicate timeout");
+    }
+
+    private ResponseStreamEvent delayedEvent(ResponseStreamEvent event, long delayMs) {
+        try {
+            Thread.sleep(delayMs);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return event;
+    }
 }
