@@ -23,6 +23,8 @@ import org.jsoup.nodes.TextNode;
 import org.jsoup.safety.Cleaner;
 import org.jsoup.safety.Safelist;
 
+import java.util.regex.Pattern;
+
 /**
  * HtmlConverter: normalize HTML and convert to plain text or Markdown
  * with URL policies and basic cleanup.
@@ -291,6 +293,8 @@ public final class HtmlConverter {
     }
 
     private static final class MarkdownRenderer {
+        private static final Pattern STRUCTURAL_ELEMENTS = Pattern.compile("pre|code|ul|ol|li|table|thead|tbody|tfoot|tr|th|td");
+
         private final Parser parser;
         private final HtmlRenderer renderer;
         private final Cleaner cleaner;
@@ -340,7 +344,7 @@ public final class HtmlConverter {
 
         private boolean hasStructuralParent(Element element) {
             for (Element parent = element.parent(); parent != null; parent = parent.parent()) {
-                if (parent.normalName().matches("pre|code|ul|ol|li|table|thead|tbody|tfoot|tr|th|td")) {
+                if (STRUCTURAL_ELEMENTS.matcher(parent.normalName()).matches()) {
                     return true;
                 }
             }
