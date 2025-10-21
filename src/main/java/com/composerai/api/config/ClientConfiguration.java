@@ -64,7 +64,7 @@ public class ClientConfiguration {
             log.info("OpenAI-compatible client configured successfully (provider: {})", capabilities.getType());
             return client;
         } catch (Exception e) {
-            log.warn("Failed to configure OpenAI-compatible client: {}. Service will operate in degraded mode.", e.getMessage());
+            log.warn("Failed to configure OpenAI-compatible client. Service will operate in degraded mode.", e);
             return null;
         }
     }
