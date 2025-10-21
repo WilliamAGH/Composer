@@ -41,7 +41,6 @@ class ReasoningStreamAdapterTest {
         assertEquals(ReasoningStreamAdapter.Phase.THINKING, message.phase());
         assertEquals("Reasoning…", message.displayLabel());
         assertNull(message.step());
-        assertEquals(ReasoningStreamAdapter.Phase.THINKING, message.phase());
         assertTrue(message.payload() instanceof ReasoningStreamAdapter.SummaryTextPayload);
 
         ReasoningStreamAdapter.SummaryTextPayload payload =
@@ -75,7 +74,6 @@ class ReasoningStreamAdapterTest {
         assertEquals(ReasoningStreamAdapter.Phase.PROGRESS, message.phase());
         assertEquals("Reasoning step 2", message.displayLabel());
         assertEquals(Long.valueOf(2L), message.step());
-        assertEquals(ReasoningStreamAdapter.Phase.PROGRESS, message.phase());
         assertTrue(message.payload() instanceof ReasoningStreamAdapter.TextPayload);
 
         ReasoningStreamAdapter.TextPayload payload =
