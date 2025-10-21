@@ -222,12 +222,12 @@ public class OpenAiChatService {
 
     private void emitHtmlDelta(String deltaText, MarkdownStreamAssembler assembler, Consumer<StreamEvent> onEvent, long[] tokenCount) {
         if (deltaText == null || deltaText.isEmpty()) return;
-        if (logger.isDebugEnabled()) {
+        if (logger.isDebugEnabled() && openAiProperties.isLocalDebugEnabled()) {
             logger.debug("Streaming delta ({} chars): {}", deltaText.length(), preview(deltaText));
         }
         for (String htmlChunk : assembler.onDelta(deltaText)) {
             if (htmlChunk != null && !htmlChunk.isBlank()) {
-                if (logger.isDebugEnabled()) {
+                if (logger.isDebugEnabled() && openAiProperties.isLocalDebugEnabled()) {
                     logger.debug("Emitting HTML chunk ({} chars): {}", htmlChunk.length(), preview(htmlChunk));
                 }
                 onEvent.accept(StreamEvent.renderedHtml(htmlChunk));
@@ -238,7 +238,7 @@ public class OpenAiChatService {
 
     private void emitJsonDelta(String deltaText, Consumer<StreamEvent> onEvent, long[] tokenCount) {
         if (deltaText == null || deltaText.isEmpty()) return;
-        if (logger.isDebugEnabled()) {
+        if (logger.isDebugEnabled() && openAiProperties.isLocalDebugEnabled()) {
             logger.debug("Streaming JSON delta ({} chars): {}", deltaText.length(), preview(deltaText));
         }
         onEvent.accept(StreamEvent.rawJson(deltaText));
