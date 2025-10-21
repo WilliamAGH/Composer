@@ -47,7 +47,7 @@ server.port=${PORT:8080}
 openai.api.key=${OPENAI_API_KEY:your-openai-api-key}
 openai.api.base-url=${OPENAI_API_BASE_URL:https://api.openai.com/v1}
 # default OpenAI model; override with OPENAI_MODEL if needed
-openai.model=${OPENAI_MODEL:gpt-4o-mini}
+openai.model.chat=${OPENAI_MODEL:gpt-4o-mini}
 qdrant.enabled=${QDRANT_ENABLED:false}
 qdrant.host=${QDRANT_HOST:localhost}
 qdrant.port=${QDRANT_PORT:6333}
@@ -156,15 +156,24 @@ Content-Type: application/json
 
 ### Streaming Chat (SSE)
 
-Request is identical to `/api/chat`, but POST to `/api/chat/stream`. The response is `text/event-stream` with tokens emitted as SSE (Server-Sent Events). Each token is sent as a separate event, allowing clients to display incremental results in real time.
+Request is identical to `/api/chat`, but POST to `/api/chat/stream`. The response is `text/event-stream` with typed events.
 
 Example SSE response:
 
 ```text
-data: Hello
+event: rendered_html
+data: {"html":"<p>Hello</p>"}
 
-data: , how can I help you today?
+event: rendered_html
+data: {"html":"<p>, how can I help you today?</p>"}
 
-data:
+event: done
+data: {}
+```
 
+Example curl command:
+
+```bash
+curl -N -H "Accept: text/event-stream" -H "Content-Type: application/json" \
+     -d '{"message":"hi","contextId":"test-123"}' http://localhost:8080/api/chat/stream
 ```
