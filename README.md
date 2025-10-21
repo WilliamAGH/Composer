@@ -133,9 +133,9 @@ Each workspace follows the house design language: layered glass cards over soft 
 | ------ | ---- | ----------- |
 | `GET` | `/api/health` | Service heartbeat with timestamp |
 | `GET` | `/api/chat/health` | Chat-specific heartbeat |
-| `POST` | `/api/chat` | Main chat endpoint accepting message, optional conversation ID, and `maxResults` |
+| `POST` | `/api/chat` | Main chat endpoint accepting message, optional conversation ID, `maxResults`, and a `contextId` referencing normalized email content |
 | `POST` | `/api/chat/stream` | SSE stream of incremental tokens for live responses |
-| `POST` | `/api/parse-email` | Multipart upload for `.eml`/`.txt` files that streams them through the normalization pipeline |
+| `POST` | `/api/parse-email` | Multipart upload for `.eml`/`.txt` files that streams them through the normalization pipeline and returns a `contextId` for subsequent chat calls |
 
 ### Example Chat Request
 
@@ -146,8 +146,12 @@ Content-Type: application/json
 {
   "message": "Summarize updates from my hiring emails",
   "conversationId": "thread-123",
-  "maxResults": 5
+  "maxResults": 5,
+  "contextId": "7c2f0a22-88d2-4bec-aad4-1f81f9b6f5af",
+  "emailContext": "(optional) sanitized preview returned by /api/parse-email"
 }
+
+`contextId` must originate from `/api/parse-email`; if it is omitted or invalid, the server drops any supplied `emailContext` string and proceeds with vector-search context only. This guarantees that only the normalized pipeline output can reach downstream LLM calls.
 ```
 
 ### Streaming Chat (SSE)
