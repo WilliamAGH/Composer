@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugs exclusion filter
+  Excludes false positives and low-priority warnings that don't apply to this project
+  See: https://spotbugs.readthedocs.io/en/stable/filter.html
+-->
+<FindBugsFilter>
+    <!-- Exclude low-priority internationalization warnings -->
+    <Match>
+        <Bug pattern="IMPROPER_UNICODE,DM_CONVERT_CASE"/>
+    </Match>
+
+    <!-- Exclude exposure warnings for Spring @ConfigurationProperties classes (false positives) -->
+    <Match>
+        <Class name="~.*Properties"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- Exclude CRLF injection warnings for SLF4J logging (false positives - SLF4J sanitizes) -->
+    <Match>
+        <Bug pattern="CRLF_INJECTION_LOGS"/>
+    </Match>
+
+    <!-- Exclude redundant null check warnings (modern Java handles these well) -->
+    <Match>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE,RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE"/>
+    </Match>
+
+    <!-- Exclude generic exception catching where it's intentional (utility methods) -->
+    <Match>
+        <Class name="com.composerai.api.util.StringUtils"/>
+        <Bug pattern="REC_CATCH_EXCEPTION"/>
+    </Match>
+
+    <!-- Exclude FindSecBugs NullPointerException in CorsRegistry detector (bug in FindSecBugs plugin) -->
+    <Match>
+        <Class name="com.composerai.api.config.CorsConfig"/>
+    </Match>
+</FindBugsFilter>

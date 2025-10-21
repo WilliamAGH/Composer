@@ -35,11 +35,14 @@
         };
     </script>
     <style>
-        .assistant-thinking .thinking-skeleton{position:relative;overflow:hidden}
-        .assistant-thinking .thinking-line{height:10px;margin:6px 0;border-radius:6px;background:linear-gradient(90deg,rgba(226,232,240,.4) 0%,rgba(226,232,240,.8) 50%,rgba(226,232,240,.4) 100%);background-size:200% 100%;animation:shimmer 1200ms ease-in-out infinite}
-        .assistant-thinking .thinking-line.short{width:60%}
-        .assistant-thinking .thinking-line:not(.short){width:100%}
-        .assistant-thinking .thinking-cursor-bar{position:absolute;top:0;left:0;height:100%;width:3px;background:rgba(15,23,42,.25);animation:cursor-sweep 1500ms ease-in-out infinite}
+        .assistant-thinking .thinking-skeleton{position:relative;overflow:hidden;border-radius:16px;padding:0.65rem 0.9rem;border:1px solid rgba(226,232,240,0.85);background:linear-gradient(180deg,rgba(248,250,252,0.88) 0%,rgba(241,245,249,0.66) 100%)}
+        .assistant-thinking .thinking-row{display:flex;align-items:center;gap:0.55rem;margin-bottom:0.45rem}
+        .assistant-thinking .thinking-row:last-child{margin-bottom:0}
+        .assistant-thinking .thinking-dot{height:0.35rem;width:0.35rem;border-radius:9999px;background:rgba(148,163,184,0.55)}
+        .assistant-thinking .thinking-line{height:7px;flex:1;border-radius:9999px;background:linear-gradient(90deg,rgba(226,232,240,.32) 0%,rgba(226,232,240,.7) 50%,rgba(226,232,240,.32) 100%);background-size:200% 100%;animation:shimmer 1000ms ease-in-out infinite}
+        .assistant-thinking .thinking-row:nth-child(2) .thinking-line{width:68%}
+        .assistant-thinking .thinking-row:nth-child(3) .thinking-line{width:46%}
+        .assistant-thinking .thinking-cursor-bar{position:absolute;top:12%;left:0;height:76%;width:2px;background:rgba(15,23,42,.22);animation:cursor-sweep 1500ms ease-in-out infinite}
         .streaming-cursor{display:inline-block;animation:blink 900ms steps(1,end) infinite}
         .phase-badge{display:inline-flex;align-items:center;gap:.4rem;font-size:.7rem;letter-spacing:.08em;margin-bottom:.5rem;border-radius:9999px;padding:.15rem .6rem;border:1px solid rgba(148,163,184,.45);background:rgba(241,245,249,.7);color:#334155}
         .phase-badge.phase-thinking{background:rgba(241,245,249,.8)}
@@ -150,8 +153,12 @@
                     // If the dropArea is a generic element like a <div>, we need to
                     // manually trigger the click on the hidden file input.
                     if (this.dropArea.tagName.toLowerCase() !== 'label') {
-                        e.preventDefault();
-                        this.fileInput.click();
+                        // Don't prevent default if the click target is the input itself
+                        // This allows the native file dialog to open when clicking the transparent input
+                        if (e.target !== this.fileInput) {
+                            e.preventDefault();
+                            this.fileInput.click();
+                        }
                     }
                 });
                 

@@ -1,0 +1,66 @@
+# EditorConfig - Consistent coding styles across editors
+# https://editorconfig.org
+
+root = true
+
+# All files
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Java source files
+[*.java]
+indent_style = space
+indent_size = 4
+max_line_length = 120
+
+# XML files (POM, Spring configs)
+[*.xml]
+indent_style = space
+indent_size = 4
+
+# YAML files (application.yml, Docker Compose)
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# JSON files
+[*.json]
+indent_style = space
+indent_size = 2
+
+# Properties files
+[*.properties]
+indent_style = space
+indent_size = 2
+
+# HTML/Thymeleaf templates
+[*.html]
+indent_style = space
+indent_size = 2
+
+# CSS files
+[*.css]
+indent_style = space
+indent_size = 2
+
+# JavaScript
+[*.js]
+indent_style = space
+indent_size = 2
+
+# Markdown files - don't trim trailing whitespace (needed for line breaks)
+[*.md]
+trim_trailing_whitespace = false
+max_line_length = off
+
+# Makefiles require tabs
+[Makefile]
+indent_style = tab
+
+# Shell scripts
+[*.sh]
+indent_style = space
+indent_size = 2

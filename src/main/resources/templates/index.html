@@ -2,6 +2,9 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layout :: layout(~{::body/content}, 'Redirecting…', ~{::head/extraHead})}">
 <head>
+    <meta charset="UTF-8" th:remove="tag" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" th:remove="tag" />
+    <title>Redirecting…</title>
     <th:block th:fragment="extraHead">
         <meta http-equiv="refresh" content="0; url=/chat">
         <script>

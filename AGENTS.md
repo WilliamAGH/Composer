@@ -47,6 +47,7 @@ Refer to `README.md` (Technology Stack and Requirements) for current runtime ver
 - Uphold the product aesthetic: layered glass cards over soft gradients, translucent surfaces, diffused midnight/navy accents, rounded 12-24px radii, ultra-light borders, and generous spacing. Typography stays in crisp system sans families with breathable line height and label tracking.
 - Color language: anchor backgrounds in cool off-whites (#F8FAFC, #F5F5F7), use translucent whites with subtle vertical gradients for surfaces, keep primary accents in deep slate blues or charcoal greens (#0F172A, #1A2433), reserve muted lilac/sage/amber for highlights, and apply borders/shadows around #E2E8F0 with rgba(15, 23, 42, 0.1-0.2) for depth without harsh black.
 - Keep JavaScript modular and progressive-enhancement friendly. Use plain ES modules over large frameworks
+- **NEVER duplicate backend constants/enums in HTML/JS**: Use `@ControllerAdvice` + `@ModelAttribute` + `th:inline="javascript"` to inject Java enums directly into templates. See `GlobalModelAttributes.java` and `WebViewControllerTest.java` for the canonical pattern.
 
 ### Design Language Reference
 
@@ -83,8 +84,15 @@ Refer to `README.md` (Technology Stack and Requirements) for current runtime ver
 
 4. Forbidden shortcuts
    - The usage of @SuppressWarnings is NEVER AN ALLOWED SOLUTION. EVER.
+   - Never rewrite history: avoid `git commit --amend`, `git rebase`, or any history-altering commands.
+   - Never revert or 'restore' user changes unless the user explicitly instructs you to do so. You're not 'helping' when you make destructive actions like this. You're causing significant damage.
 
-5. Enforcement & review
+5. OpenAI Java SDK awareness
+   - Before modifying any OpenAI integration, read the current SDK version from `pom.xml` and treat it as the source of truth (presently `4.6.1`).
+   - Inspect the matching local artifact at `~/.m2/repository/com/openai/openai-java-core/<VERSION>/openai-java-core-<VERSION>.jar` for API behavior, using the exact version from `pom.xml`.
+   - Review the latest examples under [`openai-java-example`](https://github.com/openai/openai-java/tree/main/openai-java-example/src/main/java/com/openai/example) for up-to-date usage patterns and reasoning/streaming guidance.
+
+6. Enforcement & review
    - Every agent-generated change must include a short compliance note listing:
      - where temp files were created (tmp/ path),
      - which repo tools were reused,
@@ -92,7 +100,7 @@ Refer to `README.md` (Technology Stack and Requirements) for current runtime ver
      - confirmation that @SuppressWarnings was not used.
    - Pull requests or change summaries should highlight any SQL files produced and explicitly mark them as "DO NOT RUN — REVIEW ONLY".
 
-6. Quick checklist (must be satisfied before marking a task complete)
+7. Quick checklist (must be satisfied before marking a task complete)
    - tmp/ markdown created if needed, and scheduled for deletion.
    - Reused existing in-repo tools (list them).
    - No automatic migrations added or executed.

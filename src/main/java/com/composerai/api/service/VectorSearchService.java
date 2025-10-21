@@ -5,8 +5,7 @@ import com.composerai.api.dto.ChatResponse.EmailContext;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.grpc.Points.SearchPoints;
 import io.qdrant.client.grpc.Points.ScoredPoint;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -16,10 +15,10 @@ import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
+@Slf4j
 @Service
 public class VectorSearchService {
     
-    private static final Logger logger = LoggerFactory.getLogger(VectorSearchService.class);
     
     private final QdrantClient qdrantClient;
     private final QdrantProperties qdrantProperties;
@@ -33,11 +32,11 @@ public class VectorSearchService {
 
     public List<EmailContext> searchSimilarEmails(float[] queryVector, int limit) {
         if (!enabled) {
-            logger.debug("Qdrant vector search disabled by configuration; skipping.");
+            log.debug("Qdrant vector search disabled by configuration; skipping.");
             return List.of();
         }
         if (queryVector == null || queryVector.length == 0) {
-            logger.debug("Empty or null query vector; skipping Qdrant search.");
+            log.debug("Empty or null query vector; skipping Qdrant search.");
             return List.of();
         }
         try {
@@ -61,18 +60,18 @@ public class VectorSearchService {
                 emailContexts.add(context);
             }
             
-            logger.info("Found {} similar emails for query", emailContexts.size());
+            log.info("Found {} similar emails for query", emailContexts.size());
             return emailContexts;
             
         } catch (InterruptedException e) {
-            logger.warn("Qdrant search interrupted", e);
+            log.warn("Qdrant search interrupted", e);
             Thread.currentThread().interrupt();
             return List.of();
         } catch (ExecutionException e) {
-            logger.warn("Qdrant search failed", e.getCause() != null ? e.getCause() : e);
+            log.warn("Qdrant search failed", e.getCause() != null ? e.getCause() : e);
             return List.of();
         } catch (Exception e) {
-            logger.warn("Qdrant search error", e);
+            log.warn("Qdrant search error", e);
             return List.of();
         }
     }

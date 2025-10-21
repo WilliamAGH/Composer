@@ -5,9 +5,8 @@
 
 package com.composerai.api.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import jakarta.mail.MessagingException;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -16,10 +15,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 
+@Slf4j
 @Service
 public class HtmlToText {
 
-    private static final Logger logger = LoggerFactory.getLogger(HtmlToText.class);
 
     public enum OutputFormat {
         PLAIN,
@@ -175,7 +174,7 @@ public class HtmlToText {
                     Files.deleteIfExists(tempFile);
                 } catch (IOException e) {
                     // Log but don't fail if cleanup fails
-                    logger.warn("Could not delete temporary file: {}", tempFile, e);
+                    log.warn("Could not delete temporary file: {}", tempFile, e);
                 }
             }
         } catch (Exception e) {

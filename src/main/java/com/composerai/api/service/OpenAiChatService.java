@@ -1,30 +1,27 @@
 package com.composerai.api.service;
 
+import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
+import com.composerai.api.util.StringUtils;
+import com.composerai.api.util.TemporalUtils;
 import com.openai.client.OpenAIClient;
+import com.openai.core.http.StreamResponse;
 import com.openai.models.ChatModel;
 import com.openai.models.Reasoning;
 import com.openai.models.ReasoningEffort;
-import com.openai.models.ResponsesModel;
-import com.openai.models.chat.completions.ChatCompletion;
-import com.openai.models.chat.completions.ChatCompletionCreateParams;
-import com.openai.models.chat.completions.ChatCompletionMessageParam;
-import com.openai.models.chat.completions.ChatCompletionSystemMessageParam;
-import com.openai.models.chat.completions.ChatCompletionUserMessageParam;
-import com.openai.models.embeddings.CreateEmbeddingResponse;
+import com.openai.models.responses.EasyInputMessage;
+import com.openai.models.responses.ResponseCreateParams;
+import com.openai.models.responses.ResponseInputItem;
+import com.openai.models.responses.ResponseFailedEvent;
+import com.openai.models.responses.ResponseStreamEvent;
 import com.openai.models.embeddings.Embedding;
 import com.openai.models.embeddings.EmbeddingCreateParams;
 import com.openai.models.embeddings.EmbeddingModel;
-import com.openai.models.responses.ResponseCreateParams;
-import com.openai.models.responses.ResponseError;
-import com.openai.models.responses.ResponseFailedEvent;
-import com.openai.models.responses.ResponseIncompleteEvent;
-import com.openai.models.responses.ResponseStatus;
-import com.openai.models.responses.ResponseStreamEvent;
-import com.openai.core.http.StreamResponse;
 import com.composerai.api.service.email.HtmlConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -38,373 +35,399 @@ import java.util.regex.Pattern;
 
 @Service
 public class OpenAiChatService {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(OpenAiChatService.class);
-    
-    private static final String OPENAI_MISCONFIGURED_MESSAGE = "OpenAI is not configured (missing OPENAI_API_KEY).";
-    private static final String OPENAI_UNAVAILABLE_MESSAGE = "OpenAI is unavailable right now. Please try again later.";
     private static final Pattern DANGEROUS_BLOCK_TAGS = Pattern.compile("(?is)<(script|style|iframe)[^>]*>.*?</\\1>");
 
     private final OpenAIClient openAiClient;
     private final OpenAiProperties openAiProperties;
+    private final ErrorMessagesProperties errorMessages;
 
     public record ChatCompletionResult(String rawText, String sanitizedHtml) {
         public ChatCompletionResult {
             rawText = rawText == null ? "" : rawText;
             sanitizedHtml = sanitizedHtml == null ? "" : sanitizedHtml;
         }
-
         static ChatCompletionResult fromRaw(String rawText) {
+            return fromRaw(rawText, false);
+        }
+        static ChatCompletionResult fromRaw(String rawText, boolean jsonOutput) {
             String safeRaw = rawText == null ? "" : rawText;
-            String scrubbed = DANGEROUS_BLOCK_TAGS.matcher(safeRaw).replaceAll("");
-            String sanitized = HtmlConverter.markdownToSafeHtml(scrubbed);
+            String sanitized = jsonOutput
+                ? safeRaw
+                : HtmlConverter.markdownToSafeHtml(DANGEROUS_BLOCK_TAGS.matcher(safeRaw).replaceAll(""));
             return new ChatCompletionResult(safeRaw, sanitized);
         }
     }
 
-    public OpenAiChatService(OpenAIClient openAiClient, OpenAiProperties openAiProperties) {
+    public record ConversationTurn(EasyInputMessage.Role role, String content) {
+        public ConversationTurn {
+            role = role == null ? EasyInputMessage.Role.USER : role;
+            content = content == null ? "" : content;
+        }
+
+        public static ConversationTurn user(String content) {
+            return new ConversationTurn(EasyInputMessage.Role.USER, content);
+        }
+
+        public static ConversationTurn assistant(String content) {
+            return new ConversationTurn(EasyInputMessage.Role.ASSISTANT, content);
+        }
+    }
+
+    /** Validated thinking configuration. Backend validates against model capabilities. */
+    public record ValidatedThinkingConfig(boolean enabled, ReasoningEffort effort) {
+        static ValidatedThinkingConfig resolve(OpenAiProperties properties, String modelId,
+                                               boolean requestedEnabled, String requestedLevel) {
+            return (modelId == null || !properties.supportsReasoning(modelId) || !requestedEnabled)
+                ? new ValidatedThinkingConfig(false, null)
+                : new ValidatedThinkingConfig(true, parseEffort(requestedLevel).orElse(ReasoningEffort.MINIMAL));
+        }
+        private static Optional<ReasoningEffort> parseEffort(String level) {
+            if (level == null || level.isBlank()) return Optional.of(ReasoningEffort.MINIMAL);
+            return Optional.ofNullable(switch (level.trim().toLowerCase(Locale.ROOT)) {
+                case "minimal" -> ReasoningEffort.MINIMAL;
+                case "low" -> ReasoningEffort.LOW;
+                case "medium" -> ReasoningEffort.MEDIUM;
+                case "high", "heavy" -> ReasoningEffort.HIGH;
+                default -> null;
+            });
+        }
+    }
+
+    public OpenAiChatService(@Autowired(required = false) @Nullable OpenAIClient openAiClient,
+                              OpenAiProperties openAiProperties,
+                              ErrorMessagesProperties errorMessages) {
         this.openAiClient = openAiClient;
         this.openAiProperties = openAiProperties;
+        this.errorMessages = errorMessages;
     }
 
     public ChatCompletionResult generateResponse(String userMessage, String emailContext,
-                                                 boolean thinkingEnabled, String thinkingLevel) {
-        ChatCompletionResult fallback = ChatCompletionResult.fromRaw(OPENAI_UNAVAILABLE_MESSAGE);
+                                                 List<ConversationTurn> conversationHistory,
+                                                 boolean thinkingEnabled, String thinkingLevel,
+                                                 boolean jsonOutput) {
         return executeWithFallback(() -> {
             if (openAiClient == null) {
-                return ChatCompletionResult.fromRaw(OPENAI_MISCONFIGURED_MESSAGE);
+                return ChatCompletionResult.fromRaw(errorMessages.getOpenai().getMisconfigured(), jsonOutput);
             }
 
-            ChatCompletionCreateParams.Builder builder = ChatCompletionCreateParams.builder()
+            List<ResponseInputItem> messages = buildEmailAssistantMessages(emailContext, userMessage, conversationHistory, jsonOutput);
+
+            String aiResponse = openAiClient.responses().create(ResponseCreateParams.builder()
                 .model(resolveChatModel())
-                .messages(buildEmailAssistantMessages(emailContext, userMessage))
-                .maxCompletionTokens(8000L);
-            // GPT-5 models reject custom temperature values; rely on OpenAI defaults.
-            // builder.temperature(0.7);
+                .inputOfResponse(messages)
+                .build()).output().stream()
+                .flatMap(item -> item.message().stream())
+                .flatMap(message -> message.content().stream())
+                .flatMap(content -> content.outputText().stream())
+                .map(outputText -> outputText.text())
+                .collect(java.util.stream.Collectors.joining());
 
-            resolveReasoningEffort(thinkingEnabled, thinkingLevel)
-                .ifPresent(builder::reasoningEffort);
-
-            // Add GPT-5 specific parameters
-            String modelName = openAiProperties.getModel();
-            if (modelName != null && modelName.toLowerCase().startsWith("gpt-5")) {
-                logger.debug("Using GPT-5 model with increased completion tokens");
-            }
-
-            ChatCompletionCreateParams params = builder.build();
-
-            ChatCompletion response = openAiClient.chat().completions().create(params);
-
-            String aiResponse = extractChoiceContent(response, OPENAI_UNAVAILABLE_MESSAGE);
-            logger.info("Generated AI response for user query");
-            return ChatCompletionResult.fromRaw(aiResponse);
-        }, fallback, "OpenAI error while generating response");
+            logger.info("Chat completion: input={} output={} tokens",
+                (long)(userMessage != null ? userMessage.split("\\s+").length * 1.25 : 0),
+                (long)(aiResponse != null ? aiResponse.split("\\s+").length * 1.25 : 0));
+            return ChatCompletionResult.fromRaw(aiResponse, jsonOutput);
+        }, ChatCompletionResult.fromRaw(errorMessages.getOpenai().getUnavailable(), jsonOutput), "OpenAI error while generating response");
     }
 
+    /**
+     * Analyzes user intent and classifies it into predefined categories.
+     *
+     * Configuration source of truth: OpenAiProperties.java
+     * Default category: {@link OpenAiProperties.Intent#getDefaultCategory()} - "question"
+     * Max tokens: {@link OpenAiProperties.Intent#getMaxOutputTokens()} - 10
+     */
     public String analyzeIntent(String userMessage) {
         return executeWithFallback(() -> {
-            if (openAiClient == null) {
-                return "question";
-            }
-            ChatCompletionCreateParams.Builder builder = ChatCompletionCreateParams.builder()
+            if (openAiClient == null) return openAiProperties.getIntent().getDefaultCategory();
+
+            String intent = openAiClient.responses().create(ResponseCreateParams.builder()
                 .model(resolveChatModel())
-                .messages(buildIntentAnalysisMessages(userMessage))
-                .maxCompletionTokens(10L);
-            // GPT-5 models reject custom temperature values; rely on OpenAI defaults.
-            // builder.temperature(0.1);
-
-            ChatCompletionCreateParams params = builder.build();
-
-            ChatCompletion response = openAiClient.chat().completions().create(params);
-            String intent = extractChoiceContent(response, "question").trim().toLowerCase();
+                .inputOfResponse(buildIntentAnalysisMessages(userMessage))
+                .maxOutputTokens(openAiProperties.getIntent().getMaxOutputTokens())
+                .build()).output().stream()
+                .flatMap(item -> item.message().stream())
+                .flatMap(message -> message.content().stream())
+                .flatMap(content -> content.outputText().stream())
+                .map(outputText -> outputText.text())
+                .collect(java.util.stream.Collectors.joining())
+                .trim().toLowerCase();
 
             logger.info("Analyzed intent: {}", intent);
-            return intent.isEmpty() ? "question" : intent;
-        }, "question", "OpenAI error while analyzing intent");
+            return intent.isEmpty() ? openAiProperties.getIntent().getDefaultCategory() : intent;
+        }, openAiProperties.getIntent().getDefaultCategory(), "OpenAI error while analyzing intent");
     }
 
     public void streamResponse(String userMessage, String emailContext,
+                               List<ConversationTurn> conversationHistory,
                                boolean thinkingEnabled, String thinkingLevel,
-                               Consumer<String> onChunk, Runnable onComplete, Consumer<Throwable> onError) {
+                               boolean jsonOutput,
+                               Consumer<StreamEvent> onEvent, Runnable onComplete, Consumer<Throwable> onError) {
         if (openAiClient == null) {
-            onError.accept(new IllegalStateException(OPENAI_MISCONFIGURED_MESSAGE));
+            onError.accept(new IllegalStateException(errorMessages.getOpenai().getMisconfigured()));
             return;
         }
 
-        String safeUserMessage = userMessage == null ? "" : userMessage;
-        ResponseCreateParams params = buildStreamingParams(safeUserMessage, emailContext, thinkingEnabled, thinkingLevel);
-        MarkdownStreamAssembler assembler = new MarkdownStreamAssembler();
+        ResponseCreateParams.Builder builder = ResponseCreateParams.builder()
+            .model(resolveChatModel())
+            .inputOfResponse(buildEmailAssistantMessages(emailContext, userMessage, conversationHistory, jsonOutput));
 
+        String modelId = openAiProperties.getModel().getChat();
+        ValidatedThinkingConfig config = ValidatedThinkingConfig.resolve(openAiProperties, modelId, thinkingEnabled, thinkingLevel);
+        if (config.enabled() && config.effort() != null) {
+            builder.reasoning(Reasoning.builder().effort(config.effort()).build());
+            logger.info("Reasoning enabled: {} (provider: {})", config.effort(), openAiProperties.getProviderCapabilities().getType());
+        } else if (thinkingEnabled && !openAiProperties.getProviderCapabilities().supportsReasoning()) {
+            logger.debug("Reasoning requested but provider {} does not support it", openAiProperties.getProviderCapabilities().getType());
+        }
+
+        boolean streamingDebugEnabled = logger.isDebugEnabled() && openAiProperties.isLocalDebugEnabled();
+        MarkdownStreamAssembler assembler = jsonOutput ? null : new MarkdownStreamAssembler(streamingDebugEnabled);
         long startNanos = System.nanoTime();
         final long[] tokenCount = new long[]{0};
-        try (StreamResponse<ResponseStreamEvent> stream = openAiClient.responses().createStreaming(params)) {
-            stream.stream().forEach(event -> {
-                event.error().ifPresent(errorEvent -> {
-                    throw new StreamingAbortedException(normalizeMessage(errorEvent.message()));
-                });
+        final boolean[] failed = {false};
 
-                event.failed().ifPresent(failedEvent -> {
-                    throw new StreamingAbortedException(describeFailedEvent(failedEvent));
-                });
-
-                event.incomplete().ifPresent(incomplete -> {
-                    throw new StreamingAbortedException(describeIncompleteEvent(incomplete));
-                });
-
-                event.outputTextDelta().ifPresent(deltaEvent -> {
-                    // Log GPT-5 reasoning metadata if present
-                    String modelName = openAiProperties.getModel();
-                    if (modelName != null && modelName.toLowerCase().startsWith("gpt-5")) {
-                        // GPT-5 may include reasoning metadata in future SDK versions
-                        logger.trace("GPT-5 delta event received with {} chars", 
-                            deltaEvent.delta() != null ? deltaEvent.delta().length() : 0);
-                    }
-                    
-                    List<String> htmlChunks = assembler.onDelta(deltaEvent.delta());
-                    if (!htmlChunks.isEmpty()) {
-                        for (String chunk : htmlChunks) {
-                            if (chunk != null && !chunk.isBlank()) {
-                                onChunk.accept(chunk);
-                                tokenCount[0] += chunk.length();
+        try {
+            try (StreamResponse<ResponseStreamEvent> streamResponse = openAiClient.responses().createStreaming(builder.build())) {
+                streamResponse.stream().forEach(event -> {
+                    try {
+                        event.outputTextDelta().ifPresent(textDelta -> {
+                            if (jsonOutput) {
+                                emitJsonDelta(textDelta.delta(), onEvent, tokenCount, streamingDebugEnabled);
+                            } else {
+                                emitHtmlDelta(textDelta.delta(), assembler, onEvent, tokenCount, streamingDebugEnabled);
                             }
-                        }
+                        });
+                        emitReasoningEvents(event, onEvent);
+                        event.failed().ifPresent(failedEvent -> {
+                            failed[0] = true;
+                            onEvent.accept(StreamEvent.failed(failedEvent));
+                        });
+                    } catch (Exception processingError) {
+                        logger.warn("Failed to process stream event", processingError);
                     }
                 });
-            });
-
-            assembler.flushRemainder().ifPresent(remainder -> {
-                if (!remainder.isBlank()) {
-                    onChunk.accept(remainder);
-                    tokenCount[0] += remainder.length();
+                if (!jsonOutput && assembler != null) {
+                    assembler.flushRemainder().ifPresent(remainder -> {
+                        if (!remainder.isBlank()) {
+                            onEvent.accept(StreamEvent.renderedHtml(remainder));
+                            tokenCount[0] += remainder.length();
+                        }
+                    });
                 }
-            });
-
-            onComplete.run();
-            long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
-            logger.info("Completed streaming response using OpenAI Responses API: tokensApprox={}, elapsedMs={}", tokenCount[0], elapsedMs);
-        } catch (StreamingAbortedException aborted) {
-            long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
-            logger.warn("OpenAI streaming aborted after {} ms: {}", elapsedMs, aborted.getMessage());
-            onError.accept(new RuntimeException(aborted.getMessage(), aborted));
+            }
+            logger.info("Streaming completed: tokens={} elapsed={}ms", tokenCount[0], (System.nanoTime() - startNanos) / 1_000_000L);
+            if (failed[0]) {
+                onError.accept(new RuntimeException(errorMessages.getOpenai().getUnavailable()));
+            } else {
+                onComplete.run();
+            }
         } catch (Exception e) {
-            long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
-            logger.warn("OpenAI error while streaming after {} ms", elapsedMs, e);
-            onError.accept(new RuntimeException(OPENAI_UNAVAILABLE_MESSAGE, e));
+            logger.error("Streaming failed after {}ms", (System.nanoTime() - startNanos) / 1_000_000L, e);
+            String fallbackMessage = (e.getMessage() != null && !e.getMessage().trim().isEmpty())
+                ? e.getMessage().trim()
+                : errorMessages.getOpenai().getUnavailable();
+            onError.accept(new RuntimeException(fallbackMessage, e));
         }
     }
 
+    public sealed interface StreamEvent permits StreamEvent.RenderedHtml, StreamEvent.RawJson, StreamEvent.Reasoning, StreamEvent.Failed, StreamEvent.RawText {
+        static StreamEvent renderedHtml(String htmlChunk) { return new RenderedHtml(htmlChunk); }
+        static StreamEvent rawJson(String jsonChunk) { return new RawJson(jsonChunk); }
+        static StreamEvent reasoning(ReasoningStreamAdapter.ReasoningEvent event) { return new Reasoning(event); }
+        static StreamEvent failed(ResponseFailedEvent event) { return new Failed(event); }
+        static StreamEvent rawText(String value) { return new RawText(value); }
+        record RenderedHtml(String html) implements StreamEvent {}
+        record RawJson(String value) implements StreamEvent {}
+        record Reasoning(ReasoningStreamAdapter.ReasoningEvent value) implements StreamEvent {}
+        record Failed(ResponseFailedEvent value) implements StreamEvent {}
+        record RawText(String value) implements StreamEvent {}
+    }
+
+    private void emitHtmlDelta(String deltaText, MarkdownStreamAssembler assembler, Consumer<StreamEvent> onEvent, long[] tokenCount, boolean debugEnabled) {
+        if (deltaText == null || deltaText.isEmpty()) return;
+        if (debugEnabled) {
+            logger.debug("Streaming delta ({} chars): {}", deltaText.length(), preview(deltaText));
+        }
+        onEvent.accept(StreamEvent.rawText(deltaText));
+        for (String htmlChunk : assembler.onDelta(deltaText)) {
+            if (htmlChunk != null && !htmlChunk.isBlank()) {
+                if (debugEnabled) {
+                    logger.debug("Emitting HTML chunk ({} chars): {}", htmlChunk.length(), preview(htmlChunk));
+                }
+                onEvent.accept(StreamEvent.renderedHtml(htmlChunk));
+                tokenCount[0] += htmlChunk.length();
+            }
+        }
+    }
+
+    private void emitJsonDelta(String deltaText, Consumer<StreamEvent> onEvent, long[] tokenCount, boolean debugEnabled) {
+        if (deltaText == null || deltaText.isEmpty()) return;
+        if (debugEnabled) {
+            logger.debug("Streaming JSON delta ({} chars): {}", deltaText.length(), preview(deltaText));
+        }
+        onEvent.accept(StreamEvent.rawJson(deltaText));
+        tokenCount[0] += deltaText.length();
+    }
+
+    private void emitReasoningEvents(ResponseStreamEvent event, Consumer<StreamEvent> onEvent) {
+        for (ReasoningStreamAdapter.ReasoningEvent reasoningEvent : ReasoningStreamAdapter.extract(event))
+            onEvent.accept(StreamEvent.reasoning(reasoningEvent));
+    }
+
+    /**
+     * Generates vector embeddings for the given text.
+     *
+     * Configuration source of truth: OpenAiProperties.java
+     * Embedding model: {@link OpenAiProperties.Embedding#getModel()} - "text-embedding-3-small"
+     * 
+     * Note: Not all providers support embeddings. Returns empty array if provider doesn't support it.
+     */
     public float[] generateEmbedding(String text) {
-        if (text == null || text.isBlank()) {
-            logger.debug("Skipping embedding generation for null/empty input");
+        if (text == null || text.isBlank()) return new float[0];
+        
+        // Check if provider supports embeddings
+        if (!openAiProperties.getProviderCapabilities().supportsEmbeddings()) {
+            logger.debug("Provider {} does not support embeddings, returning empty vector",
+                openAiProperties.getProviderCapabilities().getType());
             return new float[0];
         }
+        
         return executeWithFallback(() -> {
-            EmbeddingCreateParams params = EmbeddingCreateParams.builder()
-                .model(EmbeddingModel.TEXT_EMBEDDING_3_SMALL)
-                .input(text)
-                .build();
-
-            CreateEmbeddingResponse response = openAiClient.embeddings().create(params);
-            List<Embedding> data = response.data();
-            if (data.isEmpty()) {
-                return new float[0];
-            }
+            List<Embedding> data = openAiClient.embeddings().create(
+                EmbeddingCreateParams.builder()
+                    .model(EmbeddingModel.of(openAiProperties.getEmbedding().getModel()))
+                    .input(text)
+                    .build()).data();
+            if (data.isEmpty()) return new float[0];
             List<Float> vector = data.get(0).embedding();
             float[] result = new float[vector.size()];
-            for (int i = 0; i < vector.size(); i++) {
-                result[i] = vector.get(i);
-            }
+            for (int i = 0; i < vector.size(); i++) result[i] = vector.get(i);
             return result;
         }, new float[0], "OpenAI error while generating embeddings");
     }
 
-    private ResponsesModel resolveResponseModel() {
-        String configuredModel = openAiProperties.getModel();
-        if (configuredModel != null && !configuredModel.isBlank()) {
-            return ResponsesModel.ofString(configuredModel.trim());
-        }
-        return ResponsesModel.ofChat(ChatModel.CHATGPT_4O_LATEST);
-    }
-
+    /**
+     * Resolves the chat model to use for completion requests.
+     *
+     * Configuration source of truth: OpenAiProperties.java
+     * Chat model: {@link OpenAiProperties.Model#getChat()} - "gpt-4o-mini"
+     */
     private ChatModel resolveChatModel() {
-        String configuredModel = openAiProperties.getModel();
-        if (configuredModel != null && !configuredModel.isBlank()) {
-            return ChatModel.of(configuredModel);
-        }
-        return ChatModel.CHATGPT_4O_LATEST;
+        return ChatModel.of(openAiProperties.getModel().getChat());
     }
 
-    private ResponseCreateParams buildStreamingParams(String userMessage, String emailContext,
-                                                     boolean thinkingEnabled, String thinkingLevel) {
-        String safeContext = emailContext == null || emailContext.isBlank()
-            ? "No relevant emails found."
-            : emailContext;
+    /**
+     * Builds email assistant messages for the OpenAI API.
+     *
+     * Configuration source of truth: OpenAiProperties.java
+     * System prompt: {@link OpenAiProperties.Prompts#getEmailAssistantSystem()}
+     */
+    private List<ResponseInputItem> buildEmailAssistantMessages(String emailContext,
+                                                                String userMessage,
+                                                                List<ConversationTurn> conversationHistory,
+                                                                boolean jsonOutput) {
+        List<ResponseInputItem> messages = new ArrayList<>();
+        int totalTokenEstimate = 0;
 
-        String instructions = "You are an AI assistant that helps users understand and work with their email. " +
-            "Return well-structured Markdown and cite or reference the provided email context when it is relevant.";
+        String systemPrompt = openAiProperties.getPrompts().getEmailAssistantSystem();
+        if (!StringUtils.isBlank(systemPrompt)) {
+            // Inject current timestamps for temporal awareness
+            String timestampedPrompt = systemPrompt
+                .replace("{currentUtcTime}", TemporalUtils.getCurrentUtcFormatted())
+                .replace("{currentPacificTime}", TemporalUtils.getCurrentPacificFormatted());
 
-        String prompt = "Email context:\n" + safeContext + "\n\nUser request:\n" + userMessage;
-
-        ResponseCreateParams.Builder builder = ResponseCreateParams.builder()
-            .model(resolveResponseModel())
-            .instructions(instructions)
-            .input(prompt)
-            // Increase output budget to allow richer responses
-            .maxOutputTokens(8000L);
-        // GPT-5 models reject custom temperature values; rely on OpenAI defaults.
-        // builder.temperature(0.7);
-
-        // Add GPT-5 specific parameters if using gpt-5 models
-        String modelName = openAiProperties.getModel();
-        if (modelName != null && modelName.toLowerCase().startsWith("gpt-5")) {
-            // builder.reasoningEffort(ReasoningEffort.MINIMAL);
-            logger.debug("Using GPT-5 model: {} with increased token limit (8000)", modelName);
+            String sanitizedSystem = StringUtils.sanitize(timestampedPrompt);
+            messages.add(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
+                .role(EasyInputMessage.Role.SYSTEM)
+                .content(sanitizedSystem)
+                .build()));
+            totalTokenEstimate += estimateTokens(sanitizedSystem);
         }
 
-        resolveReasoningEffort(thinkingEnabled, thinkingLevel)
-            .ifPresent(effort -> builder.reasoning(Reasoning.builder().effort(effort).build()));
-
-        return builder.build();
-    }
-
-    private Optional<ReasoningEffort> resolveReasoningEffort(boolean thinkingEnabled, String thinkingLevel) {
-        if (!thinkingEnabled) {
-            return Optional.empty();
+        if (jsonOutput) {
+            String jsonOutputDirective = """
+                JSON output mode:
+                - Apply every rule above without modification while you craft the JSON.
+                - Answer the user's latest request by returning a single JSON object that reflects your best-estimate schema for their question using the provided email context and conversation history.
+                - Include fields, nested objects, or arrays only when they help communicate the email-backed facts; prefer null or empty values instead of inventing data.
+                - Do not wrap the JSON in markdown fences or add commentary before or after the object.
+                """;
+            String sanitizedDirective = StringUtils.sanitize(jsonOutputDirective);
+            messages.add(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
+                .role(EasyInputMessage.Role.SYSTEM)
+                .content(sanitizedDirective)
+                .build()));
+            totalTokenEstimate += estimateTokens(sanitizedDirective);
         }
 
-        String normalized = thinkingLevel == null ? "" : thinkingLevel.trim().toLowerCase(Locale.ROOT);
-        if (normalized.isEmpty()) {
-            return Optional.of(ReasoningEffort.MINIMAL);
+        String safeContext = StringUtils.sanitize(emailContext);
+        if (!StringUtils.isBlank(safeContext)) {
+            String contextMessage = "Email Context:\n" + safeContext;
+            messages.add(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
+                .role(EasyInputMessage.Role.SYSTEM)
+                .content(contextMessage)
+                .build()));
+            totalTokenEstimate += estimateTokens(contextMessage);
         }
 
-        ReasoningEffort effort = switch (normalized) {
-            case "minimal" -> ReasoningEffort.MINIMAL;
-            case "low" -> ReasoningEffort.LOW;
-            case "medium" -> ReasoningEffort.MEDIUM;
-            case "high", "heavy" -> ReasoningEffort.HIGH;
-            default -> null;
-        };
-
-        if (effort == null) {
-            logger.warn("Unsupported thinking level '{}'; falling back to disabled reasoning", thinkingLevel);
-            return Optional.empty();
+        if (conversationHistory != null && !conversationHistory.isEmpty()) {
+            for (ConversationTurn turn : conversationHistory) {
+                if (turn == null || StringUtils.isBlank(turn.content())) continue;
+                String sanitized = StringUtils.sanitize(turn.content());
+                if (StringUtils.isBlank(sanitized)) continue;
+                messages.add(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
+                    .role(turn.role())
+                    .content(sanitized)
+                    .build()));
+                totalTokenEstimate += estimateTokens(sanitized);
+            }
         }
 
-        return Optional.of(effort);
-    }
+        String prompt = userMessage == null ? "" : userMessage;
+        if (jsonOutput) {
+            String normalized = prompt.toLowerCase(Locale.ROOT);
+            if (!normalized.contains("respond strictly as a json object")
+                && !normalized.contains("respond with a single valid json object")) {
+                prompt = prompt.isBlank()
+                    ? "Respond strictly as a JSON object. Do not include markdown fences or explanatory text."
+                    : prompt + "\n\nRespond strictly as a JSON object. Do not include markdown fences or explanatory text.";
+            }
+        }
 
-    private List<ChatCompletionMessageParam> buildEmailAssistantMessages(String emailContext, String userMessage) {
-        String safeContext = emailContext == null ? "" : emailContext;
-        String systemMessage = "You are an AI assistant that helps users understand and work with their email. " +
-            "Use the following email context to answer the user's question: " + safeContext;
-        return buildMessages(systemMessage, userMessage);
-    }
+        String sanitizedPrompt = StringUtils.sanitize(prompt);
+        messages.add(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
+            .role(EasyInputMessage.Role.USER)
+            .content(sanitizedPrompt)
+            .build()));
+        totalTokenEstimate += estimateTokens(sanitizedPrompt);
 
-    private List<ChatCompletionMessageParam> buildIntentAnalysisMessages(String userMessage) {
-        String systemMessage = "Analyze the user's intent and classify it into one of these categories: " +
-            "search, compose, summarize, analyze, question, or other. Respond with just the category name.";
-        return buildMessages(systemMessage, userMessage);
-    }
+        logger.debug("Building prompt: total=~{}tok, contextChars={}, priorTurns={}",
+            totalTokenEstimate, safeContext.length(),
+            conversationHistory != null ? conversationHistory.size() : 0);
 
-    private List<ChatCompletionMessageParam> buildMessages(String systemMessage, String userMessage) {
-        List<ChatCompletionMessageParam> messages = new ArrayList<>(2);
-        messages.add(ChatCompletionMessageParam.ofSystem(
-            ChatCompletionSystemMessageParam.builder().content(systemMessage).build()
-        ));
-        messages.add(ChatCompletionMessageParam.ofUser(
-            ChatCompletionUserMessageParam.builder().content(userMessage).build()
-        ));
+        if (totalTokenEstimate > 100000) {
+            logger.warn("Large prompt detected: ~{}tok may approach model limits", totalTokenEstimate);
+        }
+
         return messages;
     }
 
-    private String extractChoiceContent(ChatCompletion response, String defaultValue) {
-        List<ChatCompletion.Choice> choices = response.choices();
-        if (choices == null || choices.isEmpty()) {
-            logger.warn("OpenAI response returned no choices");
-            return defaultValue;
-        }
-        return choices.get(0).message().content().orElse(defaultValue);
-    }
-
-    private String describeFailedEvent(ResponseFailedEvent failedEvent) {
-        if (failedEvent == null || failedEvent.response() == null) {
-            return OPENAI_UNAVAILABLE_MESSAGE;
-        }
-
-        String message = failedEvent.response().error()
-            .map(this::formatResponseError)
-            .orElse(null);
-
-        if (message == null) {
-            message = failedEvent.response().status()
-                .map(ResponseStatus::asString)
-                .map(status -> "OpenAI streaming failed (status: " + status.toLowerCase(Locale.ROOT) + ")")
-                .orElse(null);
-        }
-
-        if (message == null) {
-            String responseId = failedEvent.response().id();
-            if (responseId != null && !responseId.isBlank()) {
-                message = "OpenAI streaming failed (response id: " + responseId + ")";
-            }
-        }
-
-        return normalizeMessage(message);
-    }
-
-    private String describeIncompleteEvent(ResponseIncompleteEvent incompleteEvent) {
-        if (incompleteEvent == null || incompleteEvent.response() == null) {
-            return OPENAI_UNAVAILABLE_MESSAGE;
-        }
-
-        String reason = incompleteEvent.response().incompleteDetails()
-            .flatMap(details -> details.reason())
-            .map(detailReason -> normalize(detailReason.asString()))
-            .orElse(null);
-
-        if (reason != null) {
-            return "OpenAI ended the response early (reason: " + reason + ")";
-        }
-
-        String statusMessage = incompleteEvent.response().status()
-            .map(ResponseStatus::asString)
-            .map(status -> "OpenAI ended the response early (status: " + status.toLowerCase(Locale.ROOT) + ")")
-            .orElse(null);
-
-        return normalizeMessage(statusMessage);
-    }
-
-    private String formatResponseError(ResponseError error) {
-        if (error == null) {
-            return null;
-        }
-
-        String message = normalize(error.message());
-        ResponseError.Code code = error.code();
-        if (code != null) {
-            String codeValue = normalize(code.asString());
-            if (codeValue != null) {
-                if (message == null) {
-                    message = "OpenAI error (code: " + codeValue + ")";
-                } else if (!message.toLowerCase(Locale.ROOT).contains(codeValue.toLowerCase(Locale.ROOT))) {
-                    message = message + " (code: " + codeValue + ")";
-                }
-            }
-        }
-        return message;
-    }
-
-    private static String normalizeMessage(String message) {
-        String normalized = normalize(message);
-        return normalized != null ? normalized : OPENAI_UNAVAILABLE_MESSAGE;
-    }
-
-    private static String normalize(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
+    /**
+     * Builds intent analysis messages for the OpenAI API.
+     *
+     * Configuration source of truth: OpenAiProperties.java
+     * System prompt: {@link OpenAiProperties.Prompts#getIntentAnalysisSystem()}
+     * Categories: {@link OpenAiProperties.Intent#getCategories()}
+     */
+    private List<ResponseInputItem> buildIntentAnalysisMessages(String userMessage) {
+        String systemMessage = openAiProperties.getPrompts().getIntentAnalysisSystem()
+            .replace("{categories}", openAiProperties.getIntent().getCategories());
+        return List.of(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
+            .role(EasyInputMessage.Role.USER)
+            .content(systemMessage + "\n\n" + userMessage)
+            .build()));
     }
 
     /**
@@ -426,65 +449,83 @@ public class OpenAiChatService {
         }
     }
 
-    private static final class StreamingAbortedException extends RuntimeException {
-        StreamingAbortedException(String message) {
-            super(message == null || message.isBlank() ? OPENAI_UNAVAILABLE_MESSAGE : message);
+    private int estimateTokens(String text) {
+        if (text == null || text.isBlank()) {
+            return 0;
         }
+        return (int) (text.split("\\s+").length * 1.3);
     }
 
+
     static final class MarkdownStreamAssembler {
+        private final boolean debugEnabled;
         private final StringBuilder buffer = new StringBuilder();
         private final StringBuilder lineBuffer = new StringBuilder();
         private boolean insideCodeFence = false;
         private char fenceDelimiter = '`';
+        private static final int CHUNK_THRESHOLD = 1536;
+
+        MarkdownStreamAssembler(boolean debugEnabled) {
+            this.debugEnabled = debugEnabled;
+        }
 
         List<String> onDelta(String delta) {
-            if (delta == null || delta.isEmpty()) {
-                return Collections.emptyList();
-            }
+            if (delta == null || delta.isEmpty()) return Collections.emptyList();
 
             List<String> flushed = null;
             for (int i = 0; i < delta.length(); i++) {
                 char ch = delta.charAt(i);
-                if (ch == '\r') {
-                    continue;
-                }
+                if (ch == '\r') continue;
 
                 buffer.append(ch);
                 if (ch == '\n') {
                     String trimmedLine = lineBuffer.toString().trim();
                     updateFenceState(trimmedLine);
-                    if (!insideCodeFence && trimmedLine.isEmpty()) {
-                        String chunk = flushBuffer();
-                        if (chunk != null) {
-                            if (flushed == null) {
-                                flushed = new ArrayList<>();
-                            }
-                            flushed.add(chunk);
+                    if (!insideCodeFence) {
+                        if (trimmedLine.isEmpty()) {
+                            flushed = addChunk(flushed, flushBuffer());
+                        } else {
+                            flushed = addChunk(flushed, flushToParagraphBreakIfNeeded());
                         }
                     }
                     lineBuffer.setLength(0);
                 } else {
                     lineBuffer.append(ch);
+                    if (!insideCodeFence) {
+                        flushed = addChunk(flushed, flushToParagraphBreakIfNeeded());
+                    }
                 }
             }
-
+            if (debugEnabled && logger.isDebugEnabled() && flushed != null) {
+                for (String chunk : flushed) {
+                    logger.debug("MarkdownAssembler flush chunk ({} chars): {}", chunk != null ? chunk.length() : 0, preview(chunk));
+                }
+            }
             return flushed == null ? Collections.emptyList() : flushed;
         }
 
+        private List<String> addChunk(List<String> list, String chunk) {
+            if (chunk == null) return list;
+            if (list == null) list = new ArrayList<>();
+            list.add(chunk);
+            return list;
+        }
+
         Optional<String> flushRemainder() {
-            if (buffer.isEmpty()) {
-                return Optional.empty();
-            }
-            String chunk = sanitizeBuffer();
+            if (buffer.isEmpty()) return Optional.empty();
+            String markdown = buffer.toString();
+            buffer.setLength(0);
+            resetLineBuffer();
+            String chunk = renderMarkdown(markdown);
             insideCodeFence = false;
+            if (debugEnabled && logger.isDebugEnabled()) {
+                logger.debug("MarkdownAssembler flush remainder ({} chars): {}", chunk != null ? chunk.length() : 0, preview(chunk));
+            }
             return chunk == null || chunk.isBlank() ? Optional.empty() : Optional.of(chunk);
         }
 
         private void updateFenceState(String trimmedLine) {
-            if (trimmedLine.isEmpty()) {
-                return;
-            }
+            if (trimmedLine.isEmpty()) return;
             if (trimmedLine.startsWith("```") || trimmedLine.startsWith("~~~")) {
                 char delimiter = trimmedLine.charAt(0);
                 if (!insideCodeFence) {
@@ -497,21 +538,53 @@ public class OpenAiChatService {
         }
 
         private String flushBuffer() {
-            if (buffer.isEmpty()) {
-                return null;
-            }
-            return sanitizeBuffer();
-        }
-
-        private String sanitizeBuffer() {
+            if (buffer.isEmpty()) return null;
             String markdown = buffer.toString();
             buffer.setLength(0);
-            lineBuffer.setLength(0);
-            if (markdown.isBlank()) {
-                return null;
-            }
+            String chunk = renderMarkdown(markdown);
+            resetLineBuffer();
+            return chunk;
+        }
+
+        private String flushToParagraphBreakIfNeeded() {
+            if (buffer.length() < CHUNK_THRESHOLD) return null;
+            int boundary = lastParagraphBoundary();
+            if (boundary < 0) return null;
+            String markdown = buffer.substring(0, boundary);
+            buffer.delete(0, boundary);
+            resetLineBuffer();
+            return renderMarkdown(markdown);
+        }
+
+        private int lastParagraphBoundary() {
+            int idx = buffer.lastIndexOf("\n\n");
+            if (idx < 0) return -1;
+            // include blank line in the flushed segment
+            return idx + 2;
+        }
+
+        private String renderMarkdown(String markdown) {
+            if (markdown == null || markdown.isBlank()) return null;
             String rendered = HtmlConverter.markdownToSafeHtml(markdown);
             return rendered == null || rendered.isBlank() ? null : rendered;
         }
+
+        private void resetLineBuffer() {
+            lineBuffer.setLength(0);
+            if (!buffer.isEmpty()) {
+                int lastNewline = buffer.lastIndexOf("\n");
+                if (lastNewline == -1) {
+                    lineBuffer.append(buffer);
+                } else if (lastNewline + 1 < buffer.length()) {
+                    lineBuffer.append(buffer.substring(lastNewline + 1));
+                }
+            }
+        }
+    }
+
+    private static String preview(String value) {
+        if (value == null) return "<null>";
+        String trimmed = value.replace("\n", "\\n");
+        return trimmed.length() <= 120 ? trimmed : trimmed.substring(0, 117) + "...";
     }
 }

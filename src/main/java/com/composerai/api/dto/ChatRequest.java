@@ -1,78 +1,62 @@
 package com.composerai.api.dto;
 
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
+import com.composerai.api.util.StringUtils;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class ChatRequest {
-    
+
     @NotBlank(message = "Message cannot be blank")
     @Size(max = 4000, message = "Message cannot exceed 4000 characters")
     private String message;
-    
+
     private String conversationId;
-    
+
+    @Min(value = 1, message = "maxResults must be at least 1")
+    @Max(value = 20, message = "maxResults cannot exceed 20")
     private int maxResults = 5;
 
     // Optional: raw email context provided by the client (e.g., parsed markdown)
+    @Size(max = 20000, message = "emailContext cannot exceed 20000 characters")
     private String emailContext;
 
-    // Optional: server-side reasoning configuration
-    private Boolean thinkingEnabled = Boolean.FALSE;
+    @Size(max = 200, message = "contextId cannot exceed 200 characters")
+    private String contextId;
+
+    // Optional: Enable extended thinking/reasoning mode (for reasoning models like o1, o4)
+    private boolean thinkingEnabled = false;
+
+    // Optional: Thinking level/reasoning effort (minimal, low, medium, high)
+    @Pattern(regexp = "^(minimal|low|medium|high)$", flags = {Pattern.Flag.CASE_INSENSITIVE},
+             message = "thinkingLevel must be one of: minimal, low, medium, high")
     private String thinkingLevel;
 
-    public ChatRequest() {}
+    // Optional: Request JSON output instead of rendered HTML
+    private boolean jsonOutput = false;
 
+    // Custom constructor for common test case: message, conversationId, maxResults
     public ChatRequest(String message, String conversationId, int maxResults) {
         this.message = message;
         this.conversationId = conversationId;
         this.maxResults = maxResults;
     }
 
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    public String getConversationId() {
-        return conversationId;
-    }
-
-    public void setConversationId(String conversationId) {
-        this.conversationId = conversationId;
-    }
-
-    public int getMaxResults() {
-        return maxResults;
-    }
-
-    public void setMaxResults(int maxResults) {
-        this.maxResults = maxResults;
-    }
-
-    public String getEmailContext() {
-        return emailContext;
-    }
-
-    public void setEmailContext(String emailContext) {
-        this.emailContext = emailContext;
-    }
-
-    public boolean isThinkingEnabled() {
-        return Boolean.TRUE.equals(thinkingEnabled);
-    }
-
-    public void setThinkingEnabled(Boolean thinkingEnabled) {
-        this.thinkingEnabled = thinkingEnabled;
-    }
-
-    public String getThinkingLevel() {
-        return thinkingLevel;
-    }
-
-    public void setThinkingLevel(String thinkingLevel) {
-        this.thinkingLevel = thinkingLevel;
+    @AssertTrue(message = "contextId is required when emailContext is provided")
+    public boolean isContextSubmissionValid() {
+        if (StringUtils.isBlank(emailContext)) {
+            return true;
+        }
+        return !StringUtils.isBlank(contextId);
     }
 }

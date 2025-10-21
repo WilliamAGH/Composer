@@ -1,7 +1,11 @@
 {
-  "java.project.sourcePaths": ["src/main/java"],
+  "java.project.sourcePaths": [
+    "src/main/java"
+  ],
   "java.project.outputPath": "target/classes",
-  "java.project.resourcePaths": ["src/main/resources"],
+  "java.project.resourcePaths": [
+    "src/main/resources"
+  ],
   "java.configuration.updateBuildConfiguration": "automatic",
   "java.compile.nullAnalysis.mode": "disabled",
   "java.import.maven.enabled": true,
@@ -33,5 +37,23 @@
     "MD001": false,
     "MD003": false,
     "MD026": false
+  },
+  "webhint.disabledHints": [
+    "meta-viewport",
+    "meta-charset-utf-8",
+    "no-inline-styles"
+  ],
+  "axe-linter.disabledRules": [
+    "document-title"
+  ],
+  "html.customData": [
+    ".vscode/thymeleaf.html-data.json"
+  ],
+  "htmlhint.options": {
+    "attr-lowercase": [
+      "viewBox",
+      "preserveAspectRatio",
+      "xlink:href"
+    ]
   }
 }

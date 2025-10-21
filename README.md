@@ -46,8 +46,8 @@ Precedence: environment variables > `.env.local` > `.env` > `.env.local.properti
 server.port=${PORT:8080}
 openai.api.key=${OPENAI_API_KEY:your-openai-api-key}
 openai.api.base-url=${OPENAI_API_BASE_URL:https://api.openai.com/v1}
-# default to 4o latest; override with OPENAI_MODEL if needed
-openai.model=${OPENAI_MODEL:chatgpt-4o-latest}
+# default OpenAI model; override with OPENAI_MODEL if needed
+openai.model.chat=${OPENAI_MODEL:gpt-4o-mini}
 qdrant.enabled=${QDRANT_ENABLED:false}
 qdrant.host=${QDRANT_HOST:localhost}
 qdrant.port=${QDRANT_PORT:6333}
@@ -61,7 +61,7 @@ Example `.env` (or `.env.properties`) for local use (do not commit secrets):
 ```properties
 OPENAI_API_KEY=sk-...redacted...
 OPENAI_API_BASE_URL=https://api.openai.com/v1
-OPENAI_MODEL=chatgpt-4o-latest
+OPENAI_MODEL=gpt-4o-mini
 QDRANT_ENABLED=true
 QDRANT_HOST=cluster-abc.us-east-1-0.aws.cloud.qdrant.io
 QDRANT_PORT=6334
@@ -80,6 +80,10 @@ If you rely on a raw `.env` file, the application will load the key during start
 The app attaches the API key to gRPC requests when supported by the Qdrant Java client version; when not supported, calls are still gated by `qdrant.enabled` to avoid failures.
 
 `application-local.properties` enables Spring DevTools restart/live reload. Production profile disables HSTS headers through `app.hsts.enabled=false` for reverse-proxy compatibility.
+
+### Using alternative OpenAI-compatible providers
+
+To use OpenRouter, Groq, LM Studio, or other providers, set `OPENAI_API_BASE_URL`, `OPENAI_API_KEY`, and `OPENAI_MODEL`. Provider capabilities are auto-detected from the base URL.
 
 ## Local Development
 
@@ -101,6 +105,7 @@ Helpful Makefile targets:
 - `make test` – Run the full Maven test suite (override with `MAVEN_TEST_FLAGS="-DskipITs"` etc.)
 - `make docker-build` – Build `composerai-api:local`
 - `make docker-run-local` – Run container with local profile variables
+- `make deps-refresh` – Purge cached OpenAI SDK artifacts and rebuild to pull fresh dependencies
 
 ## Docker Usage
 
@@ -128,9 +133,9 @@ Each workspace follows the house design language: layered glass cards over soft 
 | ------ | ---- | ----------- |
 | `GET` | `/api/health` | Service heartbeat with timestamp |
 | `GET` | `/api/chat/health` | Chat-specific heartbeat |
-| `POST` | `/api/chat` | Main chat endpoint accepting message, optional conversation ID, and `maxResults` |
+| `POST` | `/api/chat` | Main chat endpoint accepting message, optional conversation ID, `maxResults`, and a `contextId` referencing normalized email content |
 | `POST` | `/api/chat/stream` | SSE stream of incremental tokens for live responses |
-| `POST` | `/api/parse-email` | Multipart upload for `.eml`/`.txt` files that streams them through the normalization pipeline |
+| `POST` | `/api/parse-email` | Multipart upload for `.eml`/`.txt` files that streams them through the normalization pipeline and returns a `contextId` for subsequent chat calls |
 
 ### Example Chat Request
 
@@ -141,105 +146,34 @@ Content-Type: application/json
 {
   "message": "Summarize updates from my hiring emails",
   "conversationId": "thread-123",
-  "maxResults": 5
+  "maxResults": 5,
+  "contextId": "7c2f0a22-88d2-4bec-aad4-1f81f9b6f5af",
+  "emailContext": "(optional) sanitized preview returned by /api/parse-email"
 }
+
+`contextId` must originate from `/api/parse-email`; if it is omitted or invalid, the server drops any supplied `emailContext` string and proceeds with vector-search context only. This guarantees that only the normalized pipeline output can reach downstream LLM calls.
 ```
 
 ### Streaming Chat (SSE)
 
-Request is identical to `/api/chat`, but POST to `/api/chat/stream`. The response is `text/event-stream` with tokens emitted as SSE `data:` frames.
+Request is identical to `/api/chat`, but POST to `/api/chat/stream`. The response is `text/event-stream` with typed events.
 
-```bash
-curl -N -X POST \
-  -H 'Content-Type: application/json' \
-  -d '{"message":"Summarize updates from my hiring emails","maxResults":5}' \
-  http://localhost:8080/api/chat/stream
-```
-
-Implementation details:
-
-- Uses official OpenAI Java SDK (`com.openai:openai-java`, see `pom.xml` for version) streaming API (`createStreaming`) for Chat Completions on `chatgpt-4o-latest`.
-- Server emits each token as an SSE event. Close when complete.
-
-### Email Parsing Response
-
-Successful responses include `parsedText`, file metadata, and a status marker. `.msg` files currently return HTTP 415 with a descriptive error.
-
-## CLI Email Conversion
-
-`HtmlToText` can be run directly for batch conversions:
-
-```bash
-# Package once
-target/composerai-api-0.0.1-SNAPSHOT.jar  # produced via mvn package
-
-# Convert to Markdown via Maven exec
-dev_args="--input-file data/eml/sample.eml --format markdown --urls stripAll --output-dir data/markdown"
-mvn -q -DskipTests exec:java \
-  -Dexec.mainClass=com.composerai.api.service.HtmlToText \
-  -Dexec.args="$dev_args"
-
-# Convert to plain text via fat JAR loader
-java -Dloader.main=com.composerai.api.service.HtmlToText \
-  -cp target/composerai-api-0.0.1-SNAPSHOT.jar \
-  org.springframework.boot.loader.PropertiesLauncher \
-  -- --input-file "data/eml/sample.eml" --format plain --output-dir "data/plain"
-```
-
-Key arguments:
-
-- `--input-file <path>` (required)
-- `--input-type eml|html` (auto-detected by extension)
-- `--format plain|markdown` (required)
-- `--urls keep|stripAll|cleanOnly` (defaults to `keep`)
-- `--metadata true|false` (defaults to `true`)
-- `--json true|false` (defaults to `false`)
-
-## Project Structure
+Example SSE response:
 
 ```text
-src/main/java/com/composerai/api/
-├── ComposerAiApiApplication.java
-├── config/
-│   ├── AppProperties.java             # HSTS toggle wiring
-│   ├── ClientConfiguration.java       # OpenAI and Qdrant clients
-│   ├── OpenAiProperties.java          # OpenAI configuration binding
-│   ├── QdrantProperties.java          # Qdrant configuration binding
-│   └── SecurityHeadersConfig.java     # Conditional HSTS filter
-├── controller/
-│   ├── ChatController.java            # REST endpoints for chat
-│   ├── EmailController.java           # Email upload & parsing
-│   ├── SystemController.java          # Service health
-│   └── WebViewController.java         # Static Thymeleaf views
-├── dto/                               # Chat request/response models
-├── service/
-│   ├── ChatService.java               # Chat orchestration
-│   ├── OpenAiChatService.java         # OpenAI integration (official SDK + embeddings)
-│   ├── VectorSearchService.java       # Qdrant search stub
-│   ├── HtmlToText.java                # CLI entry point
-│   └── email/                         # Email extraction & normalization
-└── resources/
-    ├── templates/                     # Thymeleaf pages
-    ├── static/                        # Shared CSS, icons, manifest
-    └── application-*.properties       # Profile configuration
+event: rendered_html
+data: {"html":"<p>Hello</p>"}
+
+event: rendered_html
+data: {"html":"<p>, how can I help you today?</p>"}
+
+event: done
+data: {}
 ```
 
-## Implementation Notes
+Example curl command:
 
-- Vector payload extraction from Qdrant is still a placeholder; map real subject/snippet metadata from point payloads.
-- Embeddings now use OpenAI's Embeddings API (model configurable; defaults to `text-embedding-3-small`). Ensure Qdrant vector size matches.
-- `ChatService` currently emits UUIDs when a conversation ID is not supplied.
-- The email parser limits uploads to 10 MB and deletes temp files after processing.
-- Security headers only clear existing HSTS when disabled—configure proxies accordingly.
-
-## Roadmap Considerations
-
-1. Implement real embedding generation via OpenAI or Azure equivalents.
-2. Map Qdrant payloads to `EmailContext` with real subject/snippet data.
-3. Add persistence for conversation history and message threading.
-4. Harden error handling, authentication, and observability.
-5. Extend the email parsing UI to support `.msg` conversion once the pipeline is ready.
-
-## License
-
-Internal project. No explicit license provided.
+```bash
+curl -N -H "Accept: text/event-stream" -H "Content-Type: application/json" \
+     -d '{"message":"hi","contextId":"test-123"}' http://localhost:8080/api/chat/stream
+```

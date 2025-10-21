@@ -3,8 +3,7 @@ package com.composerai.api.exception;
 import com.composerai.api.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -14,6 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 
@@ -22,10 +22,10 @@ import java.util.List;
  * Provides centralized, DRY error handling with consistent response format.
  * Logs all exceptions with full stack traces for server-side debugging.
  */
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /**
      * Handle validation errors from @Valid annotations.
@@ -35,7 +35,7 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException ex,
             HttpServletRequest request) {
 
-        logger.warn("Validation failed for request to {}", request.getRequestURI(), ex);
+        log.debug("Validation failed for request to {} - {}", request.getRequestURI(), ex.getMessage());
 
         List<ErrorResponse.ValidationError> validationErrors = ex.getBindingResult()
             .getFieldErrors()
@@ -66,7 +66,7 @@ public class GlobalExceptionHandler {
             ConstraintViolationException ex,
             HttpServletRequest request) {
 
-        logger.warn("Constraint violation for request to {}", request.getRequestURI(), ex);
+        log.debug("Constraint violation for request to {} - {}", request.getRequestURI(), ex.getMessage());
 
         List<ErrorResponse.ValidationError> validationErrors = ex.getConstraintViolations()
             .stream()
@@ -96,7 +96,7 @@ public class GlobalExceptionHandler {
             HttpMessageNotReadableException ex,
             HttpServletRequest request) {
 
-        logger.warn("Malformed request body for {}", request.getRequestURI(), ex);
+        log.debug("Malformed request body for {} - {}", request.getRequestURI(), ex.getMessage());
 
         ErrorResponse errorResponse = new ErrorResponse(
             "malformed_request",
@@ -116,8 +116,8 @@ public class GlobalExceptionHandler {
             MethodArgumentTypeMismatchException ex,
             HttpServletRequest request) {
 
-        logger.warn("Type mismatch for parameter '{}' in request to {}",
-            ex.getName(), request.getRequestURI(), ex);
+        log.debug("Type mismatch for parameter '{}' in request to {} - {}",
+            ex.getName(), request.getRequestURI(), ex.getMessage());
 
         String message = String.format(
             "Parameter '%s' must be of type %s",
@@ -143,7 +143,7 @@ public class GlobalExceptionHandler {
             MaxUploadSizeExceededException ex,
             HttpServletRequest request) {
 
-        logger.warn("File upload size exceeded for {}", request.getRequestURI(), ex);
+        log.debug("File upload size exceeded for {}", request.getRequestURI());
 
         String message = "File size exceeds maximum allowed limit";
         long maxUploadSize = ex.getMaxUploadSize();
@@ -169,11 +169,36 @@ public class GlobalExceptionHandler {
             NoHandlerFoundException ex,
             HttpServletRequest request) {
 
-        logger.warn("No handler found for {} {}", ex.getHttpMethod(), ex.getRequestURL());
+        log.debug("No handler found for {} {}", ex.getHttpMethod(), ex.getRequestURL());
 
         ErrorResponse errorResponse = new ErrorResponse(
             "not_found",
             String.format("No endpoint found for %s %s", ex.getHttpMethod(), ex.getRequestURL()),
+            HttpStatus.NOT_FOUND.value(),
+            request.getRequestURI()
+        );
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    /**
+     * Handle static resource lookup failures. Only emit JSON for API requests; otherwise let the
+     * default resource handling respond (prevents browsers requesting favicons from triggering
+     * JSON serialization errors).
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleResourceNotFound(
+            NoResourceFoundException ex,
+            HttpServletRequest request) throws NoResourceFoundException {
+
+        if (!isApiRequest(request)) {
+            // Non-API static asset – allow container to generate the usual 404 without JSON body.
+            throw ex;
+        }
+
+        ErrorResponse errorResponse = new ErrorResponse(
+            "not_found",
+            "Requested resource was not found",
             HttpStatus.NOT_FOUND.value(),
             request.getRequestURI()
         );
@@ -189,7 +214,7 @@ public class GlobalExceptionHandler {
             IllegalArgumentException ex,
             HttpServletRequest request) {
 
-        logger.warn("Illegal argument for request to {}", request.getRequestURI(), ex);
+        log.debug("Illegal argument for request to {} - {}", request.getRequestURI(), ex.getMessage());
 
         ErrorResponse errorResponse = new ErrorResponse(
             "invalid_argument",
@@ -209,7 +234,7 @@ public class GlobalExceptionHandler {
             IllegalStateException ex,
             HttpServletRequest request) {
 
-        logger.error("Illegal state encountered for request to {}", request.getRequestURI(), ex);
+        log.warn("Illegal state encountered for request to {}", request.getRequestURI(), ex);
 
         ErrorResponse errorResponse = new ErrorResponse(
             "server_error",
@@ -229,7 +254,7 @@ public class GlobalExceptionHandler {
             UnsupportedOperationException ex,
             HttpServletRequest request) {
 
-        logger.warn("Unsupported operation for request to {}", request.getRequestURI(), ex);
+        log.debug("Unsupported operation for request to {} - {}", request.getRequestURI(), ex.getMessage());
 
         ErrorResponse errorResponse = new ErrorResponse(
             "unsupported_operation",
@@ -244,23 +269,71 @@ public class GlobalExceptionHandler {
     /**
      * Catch-all handler for any unhandled exceptions.
      * Logs full stack trace but returns safe generic message to client.
+     * 
+     * IMPORTANT: Silently ignores browser diagnostic requests (Chrome DevTools, Firefox, etc.)
+     * to prevent log pollution. These requests are normal browser behavior and should not
+     * generate error traces in production logs.
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(
             Exception ex,
-            HttpServletRequest request) {
+            HttpServletRequest request) throws Exception {
+
+        String requestUri = request.getRequestURI();
+
+        // Silently ignore browser diagnostic/devtools requests to prevent log pollution
+        if (isBrowserDiagnosticRequest(requestUri)) {
+            ErrorResponse errorResponse = new ErrorResponse(
+                "not_found",
+                "Resource not found",
+                HttpStatus.NOT_FOUND.value(),
+                requestUri
+            );
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        }
+
+        if (!isApiRequest(request)) {
+            // Allow non-API requests (e.g., static assets) to bubble up to the default handlers.
+            throw ex;
+        }
 
         // Log full exception with stack trace for debugging
-        logger.error("Unhandled exception for request to {}", request.getRequestURI(), ex);
+        log.error("Unhandled exception for request to {}", requestUri, ex);
 
         // Return generic error to client (don't leak internal details)
         ErrorResponse errorResponse = new ErrorResponse(
             "internal_error",
             "An unexpected error occurred while processing your request",
             HttpStatus.INTERNAL_SERVER_ERROR.value(),
-            request.getRequestURI()
+            requestUri
         );
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+    }
+
+    /**
+     * Check if a request URI is a known browser diagnostic request.
+     * These are automated requests from browsers' DevTools, extensions, or built-in features.
+     * 
+     * @param uri The request URI to check
+     * @return true if this is a known browser diagnostic request that should be silently ignored
+     */
+    private boolean isBrowserDiagnosticRequest(String uri) {
+        return uri != null && (
+            // Chrome DevTools configuration requests
+            uri.contains("/.well-known/appspecific/") ||
+            uri.contains("/com.chrome.devtools") ||
+            // Firefox devtools
+            uri.contains("/.well-known/firefox/") ||
+            // Common browser diagnostic endpoints
+            uri.endsWith(".map") ||
+            uri.contains("/sourcemap") ||
+            uri.contains("/__webpack_hmr")
+        );
+    }
+
+    private boolean isApiRequest(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        return uri != null && uri.startsWith("/api/");
     }
 }

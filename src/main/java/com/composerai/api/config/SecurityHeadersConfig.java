@@ -4,20 +4,19 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
+@Slf4j
 @Configuration
 public class SecurityHeadersConfig {
 
-    private static final Logger logger = LoggerFactory.getLogger(SecurityHeadersConfig.class);
 
     @Bean
     public FilterRegistrationBean<OncePerRequestFilter> hstsHeaderFilter(AppProperties appProperties) {
@@ -69,14 +68,14 @@ public class SecurityHeadersConfig {
                 // If a CORS failure bubbles up, prefer a clean log and clear response
                 if (isCorsFailure(request, e)) {
                     // Log full exception for root-cause visibility
-                    SecurityHeadersConfig.logger.warn(
+                    SecurityHeadersConfig.log.warn(
                         "CORS rejection: method={}, origin={}, path={}",
                         request.getMethod(), request.getHeader("Origin"), request.getRequestURI(), e
                     );
 
                     // Check if response is already committed before attempting to modify it
                     if (response.isCommitted()) {
-                        SecurityHeadersConfig.logger.warn(
+                        SecurityHeadersConfig.log.warn(
                             "Response already committed, cannot send CORS error response for origin={}",
                             request.getHeader("Origin")
                         );

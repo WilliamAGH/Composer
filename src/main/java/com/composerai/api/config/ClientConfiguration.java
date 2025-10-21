@@ -6,59 +6,73 @@ import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.core.Timeout;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.QdrantGrpcClient;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.concurrent.ThreadPoolExecutor;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.context.annotation.Bean;
 
+@Slf4j
 @Configuration
-@EnableConfigurationProperties({OpenAiProperties.class, QdrantProperties.class})
+@EnableConfigurationProperties({OpenAiProperties.class, QdrantProperties.class, MagicEmailProperties.class})
 public class ClientConfiguration {
 
-    private static final Logger logger = LoggerFactory.getLogger(ClientConfiguration.class);
 
     @Bean
     public OpenAIClient openAIClient(OpenAiProperties openAiProperties) {
-        // spring-dotenv library automatically loads .env file values into environment
-        String apiKey = StringUtils.sanitize(openAiProperties.getApi().getKey());
+        // Support both OPENAI_API_KEY and LLM_API_KEY (for alternative providers)
+        String apiKey = openAiProperties.getApi().getKey();
+        if (StringUtils.isMissing(apiKey)) {
+            apiKey = System.getenv("LLM_API_KEY");
+        }
+        if (StringUtils.isMissing(apiKey)) {
+            apiKey = System.getenv("OPENAI_API_KEY");
+        }
 
         if (StringUtils.isMissing(apiKey)) {
-            apiKey = StringUtils.sanitize(System.getenv("OPENAI_API_KEY"));
-            if (!StringUtils.isMissing(apiKey)) {
-                logger.info("Loaded OpenAI API key from environment variable");
+            log.warn("API key not configured via openai.api.key, LLM_API_KEY, or OPENAI_API_KEY. Service will operate in degraded mode.");
+            return null;
+        }
+
+        String trimmedKey = apiKey.trim();
+
+        try {
+            // Base URL comes from properties (which handles env var fallback chain)
+            String baseUrl = openAiProperties.getApi().getBaseUrl();
+            log.debug("Using base URL: {}", baseUrl);
+
+            // Detect provider capabilities for logging
+            ProviderCapabilities capabilities = ProviderCapabilities.detect(baseUrl);
+            log.info("Configuring OpenAI-compatible client: {}", capabilities);
+            
+            OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder()
+                .apiKey(trimmedKey)
+                .timeout(Timeout.builder()
+                    .connect(Duration.ofSeconds(10))
+                    // Use finite timeout for SSE to prevent hung connections
+                    // Set to SSE timeout + 30s grace period to allow proper server-side timeout handling
+                    .read(Duration.ofSeconds(openAiProperties.getStream().getTimeoutSeconds() + 30))
+                    .write(Duration.ofSeconds(30))
+                    .build())
+                // Disable strict response validation so unknown streaming events do not kill SSE.
+                .responseValidation(false);
+
+            if (!StringUtils.isBlank(baseUrl)) {
+                builder.baseUrl(baseUrl.trim());
             }
-        }
 
-        if (StringUtils.isMissing(apiKey)) {
-            logger.error("OpenAI API key is not configured; set OPENAI_API_KEY or openai.api.key");
-            throw new IllegalStateException(
-                "OpenAI API key is not configured; set OPENAI_API_KEY or openai.api.key"
-            );
+            OpenAIClient client = builder.build();
+            log.info("OpenAI-compatible client configured successfully (provider: {})", capabilities.getType());
+            return client;
+        } catch (Exception e) {
+            log.warn("Failed to configure OpenAI-compatible client. Service will operate in degraded mode.", e);
+            return null;
         }
-
-        OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder()
-            .timeout(Timeout.builder()
-                .connect(Duration.ofSeconds(10))
-                .read(Duration.ofMinutes(5))
-                .write(Duration.ofSeconds(30))
-                .build());
-
-        OpenAIClient client = builder
-            .apiKey(apiKey)
-            .build();
-        String baseUrl = openAiProperties.getApi().getBaseUrl();
-        if (baseUrl != null && !baseUrl.isBlank()) {
-            client = client.withOptions(opts -> opts.baseUrl(baseUrl));
-        }
-        return client;
     }
 
-    @Bean
+
+    @Bean(destroyMethod = "close")
     public QdrantClient qdrantClient(QdrantProperties qdrantProperties) {
         QdrantGrpcClient.Builder builder = QdrantGrpcClient.newBuilder(
             qdrantProperties.getHost(),
@@ -70,21 +84,34 @@ public class ClientConfiguration {
         String apiKey = qdrantProperties.getApiKey();
         if (!StringUtils.isBlank(apiKey)) {
             builder.withApiKey(apiKey.trim());
-            logger.info("Configured Qdrant API key on gRPC client");
+            log.info("Configured Qdrant API key on gRPC client");
         }
 
-        return new QdrantClient(builder.build());
+        QdrantClient client = new QdrantClient(builder.build());
+        log.info("Qdrant client configured for {}:{}", qdrantProperties.getHost(), qdrantProperties.getPort());
+        return client;
     }
 
+    /**
+     * Provides a virtual thread-based executor for SSE streaming.
+     * Virtual threads (Java 21+) are ideal for I/O-bound streaming tasks
+     * as they scale better than platform threads and don't block carriers.
+     */
     @Bean(name = "chatStreamExecutor")
-    public java.util.concurrent.Executor chatStreamExecutor() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(5);
-        executor.setMaxPoolSize(20);
-        executor.setQueueCapacity(100);
-        executor.setThreadNamePrefix("chat-stream-");
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
-        executor.initialize();
-        return executor;
+    public java.util.concurrent.ExecutorService chatStreamExecutor() {
+        return java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
+    }
+
+    /**
+     * Provides a shared ScheduledExecutorService for SSE heartbeat management.
+     * Using a shared thread pool prevents resource exhaustion from creating
+     * ad-hoc executors for each streaming request.
+     *
+     * Pool size of 4 is sufficient for heartbeat scheduling across many concurrent
+     * SSE connections, as scheduling tasks are lightweight.
+     */
+    @Bean(name = "sseHeartbeatExecutor", destroyMethod = "shutdown")
+    public java.util.concurrent.ScheduledExecutorService sseHeartbeatExecutor() {
+        return java.util.concurrent.Executors.newScheduledThreadPool(4);
     }
 }

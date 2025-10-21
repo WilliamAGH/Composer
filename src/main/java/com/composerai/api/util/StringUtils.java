@@ -58,6 +58,16 @@ public final class StringUtils {
     }
 
     /**
+     * Ensure a conversation ID exists; generate UUIDv7 if blank.
+     *
+     * @param existing the existing conversation ID (may be null/blank)
+     * @return trimmed existing ID or new UUIDv7
+     */
+    public static String ensureConversationId(String existing) {
+        return isBlank(existing) ? IdGenerator.uuidV7() : existing.trim();
+    }
+
+    /**
      * Sanitize a URL by removing trackers, query parameters, and fragments.
      * Only allows http, https, and mailto schemes.
      * Limits URL length to 2048 characters.
@@ -102,5 +112,41 @@ public final class StringUtils {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /**
+     * Clean tracking parameters from markdown link text.
+     * Replaces markdown links like [https://site.com?utm_source=x](url) with [https://site.com](url)
+     *
+     * @param markdown the markdown content
+     * @return markdown with cleaned link text
+     */
+    public static String cleanMarkdownLinkText(String markdown) {
+        if (markdown == null || markdown.isBlank()) {
+            return markdown;
+        }
+
+        // Regex to match markdown links: [text](url)
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\[([^\\]]+)\\]\\(([^)]+)\\)");
+        java.util.regex.Matcher matcher = pattern.matcher(markdown);
+        StringBuffer result = new StringBuffer();
+
+        while (matcher.find()) {
+            String linkText = matcher.group(1);
+            String url = matcher.group(2);
+
+            // If link text looks like a URL, clean it
+            if (linkText.startsWith("http://") || linkText.startsWith("https://")) {
+                String cleaned = sanitizeUrl(linkText);
+                linkText = cleaned != null ? cleaned : linkText;
+            }
+
+            // Escape special regex characters in the replacement string
+            String replacement = java.util.regex.Matcher.quoteReplacement("[" + linkText + "](" + url + ")");
+            matcher.appendReplacement(result, replacement);
+        }
+        matcher.appendTail(result);
+
+        return result.toString();
     }
 }
