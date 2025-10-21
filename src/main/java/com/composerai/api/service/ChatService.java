@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 import java.io.IOException;
@@ -29,16 +30,19 @@ public class ChatService {
     private final OpenAiProperties openAiProperties;
     private final ErrorMessagesProperties errorMessages;
     private final ContextBuilder contextBuilder;
+    private final ContextBuilder.EmailContextRegistry emailContextRegistry;
     private final ExecutorService streamingExecutor;
 
     public ChatService(VectorSearchService vectorSearchService, OpenAiChatService openAiChatService,
                        OpenAiProperties openAiProperties, ErrorMessagesProperties errorMessages,
-                       ContextBuilder contextBuilder, @Qualifier("chatStreamExecutor") ExecutorService streamingExecutor) {
+                       ContextBuilder contextBuilder, ContextBuilder.EmailContextRegistry emailContextRegistry,
+                       @Qualifier("chatStreamExecutor") ExecutorService streamingExecutor) {
         this.vectorSearchService = vectorSearchService;
         this.openAiChatService = openAiChatService;
         this.openAiProperties = openAiProperties;
         this.errorMessages = errorMessages;
         this.contextBuilder = contextBuilder;
+        this.emailContextRegistry = emailContextRegistry;
         this.streamingExecutor = streamingExecutor;
     }
 
@@ -79,17 +83,18 @@ public class ChatService {
             String intent = openAiChatService.analyzeIntent(request.getMessage());
             int maxResults = applyMaxResultsDefault(request.getMaxResults());
             ChatContext ctx = prepareChatContext(request.getMessage(), maxResults);
-            String fullContext = contextBuilder.mergeContexts(ctx.contextString(), request.getEmailContext());
+            String uploadedContext = resolveUploadedContext(conversationId, request);
+            String fullContext = contextBuilder.mergeContexts(ctx.contextString(), uploadedContext);
             boolean jsonOutput = request.isJsonOutput();
             String userMessageForModel = formatMessageForOutput(request.getMessage(), jsonOutput);
-            
+
             // Debug log context structure for troubleshooting
             if (logger.isDebugEnabled()) {
-                int uploadedChars = request.getEmailContext() != null ? request.getEmailContext().length() : 0;
+                int uploadedChars = uploadedContext.length();
                 logger.debug("Context prepared: uploadedChars={}, vectorResults={}, mergedChars={}",
                     uploadedChars, ctx.emailContext().size(), fullContext.length());
                 if (uploadedChars > 0) {
-                    String preview = request.getEmailContext().substring(0, Math.min(200, request.getEmailContext().length()));
+                    String preview = uploadedContext.substring(0, Math.min(200, uploadedContext.length()));
                     logger.debug("Uploaded context preview (first 200 chars): {}", preview);
                 }
             }
@@ -137,7 +142,8 @@ public class ChatService {
         String conversationId = StringUtils.ensureConversationId(request.getConversationId());
         int maxResults = applyMaxResultsDefault(request.getMaxResults());
         ChatContext ctx = prepareChatContext(request.getMessage(), maxResults);
-        String fullContext = contextBuilder.mergeContexts(ctx.contextString(), request.getEmailContext());
+        String uploadedContext = resolveUploadedContext(conversationId, request);
+        String fullContext = contextBuilder.mergeContexts(ctx.contextString(), uploadedContext);
         boolean jsonOutput = request.isJsonOutput();
         String userMessageForModel = formatMessageForOutput(request.getMessage(), jsonOutput);
         Consumer<String> htmlConsumer = jsonOutput ? null : onToken;
@@ -157,7 +163,8 @@ public class ChatService {
             try {
                 int maxResults = applyMaxResultsDefault(request.getMaxResults());
                 ChatContext ctx = prepareChatContext(request.getMessage(), maxResults);
-                String fullContext = contextBuilder.mergeContexts(ctx.contextString(), request.getEmailContext());
+                String uploadedContext = resolveUploadedContext(conversationId, request);
+                String fullContext = contextBuilder.mergeContexts(ctx.contextString(), uploadedContext);
                 boolean jsonOutput = request.isJsonOutput();
                 Consumer<String> chunkSender = chunk -> { 
                     try { 
@@ -177,6 +184,21 @@ public class ChatService {
                 emitter.completeWithError(e);
             }
         });
+    }
+
+    private String resolveUploadedContext(String conversationId, ChatRequest request) {
+        Optional<String> stored = emailContextRegistry.contextForAi(request.getContextId());
+        if (stored.isPresent()) {
+            return stored.get();
+        }
+        if (!StringUtils.isBlank(request.getEmailContext())) {
+            if (StringUtils.isBlank(request.getContextId())) {
+                logger.warn("Dropping provided emailContext because contextId is missing (conversationId={})", conversationId);
+            } else {
+                logger.warn("Email context not found for contextId={} (conversationId={})", request.getContextId(), conversationId);
+            }
+        }
+        return "";
     }
 
     private void handleStreamEvent(OpenAiChatService.StreamEvent event,

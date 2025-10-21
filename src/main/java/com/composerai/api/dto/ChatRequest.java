@@ -1,5 +1,6 @@
 package com.composerai.api.dto;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
@@ -8,6 +9,8 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+
+import com.composerai.api.util.StringUtils;
 
 @Data
 @NoArgsConstructor
@@ -28,6 +31,9 @@ public class ChatRequest {
     @Size(max = 20000, message = "emailContext cannot exceed 20000 characters")
     private String emailContext;
 
+    @Size(max = 200, message = "contextId cannot exceed 200 characters")
+    private String contextId;
+
     // Optional: Enable extended thinking/reasoning mode (for reasoning models like o1, o4)
     private boolean thinkingEnabled = false;
 
@@ -44,5 +50,13 @@ public class ChatRequest {
         this.message = message;
         this.conversationId = conversationId;
         this.maxResults = maxResults;
+    }
+
+    @AssertTrue(message = "contextId is required when emailContext is provided")
+    public boolean isContextSubmissionValid() {
+        if (StringUtils.isBlank(emailContext)) {
+            return true;
+        }
+        return !StringUtils.isBlank(contextId);
     }
 }

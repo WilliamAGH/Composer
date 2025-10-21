@@ -20,11 +20,14 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
 // Import your existing parser classes
+import com.composerai.api.service.ContextBuilder.EmailContextRegistry;
 import com.composerai.api.service.HtmlToText;
 import com.composerai.api.service.email.HtmlConverter;
+import com.composerai.api.util.IdGenerator;
 // (No direct parsing here; delegated to HtmlToText/EmailPipeline)
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -34,11 +37,13 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RestController
 @RequestMapping("/api")
+@RequiredArgsConstructor
 public class EmailController {
 
     private static final DateTimeFormatter DATE_WITH_OFFSET_FORMATTER = DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' h:mm a xxx", Locale.US);
 
     // Thin controller: delegates parsing to HtmlToText/EmailPipeline
+    private final EmailContextRegistry emailContextRegistry;
 
     /**
      * Parse uploaded .eml email file and return extracted text content.
@@ -137,7 +142,11 @@ public class EmailController {
 
             // Backend determines best context format for AI (prefer markdown > plain)
             String contextForAI = (!markdown.isBlank()) ? markdown : plainText;
+            String contextId = resolveContextId(metadata);
+            emailContextRegistry.store(contextId, plainText, markdown);
+            parsedDocument.put("contextId", contextId);
             response.put("contextForAI", contextForAI);
+            response.put("contextId", contextId);
 
             response.put("document", parsedDocument);
             response.put("status", "success");
@@ -220,5 +229,16 @@ public class EmailController {
 
     protected String convertEmail(HtmlToText.Options options) throws Exception {
         return HtmlToText.convert(options);
+    }
+
+    private String resolveContextId(Map<String, Object> metadata) {
+        String messageId = firstNonBlank(metadata, "messageId", "id");
+        if (messageId != null) {
+            String normalized = messageId.replaceAll("[^A-Za-z0-9._:-]", "");
+            if (!normalized.isBlank()) {
+                return normalized;
+            }
+        }
+        return IdGenerator.uuidV7();
     }
 }

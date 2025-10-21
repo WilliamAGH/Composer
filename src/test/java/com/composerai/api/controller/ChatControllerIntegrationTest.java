@@ -71,6 +71,17 @@ class ChatControllerIntegrationTest {
     }
 
     @Test
+    void chatEndpoint_WithContextButNoContextId_ShouldReturnBadRequest() throws Exception {
+        ChatRequest request = new ChatRequest("Hi", null, 5);
+        request.setEmailContext("malicious raw");
+
+        mockMvc.perform(post(CHAT_ENDPOINT)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void chatEndpoint_ShouldReturnSanitizedHtmlField() throws Exception {
         ChatResponse chatResponse = new ChatResponse("**Hi**", "conv-1", java.util.List.of(), "answer", "<p><strong>Hi</strong></p>");
         Mockito.when(chatService.processChat(any())).thenReturn(chatResponse);
@@ -94,14 +105,13 @@ class ChatControllerIntegrationTest {
         Mockito.when(openAiProperties.getStream()).thenReturn(streamConfig);
 
         // Mock the heartbeat executor to return a mock ScheduledFuture
-        @SuppressWarnings("unchecked")
-        java.util.concurrent.ScheduledFuture<Object> mockFuture = Mockito.mock(java.util.concurrent.ScheduledFuture.class);
-        Mockito.when(sseHeartbeatExecutor.scheduleAtFixedRate(
+        java.util.concurrent.ScheduledFuture<?> mockFuture = Mockito.mock(java.util.concurrent.ScheduledFuture.class);
+        Mockito.<java.util.concurrent.ScheduledFuture<?>>when(sseHeartbeatExecutor.scheduleAtFixedRate(
             any(Runnable.class),
             org.mockito.ArgumentMatchers.anyLong(),
             org.mockito.ArgumentMatchers.anyLong(),
             any(java.util.concurrent.TimeUnit.class)
-        )).thenReturn((java.util.concurrent.ScheduledFuture)mockFuture);
+        )).thenReturn(mockFuture);
 
         doAnswer(invocation -> {
             Runnable runnable = invocation.getArgument(0);

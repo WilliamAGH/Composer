@@ -1,5 +1,6 @@
 package com.composerai.api.controller;
 
+import com.composerai.api.service.ContextBuilder;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
@@ -8,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -17,7 +19,8 @@ class EmailControllerTest {
 
     @Test
     void parseEmail_withNullMetadata_usesFallbackValues() throws Exception {
-        EmailController controller = controllerWithPayload("{\n" +
+        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        EmailController controller = controllerWithPayload(registry, "{\n" +
             "  \"content\": {\"plainText\": \"Body\", \"markdown\": \"**Body**\"},\n" +
             "  \"metadata\": {\"subject\": null, \"from\": null, \"date\": null}\n" +
             "}");
@@ -35,11 +38,15 @@ class EmailControllerTest {
         assertEquals("No subject", body.get("subject"));
         assertEquals("Unknown sender", body.get("from"));
         assertEquals("Unknown date", body.get("date"));
+        assertNotNull(body.get("contextId"));
+        String contextId = body.get("contextId").toString();
+        assertTrue(registry.contextForAi(contextId).isPresent(), "context should be cached");
     }
 
     @Test
     void parseEmail_withDateMetadataPreservesIso() throws Exception {
-        EmailController controller = controllerWithPayload("{\n" +
+        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        EmailController controller = controllerWithPayload(registry, "{\n" +
             "  \"content\": {\"plainText\": \"Body\", \"markdown\": \"**Body**\"},\n" +
             "  \"metadata\": {\"subject\": \"Status\", \"from\": \"Ops\", \"date\": \"Oct 01, 2025 at 4:30 PM -07:00\", \"dateIso\": \"2025-10-01T23:30:00Z\"}\n" +
             "}");
@@ -59,7 +66,8 @@ class EmailControllerTest {
 
     @Test
     void parseEmail_withUnsupportedExtension_throwsException() {
-        EmailController controller = new EmailController();
+        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        EmailController controller = new EmailController(registry);
         MockMultipartFile file = new MockMultipartFile(
             "file",
             "document.pdf",
@@ -72,7 +80,8 @@ class EmailControllerTest {
 
     @Test
     void parseEmail_withReceivedHeaderUsesReceivedDate() throws Exception {
-        EmailController controller = new EmailController();
+        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        EmailController controller = new EmailController(registry);
         String eml = String.join("\r\n",
             "Received: from mail.example.net by inbound.example.net; Wed, 01 Oct 2025 18:45:00 +0530",
             "Subject: Received fallback",
@@ -101,8 +110,8 @@ class EmailControllerTest {
         assertEquals("Received", metadata.get("dateSource"));
     }
 
-    private EmailController controllerWithPayload(String payload) {
-        return new EmailController() {
+    private EmailController controllerWithPayload(ContextBuilder.EmailContextRegistry registry, String payload) {
+        return new EmailController(registry) {
             @Override
             protected String convertEmail(com.composerai.api.service.HtmlToText.Options options) {
                 return payload;
