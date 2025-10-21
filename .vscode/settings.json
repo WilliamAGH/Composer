@@ -1,7 +1,11 @@
 {
-  "java.project.sourcePaths": ["src/main/java"],
+  "java.project.sourcePaths": [
+    "src/main/java"
+  ],
   "java.project.outputPath": "target/classes",
-  "java.project.resourcePaths": ["src/main/resources"],
+  "java.project.resourcePaths": [
+    "src/main/resources"
+  ],
   "java.configuration.updateBuildConfiguration": "automatic",
   "java.compile.nullAnalysis.mode": "disabled",
   "java.import.maven.enabled": true,

@@ -1,61 +1,94 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout :: layout(~{::body/content}, 'ComposerAI - Email Chat Interface', ~{::head/extraHead})}">
+    th:replace="~{layout :: layout(~{::body/content}, 'ComposerAI - Email Chat Interface', ~{::head/extraHead})}">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ComposerAI - Email Chat Interface</title>
     <th:block th:fragment="extraHead"></th:block>
 </head>
+
 <body>
     <div th:fragment="content" class="min-h-screen bg-slate-100/80 py-12">
         <div class="mx-auto flex max-w-6xl flex-col gap-10 px-4 sm:px-6 lg:px-8">
-            <header class="relative overflow-hidden rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-ultra shadow-slate-900/10 backdrop-blur lg:p-7">
+            <header
+                class="relative overflow-hidden rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-ultra shadow-slate-900/10 backdrop-blur lg:p-7">
                 <div class="absolute inset-0 bg-subtle-glow"></div>
                 <div class="relative z-10 flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
                     <div class="flex max-w-2xl flex-col gap-3">
-                        <h1 class="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">ComposerAI Chat</h1>
-                        <p class="text-sm text-slate-600 sm:text-base">Upload an email and chat about it with AI assistance</p>
+                        <h1 class="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">ComposerAI Chat
+                        </h1>
+                        <p class="text-sm text-slate-600 sm:text-base">Upload an email and chat about it with AI
+                            assistance</p>
                         <div class="flex flex-wrap items-center gap-2.5">
-                            <span class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-600">Chat Interface</span>
-                            <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-[10px] font-medium text-slate-700">Supports .eml, .msg, .txt</span>
+                            <span
+                                class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-600">Chat
+                                Interface</span>
+                            <span
+                                class="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-[10px] font-medium text-slate-700">Supports
+                                .eml, .msg, .txt</span>
                         </div>
                     </div>
-                    <div class="mt-4 w-full shrink-0 rounded-2xl border border-slate-200 bg-white/92 px-4 py-4 shadow-lg shadow-slate-900/10 backdrop-blur-sm md:mt-0 md:ml-6 md:w-[18rem] lg:ml-8 lg:w-[17rem] xl:w-[18rem]" th:replace="~{fragments/file-upload-tool :: uploadSection}"></div>
+                    <div class="mt-4 w-full shrink-0 rounded-2xl border border-slate-200 bg-white/92 px-4 py-4 shadow-lg shadow-slate-900/10 backdrop-blur-sm md:mt-0 md:ml-6 md:w-[18rem] lg:ml-8 lg:w-[17rem] xl:w-[18rem]"
+                        th:replace="~{fragments/file-upload-tool :: uploadSection}"></div>
                 </div>
             </header>
 
-            <section class="rounded-3xl border border-slate-200 bg-white/90 shadow-ultra shadow-slate-900/10 backdrop-blur overflow-hidden lg:mt-2">
-                <div id="messages" class="flex flex-col gap-4 p-6 min-h-[420px] max-h-[520px] overflow-y-auto bg-slate-50 sm:p-7">
-                    <div class="message-assistant max-w-[70%] rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
-                        <div class="text-slate-800">Hello! I'm ComposerAI. Upload an email file above and I'll help you analyze and discuss it.</div>
+            <section
+                class="rounded-3xl border border-slate-200 bg-white/90 shadow-ultra shadow-slate-900/10 backdrop-blur overflow-hidden lg:mt-2">
+                <div id="messages"
+                    class="flex flex-col gap-4 p-6 min-h-[420px] max-h-[520px] overflow-y-auto bg-slate-50 sm:p-7">
+                    <div
+                        class="message-assistant max-w-[70%] rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
+                        <div class="text-slate-800">Hello! I'm ComposerAI. Upload an email file above and I'll help you
+                            analyze and discuss it.</div>
                     </div>
                 </div>
 
                 <div class="border-t border-slate-200 bg-white p-5 sm:p-6">
                     <div class="mb-4 flex flex-wrap items-center gap-3 text-xs sm:text-sm text-slate-600">
                         <div id="thinkingDropdown">
-                            <button id="thinkingMenuButton" type="button" aria-haspopup="listbox" aria-expanded="false" class="inline-flex items-center justify-between gap-2 rounded-xl border border-slate-300 bg-white px-3 py-1 font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
+                            <button id="thinkingMenuButton" type="button" aria-haspopup="listbox" aria-expanded="false"
+                                class="inline-flex items-center justify-between gap-2 rounded-xl border border-slate-300 bg-white px-3 py-1 font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
                                 <span id="thinkingMenuLabel">Thinking: Off</span>
-                                <svg class="h-3 w-3 text-slate-500 transition-transform" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
+                                <svg class="h-3 w-3 text-slate-500 transition-transform" viewBox="0 0 20 20"
+                                    fill="currentColor">
+                                    <path fill-rule="evenodd"
+                                        d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+                                        clip-rule="evenodd" />
+                                </svg>
                             </button>
                         </div>
-                        <button id="jsonToggleButton" type="button" class="rounded-xl border border-slate-300 bg-white px-3 py-1 font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">JSON Output: Off</button>
-                        <div id="thinkingMenu" class="thinking-dropdown-menu fixed z-[9999] w-64 rounded-xl border border-slate-200 bg-white p-1 shadow-xl ring-1 ring-black/5 hidden" aria-labelledby="thinkingMenuButton">
+                        <button id="jsonToggleButton" type="button"
+                            class="rounded-xl border border-slate-300 bg-white px-3 py-1 font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">JSON
+                            Output: Off</button>
+                        <div id="thinkingMenu"
+                            class="thinking-dropdown-menu fixed z-[9999] w-64 rounded-xl border border-slate-200 bg-white p-1 shadow-xl ring-1 ring-black/5 hidden"
+                            aria-labelledby="thinkingMenuButton">
                             <div role="menu">
-                                <button type="button" role="menuitem" data-value="off" class="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50">Off</button>
+                                <button type="button" role="menuitem" data-value="off"
+                                    class="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50">Off</button>
                                 <div class="my-1 border-t border-slate-200"></div>
-                                <button type="button" role="menuitem" data-value="minimal" class="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">Minimal</button>
-                                <button type="button" role="menuitem" data-value="low" class="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">Low</button>
-                                <button type="button" role="menuitem" data-value="medium" class="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">Medium</button>
-                                <button type="button" role="menuitem" data-value="high" class="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">High</button>
+                                <button type="button" role="menuitem" data-value="minimal"
+                                    class="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">Minimal</button>
+                                <button type="button" role="menuitem" data-value="low"
+                                    class="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">Low</button>
+                                <button type="button" role="menuitem" data-value="medium"
+                                    class="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">Medium</button>
+                                <button type="button" role="menuitem" data-value="high"
+                                    class="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">High</button>
                             </div>
                         </div>
                         <span id="thinkingStatus" class="hidden text-slate-500"></span>
                     </div>
                     <div class="flex items-center gap-3">
-                        <textarea id="messageInput" class="flex-1 resize-none rounded-2xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200" placeholder="Type your message about the email..." rows="1" disabled></textarea>
-                        <button id="sendButton" class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white transition-all hover:bg-slate-700 disabled:bg-slate-300 disabled:cursor-not-allowed" disabled>
+                        <textarea id="messageInput"
+                            class="flex-1 resize-none rounded-2xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                            placeholder="Type your message about the email..." rows="1" disabled></textarea>
+                        <button id="sendButton"
+                            class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white transition-all hover:bg-slate-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                            disabled>
                             <span class="text-xl">&rarr;</span>
                         </button>
                     </div>
@@ -238,6 +271,9 @@
 
                     try {
                         const result = await window.ComposerAI.parseEmailFile(file);
+                        if (!result.contextId) {
+                            throw new Error('Server did not provide a contextId for the uploaded email');
+                        }
                         this.currentEmailContext = result;
                         this.conversationId = null;
                         this.showUploadStatus('<div class="rounded-lg bg-green-100 border border-green-200 p-3 text-sm text-green-800">Email uploaded and parsed successfully!</div>');
@@ -305,20 +341,20 @@
                     toggleWrapper.className = 'overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/60';
                     toggleWrapper.innerHTML =
                         '<button type="button" class="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-blue-100/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200" data-role="preview-toggle" aria-expanded="false" aria-controls="' + previewId + '">' +
-                            '<span class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-700">' +
-                                '<svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2.25 6.75A3.75 3.75 0 016 3h12a3.75 3.75 0 013.75 3.75v10.5A3.75 3.75 0 0118 21H6a3.75 3.75 0 01-3.75-3.75V6.75zm3.82-.456a.75.75 0 00-.82 1.26l6 3.9a.75.75 0 00.82 0l6-3.9a.75.75 0 00-.82-1.26L12 9.694 6.07 6.294z"/></svg>' +
-                            '</span>' +
-                            '<span class="flex-1 text-sm font-semibold text-slate-800">' + subject + '</span>' +
-                            '<span class="ml-auto flex items-center gap-2">' +
-                                '<span class="rounded-md bg-white/70 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600" data-role="email-date" data-original-label="' + dateLabel + '" ' + (iso ? 'data-date-iso="' + window.ComposerAI.escapeHtml(iso) + '"' : '') + '>' + dateLabel + '</span>' +
-                                '<svg class="h-4 w-4 text-slate-500 transition-transform" data-role="preview-chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>' +
-                            '</span>' +
+                        '<span class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-700">' +
+                        '<svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2.25 6.75A3.75 3.75 0 016 3h12a3.75 3.75 0 013.75 3.75v10.5A3.75 3.75 0 0118 21H6a3.75 3.75 0 01-3.75-3.75V6.75zm3.82-.456a.75.75 0 00-.82 1.26l6 3.9a.75.75 0 00.82 0l6-3.9a.75.75 0 00-.82-1.26L12 9.694 6.07 6.294z"/></svg>' +
+                        '</span>' +
+                        '<span class="flex-1 text-sm font-semibold text-slate-800">' + subject + '</span>' +
+                        '<span class="ml-auto flex items-center gap-2">' +
+                        '<span class="rounded-md bg-white/70 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600" data-role="email-date" data-original-label="' + dateLabel + '" ' + (iso ? 'data-date-iso="' + window.ComposerAI.escapeHtml(iso) + '"' : '') + '>' + dateLabel + '</span>' +
+                        '<svg class="h-4 w-4 text-slate-500 transition-transform" data-role="preview-chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>' +
+                        '</span>' +
                         '</button>' +
                         '<div id="' + previewId + '" data-role="preview-body" class="hidden border-t border-blue-200/80 bg-white/80 px-4 py-3">' +
-                            '<div class="space-y-3 text-sm text-slate-700">' +
-                                '<p><strong>From:</strong> ' + from + '</p>' +
-                                '<div class="prose prose-sm text-slate-700 max-w-none opacity-90">' + previewHtml + '</div>' +
-                            '</div>' +
+                        '<div class="space-y-3 text-sm text-slate-700">' +
+                        '<p><strong>From:</strong> ' + from + '</p>' +
+                        '<div class="prose prose-sm text-slate-700 max-w-none opacity-90">' + previewHtml + '</div>' +
+                        '</div>' +
                         '</div>';
 
                     const toggleBtn = toggleWrapper.querySelector('[data-role="preview-toggle"]');
@@ -344,7 +380,7 @@
                     if (!message || this.isStreaming) return;
 
                     if (this.activeStreamController) {
-                        try { this.activeStreamController.abort(); } catch (_) {}
+                        try { this.activeStreamController.abort(); } catch (_) { }
                     }
                     this.addMessage(message, 'user');
                     this.messageInput.value = '';
@@ -362,6 +398,7 @@
                         conversationId: this.conversationId,
                         maxResults: 5,
                         emailContext: this.currentEmailContext?.contextForAI || '',
+                        contextId: this.currentEmailContext?.contextId || null,
                         thinkingEnabled: this.thinkingEnabled,
                         thinkingLevel: this.thinkingEnabled ? this.thinkingLevel : null,
                         jsonOutput: isJsonMode
@@ -373,7 +410,7 @@
                     this.isStreaming = true;
                     this.activeStreamController = new AbortController();
                     const timeoutId = setTimeout(() => {
-                        try { this.activeStreamController?.abort(); } catch (_) {}
+                        try { this.activeStreamController?.abort(); } catch (_) { }
                     }, this.streamTimeoutMs);
 
                     try {
@@ -548,10 +585,10 @@
                         .on(SSE_EVENTS.DONE, () => finalizeStream());
 
                     while (!streamFinished) {
-                        const {done, value} = await reader.read();
+                        const { done, value } = await reader.read();
                         if (done) break;
 
-                        buffer += decoder.decode(value, {stream: true});
+                        buffer += decoder.decode(value, { stream: true });
                         const lines = buffer.split('\n');
                         buffer = lines.pop() || '';
 
@@ -593,15 +630,15 @@
                         }
                     }
 
-                        if (!streamFinished) {
-                            if (currentEvent) {
-                                const payload = currentEventData.length > 1
-                                    ? currentEventData.join('\n')
-                                    : (currentEventData[0] ?? '');
-                                router.route(currentEvent, payload);
-                            }
-                            finalizeStream();
+                    if (!streamFinished) {
+                        if (currentEvent) {
+                            const payload = currentEventData.length > 1
+                                ? currentEventData.join('\n')
+                                : (currentEventData[0] ?? '');
+                            router.route(currentEvent, payload);
                         }
+                        finalizeStream();
+                    }
                 }
 
                 scrollIfAtBottom() {
@@ -628,7 +665,7 @@
                             elem.setAttribute('title', 'Original: ' + original + '\nISO: ' + iso);
                             return;
                         }
-                    } catch (_) {}
+                    } catch (_) { }
                     elem.textContent = original;
                 }
 
@@ -656,7 +693,7 @@
 
                 renderThinkingStatus(message = {}) {
                     if (!this.thinkingStatus) return;
-                    const {active} = this.streamState.thinking || {};
+                    const { active } = this.streamState.thinking || {};
                     if (!active) {
                         this.thinkingStatus.textContent = 'Thinking disabled for faster responses.';
                         return;
@@ -673,7 +710,7 @@
                 }
             }
 
-            document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('DOMContentLoaded', function () {
                 try {
                     new ComposerAIChat();
                 } catch (error) {
@@ -683,4 +720,5 @@
         </script>
     </div>
 </body>
+
 </html>
