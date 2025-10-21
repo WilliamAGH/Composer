@@ -24,6 +24,7 @@ import com.composerai.api.service.ContextBuilder.EmailContextRegistry;
 import com.composerai.api.service.HtmlToText;
 import com.composerai.api.service.email.HtmlConverter;
 import com.composerai.api.util.IdGenerator;
+import com.composerai.api.util.TemporalUtils;
 // (No direct parsing here; delegated to HtmlToText/EmailPipeline)
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -133,7 +134,7 @@ public class EmailController {
                 date = "Unknown date";
             }
             String dateIso = firstNonBlank(metadata, "dateIso", "date");
-            date = enrichDateWithOffset(date, dateIso);
+            String dateWithRelativeTime = enrichDateWithOffset(date, dateIso);
 
             // Build successful response (DRY: use parsedPlain as canonical plain text field)
             response.put("parsedPlain", plainText);
@@ -141,7 +142,9 @@ public class EmailController {
             response.put("parsedHtml", HtmlConverter.markdownToSafeHtml(markdown.isBlank() ? plainText : markdown));
 
             // Backend determines best context format for AI (prefer markdown > plain)
-            String contextForAI = (!markdown.isBlank()) ? markdown : plainText;
+            // Prepend email metadata with temporal context for AI awareness
+            String emailBody = (!markdown.isBlank()) ? markdown : plainText;
+            String contextForAI = buildEmailContextForAI(subject, from, dateWithRelativeTime, emailBody);
             String contextId = resolveContextId(metadata);
             emailContextRegistry.store(contextId, plainText, markdown);
             parsedDocument.put("contextId", contextId);
@@ -157,7 +160,7 @@ public class EmailController {
             // Add email metadata for chat interface
             response.put("subject", subject);
             response.put("from", from);
-            response.put("date", date);
+            response.put("date", dateWithRelativeTime);
             if (dateIso != null) {
                 response.put("dateIso", dateIso.trim());
             }
@@ -194,7 +197,14 @@ public class EmailController {
         String trimmedIso = isoCandidate.trim();
         try {
             OffsetDateTime offsetDateTime = OffsetDateTime.parse(trimmedIso);
-            return offsetDateTime.format(DATE_WITH_OFFSET_FORMATTER);
+            String formattedDate = offsetDateTime.format(DATE_WITH_OFFSET_FORMATTER);
+
+            // Enrich with relative time for better temporal awareness
+            String relativeTime = TemporalUtils.getRelativeTime(offsetDateTime);
+            if (relativeTime != null && !relativeTime.isBlank()) {
+                return formattedDate + " (" + relativeTime + ")";
+            }
+            return formattedDate;
         } catch (DateTimeParseException ignored) {
             return display;
         }
@@ -225,6 +235,36 @@ public class EmailController {
             }
         }
         return null;
+    }
+
+    /**
+     * Builds email context for AI with metadata header including temporal awareness.
+     * Prepends subject, sender, and timestamp (with relative time) to email body.
+     *
+     * @param subject email subject line
+     * @param from sender address
+     * @param dateWithRelativeTime formatted date with relative time (e.g., "Jan 15, 2024 at 3:45 PM PST (2 hours ago)")
+     * @param emailBody the email content (markdown or plain text)
+     * @return formatted context string with metadata header + body
+     */
+    private static String buildEmailContextForAI(String subject, String from, String dateWithRelativeTime, String emailBody) {
+        StringBuilder context = new StringBuilder();
+
+        // Metadata header with temporal context
+        context.append("=== Email Metadata ===\n");
+        context.append("Subject: ").append(subject != null ? subject : "No subject").append("\n");
+        context.append("From: ").append(from != null ? from : "Unknown sender").append("\n");
+        context.append("Date: ").append(dateWithRelativeTime != null ? dateWithRelativeTime : "Unknown date").append("\n");
+        context.append("\n=== Email Body ===\n");
+
+        // Email content
+        if (emailBody != null && !emailBody.isBlank()) {
+            context.append(emailBody);
+        } else {
+            context.append("(Email body is empty)");
+        }
+
+        return context.toString();
     }
 
     protected String convertEmail(HtmlToText.Options options) throws Exception {
