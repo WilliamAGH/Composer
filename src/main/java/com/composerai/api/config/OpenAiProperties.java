@@ -75,12 +75,12 @@ public class OpenAiProperties {
 
     /**
      * Chat completion model configuration.
-     * Default: o4-mini (OpenAI's reasoning model)
+     * Default: gpt-4o-mini (OpenAI's reasoning model)
      */
     @Getter
     @Setter
     public static class Model {
-        private String chat = "o4-mini";
+        private String chat = "gpt-4o-mini";
     }
 
     /**
@@ -206,7 +206,7 @@ public class OpenAiProperties {
      * 
      * Also checks that the provider supports reasoning features.
      *
-     * @param modelId the model identifier to check (e.g., "o4-mini", "gpt-4")
+     * @param modelId the model identifier to check (e.g., "gpt-4o-mini", "gpt-4")
      * @return true if the model AND provider support reasoning, false otherwise
      */
     public boolean supportsReasoning(String modelId) {
