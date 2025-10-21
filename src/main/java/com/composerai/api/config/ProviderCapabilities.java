@@ -105,12 +105,12 @@ public class ProviderCapabilities {
     
     /**
      * Whether this provider supports embeddings API.
-     * OpenAI and OpenRouter support embeddings; most local/inference providers don't.
+     * Only OpenAI supports embeddings; most other providers (OpenRouter, Groq, local) don't.
      * 
      * @return true if embeddings are supported
      */
     public boolean supportsEmbeddings() {
-        return type == ProviderType.OPENAI || type == ProviderType.OPENROUTER;
+        return type == ProviderType.OPENAI;
     }
     
     /**
