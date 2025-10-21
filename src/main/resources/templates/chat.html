@@ -40,6 +40,7 @@
                                 <svg class="h-3 w-3 text-slate-500 transition-transform" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
                             </button>
                         </div>
+                        <button id="jsonToggleButton" type="button" class="rounded-xl border border-slate-300 bg-white px-3 py-1 font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">JSON Output: Off</button>
                         <div id="thinkingMenu" class="thinking-dropdown-menu fixed z-[9999] w-64 rounded-xl border border-slate-200 bg-white p-1 shadow-xl ring-1 ring-black/5 hidden" aria-labelledby="thinkingMenuButton">
                             <div role="menu">
                                 <button type="button" role="menuitem" data-value="off" class="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50">Off</button>
@@ -60,10 +61,6 @@
                     </div>
                 </div>
             </section>
-
-            <footer class="rounded-2xl border border-slate-200 bg-white/50 px-6 py-3 text-center text-sm text-slate-600 backdrop-blur">
-                ComposerAI &bull; Professional Email Analysis &bull; Upload an email to begin
-            </footer>
         </div>
 
         <script th:inline="javascript">
@@ -100,7 +97,6 @@
                     this.sendButton = document.getElementById('sendButton');
                     this.fileDropArea = document.getElementById('fileDropArea');
                     this.fileInput = document.getElementById('fileInput');
-                    this.fileInfo = document.getElementById('fileInfo');
                     this.uploadStatus = document.getElementById('uploadStatus');
                     this.currentEmailContext = null;
                     this.conversationId = null;
@@ -110,6 +106,9 @@
                     this.thinkingStatus = document.getElementById('thinkingStatus');
                     this.thinkingEnabled = false;
                     this.thinkingLevel = 'medium';
+                    this.jsonToggleButton = document.getElementById('jsonToggleButton');
+                    this.jsonOutput = false;
+                    this.jsonPreClass = 'w-full whitespace-pre-wrap font-mono text-sm leading-relaxed bg-slate-900/90 text-slate-100 rounded-2xl border border-slate-800 p-4 shadow-ultra overflow-x-auto';
                     this.previewCounter = 0;
                     this.streamTimeoutMs = 120000; // Default 2 minutes, updated from server
                     this.initializeEventListeners();
@@ -134,6 +133,7 @@
                     }
 
                     this.initializeThinkingDropdown();
+                    this.initializeJsonToggle();
                     this.updateThinkingControls();
                     this.resetReasoningState();
                 }
@@ -193,25 +193,67 @@
                     this.refreshThinkingMenuLabel();
                 }
 
+                initializeJsonToggle() {
+                    if (!this.jsonToggleButton) return;
+                    this.jsonToggleButton.addEventListener('click', () => {
+                        this.jsonOutput = !this.jsonOutput;
+                        this.updateJsonToggleButton();
+                        if (!this.thinkingEnabled) {
+                            this.resetReasoningState();
+                        }
+                    });
+                    this.updateJsonToggleButton();
+                }
+
+                updateJsonToggleState() {
+                    if (!this.jsonToggleButton) return;
+                    this.updateJsonToggleButton();
+                }
+
+                updateJsonToggleButton() {
+                    if (!this.jsonToggleButton) return;
+                    const isOn = !!this.jsonOutput;
+                    this.jsonToggleButton.textContent = isOn ? 'JSON Output: On' : 'JSON Output: Off';
+                    const add = (cls) => this.jsonToggleButton.classList.add(cls);
+                    const remove = (cls) => this.jsonToggleButton.classList.remove(cls);
+                    if (isOn) {
+                        add('bg-slate-900');
+                        add('text-white');
+                        add('border-slate-900');
+                        remove('bg-white');
+                        remove('text-slate-700');
+                        remove('border-slate-300');
+                    } else {
+                        remove('bg-slate-900');
+                        remove('text-white');
+                        remove('border-slate-900');
+                        add('bg-white');
+                        add('text-slate-700');
+                        add('border-slate-300');
+                    }
+                }
+
                 async handleFileUpload(file) {
-                    this.showFileInfo(file);
-                    this.uploadStatus.innerHTML = '<div class="rounded-lg bg-blue-100 border border-blue-200 p-3 text-sm text-blue-800">Uploading and parsing email...</div>';
+                    this.showUploadStatus('<div class="rounded-lg bg-blue-100 border border-blue-200 p-3 text-sm text-blue-800">Uploading and parsing email...</div>');
 
                     try {
                         const result = await window.ComposerAI.parseEmailFile(file);
                         this.currentEmailContext = result;
                         this.conversationId = null;
-                        this.uploadStatus.innerHTML = '<div class="rounded-lg bg-green-100 border border-green-200 p-3 text-sm text-green-800">Email uploaded and parsed successfully!</div>';
+                        this.showUploadStatus('<div class="rounded-lg bg-green-100 border border-green-200 p-3 text-sm text-green-800">Email uploaded and parsed successfully!</div>');
+                        await new Promise(resolve => setTimeout(resolve, 50));
                         this.enableChat();
                         this.addEmailContextMessage(result);
                     } catch (error) {
-                        this.uploadStatus.innerHTML = '<div class="rounded-lg bg-red-100 border border-red-200 p-3 text-sm text-red-800">Failed to upload email: ' + window.ComposerAI.escapeHtml(String(error?.message || 'Unknown error')) + '</div>';
+                        this.showUploadStatus('<div class="rounded-lg bg-red-100 border border-red-200 p-3 text-sm text-red-800">Failed to upload email: ' + window.ComposerAI.escapeHtml(String(error?.message || 'Unknown error')) + '</div>');
                     }
+                    this.enableChat();
                 }
 
-                showFileInfo(file) {
-                    this.fileInfo.innerHTML = '<strong>Selected file:</strong> ' + window.ComposerAI.escapeHtml(file.name) + '<br><strong>Size:</strong> ' + window.ComposerAI.formatFileSize(file.size) + '<br><strong>Type:</strong> ' + this.getFriendlyFileType(file.name);
-                    this.fileInfo.classList.remove('hidden');
+                showUploadStatus(html) {
+                    if (!this.uploadStatus) return;
+                    this.uploadStatus.innerHTML = html;
+                    this.uploadStatus.classList.toggle('hidden', !html);
                 }
 
                 getFriendlyFileType(filename) {
@@ -234,12 +276,12 @@
 
                 updateThinkingControls() {
                     const enabled = !this.messageInput?.disabled;
-                    document.getElementById('thinkingMenuButton')?.toggleAttribute('disabled', !enabled);
                     this.refreshThinkingMenuLabel();
                     if (this.thinkingStatus) {
                         this.thinkingStatus.classList.toggle('hidden', !enabled);
                         if (enabled) this.renderThinkingStatus();
                     }
+                    this.updateJsonToggleState();
                 }
 
                 enableChat() {
@@ -308,8 +350,13 @@
                     this.addMessage(message, 'user');
                     this.messageInput.value = '';
 
+                    const isJsonMode = this.jsonOutput;
                     const assistantDiv = this.addMessage('', 'assistant');
-                    assistantDiv.innerHTML = '<div class="assistant-thinking relative"><div class="phase-badge phase-thinking">' + (this.thinkingEnabled ? 'Thinking...' : 'Parsing your email...') + '</div><div class="thinking-skeleton rounded-xl border border-slate-200 bg-slate-50/80 p-3"><div class="thinking-line"></div><div class="thinking-line"></div><div class="thinking-line short"></div><div class="thinking-cursor-bar"></div></div></div>';
+                    if (isJsonMode) {
+                        assistantDiv.innerHTML = '<div class="phase-badge phase-streaming">Preparing JSON...</div><pre class="' + this.jsonPreClass + '"></pre>';
+                    } else {
+                        assistantDiv.innerHTML = '<div class="assistant-thinking relative"><div class="phase-badge phase-thinking">' + (this.thinkingEnabled ? 'Thinking...' : 'Parsing your email...') + '</div><div class="thinking-skeleton rounded-xl border border-slate-200 bg-slate-50/80 p-3"><div class="thinking-line"></div><div class="thinking-line"></div><div class="thinking-line short"></div><div class="thinking-cursor-bar"></div></div></div>';
+                    }
 
                     const payload = {
                         message,
@@ -317,7 +364,8 @@
                         maxResults: 5,
                         emailContext: this.currentEmailContext?.contextForAI || '',
                         thinkingEnabled: this.thinkingEnabled,
-                        thinkingLevel: this.thinkingEnabled ? this.thinkingLevel : null
+                        thinkingLevel: this.thinkingEnabled ? this.thinkingLevel : null,
+                        jsonOutput: isJsonMode
                     };
 
                     this.messageInput.disabled = true;
@@ -360,9 +408,27 @@
                     });
                     if (!response.ok) throw new Error('HTTP ' + response.status);
                     const result = await response.json();
+                    const isJsonMode = !!payload.jsonOutput;
                     const html = (result.sanitizedHtml || result.sanitizedHTML || result.renderedHtml || result.renderedHTML || '').trim();
                     const raw = (result.rawMarkdown || result.response || result.message || '').trim();
-                    targetDiv.innerHTML = html || window.ComposerAI.renderMarkdown(raw || 'I received your message about the email.');
+                    if (isJsonMode) {
+                        const pre = document.createElement('pre');
+                        pre.className = this.jsonPreClass;
+                        if (raw) {
+                            try {
+                                const parsed = JSON.parse(raw);
+                                pre.textContent = JSON.stringify(parsed, null, 2);
+                            } catch (_) {
+                                pre.textContent = raw;
+                            }
+                        } else {
+                            pre.textContent = '{ }';
+                        }
+                        targetDiv.innerHTML = '';
+                        targetDiv.appendChild(pre);
+                    } else {
+                        targetDiv.innerHTML = html || window.ComposerAI.renderMarkdown(raw || 'I received your message about the email.');
+                    }
                     if (result.conversationId) this.conversationId = result.conversationId;
                 }
 
@@ -383,15 +449,43 @@
 
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
+                    let isJsonMode = !!payload.jsonOutput;
                     let html = '';
+                    let jsonBuffer = '';
                     let buffer = '';
                     let firstToken = true;
+                    let jsonPre = null;
                     let conversationIdFromServer = null;
                     let currentEvent = null;
+                    let currentEventData = [];
                     let streamFinished = false;
 
                     const finalizeStream = () => {
-                        targetDiv.innerHTML = html || window.ComposerAI.renderMarkdown("I don't have a response to that.");
+                        if (isJsonMode) {
+                            if (jsonPre) {
+                                try {
+                                    const parsed = JSON.parse(jsonBuffer);
+                                    jsonPre.textContent = JSON.stringify(parsed, null, 2);
+                                } catch (_) {
+                                    jsonPre.textContent = jsonBuffer || '{ }';
+                                }
+                            } else if (jsonBuffer) {
+                                const pre = document.createElement('pre');
+                                pre.className = this.jsonPreClass;
+                                try {
+                                    const parsed = JSON.parse(jsonBuffer);
+                                    pre.textContent = JSON.stringify(parsed, null, 2);
+                                } catch (_) {
+                                    pre.textContent = jsonBuffer;
+                                }
+                                targetDiv.innerHTML = '';
+                                targetDiv.appendChild(pre);
+                            } else {
+                                targetDiv.innerHTML = window.ComposerAI.renderMarkdown('No response received.');
+                            }
+                        } else {
+                            targetDiv.innerHTML = html || window.ComposerAI.renderMarkdown("I don't have a response to that.");
+                        }
                         this.conversationId = conversationIdFromServer || payload.conversationId || this.conversationId;
                         this.resetReasoningState();
                         streamFinished = true;
@@ -403,18 +497,34 @@
                             try {
                                 const metadata = JSON.parse(raw);
                                 if (metadata.conversationId) conversationIdFromServer = metadata.conversationId;
+                                if (metadata.jsonOutput !== undefined) {
+                                    isJsonMode = Boolean(metadata.jsonOutput);
+                                }
                             } catch (err) {
                                 console.warn('ComposerAI: Failed to parse metadata event', err);
                             }
                         })
                         .on(SSE_EVENTS.RENDERED_HTML, (chunk) => {
-                            if (chunk == null) return;
+                            if (chunk == null || isJsonMode) return;
                             if (firstToken) {
                                 targetDiv.innerHTML = '<div class="phase-badge phase-streaming">Streaming...</div>';
                                 firstToken = false;
                             }
                             html += chunk;
                             targetDiv.innerHTML = html + '<span class="streaming-cursor">|</span>';
+                            this.scrollIfAtBottom();
+                        })
+                        .on(SSE_EVENTS.RAW_JSON, (chunk) => {
+                            if (chunk == null || !isJsonMode) return;
+                            jsonBuffer += chunk;
+                            if (firstToken) {
+                                targetDiv.innerHTML = '<div class="phase-badge phase-streaming">Streaming JSON...</div><pre class="' + this.jsonPreClass + '"></pre>';
+                                jsonPre = targetDiv.querySelector('pre');
+                                firstToken = false;
+                            }
+                            if (jsonPre) {
+                                jsonPre.textContent = jsonBuffer;
+                            }
                             this.scrollIfAtBottom();
                         })
                         .on(SSE_EVENTS.REASONING, (raw) => {
@@ -438,25 +548,53 @@
                         const lines = buffer.split('\n');
                         buffer = lines.pop() || '';
 
+                        // SSE spec allows multiple data: lines per event; accumulate until blank line terminator.
                         for (const line of lines) {
-                            if (line.startsWith('event:')) {
-                                currentEvent = line.substring(6).trim();
-                            } else if (line.startsWith('data:')) {
-                                const data = line.substring(5).trim();
+                            const cleanedLine = line.endsWith('\r') ? line.slice(0, -1) : line;
+
+                            if (cleanedLine.startsWith('event:')) {
+                                if (currentEvent && currentEventData.length) {
+                                    router.route(currentEvent, currentEventData.join('\n'));
+                                } else if (currentEvent && currentEventData.length === 0) {
+                                    router.route(currentEvent, '');
+                                }
+                                currentEvent = cleanedLine.substring(6).trim();
+                                currentEventData = [];
+                                continue;
+                            }
+
+                            if (cleanedLine.startsWith('data:')) {
+                                const value = cleanedLine.length >= 6 && cleanedLine.charAt(5) === ' '
+                                    ? cleanedLine.substring(6)
+                                    : cleanedLine.substring(5);
+                                currentEventData.push(value);
+                                continue;
+                            }
+
+                            if (cleanedLine === '') {
                                 if (currentEvent) {
-                                    router.route(currentEvent, data);
+                                    const payload = currentEventData.length > 1
+                                        ? currentEventData.join('\n')
+                                        : (currentEventData[0] ?? '');
+                                    router.route(currentEvent, payload);
                                 }
                                 currentEvent = null;
+                                currentEventData = [];
                                 if (streamFinished) break;
+                                continue;
                             }
                         }
                     }
 
-                    if (!streamFinished) {
-                        targetDiv.innerHTML = html || window.ComposerAI.renderMarkdown('No response received.');
-                        this.conversationId = conversationIdFromServer || payload.conversationId || this.conversationId;
-                        this.resetReasoningState();
-                    }
+                        if (!streamFinished) {
+                            if (currentEvent) {
+                                const payload = currentEventData.length > 1
+                                    ? currentEventData.join('\n')
+                                    : (currentEventData[0] ?? '');
+                                router.route(currentEvent, payload);
+                            }
+                            finalizeStream();
+                        }
                 }
 
                 scrollIfAtBottom() {
