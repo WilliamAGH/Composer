@@ -224,11 +224,14 @@ public class OpenAiProperties {
     /**
      * Get provider capabilities based on configured base URL.
      * Detects provider type (OpenAI, OpenRouter, Groq, etc.) and available features.
-     * Initialized eagerly during bean construction via @PostConstruct.
+     * Lazily re-evaluated to support test environments where @PostConstruct may not fire.
      *
      * @return provider capabilities instance
      */
     public ProviderCapabilities getProviderCapabilities() {
+        if (providerCapabilities == null) {
+            providerCapabilities = ProviderCapabilities.detect(api.getBaseUrl());
+        }
         return providerCapabilities;
     }
     
