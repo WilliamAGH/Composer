@@ -259,7 +259,7 @@ public class OpenAiChatService {
      * Resolves the chat model to use for completion requests.
      *
      * Configuration source of truth: OpenAiProperties.java
-     * Chat model: {@link OpenAiProperties.Model#getChat()} - "o4-mini"
+     * Chat model: {@link OpenAiProperties.Model#getChat()} - "gpt-4o-mini"
      */
     private ChatModel resolveChatModel() {
         return ChatModel.of(openAiProperties.getModel().getChat());
