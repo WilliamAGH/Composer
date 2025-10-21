@@ -50,7 +50,9 @@ public class ClientConfiguration {
                 .apiKey(trimmedKey)
                 .timeout(Timeout.builder()
                     .connect(Duration.ofSeconds(10))
-                    .read(Duration.ZERO)  // SSE streaming requires no read timeout
+                    // Use finite timeout for SSE to prevent hung connections
+                    // Set to SSE timeout + 30s grace period to allow proper server-side timeout handling
+                    .read(Duration.ofSeconds(openAiProperties.getStream().getTimeoutSeconds() + 30))
                     .write(Duration.ofSeconds(30))
                     .build())
                 // Disable strict response validation so unknown streaming events do not kill SSE.
