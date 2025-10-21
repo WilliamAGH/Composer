@@ -57,9 +57,14 @@ public class OpenAiProperties {
     private Prompts prompts = new Prompts();
     private Defaults defaults = new Defaults();
     private boolean localDebugEnabled = false;
-    
-    // Lazily initialized provider capabilities based on base URL
+
+    // Eagerly initialized provider capabilities based on base URL
     private ProviderCapabilities providerCapabilities;
+
+    @jakarta.annotation.PostConstruct
+    void initProviderCapabilities() {
+        this.providerCapabilities = ProviderCapabilities.detect(api.getBaseUrl());
+    }
 
     // ===== Configuration Type Definitions =====
 
@@ -219,13 +224,11 @@ public class OpenAiProperties {
     /**
      * Get provider capabilities based on configured base URL.
      * Detects provider type (OpenAI, OpenRouter, Groq, etc.) and available features.
-     * 
+     * Initialized eagerly during bean construction via @PostConstruct.
+     *
      * @return provider capabilities instance
      */
     public ProviderCapabilities getProviderCapabilities() {
-        if (providerCapabilities == null) {
-            providerCapabilities = ProviderCapabilities.detect(api.getBaseUrl());
-        }
         return providerCapabilities;
     }
     
