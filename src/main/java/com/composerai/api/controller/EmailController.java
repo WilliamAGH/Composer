@@ -144,7 +144,7 @@ public class EmailController {
             // Backend determines best context format for AI (prefer markdown > plain)
             // Prepend email metadata with temporal context for AI awareness
             String emailBody = (!markdown.isBlank()) ? markdown : plainText;
-            String contextForAI = buildEmailContextForAI(subject, from, dateWithRelativeTime, emailBody);
+            String contextForAI = buildEmailContextForAI(subject, from, dateWithRelativeTime, dateIso, emailBody);
             String contextId = resolveContextId(metadata);
             emailContextRegistry.store(contextId, plainText, markdown);
             parsedDocument.put("contextId", contextId);
@@ -238,23 +238,35 @@ public class EmailController {
     }
 
     /**
-     * Builds email context for AI with metadata header including temporal awareness.
-     * Prepends subject, sender, and timestamp (with relative time) to email body.
+     * Builds email context for AI with metadata header including explicit temporal awareness.
+     * Prepends subject, sender, timestamp, and pre-calculated temporal context to email body.
+     * This prevents AI from conflating "today's date" with "email's date".
      *
      * @param subject email subject line
      * @param from sender address
-     * @param dateWithRelativeTime formatted date with relative time (e.g., "Jan 15, 2024 at 3:45 PM PST (2 hours ago)")
+     * @param dateWithRelativeTime formatted date with relative time (e.g., "Sep 18, 2025 at 1:04 PM PST (2 hours ago)")
+     * @param dateIso ISO timestamp for precise calculations
      * @param emailBody the email content (markdown or plain text)
      * @return formatted context string with metadata header + body
      */
-    private static String buildEmailContextForAI(String subject, String from, String dateWithRelativeTime, String emailBody) {
+    private static String buildEmailContextForAI(String subject, String from, String dateWithRelativeTime, String dateIso, String emailBody) {
         StringBuilder context = new StringBuilder();
 
-        // Metadata header with temporal context
+        // Metadata header with explicit temporal context to prevent conflation
         context.append("=== Email Metadata ===\n");
         context.append("Subject: ").append(subject != null ? subject : "No subject").append("\n");
         context.append("From: ").append(from != null ? from : "Unknown sender").append("\n");
-        context.append("Date: ").append(dateWithRelativeTime != null ? dateWithRelativeTime : "Unknown date").append("\n");
+        context.append("Email sent on: ").append(dateWithRelativeTime != null ? dateWithRelativeTime : "Unknown date").append("\n");
+
+        // Add explicit temporal calculation so AI doesn't have to do math
+        if (dateIso != null && !dateIso.isBlank()) {
+            String relativeTime = TemporalUtils.getRelativeTime(dateIso);
+            if (relativeTime != null && !relativeTime.isBlank()) {
+                context.append("Time elapsed since email was sent: ").append(relativeTime).append("\n");
+                context.append("(Note: User questions about 'today' or 'now' refer to the CURRENT date in the system prompt above, NOT this email's date)\n");
+            }
+        }
+
         context.append("\n=== Email Body ===\n");
 
         // Email content
