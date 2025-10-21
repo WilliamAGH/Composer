@@ -116,7 +116,7 @@ class OpenAiChatServiceTest {
     @Test
     void generateResponse_withCustomModel_isHandledCorrectly() {
         OpenAiProperties customProperties = new OpenAiProperties();
-        customProperties.getModel().setChat("o4-mini");
+        customProperties.getModel().setChat("gpt-4o-mini");
         OpenAiChatService customModelService = new OpenAiChatService(openAIClient, customProperties, errorMessages);
 
         Response mockResponse = buildResponseWithText("Custom model response");
