@@ -97,9 +97,10 @@ public class ChatController {
             chatStreamExecutor.execute(() -> {
             try {
                 emitter.send(SseEmitter.event().comment("stream-start"));
+                final boolean jsonOutputRequested = request.isJsonOutput();
                 emitter.send(SseEmitter.event().name(SseEventType.METADATA.getEventName()).data(Map.of(
                     "conversationId", conversationId,
-                    "jsonOutput", request.isJsonOutput()
+                    "jsonOutput", jsonOutputRequested
                 )));
 
                 // SSE Event Routing: StreamEvents → SSE named events → Frontend SSEEventRouter
@@ -108,7 +109,10 @@ public class ChatController {
                     // Route HTML chunks: StreamEvent.RenderedHtml → SSE "rendered_html"
                     token -> {
                         try {
-                            emitter.send(SseEmitter.event().name(SseEventType.RENDERED_HTML.getEventName()).data(token));
+                            SseEventType eventType = jsonOutputRequested
+                                ? SseEventType.RAW_JSON
+                                : SseEventType.RENDERED_HTML;
+                            emitter.send(SseEmitter.event().name(eventType.getEventName()).data(token));
                         } catch (Exception e) {
                             emitter.completeWithError(e);
                         }
