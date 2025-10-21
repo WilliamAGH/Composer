@@ -10,6 +10,10 @@ package com.composerai.api.service.email;
 
 import com.composerai.api.service.HtmlToText;
 import com.composerai.api.util.StringUtils;
+import com.vladsch.flexmark.ext.autolink.AutolinkExtension;
+import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension;
+import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension;
+import com.vladsch.flexmark.ext.tables.TablesExtension;
 import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter;
 import com.vladsch.flexmark.parser.Parser;
@@ -302,6 +306,12 @@ public final class HtmlConverter {
         MarkdownRenderer() {
             MutableDataSet options = new MutableDataSet();
             ParserEmulationProfile.GITHUB_DOC.setIn(options);
+            options.set(Parser.EXTENSIONS, java.util.Arrays.asList(
+                TablesExtension.create(),
+                AutolinkExtension.create(),
+                StrikethroughExtension.create(),
+                TaskListExtension.create()
+            ));
             this.parser = Parser.builder(options).build();
             this.renderer = HtmlRenderer.builder(options)
                 .escapeHtml(true)

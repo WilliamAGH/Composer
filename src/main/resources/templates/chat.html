@@ -13,26 +13,27 @@
             .message-user { max-width: 64%; }
 
             .assistant-surface {
-                border-radius: 20px;
-                border: 1px solid rgba(148, 163, 184, 0.4);
+                width: 100%;
+                border-radius: 18px;
+                border: 1px solid rgba(148, 163, 184, 0.35);
                 background: rgba(255, 255, 255, 0.92);
-                box-shadow: 0 18px 30px -18px rgba(15, 23, 42, 0.25);
-                padding: 1.1rem 1.4rem;
+                box-shadow: 0 16px 32px -20px rgba(15, 23, 42, 0.28);
+                padding: 1rem 1.3rem;
             }
 
             @media (min-width: 640px) {
                 .assistant-surface {
-                    padding: 1.3rem 1.75rem;
+                    padding: 1.15rem 1.6rem;
                 }
             }
 
             .chat-markdown {
                 color: #0f172a;
-                font-size: 0.925rem;
-                line-height: 1.6;
-                gap: 0.85rem;
+                font-size: 0.9rem;
+                line-height: 1.58;
                 display: flex;
                 flex-direction: column;
+                gap: 0.8rem;
             }
 
             .chat-markdown > :first-child { margin-top: 0; }
@@ -40,8 +41,8 @@
 
             .chat-markdown p { margin: 0; }
             .chat-markdown ul,
-            .chat-markdown ol { margin: 0; padding-left: 1.1rem; }
-            .chat-markdown li { margin-bottom: 0.4rem; }
+            .chat-markdown ol { margin: 0; padding-left: 1.05rem; }
+            .chat-markdown li { margin-bottom: 0.35rem; }
 
             .chat-markdown a {
                 color: #0f172a;
@@ -67,14 +68,14 @@
             .chat-markdown pre {
                 background: rgba(15, 23, 42, 0.96);
                 color: rgba(248, 250, 252, 0.95);
-                border-radius: 16px;
-                padding: 0.85rem 1rem;
-                border: 1px solid rgba(71, 85, 105, 0.45);
+                border-radius: 14px;
+               padding: 0.75rem 0.9rem;
+                border: 1px solid rgba(71, 85, 105, 0.4);
                 overflow-x: auto;
                 margin: 0;
                 font-family: "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace;
-                font-size: 0.82rem;
-                line-height: 1.55;
+                font-size: 0.8rem;
+                line-height: 1.52;
             }
 
             .chat-markdown code,
@@ -513,15 +514,12 @@
 
                     msg.appendChild(toggleWrapper);
 
-                    const card = document.createElement('div');
-                    card.className = 'assistant-card w-full';
                     const surface = document.createElement('div');
                     surface.className = 'assistant-surface';
                     surface.appendChild(toggleWrapper);
-                    card.appendChild(surface);
                     const wrapper = document.createElement('div');
                     wrapper.className = 'message-block w-full';
-                    wrapper.appendChild(card);
+                    wrapper.appendChild(surface);
                     this.messages.appendChild(wrapper);
                     this.localizeDate(toggleWrapper.querySelector('[data-role="email-date"]'));
                     this.applyMarkdownEnhancements(surface);
@@ -829,18 +827,18 @@
                 addMessage(content, sender) {
                     const div = document.createElement('div');
                     if (sender === 'user') {
-                        div.className = 'message-user max-w-[70%] rounded-2xl bg-slate-900 text-white px-4 py-3 shadow-sm';
+                        div.className = 'message-user max-w-[60%] rounded-2xl bg-slate-900 text-white px-4 py-2.5 shadow-sm';
                         div.textContent = content;
                         const wrapper = document.createElement('div');
-                        wrapper.className = 'message-block flex w-full justify-end';
+                        wrapper.className = 'message-block w-full justify-end';
                         wrapper.appendChild(div);
                         this.messages.appendChild(wrapper);
                     } else {
                         div.className = 'assistant-card w-full';
                         const surface = document.createElement('div');
-                        surface.className = 'assistant-surface w-full rounded-3xl border border-slate-200 bg-white/95 px-5 py-5 sm:px-8 sm:py-6 shadow-ultra';
+                        surface.className = 'assistant-surface';
                         const markdownContainer = document.createElement('div');
-                        markdownContainer.className = 'chat-markdown space-y-4 text-sm leading-relaxed text-slate-800';
+                        markdownContainer.className = 'chat-markdown';
                         if (content?.trim()) {
                             markdownContainer.innerHTML = window.ComposerAI.renderMarkdown(content);
                             this.applyMarkdownEnhancements(markdownContainer);
@@ -848,7 +846,7 @@
                         surface.appendChild(markdownContainer);
                         div.appendChild(surface);
                         const wrapper = document.createElement('div');
-                        wrapper.className = 'message-block flex w-full';
+                        wrapper.className = 'message-block w-full';
                         wrapper.appendChild(div);
                         this.messages.appendChild(wrapper);
                         return markdownContainer;
