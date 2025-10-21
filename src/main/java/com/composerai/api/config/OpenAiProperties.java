@@ -75,7 +75,7 @@ public class OpenAiProperties {
 
     /**
      * Chat completion model configuration.
-     * Default: gpt-4o-mini (OpenAI's reasoning model)
+     * Default: gpt-4o-mini (fast, cost-effective chat model)
      */
     @Getter
     @Setter
