@@ -50,7 +50,7 @@ public class ClientConfiguration {
                 .apiKey(trimmedKey)
                 .timeout(Timeout.builder()
                     .connect(Duration.ofSeconds(10))
-                    .read(Duration.ofMinutes(5))
+                    .read(Duration.ZERO)  // SSE streaming requires no read timeout
                     .write(Duration.ofSeconds(30))
                     .build());
 

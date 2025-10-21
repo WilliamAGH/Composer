@@ -204,8 +204,14 @@ public class OpenAiChatService {
 
     private void emitHtmlDelta(String deltaText, MarkdownStreamAssembler assembler, Consumer<StreamEvent> onEvent, long[] tokenCount) {
         if (deltaText == null || deltaText.isEmpty()) return;
+        if (logger.isDebugEnabled()) {
+            logger.debug("Streaming delta ({} chars): {}", deltaText.length(), preview(deltaText));
+        }
         for (String htmlChunk : assembler.onDelta(deltaText)) {
             if (htmlChunk != null && !htmlChunk.isBlank()) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Emitting HTML chunk ({} chars): {}", htmlChunk.length(), preview(htmlChunk));
+                }
                 onEvent.accept(StreamEvent.renderedHtml(htmlChunk));
                 tokenCount[0] += htmlChunk.length();
             }
@@ -329,7 +335,7 @@ public class OpenAiChatService {
         private final StringBuilder lineBuffer = new StringBuilder();
         private boolean insideCodeFence = false;
         private char fenceDelimiter = '`';
-        private static final int CHUNK_THRESHOLD = 512;
+        private static final int CHUNK_THRESHOLD = 1536;
 
         List<String> onDelta(String delta) {
             if (delta == null || delta.isEmpty()) return Collections.emptyList();
@@ -343,15 +349,24 @@ public class OpenAiChatService {
                 if (ch == '\n') {
                     String trimmedLine = lineBuffer.toString().trim();
                     updateFenceState(trimmedLine);
-                    if (!insideCodeFence && (trimmedLine.isEmpty() || buffer.length() >= CHUNK_THRESHOLD)) {
-                        flushed = addChunk(flushed, flushBuffer());
+                    if (!insideCodeFence) {
+                        if (trimmedLine.isEmpty()) {
+                            flushed = addChunk(flushed, flushBuffer());
+                        } else {
+                            flushed = addChunk(flushed, flushToParagraphBreakIfNeeded());
+                        }
                     }
                     lineBuffer.setLength(0);
                 } else {
                     lineBuffer.append(ch);
-                    if (!insideCodeFence && buffer.length() >= CHUNK_THRESHOLD) {
-                        flushed = addChunk(flushed, flushBuffer());
+                    if (!insideCodeFence) {
+                        flushed = addChunk(flushed, flushToParagraphBreakIfNeeded());
                     }
+                }
+            }
+            if (logger.isDebugEnabled() && flushed != null) {
+                for (String chunk : flushed) {
+                    logger.debug("MarkdownAssembler flush chunk ({} chars): {}", chunk != null ? chunk.length() : 0, preview(chunk));
                 }
             }
             return flushed == null ? Collections.emptyList() : flushed;
@@ -366,8 +381,14 @@ public class OpenAiChatService {
 
         Optional<String> flushRemainder() {
             if (buffer.isEmpty()) return Optional.empty();
-            String chunk = sanitizeBuffer();
+            String markdown = buffer.toString();
+            buffer.setLength(0);
+            resetLineBuffer();
+            String chunk = renderMarkdown(markdown);
             insideCodeFence = false;
+            if (logger.isDebugEnabled()) {
+                logger.debug("MarkdownAssembler flush remainder ({} chars): {}", chunk != null ? chunk.length() : 0, preview(chunk));
+            }
             return chunk == null || chunk.isBlank() ? Optional.empty() : Optional.of(chunk);
         }
 
@@ -385,16 +406,53 @@ public class OpenAiChatService {
         }
 
         private String flushBuffer() {
-            return buffer.isEmpty() ? null : sanitizeBuffer();
-        }
-
-        private String sanitizeBuffer() {
+            if (buffer.isEmpty()) return null;
             String markdown = buffer.toString();
             buffer.setLength(0);
-            lineBuffer.setLength(0);
-            if (markdown.isBlank()) return null;
+            String chunk = renderMarkdown(markdown);
+            resetLineBuffer();
+            return chunk;
+        }
+
+        private String flushToParagraphBreakIfNeeded() {
+            if (buffer.length() < CHUNK_THRESHOLD) return null;
+            int boundary = lastParagraphBoundary();
+            if (boundary < 0) return null;
+            String markdown = buffer.substring(0, boundary);
+            buffer.delete(0, boundary);
+            resetLineBuffer();
+            return renderMarkdown(markdown);
+        }
+
+        private int lastParagraphBoundary() {
+            int idx = buffer.lastIndexOf("\n\n");
+            if (idx < 0) return -1;
+            // include blank line in the flushed segment
+            return idx + 2;
+        }
+
+        private String renderMarkdown(String markdown) {
+            if (markdown == null || markdown.isBlank()) return null;
             String rendered = HtmlConverter.markdownToSafeHtml(markdown);
             return rendered == null || rendered.isBlank() ? null : rendered;
         }
+
+        private void resetLineBuffer() {
+            lineBuffer.setLength(0);
+            if (!buffer.isEmpty()) {
+                int lastNewline = buffer.lastIndexOf("\n");
+                if (lastNewline == -1) {
+                    lineBuffer.append(buffer);
+                } else if (lastNewline + 1 < buffer.length()) {
+                    lineBuffer.append(buffer.substring(lastNewline + 1));
+                }
+            }
+        }
+    }
+
+    private static String preview(String value) {
+        if (value == null) return "<null>";
+        String trimmed = value.replaceAll("\n", "\\n");
+        return trimmed.length() <= 120 ? trimmed : trimmed.substring(0, 117) + "...";
     }
 }
