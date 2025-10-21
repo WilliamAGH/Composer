@@ -79,7 +79,11 @@ public class ChatController {
             log.warn("SSE timeout for conversationId={}", conversationId);
             emitter.complete();
         });
-        emitter.onError(ex -> log.warn("SSE error for conversationId={}", conversationId, ex));
+        emitter.onError(ex -> {
+            log.warn("SSE error for conversationId={}", conversationId, ex);
+            completed.set(true);
+            heartbeatExecutor.shutdownNow();
+        });
         emitter.onCompletion(() -> {
             completed.set(true);
             heartbeatExecutor.shutdownNow();
