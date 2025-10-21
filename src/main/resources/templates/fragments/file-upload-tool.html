@@ -7,27 +7,33 @@
 </head>
 <body>
     <!-- Email Upload Section Fragment -->
-    <section th:fragment="uploadSection" id="uploadSection" class="rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-ultra shadow-slate-900/10 backdrop-blur">
-        <h2 class="mb-4 text-xl font-semibold text-slate-900">Upload Email</h2>
-        <p class="mb-6 text-sm text-slate-600">Drag and drop an email file or click to select one to start a conversation about it.</p>
-        
-        <!-- 
-            IMPORTANT: File Upload Implementation
-            - The file input has an associated label for accessibility
-            - The <input> is visually hidden with `opacity-0`. Using `display: none` will break functionality.
-            - The shared FileUploadHandler in layout.html is now robust enough to handle both <label>
-              and other elements as drop areas, ensuring site-wide consistency.
-        -->
-        <div id="fileDropArea" class="relative block rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center transition-all hover:border-slate-400 hover:bg-slate-100">
-            <label for="fileInput" class="sr-only">Upload email file (.eml, .msg, .txt, .html)</label>
-            <input type="file" id="fileInput" class="absolute inset-0 h-full w-full opacity-0 cursor-pointer" accept=".eml,.msg,.txt,.html" aria-describedby="fileDropHelp" />
-            <div class="text-5xl mb-4" aria-hidden="true">&#9993;</div>
-            <p class="text-base font-semibold text-slate-700">Drop your email file here</p>
-            <p id="fileDropHelp" class="text-sm text-slate-500 mt-2">Click to browse</p>
+    <section th:fragment="uploadSection" id="uploadSection" class="relative rounded-2xl border border-slate-200 bg-white/95 px-5 py-3 shadow-lg shadow-slate-900/10 backdrop-blur-sm">
+        <div class="flex flex-col gap-1.5">
+            <h2 class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">Upload Email</h2>
+            <p class="text-xs text-slate-500">Drop or select a file to provide context for the chat.</p>
         </div>
         
-        <div id="fileInfo" class="mt-4 hidden rounded-lg bg-slate-100 p-3 text-sm text-slate-700"></div>
-        <div id="uploadStatus" class="mt-4"></div>
+        <div class="relative mt-3">
+            <!-- 
+                IMPORTANT: File Upload Implementation
+                - The file input has an associated label for accessibility
+                - The <input> is visually hidden with `opacity-0`. Using `display: none` will break functionality.
+                - The shared FileUploadHandler in layout.html is now robust enough to handle both <label>
+                  and other elements as drop areas, ensuring site-wide consistency.
+            -->
+            <div id="fileDropArea" class="relative rounded-xl border border-dashed border-slate-300 bg-slate-50 px-5 py-6 text-center transition-all hover:border-slate-400 hover:bg-slate-100">
+                <label for="fileInput" class="sr-only">Upload email file (.eml, .msg, .txt, .html)</label>
+                <input type="file" id="fileInput" class="absolute inset-0 h-full w-full cursor-pointer opacity-0" accept=".eml,.msg,.txt,.html" aria-describedby="fileDropHelp" />
+                <div class="mb-2 text-3xl text-slate-600" aria-hidden="true">&#9993;</div>
+                <p class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-700">Drop email file</p>
+                <p id="fileDropHelp" class="mt-1 text-[11px] text-slate-500">Click to browse</p>
+            </div>
+
+            <div class="pointer-events-none absolute inset-x-3 bottom-3 flex flex-col items-start gap-1 text-[11px] font-medium">
+                <div id="fileInfo" class="hidden rounded-full bg-slate-900/85 px-3 py-1 text-white/95 shadow-sm"></div>
+                <div id="uploadStatus" class="hidden rounded-full px-3 py-1 text-white shadow-sm"></div>
+            </div>
+        </div>
     </section>
 </body>
 </html>

@@ -12,17 +12,18 @@
         <div class="mx-auto flex max-w-6xl flex-col gap-10 px-4 sm:px-6 lg:px-8">
             <header class="relative overflow-hidden rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-ultra shadow-slate-900/10 backdrop-blur">
                 <div class="absolute inset-0 bg-subtle-glow"></div>
-                <div class="relative z-10 flex flex-col gap-4">
-                    <h1 class="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">ComposerAI Chat</h1>
-                    <p class="max-w-2xl text-base text-slate-600">Upload an email and chat about it with AI assistance</p>
-                    <div class="flex flex-wrap items-center gap-3">
-                        <span class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">Chat Interface</span>
-                        <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">Supports .eml, .msg, .txt</span>
+                <div class="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                    <div class="flex max-w-2xl flex-col gap-4">
+                        <h1 class="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">ComposerAI Chat</h1>
+                        <p class="text-base text-slate-600">Upload an email and chat about it with AI assistance</p>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <span class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">Chat Interface</span>
+                            <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">Supports .eml, .msg, .txt</span>
+                        </div>
                     </div>
+                    <div class="mt-4 w-full shrink-0 rounded-3xl border border-slate-200 bg-white/92 px-5 py-4 shadow-lg shadow-slate-900/10 backdrop-blur-sm lg:mt-0 lg:ml-10 lg:max-w-xs xl:max-w-sm" th:replace="~{fragments/file-upload-tool :: uploadSection}"></div>
                 </div>
             </header>
-
-            <div th:replace="~{fragments/file-upload-tool :: uploadSection}"></div>
 
             <section class="rounded-3xl border border-slate-200 bg-white/90 shadow-ultra shadow-slate-900/10 backdrop-blur overflow-hidden">
                 <div id="messages" class="flex flex-col gap-4 p-8 min-h-[400px] max-h-[500px] overflow-y-auto bg-slate-50">
@@ -109,6 +110,7 @@
                     this.thinkingStatus = document.getElementById('thinkingStatus');
                     this.thinkingEnabled = false;
                     this.thinkingLevel = 'medium';
+                    this.previewCounter = 0;
                     this.streamTimeoutMs = 120000; // Default 2 minutes, updated from server
                     this.initializeEventListeners();
                 }
@@ -254,22 +256,45 @@
                     const from = window.ComposerAI.escapeHtml(emailData.from || 'Unknown sender');
                     const dateLabel = window.ComposerAI.escapeHtml(emailData.date || 'Unknown date');
                     const iso = (emailData.dateIso || '').trim();
-                    msg.innerHTML = '<h4 class="font-semibold text-slate-900 mb-2">&#128231; Email Context Loaded</h4>' +
-                        '<p class="text-sm text-slate-700"><strong>Subject:</strong> ' + subject + '</p>' +
-                        '<p class="text-sm text-slate-700"><strong>From:</strong> ' + from + '</p>' +
-                        '<p class="text-sm text-slate-700" data-role="email-date" data-original-label="' + dateLabel + '" ' + (iso ? 'data-date-iso="' + window.ComposerAI.escapeHtml(iso) + '"' : '') + '><strong>Date:</strong> ' + dateLabel + '</p>';
-
                     const previewMd = (emailData.parsedMarkdown || emailData.parsedPlain || '').trim();
-                    if (previewMd.length > 0) {
-                        const truncated = previewMd.length > 400 ? previewMd.substring(0, 400) + '...' : previewMd;
-                        const previewDiv = document.createElement('div');
-                        previewDiv.className = 'mt-3 pt-3 border-t border-blue-300';
-                        previewDiv.innerHTML = '<p class="text-xs font-semibold text-slate-600 mb-1">Preview:</p><div class="prose prose-sm text-slate-600 max-w-none opacity-80">' + window.ComposerAI.renderMarkdown(truncated) + '</div>';
-                        msg.appendChild(previewDiv);
-                    }
+                    const previewId = 'email-preview-' + (++this.previewCounter);
+                    const previewHtml = previewMd.length > 0 ? window.ComposerAI.renderMarkdown(previewMd) : '<p class="text-xs italic text-slate-500">Email preview unavailable.</p>';
+
+                    const toggleWrapper = document.createElement('div');
+                    toggleWrapper.className = 'overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/60';
+                    toggleWrapper.innerHTML =
+                        '<button type="button" class="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-blue-100/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200" data-role="preview-toggle" aria-expanded="false" aria-controls="' + previewId + '">' +
+                            '<span class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-700">' +
+                                '<svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2.25 6.75A3.75 3.75 0 016 3h12a3.75 3.75 0 013.75 3.75v10.5A3.75 3.75 0 0118 21H6a3.75 3.75 0 01-3.75-3.75V6.75zm3.82-.456a.75.75 0 00-.82 1.26l6 3.9a.75.75 0 00.82 0l6-3.9a.75.75 0 00-.82-1.26L12 9.694 6.07 6.294z"/></svg>' +
+                            '</span>' +
+                            '<span class="flex-1 text-sm font-semibold text-slate-800">' + subject + '</span>' +
+                            '<span class="ml-auto flex items-center gap-2">' +
+                                '<span class="rounded-md bg-white/70 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600" data-role="email-date" data-original-label="' + dateLabel + '" ' + (iso ? 'data-date-iso="' + window.ComposerAI.escapeHtml(iso) + '"' : '') + '>' + dateLabel + '</span>' +
+                                '<svg class="h-4 w-4 text-slate-500 transition-transform" data-role="preview-chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>' +
+                            '</span>' +
+                        '</button>' +
+                        '<div id="' + previewId + '" data-role="preview-body" class="hidden border-t border-blue-200/80 bg-white/80 px-4 py-3">' +
+                            '<div class="space-y-3 text-sm text-slate-700">' +
+                                '<p><strong>From:</strong> ' + from + '</p>' +
+                                '<div class="prose prose-sm text-slate-700 max-w-none opacity-90">' + previewHtml + '</div>' +
+                            '</div>' +
+                        '</div>';
+
+                    const toggleBtn = toggleWrapper.querySelector('[data-role="preview-toggle"]');
+                    const previewBody = toggleWrapper.querySelector('[data-role="preview-body"]');
+                    const previewChevron = toggleWrapper.querySelector('[data-role="preview-chevron"]');
+                    toggleBtn.addEventListener('click', () => {
+                        const expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+                        const nextExpanded = !expanded;
+                        toggleBtn.setAttribute('aria-expanded', String(nextExpanded));
+                        previewBody.classList.toggle('hidden', !nextExpanded);
+                        previewChevron.style.transform = nextExpanded ? 'rotate(180deg)' : 'rotate(0)';
+                    });
+
+                    msg.appendChild(toggleWrapper);
 
                     this.messages.appendChild(msg);
-                    this.localizeDate(msg.querySelector('[data-role="email-date"]'));
+                    this.localizeDate(toggleWrapper.querySelector('[data-role="email-date"]'));
                     this.messages.scrollTop = this.messages.scrollHeight;
                 }
 
@@ -443,15 +468,23 @@
                 localizeDate(elem) {
                     if (!elem) return;
                     const iso = elem.getAttribute('data-date-iso');
-                    if (!iso) return;
+                    const original = elem.getAttribute('data-original-label') || '';
+                    if (!iso) {
+                        if (!elem.textContent?.trim()) {
+                            elem.textContent = original;
+                        }
+                        return;
+                    }
                     try {
                         const localDate = new Date(iso);
                         if (!isNaN(localDate.getTime())) {
                             const formatted = localDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-                            elem.innerHTML = '<strong>Date:</strong> ' + window.ComposerAI.escapeHtml(formatted);
-                            elem.setAttribute('title', 'Original: ' + elem.getAttribute('data-original-label') + '\nISO: ' + iso);
+                            elem.textContent = formatted;
+                            elem.setAttribute('title', 'Original: ' + original + '\nISO: ' + iso);
+                            return;
                         }
-                    } catch (err) {}
+                    } catch (_) {}
+                    elem.textContent = original;
                 }
 
                 addMessage(content, sender) {
