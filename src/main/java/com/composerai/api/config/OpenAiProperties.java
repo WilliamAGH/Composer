@@ -159,6 +159,8 @@ public class OpenAiProperties {
             - Section headers and organization
             - Links and references
 
+            Unless the user explicitly states otherwise, interpret references such as "this", "the email", or similar allusions as referring to the provided email context.
+
             Use the provided email context strictly as evidence.
             When the user asks "what does this email say" or similar comprehensive questions,
             provide a thorough, complete summary covering ALL major sections and key details.

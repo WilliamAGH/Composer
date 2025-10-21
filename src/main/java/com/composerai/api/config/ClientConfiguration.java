@@ -52,7 +52,9 @@ public class ClientConfiguration {
                     .connect(Duration.ofSeconds(10))
                     .read(Duration.ZERO)  // SSE streaming requires no read timeout
                     .write(Duration.ofSeconds(30))
-                    .build());
+                    .build())
+                // Disable strict response validation so unknown streaming events do not kill SSE.
+                .responseValidation(false);
 
             if (!StringUtils.isBlank(baseUrl)) {
                 builder.baseUrl(baseUrl.trim());
