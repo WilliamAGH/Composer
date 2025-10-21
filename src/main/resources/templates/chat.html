@@ -154,7 +154,7 @@
             <header
                 class="relative overflow-hidden rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-ultra shadow-slate-900/10 backdrop-blur lg:p-7">
                 <div class="absolute inset-0 bg-subtle-glow"></div>
-                <div class="relative z-10 flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+                <div class="relative z-10 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                     <div class="flex max-w-2xl flex-col gap-3">
                         <h1 class="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">ComposerAI Chat
                         </h1>
@@ -169,8 +169,15 @@
                                 .eml, .msg, .txt</span>
                         </div>
                     </div>
-                    <div class="mt-4 w-full shrink-0 rounded-2xl border border-slate-200 bg-white/92 px-4 py-4 shadow-lg shadow-slate-900/10 backdrop-blur-sm md:mt-0 md:ml-6 md:w-[18rem] lg:ml-8 lg:w-[17rem] xl:w-[18rem]"
-                        th:replace="~{fragments/file-upload-tool :: uploadSection}"></div>
+                    <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/70 px-3 py-2 text-xs font-medium text-slate-600 shadow-sm">
+                        <svg class="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M4 12l1.5 1.5a2 2 0 002.828 0L12 9.828a2 2 0 012.828 0L20 15" />
+                            <path d="M3 7l9-4 9 4" />
+                            <path d="M21 10v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8" />
+                        </svg>
+                        <span>Use the upload icon near the chat box to add email context.</span>
+                    </div>
                 </div>
             </header>
 
@@ -226,6 +233,17 @@
                         <span id="thinkingStatus" class="hidden text-slate-500"></span>
                     </div>
                     <div class="flex items-center gap-3">
+                        <label id="inlineUploadButton"
+                            class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-2xl border border-slate-300 bg-white text-slate-600 shadow-sm transition hover:border-slate-400 hover:text-slate-900 focus-within:outline-none focus-within:ring-2 focus-within:ring-slate-200"
+                            title="Upload email or file for context" aria-label="Upload email or file for context">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M4 12l1.5 1.5a2 2 0 002.828 0L12 9.828a2 2 0 012.828 0L20 15" />
+                                <path d="M3 7l9-4 9 4" />
+                                <path d="M21 10v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8" />
+                            </svg>
+                            <input type="file" id="inlineFileInput" class="sr-only" accept=".eml,.msg,.txt,.html,.pdf,.doc,.docx" />
+                        </label>
                         <textarea id="messageInput"
                             class="flex-1 resize-none rounded-2xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
                             placeholder="Type your message about the email..." rows="1" disabled></textarea>
@@ -272,7 +290,7 @@
                     this.messageInput = document.getElementById('messageInput');
                     this.sendButton = document.getElementById('sendButton');
                     this.fileDropArea = document.getElementById('fileDropArea');
-                    this.fileInput = document.getElementById('fileInput');
+                    this.fileInput = document.getElementById('fileInput') || document.getElementById('inlineFileInput');
                     this.uploadStatus = document.getElementById('uploadStatus');
                     this.currentEmailContext = null;
                     this.conversationId = null;
@@ -301,9 +319,9 @@
                         }
                     });
 
-                    if (this.fileDropArea && this.fileInput && window.ComposerAI?.FileUploadHandler) {
+                    if (this.fileInput && window.ComposerAI?.FileUploadHandler) {
                         new window.ComposerAI.FileUploadHandler({
-                            dropArea: this.fileDropArea,
+                            dropArea: this.fileDropArea || document.getElementById('inlineUploadButton'),
                             fileInput: this.fileInput,
                             onFileSelected: (file) => this.handleFileUpload(file),
                             validExtensions: ['.eml', '.msg', '.txt']
@@ -471,8 +489,6 @@
                 }
 
                 addEmailContextMessage(emailData) {
-                    const msg = document.createElement('div');
-                    msg.className = 'message-assistant max-w-[70%] rounded-2xl bg-blue-50 border border-blue-200 p-4 shadow-sm';
                     const subject = window.ComposerAI.escapeHtml(emailData.subject || 'No subject');
                     const from = window.ComposerAI.escapeHtml(emailData.from || 'Unknown sender');
                     const dateLabel = window.ComposerAI.escapeHtml(emailData.date || 'Unknown date');
@@ -512,13 +528,11 @@
                         previewChevron.style.transform = nextExpanded ? 'rotate(180deg)' : 'rotate(0)';
                     });
 
-                    msg.appendChild(toggleWrapper);
-
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'message-block w-full';
                     const surface = document.createElement('div');
                     surface.className = 'assistant-surface';
                     surface.appendChild(toggleWrapper);
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'message-block w-full';
                     wrapper.appendChild(surface);
                     this.messages.appendChild(wrapper);
                     this.localizeDate(toggleWrapper.querySelector('[data-role="email-date"]'));
