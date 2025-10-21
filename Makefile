@@ -4,7 +4,7 @@ PORT ?= 8080
 PROFILE ?= local
 MAVEN_TEST_FLAGS ?=
 
-.PHONY: help run build test clean lint deps-refresh docker-build docker-run-local docker-run-prod
+.PHONY: help run build test clean lint docker-build docker-run-local docker-run-prod
 
 help:
 	@echo "Targets:"
@@ -34,12 +34,6 @@ lint:
 	@echo "Running SpotBugs (static analysis)..."
 	@mvn compile spotbugs:check -q
 	@echo "✅ All lint checks passed!"
-
-deps-refresh:
-	@echo "Purging cached OpenAI Java SDK artifacts..."
-	mvn dependency:purge-local-repository -DmanualInclude=com.openai:openai-java -DreResolve=false
-	@echo "Rebuilding project to restore dependencies..."
-	mvn -q -DskipTests package
 
 docker-build:
 	docker build --build-arg APP_NAME=$(APP_NAME) -t $(APP_NAME):$(TAG) .
