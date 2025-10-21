@@ -22,6 +22,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ScheduledExecutorService;
 
 @Slf4j
 @RestController
@@ -30,15 +31,18 @@ public class ChatController {
 
     private final ChatService chatService;
     private final Executor chatStreamExecutor;
+    private final ScheduledExecutorService sseHeartbeatExecutor;
     private final OpenAiProperties openAiProperties;
     private final ErrorMessagesProperties errorMessages;
 
     public ChatController(ChatService chatService,
                           @Qualifier("chatStreamExecutor") Executor chatStreamExecutor,
+                          @Qualifier("sseHeartbeatExecutor") ScheduledExecutorService sseHeartbeatExecutor,
                           OpenAiProperties openAiProperties,
                           ErrorMessagesProperties errorMessages) {
         this.chatService = chatService;
         this.chatStreamExecutor = chatStreamExecutor;
+        this.sseHeartbeatExecutor = sseHeartbeatExecutor;
         this.openAiProperties = openAiProperties;
         this.errorMessages = errorMessages;
     }
@@ -65,9 +69,9 @@ public class ChatController {
         SseEmitter emitter = new SseEmitter(openAiProperties.getStream().getTimeoutMillis());
         // Send periodic keepalive comments to prevent proxies from closing idle streams
         // Configuration source of truth: OpenAiProperties.Stream.getHeartbeatIntervalSeconds() - 10 seconds
-        final java.util.concurrent.ScheduledExecutorService heartbeatExecutor = java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
+        // Using shared executor to avoid thread pool exhaustion
         final java.util.concurrent.atomic.AtomicBoolean completed = new java.util.concurrent.atomic.AtomicBoolean(false);
-        heartbeatExecutor.scheduleAtFixedRate(() -> {
+        final java.util.concurrent.ScheduledFuture<?> heartbeatTask = sseHeartbeatExecutor.scheduleAtFixedRate(() -> {
             if (completed.get()) return;
             try {
                 emitter.send(SseEmitter.event().comment("heartbeat"));
@@ -82,11 +86,11 @@ public class ChatController {
         emitter.onError(ex -> {
             log.warn("SSE error for conversationId={}", conversationId, ex);
             completed.set(true);
-            heartbeatExecutor.shutdownNow();
+            heartbeatTask.cancel(false);
         });
         emitter.onCompletion(() -> {
             completed.set(true);
-            heartbeatExecutor.shutdownNow();
+            heartbeatTask.cancel(false);
             log.info("SSE completed for conversationId={}", conversationId);
         });
         try {
@@ -124,7 +128,7 @@ public class ChatController {
                     // Route completion: onComplete → SSE "done"
                     () -> {
                         completed.set(true);
-                        heartbeatExecutor.shutdownNow();
+                        heartbeatTask.cancel(false);
                         try {
                             emitter.send(SseEmitter.event().name(SseEventType.DONE.getEventName()).data("[DONE]"));
                             emitter.complete();
@@ -143,7 +147,7 @@ public class ChatController {
                             log.debug("Failed to send SSE error event", ignored);
                         }
                         completed.set(true);
-                        heartbeatExecutor.shutdownNow();
+                        heartbeatTask.cancel(false);
                         emitter.complete();
                     }
                 );
