@@ -547,6 +547,12 @@
                         '</span>' +
                         '<span class="flex-1 text-sm font-semibold text-slate-800">' + subject + '</span>' +
                         '<span class="ml-auto flex items-center gap-2">' +
+                        '<button type="button" data-role="quick-insights" class="group flex h-8 items-center gap-1.5 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 px-2.5 py-1.5 text-white shadow-sm transition-all hover:shadow-md hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300" title="Get AI insights about this email" aria-label="Analyze email with AI">' +
+                        '<svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+                        '<path d="M9.813 3.063l.75 3.75m3.937-3.75l-.75 3.75m-6 .937l3.75.75m9.375 0l-3.75.75m-9.375 6l3.75-.75m9.375 0l-3.75-.75m-6 5.063l.75-3.75m3.937 3.75l-.75-3.75M12 18.75a6.75 6.75 0 100-13.5 6.75 6.75 0 000 13.5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+                        '</svg>' +
+                        '<span class="text-[11px] font-semibold">Insights</span>' +
+                        '</button>' +
                         '<span class="rounded-md bg-white/70 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600" data-role="email-date" data-original-label="' + dateLabel + '" ' + (iso ? 'data-date-iso="' + window.ComposerAI.escapeHtml(iso) + '"' : '') + '>' + dateLabel + '</span>' +
                         '<svg class="h-4 w-4 text-slate-500 transition-transform" data-role="preview-chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>' +
                         '</span>' +
@@ -561,12 +567,28 @@
                     const toggleBtn = toggleWrapper.querySelector('[data-role="preview-toggle"]');
                     const previewBody = toggleWrapper.querySelector('[data-role="preview-body"]');
                     const previewChevron = toggleWrapper.querySelector('[data-role="preview-chevron"]');
-                    toggleBtn.addEventListener('click', () => {
+                    const insightsBtn = toggleWrapper.querySelector('[data-role="quick-insights"]');
+
+                    toggleBtn.addEventListener('click', (e) => {
+                        // Don't toggle if clicking the insights button
+                        if (e.target.closest('[data-role="quick-insights"]')) return;
+
                         const expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
                         const nextExpanded = !expanded;
                         toggleBtn.setAttribute('aria-expanded', String(nextExpanded));
                         previewBody.classList.toggle('hidden', !nextExpanded);
                         previewChevron.style.transform = nextExpanded ? 'rotate(180deg)' : 'rotate(0)';
+                    });
+
+                    // Quick Insights: Auto-analyze email with comprehensive prompt
+                    insightsBtn.addEventListener('click', (e) => {
+                        e.stopPropagation(); // Don't trigger toggle
+
+                        // Auto-send comprehensive analysis request
+                        const autoPrompt = "Please analyze this email and provide: (1) a concise summary of what it's about, (2) any action items or tasks I need to complete, (3) expected responses or anticipated replies, (4) important deadlines or time-sensitive information, (5) recommended next steps, and (6) any follow-ups I should plan. Make it clear, actionable, and helpful.";
+
+                        this.messageInput.value = autoPrompt;
+                        this.sendMessage();
                     });
 
                     const wrapper = document.createElement('div');
