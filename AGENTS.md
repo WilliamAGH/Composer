@@ -85,6 +85,7 @@ Refer to `README.md` (Technology Stack and Requirements) for current runtime ver
 4. Forbidden shortcuts
    - The usage of @SuppressWarnings is NEVER AN ALLOWED SOLUTION. EVER.
    - Never rewrite history: avoid `git commit --amend`, `git rebase`, or any history-altering commands.
+   - Never revert or 'restore' user changes unless the user explicitly instructs you to do so. You're not 'helping' when you make destructive actions like this. You're causing significant damage.
 
 5. OpenAI Java SDK awareness
    - Before modifying any OpenAI integration, read the current SDK version from `pom.xml` and treat it as the source of truth (presently `4.6.1`).
