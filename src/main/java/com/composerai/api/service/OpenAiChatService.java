@@ -160,7 +160,8 @@ public class OpenAiChatService {
             logger.debug("Reasoning requested but provider {} does not support it", openAiProperties.getProviderCapabilities().getType());
         }
 
-        MarkdownStreamAssembler assembler = jsonOutput ? null : new MarkdownStreamAssembler();
+        boolean streamingDebugEnabled = logger.isDebugEnabled() && openAiProperties.isLocalDebugEnabled();
+        MarkdownStreamAssembler assembler = jsonOutput ? null : new MarkdownStreamAssembler(streamingDebugEnabled);
         long startNanos = System.nanoTime();
         final long[] tokenCount = new long[]{0};
         final boolean[] failed = {false};
@@ -171,9 +172,9 @@ public class OpenAiChatService {
                     try {
                         event.outputTextDelta().ifPresent(textDelta -> {
                             if (jsonOutput) {
-                                emitJsonDelta(textDelta.delta(), onEvent, tokenCount);
+                                emitJsonDelta(textDelta.delta(), onEvent, tokenCount, streamingDebugEnabled);
                             } else {
-                                emitHtmlDelta(textDelta.delta(), assembler, onEvent, tokenCount);
+                                emitHtmlDelta(textDelta.delta(), assembler, onEvent, tokenCount, streamingDebugEnabled);
                             }
                         });
                         emitReasoningEvents(event, onEvent);
@@ -220,14 +221,14 @@ public class OpenAiChatService {
         record Failed(ResponseFailedEvent value) implements StreamEvent {}
     }
 
-    private void emitHtmlDelta(String deltaText, MarkdownStreamAssembler assembler, Consumer<StreamEvent> onEvent, long[] tokenCount) {
+    private void emitHtmlDelta(String deltaText, MarkdownStreamAssembler assembler, Consumer<StreamEvent> onEvent, long[] tokenCount, boolean debugEnabled) {
         if (deltaText == null || deltaText.isEmpty()) return;
-        if (logger.isDebugEnabled() && openAiProperties.isLocalDebugEnabled()) {
+        if (debugEnabled) {
             logger.debug("Streaming delta ({} chars): {}", deltaText.length(), preview(deltaText));
         }
         for (String htmlChunk : assembler.onDelta(deltaText)) {
             if (htmlChunk != null && !htmlChunk.isBlank()) {
-                if (logger.isDebugEnabled() && openAiProperties.isLocalDebugEnabled()) {
+                if (debugEnabled) {
                     logger.debug("Emitting HTML chunk ({} chars): {}", htmlChunk.length(), preview(htmlChunk));
                 }
                 onEvent.accept(StreamEvent.renderedHtml(htmlChunk));
@@ -236,9 +237,9 @@ public class OpenAiChatService {
         }
     }
 
-    private void emitJsonDelta(String deltaText, Consumer<StreamEvent> onEvent, long[] tokenCount) {
+    private void emitJsonDelta(String deltaText, Consumer<StreamEvent> onEvent, long[] tokenCount, boolean debugEnabled) {
         if (deltaText == null || deltaText.isEmpty()) return;
-        if (logger.isDebugEnabled() && openAiProperties.isLocalDebugEnabled()) {
+        if (debugEnabled) {
             logger.debug("Streaming JSON delta ({} chars): {}", deltaText.length(), preview(deltaText));
         }
         onEvent.accept(StreamEvent.rawJson(deltaText));
@@ -362,11 +363,16 @@ public class OpenAiChatService {
 
 
     static final class MarkdownStreamAssembler {
+        private final boolean debugEnabled;
         private final StringBuilder buffer = new StringBuilder();
         private final StringBuilder lineBuffer = new StringBuilder();
         private boolean insideCodeFence = false;
         private char fenceDelimiter = '`';
         private static final int CHUNK_THRESHOLD = 1536;
+
+        MarkdownStreamAssembler(boolean debugEnabled) {
+            this.debugEnabled = debugEnabled;
+        }
 
         List<String> onDelta(String delta) {
             if (delta == null || delta.isEmpty()) return Collections.emptyList();
@@ -395,7 +401,7 @@ public class OpenAiChatService {
                     }
                 }
             }
-            if (logger.isDebugEnabled() && flushed != null) {
+            if (debugEnabled && logger.isDebugEnabled() && flushed != null) {
                 for (String chunk : flushed) {
                     logger.debug("MarkdownAssembler flush chunk ({} chars): {}", chunk != null ? chunk.length() : 0, preview(chunk));
                 }
@@ -417,7 +423,7 @@ public class OpenAiChatService {
             resetLineBuffer();
             String chunk = renderMarkdown(markdown);
             insideCodeFence = false;
-            if (logger.isDebugEnabled()) {
+            if (debugEnabled && logger.isDebugEnabled()) {
                 logger.debug("MarkdownAssembler flush remainder ({} chars): {}", chunk != null ? chunk.length() : 0, preview(chunk));
             }
             return chunk == null || chunk.isBlank() ? Optional.empty() : Optional.of(chunk);
