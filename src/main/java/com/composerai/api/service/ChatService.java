@@ -226,11 +226,11 @@ public class ChatService {
         ChatContext ctx = prepareChatContext(request.getMessage(), maxResults);
         String uploadedContext = resolveUploadedContext(conversationId, request);
         String fullContext = contextBuilder.mergeContexts(ctx.contextString(), uploadedContext);
+        boolean jsonOutput = request.isJsonOutput();
+        String originalMessage = request.getMessage();
         if (INSIGHTS_TRIGGER.equals(originalMessage)) {
             fullContext = sanitizeInsightsContext(fullContext);
         }
-        boolean jsonOutput = request.isJsonOutput();
-        String originalMessage = request.getMessage();
         String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, uploadedContext);
         Consumer<String> htmlConsumer = jsonOutput ? null : onToken;
         Consumer<String> jsonConsumer = jsonOutput ? onToken : null;
@@ -252,11 +252,11 @@ public class ChatService {
                 ChatContext ctx = prepareChatContext(request.getMessage(), maxResults);
                 String uploadedContext = resolveUploadedContext(conversationId, request);
                 String fullContext = contextBuilder.mergeContexts(ctx.contextString(), uploadedContext);
+                boolean jsonOutput = request.isJsonOutput();
+                String originalMessage = request.getMessage();
                 if (INSIGHTS_TRIGGER.equals(originalMessage)) {
                     fullContext = sanitizeInsightsContext(fullContext);
                 }
-                boolean jsonOutput = request.isJsonOutput();
-                String originalMessage = request.getMessage();
                 String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, uploadedContext);
                 List<OpenAiChatService.ConversationTurn> history = conversationRegistry.history(conversationId);
                 Consumer<String> chunkSender = chunk -> { 
