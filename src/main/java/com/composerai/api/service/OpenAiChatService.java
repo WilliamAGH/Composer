@@ -3,6 +3,7 @@ package com.composerai.api.service;
 import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
 import com.composerai.api.util.StringUtils;
+import com.composerai.api.util.TemporalUtils;
 import com.openai.client.OpenAIClient;
 import com.openai.core.http.StreamResponse;
 import com.openai.models.ChatModel;
@@ -332,7 +333,12 @@ public class OpenAiChatService {
 
         String systemPrompt = openAiProperties.getPrompts().getEmailAssistantSystem();
         if (!StringUtils.isBlank(systemPrompt)) {
-            String sanitizedSystem = StringUtils.sanitize(systemPrompt);
+            // Inject current timestamps for temporal awareness
+            String timestampedPrompt = systemPrompt
+                .replace("{currentUtcTime}", TemporalUtils.getCurrentUtcFormatted())
+                .replace("{currentPacificTime}", TemporalUtils.getCurrentPacificFormatted());
+
+            String sanitizedSystem = StringUtils.sanitize(timestampedPrompt);
             messages.add(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
                 .role(EasyInputMessage.Role.SYSTEM)
                 .content(sanitizedSystem)
@@ -562,7 +568,7 @@ public class OpenAiChatService {
 
     private static String preview(String value) {
         if (value == null) return "<null>";
-        String trimmed = value.replaceAll("\n", "\\n");
+        String trimmed = value.replace("\n", "\\n");
         return trimmed.length() <= 120 ? trimmed : trimmed.substring(0, 117) + "...";
     }
 }
