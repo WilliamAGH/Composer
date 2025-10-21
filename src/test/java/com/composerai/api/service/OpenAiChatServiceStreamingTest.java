@@ -108,6 +108,7 @@ class OpenAiChatServiceStreamingTest {
             "Context",
             false,
             null,
+            false,
             event -> {
                 if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
                     chunks.add(rendered.html());
@@ -140,7 +141,7 @@ class OpenAiChatServiceStreamingTest {
         AtomicBoolean completed = new AtomicBoolean(false);
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
-        service.streamResponse("msg", "ctx", false, null, event -> {}, () -> completed.set(true), errorRef::set);
+        service.streamResponse("msg", "ctx", false, null, false, event -> {}, () -> completed.set(true), errorRef::set);
 
         assertTrue(chunks.isEmpty());
         assertFalse(completed.get());
@@ -161,7 +162,7 @@ class OpenAiChatServiceStreamingTest {
 
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
-        service.streamResponse("msg", "ctx", false, null, event -> {}, () -> {}, errorRef::set);
+        service.streamResponse("msg", "ctx", false, null, false, event -> {}, () -> {}, errorRef::set);
 
         assertNotNull(errorRef.get());
         assertTrue(errorRef.get().getMessage().contains("insufficient_quota"));
@@ -179,7 +180,7 @@ class OpenAiChatServiceStreamingTest {
             .thenReturn(streamResponse(eventStream));
 
         OpenAiProperties customProperties = new OpenAiProperties();
-        customProperties.getModel().setChat("gpt-4o-mini");
+        customProperties.getModel().setChat("o4-mini");
         
         OpenAiChatService customModelService = new OpenAiChatService(client, customProperties, errorMessagesProperties);
 
@@ -192,6 +193,7 @@ class OpenAiChatServiceStreamingTest {
             "Email context here",
             true,
             "minimal",
+            false,
             event -> {
                 if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
                     chunks.add(rendered.html());
@@ -235,6 +237,7 @@ class OpenAiChatServiceStreamingTest {
             "Context",
             false,
             null,
+            false,
             event -> {
                 if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
                     chunks.add(rendered.html());
@@ -261,6 +264,7 @@ class OpenAiChatServiceStreamingTest {
             "Context",
             true,
             "standard",
+            false,
             event -> {},
             () -> completed.set(true),
             errorRef::set
@@ -331,6 +335,7 @@ class OpenAiChatServiceStreamingTest {
             "Context",
             true,
             "high",
+            false,
             event -> {
                 if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
                     chunks.add(rendered.html());
@@ -376,6 +381,7 @@ class OpenAiChatServiceStreamingTest {
             "Context",
             false,
             null,
+            false,
             event -> {
                 if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
                     chunks.add(rendered.html());
@@ -415,6 +421,7 @@ class OpenAiChatServiceStreamingTest {
             "Context",
             false,
             null,
+            false,
             event -> {},
             () -> completed.set(true),
             errorRef::set

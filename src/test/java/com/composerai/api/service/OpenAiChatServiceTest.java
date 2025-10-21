@@ -105,7 +105,7 @@ class OpenAiChatServiceTest {
         when(openAIClient.responses().create(any(ResponseCreateParams.class)))
             .thenReturn(mockResponse);
 
-        OpenAiChatService.ChatCompletionResult result = service.generateResponse("Hi", "Context", false, null);
+        OpenAiChatService.ChatCompletionResult result = service.generateResponse("Hi", "Context", false, null, false);
 
         assertEquals("**Hello** <script>alert('x')</script> world", result.rawText());
         String sanitized = result.sanitizedHtml();
@@ -123,7 +123,7 @@ class OpenAiChatServiceTest {
         when(openAIClient.responses().create(any(ResponseCreateParams.class)))
             .thenReturn(mockResponse);
 
-        OpenAiChatService.ChatCompletionResult result = customModelService.generateResponse("Test", "Context", false, null);
+        OpenAiChatService.ChatCompletionResult result = customModelService.generateResponse("Test", "Context", false, null, false);
 
         assertEquals("Custom model response", result.rawText());
         Mockito.verify(openAIClient.responses()).create(any(ResponseCreateParams.class));
@@ -134,7 +134,7 @@ class OpenAiChatServiceTest {
         OpenAiProperties properties = new OpenAiProperties();
         OpenAiChatService nullClientService = new OpenAiChatService(null, properties, errorMessages);
 
-        OpenAiChatService.ChatCompletionResult result = nullClientService.generateResponse("Hi", "Context", true, "minimal");
+        OpenAiChatService.ChatCompletionResult result = nullClientService.generateResponse("Hi", "Context", true, "minimal", false);
 
         assertTrue(result.rawText().contains("not configured"));
         assertTrue(result.sanitizedHtml().contains("not configured"));
