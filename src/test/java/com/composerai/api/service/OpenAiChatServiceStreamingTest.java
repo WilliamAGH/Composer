@@ -179,7 +179,7 @@ class OpenAiChatServiceStreamingTest {
             .thenReturn(streamResponse(eventStream));
 
         OpenAiProperties customProperties = new OpenAiProperties();
-        customProperties.getModel().setChat("o4-mini");
+        customProperties.getModel().setChat("gpt-4o-mini");
         
         OpenAiChatService customModelService = new OpenAiChatService(client, customProperties, errorMessagesProperties);
 
@@ -318,7 +318,7 @@ class OpenAiChatServiceStreamingTest {
             .thenReturn(streamResponse(eventStream));
 
         OpenAiProperties properties = new OpenAiProperties();
-        properties.getModel().setChat("o4-mini");
+        properties.getModel().setChat("gpt-4o-mini");
 
         OpenAiChatService service = new OpenAiChatService(client, properties, errorMessagesProperties);
 
@@ -363,7 +363,7 @@ class OpenAiChatServiceStreamingTest {
             .thenReturn(streamResponse(events.stream()));
 
         OpenAiProperties properties = new OpenAiProperties();
-        properties.getModel().setChat("o4-mini");
+        properties.getModel().setChat("gpt-4o-mini");
 
         OpenAiChatService service = new OpenAiChatService(client, properties, errorMessagesProperties);
 
@@ -403,7 +403,7 @@ class OpenAiChatServiceStreamingTest {
             .thenThrow(new RuntimeException("Read timed out"));
 
         OpenAiProperties properties = new OpenAiProperties();
-        properties.getModel().setChat("o4-mini");
+        properties.getModel().setChat("gpt-4o-mini");
 
         OpenAiChatService service = new OpenAiChatService(client, properties, errorMessagesProperties);
 
