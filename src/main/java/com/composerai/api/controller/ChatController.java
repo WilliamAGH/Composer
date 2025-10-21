@@ -94,7 +94,8 @@ public class ChatController {
             try {
                 emitter.send(SseEmitter.event().comment("stream-start"));
                 emitter.send(SseEmitter.event().name(SseEventType.METADATA.getEventName()).data(Map.of(
-                    "conversationId", conversationId
+                    "conversationId", conversationId,
+                    "jsonOutput", request.isJsonOutput()
                 )));
 
                 // SSE Event Routing: StreamEvents → SSE named events → Frontend SSEEventRouter

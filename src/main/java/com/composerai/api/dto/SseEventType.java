@@ -7,6 +7,7 @@ package com.composerai.api.dto;
 public enum SseEventType {
     METADATA("metadata"),
     RENDERED_HTML("rendered_html"),
+    RAW_JSON("raw_json"),
     DONE("done"),
     ERROR("error"),
     REASONING("reasoning");
