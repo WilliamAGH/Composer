@@ -547,11 +547,10 @@
                         '</span>' +
                         '<span class="flex-1 text-sm font-semibold text-slate-800">' + subject + '</span>' +
                         '<span class="ml-auto flex items-center gap-2">' +
-                        '<button type="button" data-role="quick-insights" class="group flex h-8 items-center gap-1.5 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 px-2.5 py-1.5 text-white shadow-sm transition-all hover:shadow-md hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300" title="Get AI insights about this email" aria-label="Analyze email with AI">' +
+                        '<button type="button" data-role="quick-insights" class="group flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-sm transition-all hover:shadow-md hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300" title="Get AI insights about this email" aria-label="Analyze email with AI">' +
                         '<svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
                         '<path d="M9.813 3.063l.75 3.75m3.937-3.75l-.75 3.75m-6 .937l3.75.75m9.375 0l-3.75.75m-9.375 6l3.75-.75m9.375 0l-3.75-.75m-6 5.063l.75-3.75m3.937 3.75l-.75-3.75M12 18.75a6.75 6.75 0 100-13.5 6.75 6.75 0 000 13.5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
                         '</svg>' +
-                        '<span class="text-[11px] font-semibold">Insights</span>' +
                         '</button>' +
                         '<span class="rounded-md bg-white/70 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600" data-role="email-date" data-original-label="' + dateLabel + '" ' + (iso ? 'data-date-iso="' + window.ComposerAI.escapeHtml(iso) + '"' : '') + '>' + dateLabel + '</span>' +
                         '<svg class="h-4 w-4 text-slate-500 transition-transform" data-role="preview-chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>' +
@@ -580,15 +579,10 @@
                         previewChevron.style.transform = nextExpanded ? 'rotate(180deg)' : 'rotate(0)';
                     });
 
-                    // Quick Insights: Auto-analyze email with comprehensive prompt
+                    // Quick Insights: Trigger backend insights endpoint (all logic in Java)
                     insightsBtn.addEventListener('click', (e) => {
                         e.stopPropagation(); // Don't trigger toggle
-
-                        // Auto-send comprehensive analysis request
-                        const autoPrompt = "Please analyze this email and provide: (1) a concise summary of what it's about, (2) any action items or tasks I need to complete, (3) expected responses or anticipated replies, (4) important deadlines or time-sensitive information, (5) recommended next steps, and (6) any follow-ups I should plan. Make it clear, actionable, and helpful.";
-
-                        this.messageInput.value = autoPrompt;
-                        this.sendMessage();
+                        this.triggerInsights();
                     });
 
                     const wrapper = document.createElement('div');
@@ -661,6 +655,187 @@
                         this.sendButton.disabled = false;
                         this.updateThinkingControls();
                         this.messages.scrollTop = this.messages.scrollHeight;
+                    }
+                }
+
+                async triggerInsights() {
+                    if (this.isStreaming) return;
+
+                    if (this.activeStreamController) {
+                        try { this.activeStreamController.abort(); } catch (_) { }
+                    }
+
+                    // Skip user message bubble - go straight to assistant response
+                    const assistantDiv = this.addMessage('', 'assistant');
+                    assistantDiv.innerHTML = '<div class="assistant-thinking relative"><div class="phase-badge phase-thinking">Analyzing email...</div><div class="thinking-skeleton rounded-xl border border-slate-200 bg-slate-50/80 p-3"><div class="thinking-line"></div><div class="thinking-line"></div><div class="thinking-line short"></div><div class="thinking-cursor-bar"></div></div></div>';
+
+                    const payload = {
+                        message: "", // Backend will override with insights prompt
+                        conversationId: this.conversationId,
+                        maxResults: 5,
+                        emailContext: this.currentEmailContext?.contextForAI || '',
+                        contextId: this.currentEmailContext?.contextId || null,
+                        thinkingEnabled: this.thinkingEnabled,
+                        thinkingLevel: this.thinkingEnabled ? this.thinkingLevel : null,
+                        jsonOutput: false // Insights always uses normal mode
+                    };
+
+                    this.messageInput.disabled = true;
+                    this.sendButton.disabled = true;
+                    this.updateThinkingControls();
+                    this.isStreaming = true;
+                    this.activeStreamController = new AbortController();
+                    const timeoutId = setTimeout(() => {
+                        try { this.activeStreamController?.abort(); } catch (_) { }
+                    }, this.streamTimeoutMs);
+
+                    try {
+                        // Call insights-specific endpoint
+                        await this.streamInsightsResponse(payload, assistantDiv, this.activeStreamController.signal);
+                    } catch (error) {
+                        if (error.name === 'AbortError') {
+                            assistantDiv.innerHTML = window.ComposerAI.renderMarkdown('Request timed out. Please try again.');
+                        } else {
+                            assistantDiv.innerHTML = window.ComposerAI.renderMarkdown('Sorry, I encountered an error. Please try again.');
+                        }
+                    } finally {
+                        clearTimeout(timeoutId);
+                        this.isStreaming = false;
+                        this.activeStreamController = null;
+                        this.messageInput.disabled = false;
+                        this.sendButton.disabled = false;
+                        this.updateThinkingControls();
+                        this.messages.scrollTop = this.messages.scrollHeight;
+                    }
+                }
+
+                async streamInsightsResponse(payload, targetDiv, signal) {
+                    // Call insights endpoint - backend controls the prompt
+                    const response = await fetch('/api/chat/insights/stream', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        signal
+                    });
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+
+                    const timeoutHint = response.headers.get('X-Stream-Timeout-Hint');
+                    if (timeoutHint) {
+                        const parsed = parseInt(timeoutHint, 10);
+                        if (!isNaN(parsed) && parsed > 0) this.streamTimeoutMs = parsed;
+                    }
+
+                    // Use same streaming logic as regular chat
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    const isJsonMode = false; // Insights always uses normal mode
+                    let html = '';
+                    let buffer = '';
+                    let firstToken = true;
+                    let conversationIdFromServer = null;
+                    let currentEvent = null;
+                    let currentEventData = [];
+                    let streamFinished = false;
+
+                    const finalizeStream = () => {
+                        if (html) {
+                            targetDiv.innerHTML = html;
+                            this.applyMarkdownEnhancements(targetDiv);
+                        } else {
+                            targetDiv.innerHTML = window.ComposerAI.renderMarkdown("I don't have a response to that.");
+                            this.applyMarkdownEnhancements(targetDiv);
+                        }
+                        this.conversationId = conversationIdFromServer || payload.conversationId || this.conversationId;
+                        this.resetReasoningState();
+                        streamFinished = true;
+                    };
+
+                    const router = new SSEEventRouter()
+                        .on(SSE_EVENTS.METADATA, (raw) => {
+                            if (!raw) return;
+                            try {
+                                const metadata = JSON.parse(raw);
+                                if (metadata.conversationId) conversationIdFromServer = metadata.conversationId;
+                            } catch (err) {
+                                console.warn('ComposerAI: Failed to parse metadata event', err);
+                            }
+                        })
+                        .on(SSE_EVENTS.RENDERED_HTML, (chunk) => {
+                            if (chunk == null) return;
+                            if (firstToken) {
+                                targetDiv.innerHTML = '<div class="phase-badge phase-streaming">Streaming...</div>';
+                                firstToken = false;
+                            }
+                            html += chunk || '';
+                            targetDiv.innerHTML = html + '<span class="streaming-cursor">|</span>';
+                            this.scrollIfAtBottom();
+                        })
+                        .on(SSE_EVENTS.REASONING, (raw) => {
+                            if (!raw) return;
+                            try {
+                                this.updateStreamState(JSON.parse(raw));
+                            } catch (err) {
+                                console.warn('ComposerAI: Failed to parse reasoning payload', err);
+                            }
+                        })
+                        .on(SSE_EVENTS.ERROR, (message) => {
+                            throw new Error(message || 'Stream error occurred');
+                        })
+                        .on(SSE_EVENTS.DONE, () => finalizeStream());
+
+                    while (!streamFinished) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            const cleanedLine = line.endsWith('\r') ? line.slice(0, -1) : line;
+
+                            if (cleanedLine.startsWith('event:')) {
+                                if (currentEvent && currentEventData.length) {
+                                    router.route(currentEvent, currentEventData.join('\n'));
+                                } else if (currentEvent && currentEventData.length === 0) {
+                                    router.route(currentEvent, '');
+                                }
+                                currentEvent = cleanedLine.substring(6).trim();
+                                currentEventData = [];
+                                continue;
+                            }
+
+                            if (cleanedLine.startsWith('data:')) {
+                                const value = cleanedLine.length >= 6 && cleanedLine.charAt(5) === ' '
+                                    ? cleanedLine.substring(6)
+                                    : cleanedLine.substring(5);
+                                currentEventData.push(value);
+                                continue;
+                            }
+
+                            if (cleanedLine === '') {
+                                if (currentEvent) {
+                                    const payload = currentEventData.length > 0
+                                        ? currentEventData.join('\n')
+                                        : '';
+                                    router.route(currentEvent, payload);
+                                }
+                                currentEvent = null;
+                                currentEventData = [];
+                                if (streamFinished) break;
+                                continue;
+                            }
+                        }
+                    }
+
+                    if (!streamFinished) {
+                        if (currentEvent) {
+                            const payload = currentEventData.length > 1
+                                ? currentEventData.join('\n')
+                                : (currentEventData[0] ?? '');
+                            router.route(currentEvent, payload);
+                        }
+                        finalizeStream();
                     }
                 }
 
