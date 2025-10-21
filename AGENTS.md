@@ -86,7 +86,7 @@ Refer to `README.md` (Technology Stack and Requirements) for current runtime ver
    - The usage of @SuppressWarnings is NEVER AN ALLOWED SOLUTION. EVER.
 
 5. OpenAI Java SDK awareness
-   - Before modifying any OpenAI integration, read the current SDK version from `pom.xml` and treat it as the source of truth (presently `4.6.0`).
+   - Before modifying any OpenAI integration, read the current SDK version from `pom.xml` and treat it as the source of truth (presently `4.6.1`).
    - Inspect the matching local artifact at `~/.m2/repository/com/openai/openai-java-core/<VERSION>/openai-java-core-<VERSION>.jar` for API behavior, using the exact version from `pom.xml`.
    - Review the latest examples under [`openai-java-example`](https://github.com/openai/openai-java/tree/main/openai-java-example/src/main/java/com/openai/example) for up-to-date usage patterns and reasoning/streaming guidance.
 
