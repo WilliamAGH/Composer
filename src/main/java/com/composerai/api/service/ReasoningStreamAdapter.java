@@ -164,6 +164,8 @@ public final class ReasoningStreamAdapter {
                 yield failure != null ? failure.toMessage(thinkingLevel) : null;
             }
             case OpenAiChatService.StreamEvent.RenderedHtml ignored -> null;
+            case OpenAiChatService.StreamEvent.RawJson ignored -> null;
+            default -> null;
         };
     }
 

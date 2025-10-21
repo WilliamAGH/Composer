@@ -48,8 +48,14 @@ public class OpenAiChatService {
             sanitizedHtml = sanitizedHtml == null ? "" : sanitizedHtml;
         }
         static ChatCompletionResult fromRaw(String rawText) {
+            return fromRaw(rawText, false);
+        }
+        static ChatCompletionResult fromRaw(String rawText, boolean jsonOutput) {
             String safeRaw = rawText == null ? "" : rawText;
-            return new ChatCompletionResult(safeRaw, HtmlConverter.markdownToSafeHtml(DANGEROUS_BLOCK_TAGS.matcher(safeRaw).replaceAll("")));
+            String sanitized = jsonOutput
+                ? safeRaw
+                : HtmlConverter.markdownToSafeHtml(DANGEROUS_BLOCK_TAGS.matcher(safeRaw).replaceAll(""));
+            return new ChatCompletionResult(safeRaw, sanitized);
         }
     }
 
@@ -82,13 +88,14 @@ public class OpenAiChatService {
     }
 
     public ChatCompletionResult generateResponse(String userMessage, String emailContext,
-                                                 boolean thinkingEnabled, String thinkingLevel) {
+                                                 boolean thinkingEnabled, String thinkingLevel,
+                                                 boolean jsonOutput) {
         return executeWithFallback(() -> {
             if (openAiClient == null) return ChatCompletionResult.fromRaw(errorMessages.getOpenai().getMisconfigured());
 
             String aiResponse = openAiClient.responses().create(ResponseCreateParams.builder()
                 .model(resolveChatModel())
-                .inputOfResponse(buildEmailAssistantMessages(emailContext, userMessage))
+                .inputOfResponse(buildEmailAssistantMessages(emailContext, userMessage, jsonOutput))
                 .build()).output().stream()
                 .flatMap(item -> item.message().stream())
                 .flatMap(message -> message.content().stream())
@@ -99,8 +106,8 @@ public class OpenAiChatService {
             logger.info("Chat completion: input={} output={} tokens",
                 (long)(userMessage != null ? userMessage.split("\\s+").length * 1.25 : 0),
                 (long)(aiResponse != null ? aiResponse.split("\\s+").length * 1.25 : 0));
-            return ChatCompletionResult.fromRaw(aiResponse);
-        }, ChatCompletionResult.fromRaw(errorMessages.getOpenai().getUnavailable()), "OpenAI error while generating response");
+            return ChatCompletionResult.fromRaw(aiResponse, jsonOutput);
+        }, ChatCompletionResult.fromRaw(errorMessages.getOpenai().getUnavailable(), jsonOutput), "OpenAI error while generating response");
     }
 
     /**
@@ -133,6 +140,7 @@ public class OpenAiChatService {
 
     public void streamResponse(String userMessage, String emailContext,
                                boolean thinkingEnabled, String thinkingLevel,
+                               boolean jsonOutput,
                                Consumer<StreamEvent> onEvent, Runnable onComplete, Consumer<Throwable> onError) {
         if (openAiClient == null) {
             onError.accept(new IllegalStateException(errorMessages.getOpenai().getMisconfigured()));
@@ -141,7 +149,7 @@ public class OpenAiChatService {
 
         ResponseCreateParams.Builder builder = ResponseCreateParams.builder()
             .model(resolveChatModel())
-            .inputOfResponse(buildEmailAssistantMessages(emailContext, userMessage));
+            .inputOfResponse(buildEmailAssistantMessages(emailContext, userMessage, jsonOutput));
 
         String modelId = openAiProperties.getModel().getChat();
         ValidatedThinkingConfig config = ValidatedThinkingConfig.resolve(openAiProperties, modelId, thinkingEnabled, thinkingLevel);
@@ -152,7 +160,7 @@ public class OpenAiChatService {
             logger.debug("Reasoning requested but provider {} does not support it", openAiProperties.getProviderCapabilities().getType());
         }
 
-        MarkdownStreamAssembler assembler = new MarkdownStreamAssembler();
+        MarkdownStreamAssembler assembler = jsonOutput ? null : new MarkdownStreamAssembler();
         long startNanos = System.nanoTime();
         final long[] tokenCount = new long[]{0};
         final boolean[] failed = {false};
@@ -161,7 +169,13 @@ public class OpenAiChatService {
             try (StreamResponse<ResponseStreamEvent> streamResponse = openAiClient.responses().createStreaming(builder.build())) {
                 streamResponse.stream().forEach(event -> {
                     try {
-                        event.outputTextDelta().ifPresent(textDelta -> emitHtmlDelta(textDelta.delta(), assembler, onEvent, tokenCount));
+                        event.outputTextDelta().ifPresent(textDelta -> {
+                            if (jsonOutput) {
+                                emitJsonDelta(textDelta.delta(), onEvent, tokenCount);
+                            } else {
+                                emitHtmlDelta(textDelta.delta(), assembler, onEvent, tokenCount);
+                            }
+                        });
                         emitReasoningEvents(event, onEvent);
                         event.failed().ifPresent(failedEvent -> {
                             failed[0] = true;
@@ -171,12 +185,14 @@ public class OpenAiChatService {
                         logger.warn("Failed to process stream event", processingError);
                     }
                 });
-                assembler.flushRemainder().ifPresent(remainder -> {
-                    if (!remainder.isBlank()) {
-                        onEvent.accept(StreamEvent.renderedHtml(remainder));
-                        tokenCount[0] += remainder.length();
-                    }
-                });
+                if (!jsonOutput && assembler != null) {
+                    assembler.flushRemainder().ifPresent(remainder -> {
+                        if (!remainder.isBlank()) {
+                            onEvent.accept(StreamEvent.renderedHtml(remainder));
+                            tokenCount[0] += remainder.length();
+                        }
+                    });
+                }
             }
             logger.info("Streaming completed: tokens={} elapsed={}ms", tokenCount[0], (System.nanoTime() - startNanos) / 1_000_000L);
             if (failed[0]) {
@@ -193,11 +209,13 @@ public class OpenAiChatService {
         }
     }
 
-    public sealed interface StreamEvent permits StreamEvent.RenderedHtml, StreamEvent.Reasoning, StreamEvent.Failed {
+    public sealed interface StreamEvent permits StreamEvent.RenderedHtml, StreamEvent.RawJson, StreamEvent.Reasoning, StreamEvent.Failed {
         static StreamEvent renderedHtml(String htmlChunk) { return new RenderedHtml(htmlChunk); }
+        static StreamEvent rawJson(String jsonChunk) { return new RawJson(jsonChunk); }
         static StreamEvent reasoning(ReasoningStreamAdapter.ReasoningEvent event) { return new Reasoning(event); }
         static StreamEvent failed(ResponseFailedEvent event) { return new Failed(event); }
         record RenderedHtml(String html) implements StreamEvent {}
+        record RawJson(String value) implements StreamEvent {}
         record Reasoning(ReasoningStreamAdapter.ReasoningEvent value) implements StreamEvent {}
         record Failed(ResponseFailedEvent value) implements StreamEvent {}
     }
@@ -216,6 +234,15 @@ public class OpenAiChatService {
                 tokenCount[0] += htmlChunk.length();
             }
         }
+    }
+
+    private void emitJsonDelta(String deltaText, Consumer<StreamEvent> onEvent, long[] tokenCount) {
+        if (deltaText == null || deltaText.isEmpty()) return;
+        if (logger.isDebugEnabled()) {
+            logger.debug("Streaming JSON delta ({} chars): {}", deltaText.length(), preview(deltaText));
+        }
+        onEvent.accept(StreamEvent.rawJson(deltaText));
+        tokenCount[0] += deltaText.length();
     }
 
     private void emitReasoningEvents(ResponseStreamEvent event, Consumer<StreamEvent> onEvent) {
@@ -271,12 +298,16 @@ public class OpenAiChatService {
      * Configuration source of truth: OpenAiProperties.java
      * System prompt: {@link OpenAiProperties.Prompts#getEmailAssistantSystem()}
      */
-    private List<ResponseInputItem> buildEmailAssistantMessages(String emailContext, String userMessage) {
+    private List<ResponseInputItem> buildEmailAssistantMessages(String emailContext, String userMessage, boolean jsonOutput) {
         String safeContext = StringUtils.sanitize(emailContext);
         String systemMessage = openAiProperties.getPrompts().getEmailAssistantSystem();
         String fullPrompt = systemMessage +
             (StringUtils.isBlank(safeContext) ? "" : "\n\nEmail Context:\n" + safeContext) +
             "\n\nQuestion: " + userMessage;
+
+        if (jsonOutput) {
+            fullPrompt = fullPrompt + "\n\nRespond strictly as a JSON object. Do not include markdown fences or explanatory text.";
+        }
         
         // Log context length to detect potential truncation issues
         int promptTokenEstimate = (int)(fullPrompt.split("\\s+").length * 1.3);
