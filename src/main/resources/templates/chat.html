@@ -10,29 +10,29 @@
 <body>
     <div th:fragment="content" class="min-h-screen bg-slate-100/80 py-12">
         <div class="mx-auto flex max-w-6xl flex-col gap-10 px-4 sm:px-6 lg:px-8">
-            <header class="relative overflow-hidden rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-ultra shadow-slate-900/10 backdrop-blur">
+            <header class="relative overflow-hidden rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-ultra shadow-slate-900/10 backdrop-blur lg:p-7">
                 <div class="absolute inset-0 bg-subtle-glow"></div>
-                <div class="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-                    <div class="flex max-w-2xl flex-col gap-4">
-                        <h1 class="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">ComposerAI Chat</h1>
-                        <p class="text-base text-slate-600">Upload an email and chat about it with AI assistance</p>
-                        <div class="flex flex-wrap items-center gap-3">
-                            <span class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">Chat Interface</span>
-                            <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">Supports .eml, .msg, .txt</span>
+                <div class="relative z-10 flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+                    <div class="flex max-w-2xl flex-col gap-3">
+                        <h1 class="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">ComposerAI Chat</h1>
+                        <p class="text-sm text-slate-600 sm:text-base">Upload an email and chat about it with AI assistance</p>
+                        <div class="flex flex-wrap items-center gap-2.5">
+                            <span class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-600">Chat Interface</span>
+                            <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-[10px] font-medium text-slate-700">Supports .eml, .msg, .txt</span>
                         </div>
                     </div>
-                    <div class="mt-4 w-full shrink-0 rounded-3xl border border-slate-200 bg-white/92 px-5 py-4 shadow-lg shadow-slate-900/10 backdrop-blur-sm lg:mt-0 lg:ml-10 lg:max-w-xs xl:max-w-sm" th:replace="~{fragments/file-upload-tool :: uploadSection}"></div>
+                    <div class="mt-4 w-full shrink-0 rounded-2xl border border-slate-200 bg-white/92 px-4 py-4 shadow-lg shadow-slate-900/10 backdrop-blur-sm md:mt-0 md:ml-6 md:w-[18rem] lg:ml-8 lg:w-[17rem] xl:w-[18rem]" th:replace="~{fragments/file-upload-tool :: uploadSection}"></div>
                 </div>
             </header>
 
-            <section class="rounded-3xl border border-slate-200 bg-white/90 shadow-ultra shadow-slate-900/10 backdrop-blur overflow-hidden">
-                <div id="messages" class="flex flex-col gap-4 p-8 min-h-[400px] max-h-[500px] overflow-y-auto bg-slate-50">
+            <section class="rounded-3xl border border-slate-200 bg-white/90 shadow-ultra shadow-slate-900/10 backdrop-blur overflow-hidden lg:mt-2">
+                <div id="messages" class="flex flex-col gap-4 p-6 min-h-[420px] max-h-[520px] overflow-y-auto bg-slate-50 sm:p-7">
                     <div class="message-assistant max-w-[70%] rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
                         <div class="text-slate-800">Hello! I'm ComposerAI. Upload an email file above and I'll help you analyze and discuss it.</div>
                     </div>
                 </div>
 
-                <div class="border-t border-slate-200 bg-white p-6">
+                <div class="border-t border-slate-200 bg-white p-5 sm:p-6">
                     <div class="mb-4 flex flex-wrap items-center gap-3 text-xs sm:text-sm text-slate-600">
                         <div id="thinkingDropdown">
                             <button id="thinkingMenuButton" type="button" aria-haspopup="listbox" aria-expanded="false" class="inline-flex items-center justify-between gap-2 rounded-xl border border-slate-300 bg-white px-3 py-1 font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
@@ -205,7 +205,7 @@
                         this.enableChat();
                         this.addEmailContextMessage(result);
                     } catch (error) {
-                        this.uploadStatus.innerHTML = '<div class="rounded-lg bg-red-100 border border-red-200 p-3 text-sm text-red-800">Failed to upload email: ' + String(error?.message || 'Unknown error') + '</div>';
+                        this.uploadStatus.innerHTML = '<div class="rounded-lg bg-red-100 border border-red-200 p-3 text-sm text-red-800">Failed to upload email: ' + window.ComposerAI.escapeHtml(String(error?.message || 'Unknown error')) + '</div>';
                     }
                 }
 
