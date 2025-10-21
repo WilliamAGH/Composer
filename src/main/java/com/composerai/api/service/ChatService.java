@@ -79,11 +79,12 @@ public class ChatService {
         return new ChatContext(queryVector, emailContext, contextBuilder.buildFromEmailList(emailContext));
     }
 
+    /**
+     * Pass-through method for message formatting.
+     * JSON instructions are added downstream in OpenAiChatService to avoid duplication.
+     */
     private String formatMessageForOutput(String message, boolean jsonOutput) {
-        if (!jsonOutput || message == null || message.isBlank()) {
-            return message;
-        }
-        return message + "\n\nRespond with a single valid JSON object. Do not include markdown code fences or additional commentary.";
+        return message;
     }
 
     public ChatResponse processChat(ChatRequest request) {
