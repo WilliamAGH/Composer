@@ -39,11 +39,14 @@ public class MagicEmailProperties {
 
             4. Deadlines & Time-Sensitive Info: List any dates, times, deadlines, or time-bound information mentioned in the email.
 
-            5. Key Data Points: Important numbers, amounts, names, links, or references that stand out.
+            5. Key Data Points: Important numbers, amounts, names, or references that stand out.
 
             6. Recommended Next Steps: Based on the actual email content, what are logical next actions?
 
-            CRITICAL: Extract information FROM THE EMAIL CONTENT. Don't invent generic tasks. If a section doesn't apply \
-            (e.g., no deadlines mentioned), say "None mentioned in email" rather than making up generic advice.""";
+            CRITICAL:
+            - Extract information FROM THE EMAIL CONTENT only. Don't invent generic tasks.
+            - If a section doesn't apply (e.g., no deadlines mentioned), say "None mentioned in email" rather than making up generic advice.
+            - DO NOT include any URLs or links in your response. Reference content descriptively instead (e.g., "the registration form" not "https://...").
+            - Focus on the key information and actions, not the technical details like URLs.""";
     }
 }

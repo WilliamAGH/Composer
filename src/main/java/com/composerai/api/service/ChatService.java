@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Service
@@ -45,6 +46,8 @@ public class ChatService {
     private final MagicEmailProperties magicEmailProperties;
 
     private static final String INSIGHTS_TRIGGER = "__INSIGHTS_TRIGGER__";
+    private static final Pattern MARKDOWN_LINK_PATTERN = Pattern.compile("\\[([^\\]]+)\\]\\(([^\\)]*)\\)");
+    private static final Pattern BARE_URL_PATTERN = Pattern.compile("(?i)(?:https?://|www\\.)\\S+");
 
     public ChatService(VectorSearchService vectorSearchService, OpenAiChatService openAiChatService,
                        OpenAiProperties openAiProperties, ErrorMessagesProperties errorMessages,
@@ -92,12 +95,26 @@ public class ChatService {
     private String resolvePromptForModel(String originalMessage, boolean jsonOutput, String mergedContext) {
         if (INSIGHTS_TRIGGER.equals(originalMessage)) {
             String prompt = magicEmailProperties.getInsights().getPrompt();
-            if (StringUtils.isBlank(mergedContext)) {
+            String sanitizedContext = sanitizeInsightsContext(mergedContext);
+            if (StringUtils.isBlank(sanitizedContext)) {
                 return prompt;
             }
-            return prompt + "\n\nContext:\n" + mergedContext;
+            return prompt + "\n\nContext:\n" + sanitizedContext;
         }
         return formatMessageForOutput(originalMessage, jsonOutput);
+    }
+
+    private String sanitizeInsightsContext(String context) {
+        if (StringUtils.isBlank(context)) {
+            return "";
+        }
+        String cleaned = HtmlConverter.cleanupOutput(context, true);
+        cleaned = MARKDOWN_LINK_PATTERN.matcher(cleaned).replaceAll("$1");
+        cleaned = BARE_URL_PATTERN.matcher(cleaned).replaceAll("");
+        // Collapse leftover parentheses or multiple spaces created by link removal
+        cleaned = cleaned.replaceAll("\\(\\s*\\)", "");
+        cleaned = cleaned.replaceAll("\\s{2,}", " ");
+        return HtmlConverter.cleanupOutput(cleaned.trim(), true);
     }
 
     /**
@@ -122,6 +139,9 @@ public class ChatService {
             ChatContext ctx = prepareChatContext(request.getMessage(), maxResults);
             String uploadedContext = resolveUploadedContext(conversationId, request);
             String fullContext = contextBuilder.mergeContexts(ctx.contextString(), uploadedContext);
+            if (INSIGHTS_TRIGGER.equals(originalMessage)) {
+                fullContext = sanitizeInsightsContext(fullContext);
+            }
             String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, uploadedContext);
             List<OpenAiChatService.ConversationTurn> history = conversationRegistry.history(conversationId);
 
@@ -206,6 +226,9 @@ public class ChatService {
         ChatContext ctx = prepareChatContext(request.getMessage(), maxResults);
         String uploadedContext = resolveUploadedContext(conversationId, request);
         String fullContext = contextBuilder.mergeContexts(ctx.contextString(), uploadedContext);
+        if (INSIGHTS_TRIGGER.equals(originalMessage)) {
+            fullContext = sanitizeInsightsContext(fullContext);
+        }
         boolean jsonOutput = request.isJsonOutput();
         String originalMessage = request.getMessage();
         String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, uploadedContext);
@@ -229,6 +252,9 @@ public class ChatService {
                 ChatContext ctx = prepareChatContext(request.getMessage(), maxResults);
                 String uploadedContext = resolveUploadedContext(conversationId, request);
                 String fullContext = contextBuilder.mergeContexts(ctx.contextString(), uploadedContext);
+                if (INSIGHTS_TRIGGER.equals(originalMessage)) {
+                    fullContext = sanitizeInsightsContext(fullContext);
+                }
                 boolean jsonOutput = request.isJsonOutput();
                 String originalMessage = request.getMessage();
                 String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, uploadedContext);

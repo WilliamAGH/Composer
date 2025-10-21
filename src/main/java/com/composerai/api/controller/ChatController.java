@@ -1,13 +1,11 @@
 package com.composerai.api.controller;
 
 import com.composerai.api.config.ErrorMessagesProperties;
-import com.composerai.api.config.MagicEmailProperties;
 import com.composerai.api.config.OpenAiProperties;
 import com.composerai.api.dto.ChatRequest;
 import com.composerai.api.dto.ChatResponse;
 import com.composerai.api.dto.SseEventType;
 import com.composerai.api.service.ChatService;
-import com.composerai.api.service.ContextBuilder;
 import com.composerai.api.util.StringUtils;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -36,24 +34,18 @@ public class ChatController {
     private final ScheduledExecutorService sseHeartbeatExecutor;
     private final OpenAiProperties openAiProperties;
     private final ErrorMessagesProperties errorMessages;
-    private final MagicEmailProperties magicEmailProperties;
-    private final ContextBuilder.EmailContextRegistry emailContextRegistry;
     private static final String INSIGHTS_TRIGGER = "__INSIGHTS_TRIGGER__";
 
     public ChatController(ChatService chatService,
                           @Qualifier("chatStreamExecutor") Executor chatStreamExecutor,
                           @Qualifier("sseHeartbeatExecutor") ScheduledExecutorService sseHeartbeatExecutor,
                           OpenAiProperties openAiProperties,
-                          ErrorMessagesProperties errorMessages,
-                          MagicEmailProperties magicEmailProperties,
-                          ContextBuilder.EmailContextRegistry emailContextRegistry) {
+                          ErrorMessagesProperties errorMessages) {
         this.chatService = chatService;
         this.chatStreamExecutor = chatStreamExecutor;
         this.sseHeartbeatExecutor = sseHeartbeatExecutor;
         this.openAiProperties = openAiProperties;
         this.errorMessages = errorMessages;
-        this.magicEmailProperties = magicEmailProperties;
-        this.emailContextRegistry = emailContextRegistry;
     }
 
     @PostMapping
@@ -189,15 +181,7 @@ public class ChatController {
     public SseEmitter insightsStream(@Valid @RequestBody ChatRequest request, HttpServletResponse response) {
         log.info("Received insights request from conversation: {}", request.getConversationId());
 
-        // Retrieve cleaned email markdown from registry (URLs already cleaned, normalized)
-        String cleanedEmailBody = emailContextRegistry.contextForAi(request.getContextId())
-            .orElse(request.getEmailContext() != null ? request.getEmailContext() : "");
-
-        // Inject insights analysis prompt
-        String insightsPrompt = magicEmailProperties.getInsights().getPrompt();
-
-        // Combine: insights instructions + cleaned email body
-        request.setMessage(insightsPrompt + "\n\n" + cleanedEmailBody);
+        request.setMessage(INSIGHTS_TRIGGER);
 
         // Delegate to regular stream endpoint with modified request
         return stream(request, response);
