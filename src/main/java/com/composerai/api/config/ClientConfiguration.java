@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Bean;
 
 @Slf4j
 @Configuration
-@EnableConfigurationProperties({OpenAiProperties.class, QdrantProperties.class})
+@EnableConfigurationProperties({OpenAiProperties.class, QdrantProperties.class, MagicEmailProperties.class})
 public class ClientConfiguration {
 
 

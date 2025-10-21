@@ -2,6 +2,7 @@ package com.composerai.api.service;
 
 import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
+import com.composerai.api.config.MagicEmailProperties;
 import com.composerai.api.dto.ChatRequest;
 import com.composerai.api.dto.ChatResponse;
 import com.composerai.api.dto.ChatResponse.EmailContext;
@@ -41,11 +42,15 @@ public class ChatService {
     private final ContextBuilder.EmailContextRegistry emailContextRegistry;
     private final ConversationRegistry conversationRegistry;
     private final ExecutorService streamingExecutor;
+    private final MagicEmailProperties magicEmailProperties;
+
+    private static final String INSIGHTS_TRIGGER = "__INSIGHTS_TRIGGER__";
 
     public ChatService(VectorSearchService vectorSearchService, OpenAiChatService openAiChatService,
                        OpenAiProperties openAiProperties, ErrorMessagesProperties errorMessages,
                        ContextBuilder contextBuilder, ContextBuilder.EmailContextRegistry emailContextRegistry,
                        ConversationRegistry conversationRegistry,
+                       MagicEmailProperties magicEmailProperties,
                        @Qualifier("chatStreamExecutor") ExecutorService streamingExecutor) {
         this.vectorSearchService = vectorSearchService;
         this.openAiChatService = openAiChatService;
@@ -55,6 +60,7 @@ public class ChatService {
         this.emailContextRegistry = emailContextRegistry;
         this.conversationRegistry = conversationRegistry;
         this.streamingExecutor = streamingExecutor;
+        this.magicEmailProperties = magicEmailProperties;
     }
 
     private record ChatContext(float[] embedding, List<EmailContext> emailContext, String contextString) {}
@@ -72,11 +78,26 @@ public class ChatService {
     }
 
     private ChatContext prepareChatContext(String message, int maxResults) {
+        if (INSIGHTS_TRIGGER.equals(message)) {
+            return new ChatContext(new float[0], List.of(), "");
+        }
+
         float[] queryVector = openAiChatService.generateEmbedding(message);
         List<EmailContext> emailContext = (queryVector == null || queryVector.length == 0)
             ? List.of()
             : vectorSearchService.searchSimilarEmails(queryVector, maxResults);
         return new ChatContext(queryVector, emailContext, contextBuilder.buildFromEmailList(emailContext));
+    }
+
+    private String resolvePromptForModel(String originalMessage, boolean jsonOutput, String mergedContext) {
+        if (INSIGHTS_TRIGGER.equals(originalMessage)) {
+            String prompt = magicEmailProperties.getInsights().getPrompt();
+            if (StringUtils.isBlank(mergedContext)) {
+                return prompt;
+            }
+            return prompt + "\n\nContext:\n" + mergedContext;
+        }
+        return formatMessageForOutput(originalMessage, jsonOutput);
     }
 
     /**
@@ -92,13 +113,16 @@ public class ChatService {
         int msgLen = request.getMessage() == null ? 0 : request.getMessage().length();
         logger.info("Processing chat: convId={}, msgLen={}", conversationId, msgLen);
         boolean jsonOutput = request.isJsonOutput();
-        String userMessageForModel = formatMessageForOutput(request.getMessage(), jsonOutput);
+        String originalMessage = request.getMessage();
         try {
-            String intent = openAiChatService.analyzeIntent(request.getMessage());
+            String intent = INSIGHTS_TRIGGER.equals(originalMessage)
+                ? "insights"
+                : openAiChatService.analyzeIntent(originalMessage);
             int maxResults = applyMaxResultsDefault(request.getMaxResults());
             ChatContext ctx = prepareChatContext(request.getMessage(), maxResults);
             String uploadedContext = resolveUploadedContext(conversationId, request);
             String fullContext = contextBuilder.mergeContexts(ctx.contextString(), uploadedContext);
+            String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, uploadedContext);
             List<OpenAiChatService.ConversationTurn> history = conversationRegistry.history(conversationId);
 
             // Debug log context structure for troubleshooting
@@ -117,7 +141,7 @@ public class ChatService {
                 request.isThinkingEnabled(), request.getThinkingLevel(), jsonOutput);
             logger.info("Successfully processed chat request for conversation: {}", conversationId);
             conversationRegistry.append(conversationId,
-                OpenAiChatService.ConversationTurn.user(userMessageForModel),
+                OpenAiChatService.ConversationTurn.user(originalMessage),
                 OpenAiChatService.ConversationTurn.assistant(aiResult.rawText()));
             String sanitized = jsonOutput ? null : aiResult.sanitizedHtml();
             return new ChatResponse(aiResult.rawText(), conversationId, ctx.emailContext(), intent, sanitized);
@@ -125,7 +149,7 @@ public class ChatService {
             logger.error("Error processing chat request", e);
             String fallback = errorMessages.getChat().getProcessingError();
             conversationRegistry.append(conversationId,
-                OpenAiChatService.ConversationTurn.user(userMessageForModel),
+                OpenAiChatService.ConversationTurn.user(originalMessage),
                 OpenAiChatService.ConversationTurn.assistant(fallback));
             return new ChatResponse(fallback, conversationId, List.of(), "error", HtmlConverter.markdownToSafeHtml(fallback));
         }
@@ -133,7 +157,8 @@ public class ChatService {
 
 
     /** Internal helper for streaming chat with consolidated timing and error handling. */
-    private void doStreamChat(String message, String conversationId, String contextString,
+    private void doStreamChat(String messageForModel, String persistedMessage,
+                              String conversationId, String contextString,
                               List<OpenAiChatService.ConversationTurn> conversationHistory,
                               boolean thinkingEnabled, String thinkingLevel, boolean jsonOutput,
                               Consumer<String> onHtmlChunk, Consumer<String> onJsonChunk,
@@ -146,7 +171,7 @@ public class ChatService {
         long startNanos = System.nanoTime();
         StringBuilder assistantBuffer = new StringBuilder();
         try {
-            openAiChatService.streamResponse(message, contextString, conversationHistory,
+            openAiChatService.streamResponse(messageForModel, contextString, conversationHistory,
                 thinkingEnabled, thinkingLevel, jsonOutput,
                 event -> {
                     if (event instanceof OpenAiChatService.StreamEvent.RawText rawText) {
@@ -160,7 +185,7 @@ public class ChatService {
                 },
                 () -> {
                     conversationRegistry.append(conversationId,
-                        OpenAiChatService.ConversationTurn.user(message),
+                        OpenAiChatService.ConversationTurn.user(persistedMessage),
                         OpenAiChatService.ConversationTurn.assistant(assistantBuffer.toString()));
                     logger.info("Stream completed: {}ms", (System.nanoTime() - startNanos) / 1_000_000L);
                     if (onComplete != null) onComplete.run();
@@ -182,11 +207,12 @@ public class ChatService {
         String uploadedContext = resolveUploadedContext(conversationId, request);
         String fullContext = contextBuilder.mergeContexts(ctx.contextString(), uploadedContext);
         boolean jsonOutput = request.isJsonOutput();
-        String userMessageForModel = formatMessageForOutput(request.getMessage(), jsonOutput);
+        String originalMessage = request.getMessage();
+        String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, uploadedContext);
         Consumer<String> htmlConsumer = jsonOutput ? null : onToken;
         Consumer<String> jsonConsumer = jsonOutput ? onToken : null;
         List<OpenAiChatService.ConversationTurn> history = conversationRegistry.history(conversationId);
-        doStreamChat(userMessageForModel, conversationId, fullContext, history,
+        doStreamChat(userMessageForModel, originalMessage, conversationId, fullContext, history,
             request.isThinkingEnabled(), request.getThinkingLevel(), jsonOutput,
             htmlConsumer, jsonConsumer, onReasoning, onComplete, onError);
     }
@@ -204,7 +230,8 @@ public class ChatService {
                 String uploadedContext = resolveUploadedContext(conversationId, request);
                 String fullContext = contextBuilder.mergeContexts(ctx.contextString(), uploadedContext);
                 boolean jsonOutput = request.isJsonOutput();
-                String userMessageForModel = formatMessageForOutput(request.getMessage(), jsonOutput);
+                String originalMessage = request.getMessage();
+                String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, uploadedContext);
                 List<OpenAiChatService.ConversationTurn> history = conversationRegistry.history(conversationId);
                 Consumer<String> chunkSender = chunk -> { 
                     try { 
@@ -214,7 +241,7 @@ public class ChatService {
                         emitter.completeWithError(e); 
                     } 
                 };
-                doStreamChat(userMessageForModel, conversationId, fullContext, history,
+                doStreamChat(userMessageForModel, originalMessage, conversationId, fullContext, history,
                     request.isThinkingEnabled(), request.getThinkingLevel(), jsonOutput,
                     chunkSender, chunkSender,
                     message -> sendReasoning(emitter, conversationId, message), 
