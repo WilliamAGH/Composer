@@ -307,6 +307,8 @@
             const REASONING_PHASES = /*[[${reasoningPhases}]]*/ {};
             Object.freeze(REASONING_PHASES);
 
+            const UI_NONCE = /*[[${uiNonce}]]*/ null;
+
             class SSEEventRouter {
                 constructor() {
                     this.handlers = new Map();
@@ -472,27 +474,40 @@
                 }
 
                 async handleFileUpload(file) {
-                    this.showUploadStatus('<div class="upload-status upload-status--info">Uploading and parsing file...</div>');
+                    this.showUploadStatus('Uploading and parsing file...', 'info');
 
                     try {
-                        const result = await window.ComposerAI.parseEmailFile(file);
+                        const result = await window.ComposerAI.parseEmailFile(file, UI_NONCE);
                         if (!result.contextId) {
                             throw new Error('Server did not provide a contextId for the uploaded file');
                         }
                         this.currentEmailContext = result;
-                        this.showUploadStatus('<div class="upload-status upload-status--success">Context uploaded and parsed successfully!</div>');
+                        this.showUploadStatus('Context uploaded and parsed successfully!', 'success');
                         this.enableChat();
                         this.addEmailContextMessage(result);
                     } catch (error) {
-                        this.showUploadStatus('<div class="upload-status upload-status--error">Failed to upload file: ' + window.ComposerAI.escapeHtml(String(error?.message || 'Unknown error')) + '</div>');
+                        this.showUploadStatus('Failed to upload file: ' + window.ComposerAI.escapeHtml(String(error?.message || 'Unknown error')), 'error');
                     }
                     this.enableChat();
                 }
 
-                showUploadStatus(html) {
+                showUploadStatus(message, type) {
                     if (!this.uploadStatus) return;
-                    this.uploadStatus.innerHTML = html;
-                    this.uploadStatus.classList.toggle('hidden', !html);
+                    if (!message) {
+                        this.uploadStatus.innerHTML = '';
+                        this.uploadStatus.classList.add('hidden');
+                        this.uploadStatus.classList.remove('upload-status--info', 'upload-status--success', 'upload-status--error');
+                        return;
+                    }
+                    this.uploadStatus.textContent = message;
+                    this.uploadStatus.classList.remove('hidden', 'upload-status--info', 'upload-status--success', 'upload-status--error');
+                    if (type === 'info') {
+                        this.uploadStatus.classList.add('upload-status--info');
+                    } else if (type === 'success') {
+                        this.uploadStatus.classList.add('upload-status--success');
+                    } else if (type === 'error') {
+                        this.uploadStatus.classList.add('upload-status--error');
+                    }
                 }
 
                 getFriendlyFileType(filename) {
@@ -718,7 +733,7 @@
                     // Call insights endpoint - backend controls the prompt
                     const response = await fetch('/api/chat/insights/stream', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-UI-Request': UI_NONCE },
                         body: JSON.stringify({ ...payload, message: '__INSIGHTS_TRIGGER__' }),
                         signal
                     });
@@ -761,6 +776,10 @@
                             try {
                                 const metadata = JSON.parse(raw);
                                 if (metadata.conversationId) conversationIdFromServer = metadata.conversationId;
+                                if (metadata.assistantMessageId) {
+                                    const assistantWrapper = targetDiv?.closest('.message-block');
+                                    if (assistantWrapper) assistantWrapper.setAttribute('data-message-id', String(metadata.assistantMessageId));
+                                }
                             } catch (err) {
                                 console.warn('ComposerAI: Failed to parse metadata event', err);
                             }
@@ -847,7 +866,7 @@
                 async sendChatRequest(payload, targetDiv) {
                     const response = await fetch('/api/chat', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-UI-Request': UI_NONCE },
                         body: JSON.stringify(payload)
                     });
                     if (!response.ok) throw new Error('HTTP ' + response.status);
@@ -855,6 +874,16 @@
                     const isJsonMode = !!payload.jsonOutput;
                     const html = (result.sanitizedHtml || result.sanitizedHTML || result.renderedHtml || result.renderedHTML || '').trim();
                     const raw = (result.rawMarkdown || result.response || result.message || '').trim();
+                    // Attach IDs if provided
+                    if (result.userMessageId) {
+                        const userBlocks = this.messages.querySelectorAll('.message-block.justify-end');
+                        const lastUserBlock = userBlocks[userBlocks.length - 1];
+                        if (lastUserBlock) lastUserBlock.setAttribute('data-message-id', String(result.userMessageId));
+                    }
+                    if (result.assistantMessageId && targetDiv) {
+                        const assistantWrapper = targetDiv.closest('.message-block');
+                        if (assistantWrapper) assistantWrapper.setAttribute('data-message-id', String(result.assistantMessageId));
+                    }
                     if (isJsonMode) {
                         const pre = document.createElement('pre');
                         pre.className = this.jsonPreClass;
@@ -885,7 +914,7 @@
                 async streamResponse(payload, targetDiv, signal) {
                     const response = await fetch('/api/chat/stream', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-UI-Request': UI_NONCE },
                         body: JSON.stringify(payload),
                         signal
                     });
@@ -955,6 +984,16 @@
                                 if (metadata.conversationId) conversationIdFromServer = metadata.conversationId;
                                 if (metadata.jsonOutput !== undefined) {
                                     isJsonMode = Boolean(metadata.jsonOutput);
+                                }
+                                // Attach message IDs to DOM if provided
+                                if (metadata.userMessageId) {
+                                    const userBlocks = this.messages.querySelectorAll('.message-block.justify-end');
+                                    const lastUserBlock = userBlocks[userBlocks.length - 1];
+                                    if (lastUserBlock) lastUserBlock.setAttribute('data-message-id', String(metadata.userMessageId));
+                                }
+                                if (metadata.assistantMessageId) {
+                                    const assistantWrapper = targetDiv?.closest('.message-block');
+                                    if (assistantWrapper) assistantWrapper.setAttribute('data-message-id', String(metadata.assistantMessageId));
                                 }
                             } catch (err) {
                                 console.warn('ComposerAI: Failed to parse metadata event', err);
@@ -1081,13 +1120,15 @@
                     elem.textContent = original;
                 }
 
-                addMessage(content, sender) {
+                addMessage(content, sender, messageId) {
                     const div = document.createElement('div');
                     if (sender === 'user') {
                         div.className = 'message-user max-w-[60%] rounded-2xl bg-slate-900 text-white px-4 py-2.5 shadow-sm';
                         div.textContent = content;
                         const wrapper = document.createElement('div');
                         wrapper.className = 'message-block w-full justify-end';
+                        if (messageId) wrapper.setAttribute('data-message-id', String(messageId));
+                        wrapper.setAttribute('data-sender', 'user');
                         wrapper.appendChild(div);
                         this.messages.appendChild(wrapper);
                     } else {
@@ -1103,6 +1144,8 @@
                         div.appendChild(surface);
                         const wrapper = document.createElement('div');
                         wrapper.className = 'message-block w-full';
+                        if (messageId) wrapper.setAttribute('data-message-id', String(messageId));
+                        wrapper.setAttribute('data-sender', 'assistant');
                         wrapper.appendChild(surface);
                         this.messages.appendChild(wrapper);
                         return markdownContainer;
