@@ -65,6 +65,8 @@ public class ChatController {
 
         request.setConversationId(StringUtils.ensureConversationId(request.getConversationId()));
         final String conversationId = request.getConversationId();
+        final String userMessageId = com.composerai.api.util.IdGenerator.uuidV7();
+        final String assistantMessageId = com.composerai.api.util.IdGenerator.uuidV7();
 
         // Timeout from single source of truth - OpenAiProperties.Stream
         SseEmitter emitter = new SseEmitter(openAiProperties.getStream().getTimeoutMillis());
@@ -101,12 +103,16 @@ public class ChatController {
                 final boolean jsonOutputRequested = request.isJsonOutput();
                 emitter.send(SseEmitter.event().name(SseEventType.METADATA.getEventName()).data(Map.of(
                     "conversationId", conversationId,
+                    "userMessageId", userMessageId,
+                    "assistantMessageId", assistantMessageId,
                     "jsonOutput", jsonOutputRequested
                 )));
 
                 // SSE Event Routing: StreamEvents → SSE named events → Frontend SSEEventRouter
                 chatService.streamChat(
                     request,
+                    userMessageId,
+                    assistantMessageId,
                     // Route HTML chunks: StreamEvent.RenderedHtml → SSE "rendered_html"
                     token -> {
                         try {

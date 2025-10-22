@@ -4,6 +4,7 @@ import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
 import com.composerai.api.util.StringUtils;
 import com.composerai.api.util.TemporalUtils;
+import com.composerai.api.util.IdGenerator;
 import com.openai.client.OpenAIClient;
 import com.openai.core.http.StreamResponse;
 import com.openai.models.ChatModel;
@@ -60,18 +61,27 @@ public class OpenAiChatService {
         }
     }
 
-    public record ConversationTurn(EasyInputMessage.Role role, String content) {
+    public record ConversationTurn(String messageId, EasyInputMessage.Role role, String content) {
         public ConversationTurn {
+            messageId = (messageId == null || messageId.isBlank()) ? IdGenerator.uuidV7() : messageId;
             role = role == null ? EasyInputMessage.Role.USER : role;
             content = content == null ? "" : content;
         }
 
         public static ConversationTurn user(String content) {
-            return new ConversationTurn(EasyInputMessage.Role.USER, content);
+            return new ConversationTurn(IdGenerator.uuidV7(), EasyInputMessage.Role.USER, content);
         }
 
         public static ConversationTurn assistant(String content) {
-            return new ConversationTurn(EasyInputMessage.Role.ASSISTANT, content);
+            return new ConversationTurn(IdGenerator.uuidV7(), EasyInputMessage.Role.ASSISTANT, content);
+        }
+
+        public static ConversationTurn userWithId(String messageId, String content) {
+            return new ConversationTurn(messageId, EasyInputMessage.Role.USER, content);
+        }
+
+        public static ConversationTurn assistantWithId(String messageId, String content) {
+            return new ConversationTurn(messageId, EasyInputMessage.Role.ASSISTANT, content);
         }
     }
 
