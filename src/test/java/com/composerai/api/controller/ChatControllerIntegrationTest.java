@@ -120,12 +120,14 @@ class ChatControllerIntegrationTest {
         }).when(chatStreamExecutor).execute(any(Runnable.class));
 
         doAnswer(invocation -> {
-            invocation.<java.util.function.Consumer<String>>getArgument(1).accept("<p>Hello <strong>World</strong></p>");
-            invocation.<java.util.function.Consumer<?>>getArgument(2).accept(null);
-            invocation.<Runnable>getArgument(3).run();
+            invocation.<java.util.function.Consumer<String>>getArgument(3).accept("<p>Hello <strong>World</strong></p>");
+            invocation.<java.util.function.Consumer<?>>getArgument(4).accept(null);
+            invocation.<Runnable>getArgument(5).run();
             return null;
         }).when(chatService).streamChat(
             any(ChatRequest.class),
+            org.mockito.ArgumentMatchers.anyString(),
+            org.mockito.ArgumentMatchers.anyString(),
             org.mockito.ArgumentMatchers.<java.util.function.Consumer<String>>any(),
             org.mockito.ArgumentMatchers.any(),
             any(Runnable.class),
@@ -144,6 +146,8 @@ class ChatControllerIntegrationTest {
 
         Mockito.verify(chatService).streamChat(
             any(ChatRequest.class),
+            org.mockito.ArgumentMatchers.anyString(),
+            org.mockito.ArgumentMatchers.anyString(),
             org.mockito.ArgumentMatchers.<java.util.function.Consumer<String>>any(),
             org.mockito.ArgumentMatchers.any(),
             any(Runnable.class),
