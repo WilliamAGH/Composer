@@ -307,8 +307,6 @@
             const REASONING_PHASES = /*[[${reasoningPhases}]]*/ {};
             Object.freeze(REASONING_PHASES);
 
-            const UI_NONCE = /*[[${uiNonce}]]*/ null;
-
             class SSEEventRouter {
                 constructor() {
                     this.handlers = new Map();
@@ -332,7 +330,7 @@
                     this.messages = document.getElementById('messages');
                     this.messageInput = document.getElementById('messageInput');
                     this.sendButton = document.getElementById('sendButton');
-                    this.fileDropArea = null;
+                    this.fileDropArea = document.getElementById('fileDropArea');
                     this.fileInput = document.getElementById('fileInput') || document.getElementById('inlineFileInput');
                     this.uploadStatus = document.getElementById('uploadStatus');
                     this.currentEmailContext = null;
@@ -362,10 +360,9 @@
                         }
                     });
 
-                    const dropTarget = document.getElementById('inlineUploadButton');
-                    if (this.fileInput && dropTarget && window.ComposerAI?.FileUploadHandler) {
+                    if (this.fileInput && window.ComposerAI?.FileUploadHandler) {
                         new window.ComposerAI.FileUploadHandler({
-                            dropArea: dropTarget,
+                            dropArea: this.fileDropArea || document.getElementById('inlineUploadButton'),
                             fileInput: this.fileInput,
                             onFileSelected: (file) => this.handleFileUpload(file),
                             validExtensions: ['.eml', '.msg', '.txt']
@@ -474,40 +471,27 @@
                 }
 
                 async handleFileUpload(file) {
-                    this.showUploadStatus('Uploading and parsing file...', 'info');
+                    this.showUploadStatus('<div class="upload-status upload-status--info">Uploading and parsing file...</div>');
 
                     try {
-                        const result = await window.ComposerAI.parseEmailFile(file, UI_NONCE);
+                        const result = await window.ComposerAI.parseEmailFile(file);
                         if (!result.contextId) {
                             throw new Error('Server did not provide a contextId for the uploaded file');
                         }
                         this.currentEmailContext = result;
-                        this.showUploadStatus('Context uploaded and parsed successfully!', 'success');
+                        this.showUploadStatus('<div class="upload-status upload-status--success">Context uploaded and parsed successfully!</div>');
                         this.enableChat();
                         this.addEmailContextMessage(result);
                     } catch (error) {
-                        this.showUploadStatus('Failed to upload file: ' + window.ComposerAI.escapeHtml(String(error?.message || 'Unknown error')), 'error');
+                        this.showUploadStatus('<div class="upload-status upload-status--error">Failed to upload file: ' + window.ComposerAI.escapeHtml(String(error?.message || 'Unknown error')) + '</div>');
                     }
                     this.enableChat();
                 }
 
-                showUploadStatus(message, type) {
+                showUploadStatus(html) {
                     if (!this.uploadStatus) return;
-                    if (!message) {
-                        this.uploadStatus.innerHTML = '';
-                        this.uploadStatus.classList.add('hidden');
-                        this.uploadStatus.classList.remove('upload-status--info', 'upload-status--success', 'upload-status--error');
-                        return;
-                    }
-                    this.uploadStatus.textContent = message;
-                    this.uploadStatus.classList.remove('hidden', 'upload-status--info', 'upload-status--success', 'upload-status--error');
-                    if (type === 'info') {
-                        this.uploadStatus.classList.add('upload-status--info');
-                    } else if (type === 'success') {
-                        this.uploadStatus.classList.add('upload-status--success');
-                    } else if (type === 'error') {
-                        this.uploadStatus.classList.add('upload-status--error');
-                    }
+                    this.uploadStatus.innerHTML = html;
+                    this.uploadStatus.classList.toggle('hidden', !html);
                 }
 
                 getFriendlyFileType(filename) {
@@ -557,28 +541,26 @@
                     const toggleWrapper = document.createElement('div');
                     toggleWrapper.className = 'overflow-hidden rounded-2xl border border-blue-200/60 bg-blue-50/40';
                     toggleWrapper.innerHTML =
-                        '<div class="flex items-center gap-2 px-3.5 py-2.5">' +
-                            '<button type="button" class="flex flex-1 items-center gap-3 rounded-xl px-2 py-1.5 text-left transition hover:bg-blue-100/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200" data-role="preview-toggle" aria-expanded="false" aria-controls="' + previewId + '">' +
-                                '<span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700">' +
-                                    '<svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2.25 6.75A3.75 3.75 0 016 3h12a3.75 3.75 0 013.75 3.75v10.5A3.75 3.75 0 0118 21H6a3.75 3.75 0 01-3.75-3.75V6.75zm3.82-.456a.75.75 0 00-.82 1.26l6 3.9a.75.75 0 00.82 0l6-3.9a.75.75 0 00-.82-1.26L12 9.694 6.07 6.294z"/></svg>' +
-                                '</span>' +
-                                '<span class="flex-1 truncate text-sm font-semibold text-slate-800">' + subject + '</span>' +
-                                '<span class="flex flex-shrink-0 items-center gap-2">' +
-                                    '<span class="rounded-md bg-white/70 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600" data-role="email-date" data-original-label="' + dateLabel + '" ' + (iso ? 'data-date-iso="' + window.ComposerAI.escapeHtml(iso) + '"' : '') + '>' + dateLabel + '</span>' +
-                                    '<svg class="h-4 w-4 text-slate-500 transition-transform" data-role="preview-chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>' +
-                                '</span>' +
-                            '</button>' +
-                            '<button type="button" data-role="quick-insights" class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-sm transition-all hover:shadow-md hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300" title="Get AI insights about this email" aria-label="Analyze email with AI">' +
-                                '<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-                                    '<path d="M9.813 3.063l.75 3.75m3.937-3.75l-.75 3.75m-6 .937l3.75.75m9.375 0l-3.75.75m-9.375 6l3.75-.75m9.375 0l-3.75-.75m-6 5.063l.75-3.75m3.937 3.75l-.75-3.75M12 18.75a6.75 6.75 0 100-13.5 6.75 6.75 0 000 13.5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
-                                '</svg>' +
-                            '</button>' +
-                        '</div>' +
+                        '<button type="button" class="flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition hover:bg-blue-100/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200" data-role="preview-toggle" aria-expanded="false" aria-controls="' + previewId + '">' +
+                        '<span class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-700">' +
+                        '<svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2.25 6.75A3.75 3.75 0 016 3h12a3.75 3.75 0 013.75 3.75v10.5A3.75 3.75 0 0118 21H6a3.75 3.75 0 01-3.75-3.75V6.75zm3.82-.456a.75.75 0 00-.82 1.26l6 3.9a.75.75 0 00.82 0l6-3.9a.75.75 0 00-.82-1.26L12 9.694 6.07 6.294z"/></svg>' +
+                        '</span>' +
+                        '<span class="flex-1 text-sm font-semibold text-slate-800">' + subject + '</span>' +
+                        '<span class="ml-auto flex items-center gap-2">' +
+                        '<button type="button" data-role="quick-insights" class="group flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-sm transition-all hover:shadow-md hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300" title="Get AI insights about this email" aria-label="Analyze email with AI">' +
+                        '<svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+                        '<path d="M9.813 3.063l.75 3.75m3.937-3.75l-.75 3.75m-6 .937l3.75.75m9.375 0l-3.75.75m-9.375 6l3.75-.75m9.375 0l-3.75-.75m-6 5.063l.75-3.75m3.937 3.75l-.75-3.75M12 18.75a6.75 6.75 0 100-13.5 6.75 6.75 0 000 13.5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+                        '</svg>' +
+                        '</button>' +
+                        '<span class="rounded-md bg-white/70 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600" data-role="email-date" data-original-label="' + dateLabel + '" ' + (iso ? 'data-date-iso="' + window.ComposerAI.escapeHtml(iso) + '"' : '') + '>' + dateLabel + '</span>' +
+                        '<svg class="h-4 w-4 text-slate-500 transition-transform" data-role="preview-chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>' +
+                        '</span>' +
+                        '</button>' +
                         '<div id="' + previewId + '" data-role="preview-body" class="hidden border-t border-blue-100/70 bg-white/90 px-3.5 py-3">' +
-                            '<div class="chat-markdown">' +
-                                '<p><strong>From:</strong> ' + from + '</p>' +
-                                '<div class="chat-markdown">' + previewHtml + '</div>' +
-                            '</div>' +
+                        '<div class="chat-markdown">' +
+                        '<p><strong>From:</strong> ' + from + '</p>' +
+                        '<div class="chat-markdown">' + previewHtml + '</div>' +
+                        '</div>' +
                         '</div>';
 
                     const toggleBtn = toggleWrapper.querySelector('[data-role="preview-toggle"]');
@@ -594,8 +576,7 @@
                         const nextExpanded = !expanded;
                         toggleBtn.setAttribute('aria-expanded', String(nextExpanded));
                         previewBody.classList.toggle('hidden', !nextExpanded);
-                        const rotation = nextExpanded ? 'rotate(180deg)' : 'rotate(0)';
-                        if (previewChevron) previewChevron.style.transform = rotation;
+                        previewChevron.style.transform = nextExpanded ? 'rotate(180deg)' : 'rotate(0)';
                     });
 
                     // Quick Insights: Trigger backend insights endpoint (all logic in Java)
@@ -611,8 +592,7 @@
                     surface.appendChild(toggleWrapper);
                     wrapper.appendChild(surface);
                     this.messages.appendChild(wrapper);
-                    const emailDate = toggleWrapper.querySelector('[data-role="email-date"]');
-                    if (emailDate) this.localizeDate(emailDate);
+                    this.localizeDate(toggleWrapper.querySelector('[data-role="email-date"]'));
                     this.applyMarkdownEnhancements(surface);
                     this.messages.scrollTop = this.messages.scrollHeight;
                 }
@@ -690,7 +670,7 @@
                     assistantDiv.innerHTML = '<div class="assistant-thinking relative"><div class="phase-badge phase-thinking">Analyzing email...</div><div class="thinking-skeleton rounded-xl border border-slate-200 bg-slate-50/80 p-3"><div class="thinking-line"></div><div class="thinking-line"></div><div class="thinking-line short"></div><div class="thinking-cursor-bar"></div></div></div>';
 
                     const payload = {
-                        message: "__INSIGHTS_TRIGGER__", // Backend will inject insights prompt + email content
+                        message: "", // Backend will override with insights prompt
                         conversationId: this.conversationId,
                         maxResults: 5,
                         emailContext: this.currentEmailContext?.contextForAI || '',
@@ -733,8 +713,8 @@
                     // Call insights endpoint - backend controls the prompt
                     const response = await fetch('/api/chat/insights/stream', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-UI-Request': UI_NONCE },
-                        body: JSON.stringify({ ...payload, message: '__INSIGHTS_TRIGGER__' }),
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
                         signal
                     });
                     if (!response.ok) throw new Error('HTTP ' + response.status);
@@ -776,10 +756,6 @@
                             try {
                                 const metadata = JSON.parse(raw);
                                 if (metadata.conversationId) conversationIdFromServer = metadata.conversationId;
-                                if (metadata.assistantMessageId) {
-                                    const assistantWrapper = targetDiv?.closest('.message-block');
-                                    if (assistantWrapper) assistantWrapper.setAttribute('data-message-id', String(metadata.assistantMessageId));
-                                }
                             } catch (err) {
                                 console.warn('ComposerAI: Failed to parse metadata event', err);
                             }
@@ -866,7 +842,7 @@
                 async sendChatRequest(payload, targetDiv) {
                     const response = await fetch('/api/chat', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-UI-Request': UI_NONCE },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
                     if (!response.ok) throw new Error('HTTP ' + response.status);
@@ -874,16 +850,6 @@
                     const isJsonMode = !!payload.jsonOutput;
                     const html = (result.sanitizedHtml || result.sanitizedHTML || result.renderedHtml || result.renderedHTML || '').trim();
                     const raw = (result.rawMarkdown || result.response || result.message || '').trim();
-                    // Attach IDs if provided
-                    if (result.userMessageId) {
-                        const userBlocks = this.messages.querySelectorAll('.message-block.justify-end');
-                        const lastUserBlock = userBlocks[userBlocks.length - 1];
-                        if (lastUserBlock) lastUserBlock.setAttribute('data-message-id', String(result.userMessageId));
-                    }
-                    if (result.assistantMessageId && targetDiv) {
-                        const assistantWrapper = targetDiv.closest('.message-block');
-                        if (assistantWrapper) assistantWrapper.setAttribute('data-message-id', String(result.assistantMessageId));
-                    }
                     if (isJsonMode) {
                         const pre = document.createElement('pre');
                         pre.className = this.jsonPreClass;
@@ -914,7 +880,7 @@
                 async streamResponse(payload, targetDiv, signal) {
                     const response = await fetch('/api/chat/stream', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-UI-Request': UI_NONCE },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload),
                         signal
                     });
@@ -984,16 +950,6 @@
                                 if (metadata.conversationId) conversationIdFromServer = metadata.conversationId;
                                 if (metadata.jsonOutput !== undefined) {
                                     isJsonMode = Boolean(metadata.jsonOutput);
-                                }
-                                // Attach message IDs to DOM if provided
-                                if (metadata.userMessageId) {
-                                    const userBlocks = this.messages.querySelectorAll('.message-block.justify-end');
-                                    const lastUserBlock = userBlocks[userBlocks.length - 1];
-                                    if (lastUserBlock) lastUserBlock.setAttribute('data-message-id', String(metadata.userMessageId));
-                                }
-                                if (metadata.assistantMessageId) {
-                                    const assistantWrapper = targetDiv?.closest('.message-block');
-                                    if (assistantWrapper) assistantWrapper.setAttribute('data-message-id', String(metadata.assistantMessageId));
                                 }
                             } catch (err) {
                                 console.warn('ComposerAI: Failed to parse metadata event', err);
@@ -1120,15 +1076,13 @@
                     elem.textContent = original;
                 }
 
-                addMessage(content, sender, messageId) {
+                addMessage(content, sender) {
                     const div = document.createElement('div');
                     if (sender === 'user') {
                         div.className = 'message-user max-w-[60%] rounded-2xl bg-slate-900 text-white px-4 py-2.5 shadow-sm';
                         div.textContent = content;
                         const wrapper = document.createElement('div');
                         wrapper.className = 'message-block w-full justify-end';
-                        if (messageId) wrapper.setAttribute('data-message-id', String(messageId));
-                        wrapper.setAttribute('data-sender', 'user');
                         wrapper.appendChild(div);
                         this.messages.appendChild(wrapper);
                     } else {
@@ -1144,8 +1098,6 @@
                         div.appendChild(surface);
                         const wrapper = document.createElement('div');
                         wrapper.className = 'message-block w-full';
-                        if (messageId) wrapper.setAttribute('data-message-id', String(messageId));
-                        wrapper.setAttribute('data-sender', 'assistant');
                         wrapper.appendChild(surface);
                         this.messages.appendChild(wrapper);
                         return markdownContainer;
