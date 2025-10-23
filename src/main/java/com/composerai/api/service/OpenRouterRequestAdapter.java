@@ -2,10 +2,9 @@ package com.composerai.api.service;
 
 import com.composerai.api.config.OpenAiProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.openai.models.Reasoning;
 import com.openai.models.responses.ResponseCreateParams;
-import com.openai.models.responses.ResponseInputItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +45,7 @@ public class OpenRouterRequestAdapter {
         try {
             // Serialize the entire params object via Jackson
             String paramsJson = mapper.writeValueAsString(params._body());
-            request = mapper.readValue(paramsJson, LinkedHashMap.class);
+            request = mapper.readValue(paramsJson, new TypeReference<Map<String, Object>>() {});
         } catch (Exception e) {
             logger.warn("Failed to serialize SDK params, using empty base", e);
             request = new LinkedHashMap<>();
