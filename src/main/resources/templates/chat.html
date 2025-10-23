@@ -307,6 +307,8 @@
             const REASONING_PHASES = /*[[${reasoningPhases}]]*/ {};
             Object.freeze(REASONING_PHASES);
 
+            const UI_NONCE = /*[[${uiNonce}]]*/ null;
+
             class SSEEventRouter {
                 constructor() {
                     this.handlers = new Map();
@@ -474,7 +476,7 @@
                     this.showUploadStatus('<div class="upload-status upload-status--info">Uploading and parsing file...</div>');
 
                     try {
-                        const result = await window.ComposerAI.parseEmailFile(file);
+                        const result = await window.ComposerAI.parseEmailFile(file, UI_NONCE);
                         if (!result.contextId) {
                             throw new Error('Server did not provide a contextId for the uploaded file');
                         }
@@ -541,21 +543,23 @@
                     const toggleWrapper = document.createElement('div');
                     toggleWrapper.className = 'overflow-hidden rounded-2xl border border-blue-200/60 bg-blue-50/40';
                     toggleWrapper.innerHTML =
-                        '<button type="button" class="flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition hover:bg-blue-100/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200" data-role="preview-toggle" aria-expanded="false" aria-controls="' + previewId + '">' +
-                        '<span class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-700">' +
+                        '<div class="flex items-center gap-2 px-3.5 py-2.5">' +
+                        '<button type="button" class="flex flex-1 items-center gap-3 rounded-xl px-2 py-1.5 text-left transition hover:bg-blue-100/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200" data-role="preview-toggle" aria-expanded="false" aria-controls="' + previewId + '">' +
+                        '<span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700">' +
                         '<svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2.25 6.75A3.75 3.75 0 016 3h12a3.75 3.75 0 013.75 3.75v10.5A3.75 3.75 0 0118 21H6a3.75 3.75 0 01-3.75-3.75V6.75zm3.82-.456a.75.75 0 00-.82 1.26l6 3.9a.75.75 0 00.82 0l6-3.9a.75.75 0 00-.82-1.26L12 9.694 6.07 6.294z"/></svg>' +
                         '</span>' +
-                        '<span class="flex-1 text-sm font-semibold text-slate-800">' + subject + '</span>' +
-                        '<span class="ml-auto flex items-center gap-2">' +
-                        '<button type="button" data-role="quick-insights" class="group flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-sm transition-all hover:shadow-md hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300" title="Get AI insights about this email" aria-label="Analyze email with AI">' +
-                        '<svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-                        '<path d="M9.813 3.063l.75 3.75m3.937-3.75l-.75 3.75m-6 .937l3.75.75m9.375 0l-3.75.75m-9.375 6l3.75-.75m9.375 0l-3.75-.75m-6 5.063l.75-3.75m3.937 3.75l-.75-3.75M12 18.75a6.75 6.75 0 100-13.5 6.75 6.75 0 000 13.5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
-                        '</svg>' +
-                        '</button>' +
+                        '<span class="flex-1 truncate text-sm font-semibold text-slate-800">' + subject + '</span>' +
+                        '<span class="ml-auto flex flex-shrink-0 items-center gap-2">' +
                         '<span class="rounded-md bg-white/70 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600" data-role="email-date" data-original-label="' + dateLabel + '" ' + (iso ? 'data-date-iso="' + window.ComposerAI.escapeHtml(iso) + '"' : '') + '>' + dateLabel + '</span>' +
                         '<svg class="h-4 w-4 text-slate-500 transition-transform" data-role="preview-chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>' +
                         '</span>' +
                         '</button>' +
+                        '<button type="button" data-role="quick-insights" class="group flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-sm transition-all hover:shadow-md hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300" title="Get AI insights about this email" aria-label="Analyze email with AI">' +
+                        '<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+                        '<path d="M9.813 3.063l.75 3.75m3.937-3.75l-.75 3.75m-6 .937l3.75.75m9.375 0l-3.75.75m-9.375 6l3.75-.75m9.375 0l-3.75-.75m-6 5.063l.75-3.75m3.937 3.75l-.75-3.75M12 18.75a6.75 6.75 0 100-13.5 6.75 6.75 0 000 13.5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+                        '</svg>' +
+                        '</button>' +
+                        '</div>' +
                         '<div id="' + previewId + '" data-role="preview-body" class="hidden border-t border-blue-100/70 bg-white/90 px-3.5 py-3">' +
                         '<div class="chat-markdown">' +
                         '<p><strong>From:</strong> ' + from + '</p>' +
@@ -670,7 +674,7 @@
                     assistantDiv.innerHTML = '<div class="assistant-thinking relative"><div class="phase-badge phase-thinking">Analyzing email...</div><div class="thinking-skeleton rounded-xl border border-slate-200 bg-slate-50/80 p-3"><div class="thinking-line"></div><div class="thinking-line"></div><div class="thinking-line short"></div><div class="thinking-cursor-bar"></div></div></div>';
 
                     const payload = {
-                        message: "", // Backend will override with insights prompt
+                        message: "__INSIGHTS_TRIGGER__", // Backend detects this special trigger
                         conversationId: this.conversationId,
                         maxResults: 5,
                         emailContext: this.currentEmailContext?.contextForAI || '',
@@ -713,7 +717,7 @@
                     // Call insights endpoint - backend controls the prompt
                     const response = await fetch('/api/chat/insights/stream', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-UI-Request': UI_NONCE },
                         body: JSON.stringify(payload),
                         signal
                     });
@@ -842,7 +846,7 @@
                 async sendChatRequest(payload, targetDiv) {
                     const response = await fetch('/api/chat', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-UI-Request': UI_NONCE },
                         body: JSON.stringify(payload)
                     });
                     if (!response.ok) throw new Error('HTTP ' + response.status);
@@ -880,7 +884,7 @@
                 async streamResponse(payload, targetDiv, signal) {
                     const response = await fetch('/api/chat/stream', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-UI-Request': UI_NONCE },
                         body: JSON.stringify(payload),
                         signal
                     });

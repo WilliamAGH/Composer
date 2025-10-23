@@ -144,7 +144,7 @@ public class ChatService {
             if (INSIGHTS_TRIGGER.equals(originalMessage)) {
                 fullContext = sanitizeInsightsContext(fullContext);
             }
-            String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, uploadedContext);
+            String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, fullContext);
             List<OpenAiChatService.ConversationTurn> history = conversationRegistry.history(conversationId);
 
             // Debug log context structure for troubleshooting
@@ -235,7 +235,7 @@ public class ChatService {
         if (INSIGHTS_TRIGGER.equals(originalMessage)) {
             fullContext = sanitizeInsightsContext(fullContext);
         }
-        String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, uploadedContext);
+        String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, fullContext);
         Consumer<String> htmlConsumer = jsonOutput ? null : onToken;
         Consumer<String> jsonConsumer = jsonOutput ? onToken : null;
         List<OpenAiChatService.ConversationTurn> history = conversationRegistry.history(conversationId);
@@ -262,7 +262,7 @@ public class ChatService {
         if (INSIGHTS_TRIGGER.equals(originalMessage)) {
             fullContext = sanitizeInsightsContext(fullContext);
         }
-        String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, uploadedContext);
+        String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, fullContext);
         Consumer<String> htmlConsumer = jsonOutput ? null : onToken;
         Consumer<String> jsonConsumer = jsonOutput ? onToken : null;
         List<OpenAiChatService.ConversationTurn> history = conversationRegistry.history(conversationId);
@@ -289,7 +289,7 @@ public class ChatService {
                 if (INSIGHTS_TRIGGER.equals(originalMessage)) {
                     fullContext = sanitizeInsightsContext(fullContext);
                 }
-                String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, uploadedContext);
+                String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, fullContext);
                 List<OpenAiChatService.ConversationTurn> history = conversationRegistry.history(conversationId);
                 String userMessageId = com.composerai.api.util.IdGenerator.uuidV7();
                 String assistantMessageId = com.composerai.api.util.IdGenerator.uuidV7();
@@ -315,17 +315,28 @@ public class ChatService {
     }
 
     private String resolveUploadedContext(String conversationId, ChatRequest request) {
-        Optional<String> stored = emailContextRegistry.contextForAi(request.getContextId());
+        String contextId = request.getContextId();
+        logger.debug("Resolving uploaded context: contextId={}, conversationId={}", contextId, conversationId);
+        
+        Optional<String> stored = emailContextRegistry.contextForAi(contextId);
         if (stored.isPresent()) {
+            logger.debug("Found cached context for contextId={} (length={})", contextId, stored.get().length());
             return stored.get();
         }
+        
+        logger.warn("Context lookup failed for contextId={} (conversationId={})", contextId, conversationId);
+        
         if (!StringUtils.isBlank(request.getEmailContext())) {
-            if (StringUtils.isBlank(request.getContextId())) {
+            if (StringUtils.isBlank(contextId)) {
                 logger.warn("Dropping provided emailContext because contextId is missing (conversationId={})", conversationId);
             } else {
-                logger.warn("Email context not found for contextId={} (conversationId={}); falling back to request payload", request.getContextId(), conversationId);
+                logger.warn("Falling back to request payload emailContext for contextId={} (length={})", 
+                    contextId, request.getEmailContext().length());
                 return HtmlConverter.cleanupOutput(request.getEmailContext(), true);
             }
+        } else if (!StringUtils.isBlank(contextId)) {
+            logger.error("No uploaded context found: contextId={}, no fallback payload (conversationId={})", 
+                contextId, conversationId);
         }
         return "";
     }

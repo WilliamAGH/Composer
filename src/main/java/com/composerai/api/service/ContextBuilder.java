@@ -71,41 +71,59 @@ public class ContextBuilder {
 
         private final ConcurrentMap<String, StoredContext> contexts = new ConcurrentHashMap<>();
 
-        public void store(String contextId, String plainText, String markdown) {
+        public void store(String contextId, String contextForAI) {
             if (StringUtils.isBlank(contextId)) {
+                logger.warn("Attempted to store context with blank contextId");
                 return;
             }
-            String normalizedPlain = HtmlConverter.cleanupOutput(plainText, true);
-            String normalizedMarkdown = HtmlConverter.cleanupOutput(markdown, true);
-            if (StringUtils.isBlank(normalizedPlain) && StringUtils.isBlank(normalizedMarkdown)) {
-                logger.debug("Skipping context store for {} because both plain and markdown are blank", contextId);
+            if (StringUtils.isBlank(contextForAI)) {
+                logger.debug("Skipping context store for {} because content is blank", contextId);
                 return;
             }
-            contexts.put(contextId, new StoredContext(normalizedPlain, normalizedMarkdown, Instant.now()));
+            contexts.put(contextId, new StoredContext(contextForAI, Instant.now()));
+            logger.debug("Stored email context: contextId={}, length={}, totalCached={}", 
+                contextId, contextForAI.length(), contexts.size());
             prune();
         }
 
         public Optional<String> contextForAi(String contextId) {
             if (StringUtils.isBlank(contextId)) {
+                logger.debug("Context lookup with blank contextId");
                 return Optional.empty();
             }
             StoredContext stored = contexts.get(contextId);
             if (stored == null) {
+                logger.warn("Context not found in registry: contextId={}, available keys: {}", 
+                    contextId, contexts.keySet().stream().limit(5).toList());
                 return Optional.empty();
             }
             if (stored.isExpired()) {
+                logger.debug("Context expired for contextId={}", contextId);
                 contexts.remove(contextId);
                 return Optional.empty();
             }
-            String markdown = stored.markdown();
-            if (!StringUtils.isBlank(markdown)) {
-                return Optional.of(markdown);
+            if (!StringUtils.isBlank(stored.content())) {
+                logger.debug("Retrieved context: contextId={}, length={}", contextId, stored.content().length());
+                return Optional.of(stored.content());
             }
-            if (!StringUtils.isBlank(stored.plainText())) {
-                return Optional.of(stored.plainText());
-            }
+            logger.warn("Context content blank for contextId={}", contextId);
             contexts.remove(contextId);
             return Optional.empty();
+        }
+
+        public boolean hasContext(String contextId) {
+            if (StringUtils.isBlank(contextId)) {
+                return false;
+            }
+            StoredContext stored = contexts.get(contextId);
+            if (stored == null) {
+                return false;
+            }
+            if (stored.isExpired()) {
+                contexts.remove(contextId);
+                return false;
+            }
+            return !StringUtils.isBlank(stored.content());
         }
 
         private void prune() {
@@ -125,7 +143,7 @@ public class ContextBuilder {
             }
         }
 
-        private record StoredContext(String plainText, String markdown, Instant createdAt) {
+        private record StoredContext(String content, Instant createdAt) {
             boolean isExpired() {
                 return isExpired(Instant.now());
             }

@@ -409,6 +409,13 @@ public class OpenAiChatService {
                 .content(sanitizedSystem)
                 .build()));
             totalTokenEstimate += estimateTokens(sanitizedSystem);
+            
+            if (logger.isDebugEnabled()) {
+                String promptPreview = sanitizedSystem.length() > 400 
+                    ? sanitizedSystem.substring(0, 400) + "..." 
+                    : sanitizedSystem;
+                logger.debug("System prompt being sent (first 400 chars): {}", promptPreview);
+            }
         }
 
         if (jsonOutput) {
@@ -435,6 +442,13 @@ public class OpenAiChatService {
                 .content(contextMessage)
                 .build()));
             totalTokenEstimate += estimateTokens(contextMessage);
+            
+            if (logger.isDebugEnabled()) {
+                String preview = safeContext.length() > 500 
+                    ? safeContext.substring(0, 500) + "..." 
+                    : safeContext;
+                logger.debug("Email context being sent to model (first 500 chars): {}", preview);
+            }
         }
 
         if (conversationHistory != null && !conversationHistory.isEmpty()) {
