@@ -71,6 +71,38 @@ public class ClientConfiguration {
         }
     }
 
+    /**
+     * RestClient for making raw HTTP requests to OpenRouter API.
+     * Used when OpenRouter-specific features (like provider routing) are needed
+     * that aren't supported by the OpenAI SDK's strongly-typed API.
+     * 
+     * Only used when base URL is OpenRouter - otherwise normal SDK client is used.
+     */
+    @Bean
+    public org.springframework.web.client.RestClient openRouterRestClient(OpenAiProperties openAiProperties) {
+        String apiKey = openAiProperties.getApi().getKey();
+        if (StringUtils.isMissing(apiKey)) {
+            apiKey = System.getenv("LLM_API_KEY");
+        }
+        if (StringUtils.isMissing(apiKey)) {
+            apiKey = System.getenv("OPENAI_API_KEY");
+        }
+        
+        if (StringUtils.isMissing(apiKey)) {
+            log.warn("API key not configured - RestClient will fail if used");
+            return null;
+        }
+        
+        String baseUrl = openAiProperties.getApi().getBaseUrl();
+        
+        return org.springframework.web.client.RestClient.builder()
+            .baseUrl(baseUrl)
+            .defaultHeader("Authorization", "Bearer " + apiKey.trim())
+            .defaultHeader("Content-Type", "application/json")
+            .defaultHeader("HTTP-Referer", "https://composerai.app") // Optional: for OpenRouter analytics
+            .defaultHeader("X-Title", "ComposerAI") // Optional: for OpenRouter analytics
+            .build();
+    }
 
     @Bean(destroyMethod = "close")
     public QdrantClient qdrantClient(QdrantProperties qdrantProperties) {
