@@ -2,6 +2,7 @@ package com.composerai.api.service;
 
 import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
+import com.composerai.api.config.ProviderCapabilities;
 import com.composerai.api.util.StringUtils;
 import com.composerai.api.util.TemporalUtils;
 import com.composerai.api.util.IdGenerator;
@@ -28,6 +29,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -41,6 +43,7 @@ public class OpenAiChatService {
     private static final Pattern DANGEROUS_BLOCK_TAGS = Pattern.compile("(?is)<(script|style|iframe)[^>]*>.*?</\\1>");
 
     private final OpenAIClient openAiClient;
+    private final org.springframework.web.client.RestClient restClient; // For OpenRouter custom requests
     private final OpenAiProperties openAiProperties;
     private final ErrorMessagesProperties errorMessages;
 
@@ -89,9 +92,22 @@ public class OpenAiChatService {
     public record ValidatedThinkingConfig(boolean enabled, ReasoningEffort effort) {
         static ValidatedThinkingConfig resolve(OpenAiProperties properties, String modelId,
                                                boolean requestedEnabled, String requestedLevel) {
-            return (modelId == null || !properties.supportsReasoning(modelId) || !requestedEnabled)
-                ? new ValidatedThinkingConfig(false, null)
-                : new ValidatedThinkingConfig(true, parseEffort(requestedLevel).orElse(ReasoningEffort.MINIMAL));
+            if (modelId == null || !properties.supportsReasoning(modelId) || !requestedEnabled) {
+                return new ValidatedThinkingConfig(false, null);
+            }
+            
+            Optional<ReasoningEffort> effort = parseEffort(requestedLevel);
+            
+            // Validate "minimal" is OpenAI-only
+            if (effort.isPresent() && effort.get() == ReasoningEffort.MINIMAL 
+                && !properties.getProviderCapabilities().supportsMinimalReasoning()) {
+                logger.warn("Reasoning effort 'minimal' is only supported by OpenAI. Falling back to 'low' for provider: {}", 
+                    properties.getProviderCapabilities().getType());
+                return new ValidatedThinkingConfig(true, ReasoningEffort.LOW);
+            }
+            
+            // Default to LOW (not MINIMAL) for OpenRouter compatibility
+            return new ValidatedThinkingConfig(true, effort.orElse(ReasoningEffort.LOW));
         }
         private static Optional<ReasoningEffort> parseEffort(String level) {
             if (level == null || level.isBlank()) return Optional.of(ReasoningEffort.MINIMAL);
@@ -106,9 +122,11 @@ public class OpenAiChatService {
     }
 
     public OpenAiChatService(@Autowired(required = false) @Nullable OpenAIClient openAiClient,
+                              @Autowired(required = false) @Nullable org.springframework.web.client.RestClient restClient,
                               OpenAiProperties openAiProperties,
                               ErrorMessagesProperties errorMessages) {
         this.openAiClient = openAiClient;
+        this.restClient = restClient;
         this.openAiProperties = openAiProperties;
         this.errorMessages = errorMessages;
     }
@@ -183,6 +201,21 @@ public class OpenAiChatService {
             .model(resolveChatModel())
             .inputOfResponse(buildEmailAssistantMessages(emailContext, userMessage, conversationHistory, jsonOutput));
 
+        // Add temperature if configured
+        if (openAiProperties.getModel().getTemperature() != null) {
+            builder.temperature(openAiProperties.getModel().getTemperature());
+        }
+
+        // Add topP if configured
+        if (openAiProperties.getModel().getTopP() != null) {
+            builder.topP(openAiProperties.getModel().getTopP());
+        }
+
+        // Add maxOutputTokens if configured
+        if (openAiProperties.getModel().getMaxOutputTokens() != null) {
+            builder.maxOutputTokens(openAiProperties.getModel().getMaxOutputTokens());
+        }
+
         String modelId = openAiProperties.getModel().getChat();
         ValidatedThinkingConfig config = ValidatedThinkingConfig.resolve(openAiProperties, modelId, thinkingEnabled, thinkingLevel);
         if (config.enabled() && config.effort() != null) {
@@ -192,6 +225,31 @@ public class OpenAiChatService {
             logger.debug("Reasoning requested but provider {} does not support it", openAiProperties.getProviderCapabilities().getType());
         }
 
+        // Add OpenRouter provider routing via SDK's additionalBodyProperties if configured
+        if (openAiProperties.getProviderCapabilities().getType() == ProviderCapabilities.ProviderType.OPENROUTER
+            && openAiProperties.getProvider().getOrder() != null 
+            && !openAiProperties.getProvider().getOrder().isEmpty()) {
+            
+            Map<String, Object> provider = new java.util.LinkedHashMap<>();
+            
+            if (openAiProperties.getProvider().getSort() != null && !openAiProperties.getProvider().getSort().isBlank()) {
+                provider.put("sort", openAiProperties.getProvider().getSort());
+            }
+            
+            provider.put("order", openAiProperties.getProvider().getOrder());
+            provider.put("allow_fallbacks", openAiProperties.getProvider().getAllowFallbacks());
+            
+            // Use SDK's additionalBodyProperties to inject OpenRouter's "provider" field
+            builder.putAdditionalBodyProperty("provider", com.openai.core.JsonValue.from(provider));
+            
+            logger.info("OpenRouter provider routing enabled: order={}, sort={}, allow_fallbacks={}",
+                openAiProperties.getProvider().getOrder(), 
+                openAiProperties.getProvider().getSort(),
+                openAiProperties.getProvider().getAllowFallbacks());
+        }
+        
+        ResponseCreateParams params = builder.build();
+
         boolean streamingDebugEnabled = logger.isDebugEnabled() && openAiProperties.isLocalDebugEnabled();
         MarkdownStreamAssembler assembler = jsonOutput ? null : new MarkdownStreamAssembler(streamingDebugEnabled);
         long startNanos = System.nanoTime();
@@ -199,7 +257,7 @@ public class OpenAiChatService {
         final boolean[] failed = {false};
 
         try {
-            try (StreamResponse<ResponseStreamEvent> streamResponse = openAiClient.responses().createStreaming(builder.build())) {
+            try (StreamResponse<ResponseStreamEvent> streamResponse = openAiClient.responses().createStreaming(params)) {
                 streamResponse.stream().forEach(event -> {
                     try {
                         event.outputTextDelta().ifPresent(textDelta -> {
@@ -239,6 +297,42 @@ public class OpenAiChatService {
                 ? e.getMessage().trim()
                 : errorMessages.getOpenai().getUnavailable();
             onError.accept(new RuntimeException(fallbackMessage, e));
+        }
+    }
+
+    /**
+     * Streams response from OpenRouter using custom request body.
+     * Used when provider routing is configured - bypasses SDK to inject "provider" field.
+     */
+    private void streamOpenRouterResponse(ResponseCreateParams params,
+                                          Consumer<StreamEvent> onEvent,
+                                          Runnable onComplete,
+                                          Consumer<Throwable> onError) {
+        if (restClient == null) {
+            onError.accept(new IllegalStateException("RestClient not configured for OpenRouter"));
+            return;
+        }
+        
+        try {
+            // Build OpenRouter-compatible request JSON
+            String requestJson = OpenRouterRequestAdapter.buildRequestJson(
+                params,
+                openAiProperties.getProvider()
+            );
+            
+            if (logger.isDebugEnabled() || openAiProperties.isLocalDebugEnabled()) {
+                logger.debug("OpenRouter request: {}", requestJson);
+            }
+            
+            // Make streaming request to OpenRouter
+            // TODO: Implement SSE streaming handler
+            // For now, fall back to non-streaming
+            logger.warn("OpenRouter streaming not yet implemented - falling back to SDK");
+            onError.accept(new UnsupportedOperationException("OpenRouter streaming support coming soon"));
+            
+        } catch (Exception e) {
+            logger.error("OpenRouter request failed", e);
+            onError.accept(e);
         }
     }
 
