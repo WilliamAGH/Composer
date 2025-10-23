@@ -37,9 +37,6 @@ class OpenAiChatServiceTest {
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private OpenAIClient openAIClient;
 
-    @Mock
-    private org.springframework.web.client.RestClient restClient;
-
     private OpenAiChatService service;
 
     private static final Logger SERVICE_LOGGER = (Logger) LoggerFactory.getLogger(OpenAiChatService.class);
@@ -64,7 +61,7 @@ class OpenAiChatServiceTest {
         OpenAiProperties properties = new OpenAiProperties();
         properties.getModel().setChat("gpt-test");
         errorMessages = new ErrorMessagesProperties();
-        service = new OpenAiChatService(openAIClient, restClient, properties, errorMessages);
+        service = new OpenAiChatService(openAIClient, properties, errorMessages);
     }
 
     @Test
@@ -121,7 +118,7 @@ class OpenAiChatServiceTest {
     void generateResponse_withCustomModel_isHandledCorrectly() {
         OpenAiProperties customProperties = new OpenAiProperties();
         customProperties.getModel().setChat("gpt-4o-mini");
-        OpenAiChatService customModelService = new OpenAiChatService(openAIClient, restClient, customProperties, errorMessages);
+        OpenAiChatService customModelService = new OpenAiChatService(openAIClient, customProperties, errorMessages);
 
         Response mockResponse = buildResponseWithText("Custom model response");
         when(openAIClient.responses().create(any(ResponseCreateParams.class)))
@@ -136,7 +133,7 @@ class OpenAiChatServiceTest {
     @Test
     void generateResponse_withNullClient_returnsMisconfiguredMessage() {
         OpenAiProperties properties = new OpenAiProperties();
-        OpenAiChatService nullClientService = new OpenAiChatService(null, null, properties, errorMessages);
+        OpenAiChatService nullClientService = new OpenAiChatService(null, properties, errorMessages);
 
         OpenAiChatService.ChatCompletionResult result = nullClientService.generateResponse("Hi", "Context", List.of(), true, "minimal", false);
 

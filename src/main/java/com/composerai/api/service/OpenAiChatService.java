@@ -29,11 +29,11 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import java.util.Locale;
 import java.util.regex.Pattern;
 
 @Service
@@ -43,7 +43,6 @@ public class OpenAiChatService {
     private static final Pattern DANGEROUS_BLOCK_TAGS = Pattern.compile("(?is)<(script|style|iframe)[^>]*>.*?</\\1>");
 
     private final OpenAIClient openAiClient;
-    private final org.springframework.web.client.RestClient restClient; // For OpenRouter custom requests
     private final OpenAiProperties openAiProperties;
     private final ErrorMessagesProperties errorMessages;
 
@@ -122,11 +121,9 @@ public class OpenAiChatService {
     }
 
     public OpenAiChatService(@Autowired(required = false) @Nullable OpenAIClient openAiClient,
-                              @Autowired(required = false) @Nullable org.springframework.web.client.RestClient restClient,
                               OpenAiProperties openAiProperties,
                               ErrorMessagesProperties errorMessages) {
         this.openAiClient = openAiClient;
-        this.restClient = restClient;
         this.openAiProperties = openAiProperties;
         this.errorMessages = errorMessages;
     }
@@ -297,42 +294,6 @@ public class OpenAiChatService {
                 ? e.getMessage().trim()
                 : errorMessages.getOpenai().getUnavailable();
             onError.accept(new RuntimeException(fallbackMessage, e));
-        }
-    }
-
-    /**
-     * Streams response from OpenRouter using custom request body.
-     * Used when provider routing is configured - bypasses SDK to inject "provider" field.
-     */
-    private void streamOpenRouterResponse(ResponseCreateParams params,
-                                          Consumer<StreamEvent> onEvent,
-                                          Runnable onComplete,
-                                          Consumer<Throwable> onError) {
-        if (restClient == null) {
-            onError.accept(new IllegalStateException("RestClient not configured for OpenRouter"));
-            return;
-        }
-        
-        try {
-            // Build OpenRouter-compatible request JSON
-            String requestJson = OpenRouterRequestAdapter.buildRequestJson(
-                params,
-                openAiProperties.getProvider()
-            );
-            
-            if (logger.isDebugEnabled() || openAiProperties.isLocalDebugEnabled()) {
-                logger.debug("OpenRouter request: {}", requestJson);
-            }
-            
-            // Make streaming request to OpenRouter
-            // TODO: Implement SSE streaming handler
-            // For now, fall back to non-streaming
-            logger.warn("OpenRouter streaming not yet implemented - falling back to SDK");
-            onError.accept(new UnsupportedOperationException("OpenRouter streaming support coming soon"));
-            
-        } catch (Exception e) {
-            logger.error("OpenRouter request failed", e);
-            onError.accept(e);
         }
     }
 
