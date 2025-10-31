@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -224,10 +225,10 @@ public class OpenAiChatService {
 
         // Add OpenRouter provider routing via SDK's additionalBodyProperties if configured
         if (openAiProperties.getProviderCapabilities().getType() == ProviderCapabilities.ProviderType.OPENROUTER
-            && openAiProperties.getProvider().getOrder() != null 
+            && openAiProperties.getProvider().getOrder() != null
             && !openAiProperties.getProvider().getOrder().isEmpty()) {
-            
-            Map<String, Object> provider = new java.util.LinkedHashMap<>();
+
+            Map<String, Object> provider = new LinkedHashMap<>();
             
             if (openAiProperties.getProvider().getSort() != null && !openAiProperties.getProvider().getSort().isBlank()) {
                 provider.put("sort", openAiProperties.getProvider().getSort());
