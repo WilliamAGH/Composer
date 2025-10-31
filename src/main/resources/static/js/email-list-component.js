@@ -106,7 +106,12 @@ class EmailListComponent {
         return `
             <div class="email-card ${unreadClass} ${expandedClass}" data-email-id="${email.emailId}">
                 <div class="email-icon">
-                    📧
+                    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color: #1e293b;">
+                        <path d="M4 12l1.5 1.5a2 2 0 002.828 0L12 9.828a2 2 0 012.828 0L20 15" />
+                        <path d="M3 7l9-4 9 4" />
+                        <path d="M21 10v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8" />
+                        <circle cx="17" cy="7" r="2.5" fill="#10b981" stroke="white" stroke-width="1.5"/>
+                    </svg>
                 </div>
                 
                 <div class="email-content">
@@ -161,39 +166,17 @@ class EmailListComponent {
     renderDropdownMenu(emailId) {
         return `
             <div class="email-dropdown-menu" data-dropdown-for="${emailId}">
-                <div class="email-dropdown-label">Actions</div>
-                <div class="email-dropdown-item" data-action="view" data-email-id="${emailId}">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-                        <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-                    </svg>
-                    View Full Email
+                <div class="email-dropdown-item" data-action="view-full" data-email-id="${emailId}">
+                    View Full Content
                 </div>
-                <div class="email-dropdown-item" data-action="reply" data-email-id="${emailId}">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M7.793 2.232a.75.75 0 01-.025 1.06L3.622 7.25h10.003a5.375 5.375 0 010 10.75H10.75a.75.75 0 010-1.5h2.875a3.875 3.875 0 000-7.75H3.622l4.146 3.957a.75.75 0 01-1.036 1.085l-5.5-5.25a.75.75 0 010-1.085l5.5-5.25a.75.75 0 011.06.025z" clip-rule="evenodd" />
-                    </svg>
-                    Reply
+                <div class="email-dropdown-item" data-action="copy" data-email-id="${emailId}">
+                    Copy to Clipboard
                 </div>
-                <div class="email-dropdown-item" data-action="forward" data-email-id="${emailId}">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M12.207 2.232a.75.75 0 00.025 1.06l4.146 3.958H6.375a5.375 5.375 0 000 10.75H9.25a.75.75 0 000-1.5H6.375a3.875 3.875 0 010-7.75h10.003l-4.146 3.957a.75.75 0 001.036 1.085l5.5-5.25a.75.75 0 000-1.085l-5.5-5.25a.75.75 0 00-1.06.025z" clip-rule="evenodd" />
-                    </svg>
-                    Forward
+                <div class="email-dropdown-item" data-action="insights" data-email-id="${emailId}">
+                    Get AI Insights
                 </div>
-                <div class="email-dropdown-separator"></div>
-                <div class="email-dropdown-item" data-action="archive" data-email-id="${emailId}">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M2 3a1 1 0 00-1 1v1a1 1 0 001 1h16a1 1 0 001-1V4a1 1 0 00-1-1H2z" />
-                        <path fill-rule="evenodd" d="M2 7.5h16l-.811 7.71a2 2 0 01-1.99 1.79H4.802a2 2 0 01-1.99-1.79L2 7.5zM7.5 10.5a.5.5 0 01.5-.5h4a.5.5 0 010 1H8a.5.5 0 01-.5-.5z" clip-rule="evenodd" />
-                    </svg>
-                    Archive
-                </div>
-                <div class="email-dropdown-item" data-action="delete" data-email-id="${emailId}">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clip-rule="evenodd" />
-                    </svg>
-                    Delete
+                <div class="email-dropdown-item" data-action="download" data-email-id="${emailId}">
+                    Download
                 </div>
             </div>
         `;
@@ -316,14 +299,24 @@ class EmailListComponent {
      */
     toggleDropdown(emailId) {
         const dropdown = this.container.querySelector(`[data-dropdown-for="${emailId}"]`);
+        const trigger = this.container.querySelector(`[data-email-id="${emailId}"].email-dropdown-trigger`);
         
         if (this.activeDropdown && this.activeDropdown !== dropdown) {
             this.activeDropdown.classList.remove('show');
         }
         
-        if (dropdown) {
-            dropdown.classList.toggle('show');
-            this.activeDropdown = dropdown.classList.contains('show') ? dropdown : null;
+        if (dropdown && trigger) {
+            const isShowing = dropdown.classList.toggle('show');
+            this.activeDropdown = isShowing ? dropdown : null;
+            
+            // Position dropdown using fixed positioning for better overlay
+            if (isShowing) {
+                const rect = trigger.getBoundingClientRect();
+                dropdown.style.position = 'fixed';
+                dropdown.style.top = `${rect.bottom + 4}px`;
+                dropdown.style.right = `${window.innerWidth - rect.right}px`;
+                dropdown.style.left = 'auto';
+            }
         }
     }
     

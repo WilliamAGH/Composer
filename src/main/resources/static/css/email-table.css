@@ -21,33 +21,33 @@
 }
 
 /* Individual email card item */
+/* Email card - main container */
 .email-card {
-    position: relative;
     display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem 1.5rem;
-    border-radius: 1rem;
-    border: 1px solid rgb(226 232 240);
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    margin: 8px 0;
     background-color: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
     transition: all 0.15s ease-in-out;
-    cursor: pointer;
+    position: relative;
 }
 
 .email-card:hover {
-    background-color: rgb(248 250 252);
-    border-color: rgb(203 213 225);
-    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05);
+    border-color: #d1d5db;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-.email-card.expanded {
-    background-color: rgb(243 244 246);
-    border-color: rgb(203 213 225);
+.email-card:active {
+    transform: none;
 }
 
-.email-card.unread {
-    background-color: rgb(239 246 255);
-    border-color: rgb(191 219 254);
+.email-card.selected {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 /* Email icon */
@@ -58,10 +58,16 @@
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 0.75rem;
-    background: linear-gradient(135deg, rgb(99 102 241) 0%, rgb(139 92 246) 100%);
-    color: white;
-    font-size: 1.25rem;
+    background: rgba(248, 250, 252, 0.8);
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    color: #1e293b;
     flex-shrink: 0;
+    position: relative;
+}
+
+.email-icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
 }
 
 /* Email content area */
@@ -116,18 +122,19 @@
     letter-spacing: 0.05em;
     white-space: nowrap;
     flex-shrink: 0;
+    position: relative;
 }
 
-/* Dropdown trigger button (purple circle) */
+/* Dropdown trigger button (clean minimal) */
 .email-dropdown-trigger {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    border-radius: 9999px;
-    background: linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%);
-    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    background: transparent;
+    color: #6b7280;
     border: none;
     cursor: pointer;
     transition: all 0.15s ease-in-out;
@@ -136,45 +143,42 @@
 }
 
 .email-dropdown-trigger:hover {
-    background: linear-gradient(135deg, rgb(124 58 237) 0%, rgb(109 40 217) 100%);
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+    background: #f3f4f6;
+    color: #374151;
 }
 
 .email-dropdown-trigger:focus {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+    background: #e5e7eb;
 }
 
 .email-dropdown-trigger svg {
-    width: 1rem;
-    height: 1rem;
+    width: 16px;
+    height: 16px;
 }
 
-/* Dropdown menu - shadcn/ui inspired */
+/* Dropdown menu - Clean minimal style with fixed positioning for overlay */
 .email-dropdown-menu {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 0.5rem);
-    z-index: 50;
-    min-width: 12rem;
-    border-radius: 1rem;
-    border: 1px solid rgb(226 232 240);
-    background-color: white;
-    padding: 0.5rem;
-    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.18);
+    position: fixed !important;
+    z-index: 99999 !important;
+    min-width: 180px;
+    border-radius: 10px;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    background-color: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(12px);
+    padding: 6px;
+    box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.12), 0 8px 16px -4px rgba(0, 0, 0, 0.08);
     display: none;
 }
 
 .email-dropdown-menu.show {
-    display: block;
-    animation: dropdown-fade-in 0.15s ease-out;
+    display: block !important;
 }
 
 @keyframes dropdown-fade-in {
     from {
         opacity: 0;
-        transform: translateY(-0.5rem);
+        transform: translateY(-2px);
     }
     to {
         opacity: 1;
@@ -182,22 +186,13 @@
     }
 }
 
-.email-dropdown-label {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.6875rem;
-    font-weight: 600;
-    color: rgb(100 116 139);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-}
-
 .email-dropdown-item {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 13px;
     color: rgb(15 23 42);
     cursor: pointer;
     transition: background-color 0.15s ease-in-out;
@@ -209,12 +204,6 @@
 
 .email-dropdown-item:active {
     background-color: rgb(226 232 240);
-}
-
-.email-dropdown-separator {
-    height: 1px;
-    background-color: rgb(226 232 240);
-    margin: 0.25rem 0;
 }
 
 /* Expanded email content */

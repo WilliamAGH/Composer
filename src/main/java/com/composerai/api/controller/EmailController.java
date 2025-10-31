@@ -297,4 +297,72 @@ public class EmailController {
         }
         return IdGenerator.uuidV7();
     }
+
+    /**
+     * Get sample email data for testing the shadcn/ui Data Table component
+     * This endpoint provides mock email data to demonstrate the grid component functionality
+     */
+    @GetMapping(value = "/emails/sample-emails", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> getSampleEmails() {
+        try {
+            // Create sample email data matching the expected structure
+            var sampleEmails = java.util.List.of(
+                Map.of(
+                    "id", "email-1",
+                    "subject", "OpenAI is hiring - Join our team",
+                    "sender", "careers@openai.com",
+                    "date", "2025-10-28T10:30:00Z",
+                    "status", "success",
+                    "content", "We're excited to share new opportunities at OpenAI. Join us in building the future of AI."
+                ),
+                Map.of(
+                    "id", "email-2", 
+                    "subject", "Your order from Fire Wings has been confirmed",
+                    "sender", "orders@firewings.com",
+                    "date", "2025-10-29T15:45:00Z",
+                    "status", "processing",
+                    "content", "Thank you for your order! Your food is being prepared and will be ready soon."
+                ),
+                Map.of(
+                    "id", "email-3",
+                    "subject", "Important: 30 days left in your free trial",
+                    "sender", "billing@service.com",
+                    "date", "2025-10-30T09:15:00Z", 
+                    "status", "failed",
+                    "content", "Your free trial expires soon. Upgrade now to continue using our premium features."
+                ),
+                Map.of(
+                    "id", "email-4",
+                    "subject", "Posts from VC News Daily for 09/18/2025",
+                    "sender", "newsletter@vcnews.com",
+                    "date", "2025-09-18T08:00:00Z",
+                    "status", "success",
+                    "content", "Today's top venture capital news and startup funding rounds."
+                ),
+                Map.of(
+                    "id", "email-5",
+                    "subject", "CA DMV: Complete Your REAL ID Application",
+                    "sender", "noreply@dmv.ca.gov", 
+                    "date", "2025-10-25T12:20:00Z",
+                    "status", "success",
+                    "content", "Complete your REAL ID application online. Don't wait - the deadline is approaching."
+                )
+            );
+
+            var response = Map.of(
+                "emails", sampleEmails,
+                "total", sampleEmails.size(),
+                "message", "Sample email data for shadcn/ui Data Table component"
+            );
+
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = Map.of(
+                "error", "Failed to generate sample emails",
+                "message", e.getMessage()
+            );
+            return ResponseEntity.status(500).body(errorResponse);
+        }
+    }
 }
