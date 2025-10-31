@@ -2,8 +2,10 @@ package com.composerai.api.service;
 
 import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
+import com.composerai.api.config.ProviderCapabilities;
 import com.composerai.api.util.StringUtils;
 import com.composerai.api.util.TemporalUtils;
+import com.composerai.api.util.IdGenerator;
 import com.openai.client.OpenAIClient;
 import com.openai.core.http.StreamResponse;
 import com.openai.models.ChatModel;
@@ -26,11 +28,13 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import java.util.Locale;
 import java.util.regex.Pattern;
 
 @Service
@@ -60,18 +64,27 @@ public class OpenAiChatService {
         }
     }
 
-    public record ConversationTurn(EasyInputMessage.Role role, String content) {
+    public record ConversationTurn(String messageId, EasyInputMessage.Role role, String content) {
         public ConversationTurn {
+            messageId = (messageId == null || messageId.isBlank()) ? IdGenerator.uuidV7() : messageId;
             role = role == null ? EasyInputMessage.Role.USER : role;
             content = content == null ? "" : content;
         }
 
         public static ConversationTurn user(String content) {
-            return new ConversationTurn(EasyInputMessage.Role.USER, content);
+            return new ConversationTurn(IdGenerator.uuidV7(), EasyInputMessage.Role.USER, content);
         }
 
         public static ConversationTurn assistant(String content) {
-            return new ConversationTurn(EasyInputMessage.Role.ASSISTANT, content);
+            return new ConversationTurn(IdGenerator.uuidV7(), EasyInputMessage.Role.ASSISTANT, content);
+        }
+
+        public static ConversationTurn userWithId(String messageId, String content) {
+            return new ConversationTurn(messageId, EasyInputMessage.Role.USER, content);
+        }
+
+        public static ConversationTurn assistantWithId(String messageId, String content) {
+            return new ConversationTurn(messageId, EasyInputMessage.Role.ASSISTANT, content);
         }
     }
 
@@ -79,9 +92,22 @@ public class OpenAiChatService {
     public record ValidatedThinkingConfig(boolean enabled, ReasoningEffort effort) {
         static ValidatedThinkingConfig resolve(OpenAiProperties properties, String modelId,
                                                boolean requestedEnabled, String requestedLevel) {
-            return (modelId == null || !properties.supportsReasoning(modelId) || !requestedEnabled)
-                ? new ValidatedThinkingConfig(false, null)
-                : new ValidatedThinkingConfig(true, parseEffort(requestedLevel).orElse(ReasoningEffort.MINIMAL));
+            if (modelId == null || !properties.supportsReasoning(modelId) || !requestedEnabled) {
+                return new ValidatedThinkingConfig(false, null);
+            }
+            
+            Optional<ReasoningEffort> effort = parseEffort(requestedLevel);
+            
+            // Validate "minimal" is OpenAI-only
+            if (effort.isPresent() && effort.get() == ReasoningEffort.MINIMAL 
+                && !properties.getProviderCapabilities().supportsMinimalReasoning()) {
+                logger.warn("Reasoning effort 'minimal' is only supported by OpenAI. Falling back to 'low' for provider: {}", 
+                    properties.getProviderCapabilities().getType());
+                return new ValidatedThinkingConfig(true, ReasoningEffort.LOW);
+            }
+            
+            // Default to LOW (not MINIMAL) for OpenRouter compatibility
+            return new ValidatedThinkingConfig(true, effort.orElse(ReasoningEffort.LOW));
         }
         private static Optional<ReasoningEffort> parseEffort(String level) {
             if (level == null || level.isBlank()) return Optional.of(ReasoningEffort.MINIMAL);
@@ -173,6 +199,21 @@ public class OpenAiChatService {
             .model(resolveChatModel())
             .inputOfResponse(buildEmailAssistantMessages(emailContext, userMessage, conversationHistory, jsonOutput));
 
+        // Add temperature if configured
+        if (openAiProperties.getModel().getTemperature() != null) {
+            builder.temperature(openAiProperties.getModel().getTemperature());
+        }
+
+        // Add topP if configured
+        if (openAiProperties.getModel().getTopP() != null) {
+            builder.topP(openAiProperties.getModel().getTopP());
+        }
+
+        // Add maxOutputTokens if configured
+        if (openAiProperties.getModel().getMaxOutputTokens() != null) {
+            builder.maxOutputTokens(openAiProperties.getModel().getMaxOutputTokens());
+        }
+
         String modelId = openAiProperties.getModel().getChat();
         ValidatedThinkingConfig config = ValidatedThinkingConfig.resolve(openAiProperties, modelId, thinkingEnabled, thinkingLevel);
         if (config.enabled() && config.effort() != null) {
@@ -182,6 +223,31 @@ public class OpenAiChatService {
             logger.debug("Reasoning requested but provider {} does not support it", openAiProperties.getProviderCapabilities().getType());
         }
 
+        // Add OpenRouter provider routing via SDK's additionalBodyProperties if configured
+        if (openAiProperties.getProviderCapabilities().getType() == ProviderCapabilities.ProviderType.OPENROUTER
+            && openAiProperties.getProvider().getOrder() != null
+            && !openAiProperties.getProvider().getOrder().isEmpty()) {
+
+            Map<String, Object> provider = new LinkedHashMap<>();
+            
+            if (openAiProperties.getProvider().getSort() != null && !openAiProperties.getProvider().getSort().isBlank()) {
+                provider.put("sort", openAiProperties.getProvider().getSort());
+            }
+            
+            provider.put("order", openAiProperties.getProvider().getOrder());
+            provider.put("allow_fallbacks", openAiProperties.getProvider().getAllowFallbacks());
+            
+            // Use SDK's additionalBodyProperties to inject OpenRouter's "provider" field
+            builder.putAdditionalBodyProperty("provider", com.openai.core.JsonValue.from(provider));
+            
+            logger.info("OpenRouter provider routing enabled: order={}, sort={}, allow_fallbacks={}",
+                openAiProperties.getProvider().getOrder(), 
+                openAiProperties.getProvider().getSort(),
+                openAiProperties.getProvider().getAllowFallbacks());
+        }
+        
+        ResponseCreateParams params = builder.build();
+
         boolean streamingDebugEnabled = logger.isDebugEnabled() && openAiProperties.isLocalDebugEnabled();
         MarkdownStreamAssembler assembler = jsonOutput ? null : new MarkdownStreamAssembler(streamingDebugEnabled);
         long startNanos = System.nanoTime();
@@ -189,7 +255,7 @@ public class OpenAiChatService {
         final boolean[] failed = {false};
 
         try {
-            try (StreamResponse<ResponseStreamEvent> streamResponse = openAiClient.responses().createStreaming(builder.build())) {
+            try (StreamResponse<ResponseStreamEvent> streamResponse = openAiClient.responses().createStreaming(params)) {
                 streamResponse.stream().forEach(event -> {
                     try {
                         event.outputTextDelta().ifPresent(textDelta -> {
@@ -344,6 +410,13 @@ public class OpenAiChatService {
                 .content(sanitizedSystem)
                 .build()));
             totalTokenEstimate += estimateTokens(sanitizedSystem);
+            
+            if (logger.isDebugEnabled()) {
+                String promptPreview = sanitizedSystem.length() > 400 
+                    ? sanitizedSystem.substring(0, 400) + "..." 
+                    : sanitizedSystem;
+                logger.debug("System prompt being sent (first 400 chars): {}", promptPreview);
+            }
         }
 
         if (jsonOutput) {
@@ -370,6 +443,13 @@ public class OpenAiChatService {
                 .content(contextMessage)
                 .build()));
             totalTokenEstimate += estimateTokens(contextMessage);
+            
+            if (logger.isDebugEnabled()) {
+                String preview = safeContext.length() > 500 
+                    ? safeContext.substring(0, 500) + "..." 
+                    : safeContext;
+                logger.debug("Email context being sent to model (first 500 chars): {}", preview);
+            }
         }
 
         if (conversationHistory != null && !conversationHistory.isEmpty()) {

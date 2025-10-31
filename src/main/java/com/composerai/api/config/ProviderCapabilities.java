@@ -95,11 +95,21 @@ public class ProviderCapabilities {
     
     /**
      * Whether this provider supports reasoning models (o1, o3, o4 series).
-     * Only official OpenAI API supports reasoning models with effort parameters.
+     * OpenAI and OpenRouter support reasoning models with effort parameters.
      * 
      * @return true if reasoning is supported
      */
     public boolean supportsReasoning() {
+        return type == ProviderType.OPENAI || type == ProviderType.OPENROUTER;
+    }
+    
+    /**
+     * Whether this provider supports "minimal" reasoning effort level.
+     * Only OpenAI supports "minimal" - other providers use "low", "medium", "high".
+     * 
+     * @return true if "minimal" effort is supported
+     */
+    public boolean supportsMinimalReasoning() {
         return type == ProviderType.OPENAI;
     }
     
@@ -142,7 +152,7 @@ public class ProviderCapabilities {
     
     @Override
     public String toString() {
-        return String.format("ProviderCapabilities{type=%s, baseUrl=%s, tracing=%s, reasoning=%s, embeddings=%s}",
-            type, baseUrl, supportsTracing(), supportsReasoning(), supportsEmbeddings());
+        return String.format("ProviderCapabilities{type=%s, baseUrl=%s, tracing=%s, reasoning=%s, minimalReasoning=%s, embeddings=%s}",
+            type, baseUrl, supportsTracing(), supportsReasoning(), supportsMinimalReasoning(), supportsEmbeddings());
     }
 }

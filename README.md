@@ -85,6 +85,67 @@ The app attaches the API key to gRPC requests when supported by the Qdrant Java 
 
 To use OpenRouter, Groq, LM Studio, or other providers, set `OPENAI_API_BASE_URL`, `OPENAI_API_KEY`, and `OPENAI_MODEL`. Provider capabilities are auto-detected from the base URL.
 
+### OpenRouter Configuration
+
+ComposerAI supports [OpenRouter](https://openrouter.ai) for multi-provider LLM access.
+
+#### Basic Setup
+
+```bash
+export LLM_API_KEY="your-openrouter-api-key"
+export LLM_BASE_URL="https://openrouter.ai/api/v1"
+export LLM_MODEL="anthropic/claude-3.7-sonnet"
+```
+
+#### Provider Routing
+
+**Note**: Provider routing configuration is now supported and applied to requests. You can control provider selection and routing behavior using the environment variables below.
+
+Control which providers OpenRouter uses:
+
+```bash
+# Prefer specific provider(s)
+export LLM_PROVIDER_ORDER="anthropic,openai"
+
+# Sort by price (cheapest first), throughput, or latency
+export LLM_PROVIDER_SORT="price"
+
+# Disable fallbacks
+export LLM_PROVIDER_ALLOW_FALLBACKS="false"
+```
+
+[Learn more about OpenRouter provider routing](https://openrouter.ai/docs/features/provider-routing)
+
+#### Reasoning Models
+
+OpenRouter supports reasoning models but with different constraints:
+
+```bash
+# ✅ Supported: low, medium, high
+export LLM_REASONING="medium"
+
+# ❌ Not supported: minimal (OpenAI-only)
+# Will automatically fallback to "low"
+```
+
+### Environment Variables Reference
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LLM_API_KEY` | - | API key (OpenRouter, Groq, etc.) |
+| `LLM_BASE_URL` | `https://api.openai.com/v1` | API base URL |
+| `LLM_MODEL` | `gpt-4o-mini` | Model identifier |
+| `LLM_TEMPERATURE` | `0.5` | Sampling temperature (0-2) |
+| `LLM_MAX_OUTPUT_TOKENS` | - | Max output tokens (model default if unset) |
+| `LLM_TOP_P` | - | Nucleus sampling parameter (model default if unset) |
+| `LLM_REASONING` | `low` | Reasoning effort: `low`, `medium`, `high`, `minimal`* |
+| `LLM_PROVIDER_ORDER` | `novita` | Comma-separated provider preference (OpenRouter only) |
+| `LLM_PROVIDER_SORT` | - | Sort providers: `price`, `throughput`, `latency` (OpenRouter only) |
+| `LLM_PROVIDER_ALLOW_FALLBACKS` | `true` | Allow fallback providers (OpenRouter only) |
+| `LLM_DEBUG_FETCH` | `false` | Log full request/response bodies |
+
+\* `minimal` only supported by OpenAI. Automatically converts to `low` for other providers.
+
 ## Local Development
 
 ```bash

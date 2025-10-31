@@ -107,6 +107,9 @@ Refer to `README.md` (Technology Stack and Requirements) for current runtime ver
    - Any .sql files are marked "review only" and not executed.
    - No @SuppressWarnings used.
 
+8. Git commit authorship
+   - Agents must never add co-authorship metadata (including `Co-authored-by` trailers) to any git commit.
+
 ## Delivery Checklist
 
 1. Run `mvn test` and any affected integration checks

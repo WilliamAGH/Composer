@@ -32,6 +32,13 @@ public class SecurityHeadersConfig {
         return registrationBean;
     }
 
+    @Bean
+    public FilterRegistrationBean<OncePerRequestFilter> apiUiNonceGuardFilter() {
+        FilterRegistrationBean<OncePerRequestFilter> registrationBean = new FilterRegistrationBean<>(new ApiUiNonceGuardFilter());
+        registrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE + 2);
+        return registrationBean;
+    }
+
     /**
      * Filter that manages HSTS (HTTP Strict Transport Security) headers.
      * When HSTS is disabled, sets max-age=0 to clear any cached HSTS policy.
@@ -104,6 +111,49 @@ public class SecurityHeadersConfig {
             if (origin == null) return false;
             String msg = e.getMessage();
             return msg != null && msg.toLowerCase().contains("cors");
+        }
+    }
+
+    /**
+     * Guard /api/** to only accept requests initiated by our server-rendered UI.
+     * Requires a session cookie and a per-session nonce header (X-UI-Request) set by the template.
+     * Blocks direct calls without session+nonce. Allows OPTIONS and GET /api/chat/health.
+     */
+    private static class ApiUiNonceGuardFilter extends OncePerRequestFilter {
+
+        @Override
+        protected boolean shouldNotFilter(HttpServletRequest request) {
+            String path = request.getRequestURI();
+            if (path == null) return true;
+            if (!path.startsWith("/api/")) return true;
+            if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
+            if ("GET".equalsIgnoreCase(request.getMethod()) && "/api/chat/health".equals(path)) return true;
+            return false;
+        }
+
+        @Override
+        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+            try {
+                jakarta.servlet.http.HttpSession session = request.getSession(false);
+                String headerNonce = request.getHeader("X-UI-Request");
+                Object sessionNonce = (session == null) ? null : session.getAttribute("UI_NONCE");
+
+                if (session == null || sessionNonce == null || headerNonce == null || headerNonce.isBlank() || !headerNonce.equals(sessionNonce.toString())) {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\":\"Forbidden\"}");
+                    return;
+                }
+                filterChain.doFilter(request, response);
+            } catch (Exception e) {
+                SecurityHeadersConfig.log.warn("API guard rejection: method={}, path={}", request.getMethod(), request.getRequestURI(), e);
+                if (!response.isCommitted()) {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\":\"Forbidden\"}");
+                }
+            }
         }
     }
 }

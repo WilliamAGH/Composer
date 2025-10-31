@@ -19,6 +19,8 @@ public class ChatResponse {
     private List<EmailContext> emailContext;
     private LocalDateTime timestamp;
     private String intent;
+    private String userMessageId;
+    private String assistantMessageId;
 
     // Custom constructors for initialization with timestamp and sanitized HTML
     public ChatResponse(String response, String conversationId, List<EmailContext> emailContext, String intent, String sanitizedHtml) {
@@ -32,6 +34,18 @@ public class ChatResponse {
 
     public ChatResponse(String response, String conversationId, List<EmailContext> emailContext, String intent) {
         this(response, conversationId, emailContext, intent, null);
+    }
+
+    public ChatResponse(String response, String conversationId, List<EmailContext> emailContext, String intent, String sanitizedHtml,
+                        String userMessageId, String assistantMessageId) {
+        this.timestamp = LocalDateTime.now();
+        this.response = response;
+        this.conversationId = conversationId;
+        this.emailContext = emailContext;
+        this.intent = intent;
+        this.sanitizedHtml = StringUtils.safe(sanitizedHtml);
+        this.userMessageId = userMessageId;
+        this.assistantMessageId = assistantMessageId;
     }
 
     // Override Lombok-generated getter/setter for sanitizedHtml to apply StringUtils.safe()

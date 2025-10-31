@@ -4,6 +4,9 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
+import com.composerai.api.config.MagicEmailProperties;
+import com.composerai.api.dto.ChatRequest;
+import com.composerai.api.dto.ChatResponse;
 import com.openai.client.OpenAIClient;
 import com.openai.models.embeddings.CreateEmbeddingResponse;
 import com.openai.models.embeddings.Embedding;
@@ -24,11 +27,15 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.slf4j.LoggerFactory;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -207,4 +214,86 @@ class OpenAiChatServiceTest {
         
         return mockResponse;
     }
+}
+
+class ChatServiceContextPropagationTest {
+
+    private VectorSearchService vectorSearchService;
+    private OpenAiChatService openAiChatService;
+    private ContextBuilder contextBuilder;
+    private ContextBuilder.EmailContextRegistry emailContextRegistry;
+    private ChatService.ConversationRegistry conversationRegistry;
+    private OpenAiProperties openAiProperties;
+    private ChatService chatService;
+
+    @BeforeEach
+    void setUp() {
+        vectorSearchService = Mockito.mock(VectorSearchService.class);
+        openAiChatService = Mockito.mock(OpenAiChatService.class);
+        contextBuilder = new ContextBuilder();
+        emailContextRegistry = new ContextBuilder.EmailContextRegistry();
+        conversationRegistry = new ChatService.ConversationRegistry();
+        ExecutorService executorService = Mockito.mock(ExecutorService.class);
+
+        openAiProperties = new OpenAiProperties();
+        ErrorMessagesProperties errorMessagesProperties = new ErrorMessagesProperties();
+        MagicEmailProperties magicEmailProperties = new MagicEmailProperties();
+
+        chatService = new ChatService(
+            vectorSearchService,
+            openAiChatService,
+            openAiProperties,
+            errorMessagesProperties,
+            contextBuilder,
+            emailContextRegistry,
+            conversationRegistry,
+            magicEmailProperties,
+            executorService
+        );
+    }
+
+    @Test
+    void processChat_usesMergedContextForAiCall() {
+        ChatRequest request = new ChatRequest("Review email", "conv-42", 0);
+        request.setContextId("ctx-1");
+
+        emailContextRegistry.store("ctx-1", """
+            ## Uploaded Notes
+            - Follow up with finance
+            """);
+
+        float[] embedding = new float[] {0.2f, 0.5f};
+        Mockito.when(openAiChatService.generateEmbedding("Review email")).thenReturn(embedding);
+        ChatResponse.EmailContext emailContext = new ChatResponse.EmailContext(
+            "email-1", "Quarterly Update", "Finance Team", "Budget looks good", 0.93, LocalDateTime.parse("2025-01-15T09:30:00"));
+        Mockito.when(vectorSearchService.searchSimilarEmails(embedding, openAiProperties.getDefaults().getMaxSearchResults()))
+            .thenReturn(List.of(emailContext));
+
+        Mockito.when(openAiChatService.analyzeIntent("Review email")).thenReturn("question");
+        Mockito.when(openAiChatService.generateResponse(
+            any(String.class),
+            any(String.class),
+            anyList(),
+            anyBoolean(),
+            any(),
+            anyBoolean()
+        )).thenReturn(new OpenAiChatService.ChatCompletionResult("raw", "<p>raw</p>"));
+
+        chatService.processChat(request);
+
+        ArgumentCaptor<String> contextCaptor = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(openAiChatService).generateResponse(
+            any(String.class),
+            contextCaptor.capture(),
+            anyList(),
+            anyBoolean(),
+            any(),
+            anyBoolean()
+        );
+
+        String mergedContext = contextCaptor.getValue();
+        assertTrue(mergedContext.contains("Uploaded email context"));
+        assertTrue(mergedContext.contains("Relevant emails"));
+    }
+
 }

@@ -62,7 +62,7 @@ public class OpenAiProperties {
     private ProviderCapabilities providerCapabilities;
 
     @jakarta.annotation.PostConstruct
-    void initProviderCapabilities() {
+    public void initProviderCapabilities() {
         this.providerCapabilities = ProviderCapabilities.detect(api.getBaseUrl());
     }
 
@@ -87,6 +87,9 @@ public class OpenAiProperties {
     @Setter
     public static class Model {
         private String chat = "gpt-4o-mini";
+        private Double temperature = 0.5; // Default temperature for all requests
+        private Long maxOutputTokens = null; // null = use model default
+        private Double topP = null; // null = use model default
     }
 
     /**
@@ -133,7 +136,7 @@ public class OpenAiProperties {
     @Setter
     public static class Reasoning {
         private List<String> supportedModelPrefixes = List.of("o1", "o3", "o4", "gpt-5");
-        private String defaultEffort = "minimal";
+        private String defaultEffort = "low"; // Changed from "minimal" - OpenRouter compatible default
     }
 
     /**
@@ -221,6 +224,26 @@ public class OpenAiProperties {
         private int maxMessageLength = 4000;
         private boolean thinkingEnabled = false;
     }
+
+    /**
+     * Provider routing configuration for OpenRouter.
+     * Controls which providers to use and fallback behavior.
+     * Only applies when using OpenRouter as the base URL.
+     * 
+     * @see <a href="https://openrouter.ai/docs/features/provider-routing">OpenRouter Provider Routing</a>
+     */
+    @Getter
+    @Setter
+    public static class Provider {
+        /** Sort providers by: price, throughput, or latency */
+        private String sort = null; // null = no sorting preference
+        /** Explicitly order specific providers (e.g., ["anthropic", "openai"]) */
+        private List<String> order = List.of("novita"); // Default to novita
+        /** Allow fallback to other providers if the primary fails */
+        private Boolean allowFallbacks = true;
+    }
+
+    private Provider provider = new Provider();
 
     // ===== Utility Methods =====
 

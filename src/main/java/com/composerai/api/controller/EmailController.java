@@ -142,11 +142,15 @@ public class EmailController {
             response.put("parsedHtml", HtmlConverter.markdownToSafeHtml(markdown.isBlank() ? plainText : markdown));
 
             // Backend determines best context format for AI (prefer markdown > plain)
+            // Clean content first to remove utility/footer noise
+            String cleanedPlainText = HtmlConverter.cleanupOutput(plainText, true);
+            String cleanedMarkdown = HtmlConverter.cleanupOutput(markdown, true);
+            String emailBody = (!cleanedMarkdown.isBlank()) ? cleanedMarkdown : cleanedPlainText;
+            
             // Prepend email metadata with temporal context for AI awareness
-            String emailBody = (!markdown.isBlank()) ? markdown : plainText;
             String contextForAI = buildEmailContextForAI(subject, from, dateWithRelativeTime, dateIso, emailBody);
             String contextId = resolveContextId(metadata);
-            emailContextRegistry.store(contextId, plainText, markdown);
+            emailContextRegistry.store(contextId, contextForAI);
             parsedDocument.put("contextId", contextId);
             response.put("contextForAI", contextForAI);
             response.put("contextId", contextId);

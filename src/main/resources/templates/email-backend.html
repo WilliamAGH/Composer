@@ -76,7 +76,9 @@
             </main>
         </div>
 
-        <script>
+        <script th:inline="javascript">
+            const UI_NONCE = /*[[${uiNonce}]]*/ null;
+            
             document.addEventListener('DOMContentLoaded', function () {
                 let selectedFile = null;
 
@@ -163,7 +165,7 @@
                     parsedContent.value = 'Processing...';
 
                     try {
-                        const result = await window.ComposerAI.parseEmailFile(selectedFile);
+                        const result = await window.ComposerAI.parseEmailFile(selectedFile, UI_NONCE);
                         if (result.status === 'success') {
                             parsedContent.value = result.parsedPlain || '';
                             parsedContent.dataset.markdown = result.parsedMarkdown || '';

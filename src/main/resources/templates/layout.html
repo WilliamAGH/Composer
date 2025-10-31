@@ -106,12 +106,21 @@
         
         /**
          * DRY: central email parsing used by chat and backend tools
+         * Requires UI_NONCE to be set globally before calling (typically from page template)
          */
-        window.ComposerAI.parseEmailFile = async function(file) {
+        window.ComposerAI.parseEmailFile = async function(file, uiNonce) {
             const formData = new FormData();
             formData.append('file', file);
+            const headers = {};
+            
+            // Add X-UI-Request nonce if provided (required by ApiUiNonceGuardFilter)
+            if (uiNonce) {
+                headers['X-UI-Request'] = uiNonce;
+            }
+            
             const response = await fetch('/api/parse-email', {
                 method: 'POST',
+                headers: headers,
                 body: formData
             });
             if (!response.ok) {
