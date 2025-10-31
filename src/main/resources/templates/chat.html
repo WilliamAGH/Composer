@@ -348,6 +348,9 @@
                     this.jsonPreClass = 'w-full whitespace-pre-wrap font-mono text-sm leading-relaxed bg-slate-900/90 text-slate-100 rounded-2xl border border-slate-800 p-4 shadow-ultra overflow-x-auto';
                     this.previewCounter = 0;
                     this.streamTimeoutMs = 120000; // Default 2 minutes, updated from server
+                    this.maxEmailContextChars = 20000;
+                    this.defaultMaxResults = 5;
+                    this.insightsTrigger = '__INSIGHTS_TRIGGER__';
                     this.applyMarkdownEnhancements = this.applyMarkdownEnhancements.bind(this);
                     this.initializeEventListeners();
                     this.applyMarkdownEnhancements(this.messages);
@@ -601,6 +604,28 @@
                     this.messages.scrollTop = this.messages.scrollHeight;
                 }
 
+                buildChatPayload(message, jsonOutput) {
+                    const contextId = this.currentEmailContext?.contextId || null;
+                    const payload = {
+                        message,
+                        conversationId: this.conversationId,
+                        maxResults: this.defaultMaxResults,
+                        contextId,
+                        thinkingEnabled: this.thinkingEnabled,
+                        thinkingLevel: this.thinkingEnabled ? this.thinkingLevel : null,
+                        jsonOutput: !!jsonOutput
+                    };
+
+                    const rawContext = this.currentEmailContext?.contextForAI;
+                    if (contextId && rawContext) {
+                        payload.emailContext = rawContext.length > this.maxEmailContextChars
+                            ? rawContext.slice(0, this.maxEmailContextChars)
+                            : rawContext;
+                    }
+
+                    return payload;
+                }
+
                 async sendMessage() {
                     const message = this.messageInput.value.trim();
                     if (!message || this.isStreaming) return;
@@ -619,16 +644,7 @@
                         assistantDiv.innerHTML = '<div class="assistant-thinking relative"><div class="phase-badge phase-thinking">' + (this.thinkingEnabled ? 'Thinking...' : 'Parsing your email...') + '</div><div class="thinking-skeleton rounded-xl border border-slate-200 bg-slate-50/80 p-3"><div class="thinking-line"></div><div class="thinking-line"></div><div class="thinking-line short"></div><div class="thinking-cursor-bar"></div></div></div>';
                     }
 
-                    const payload = {
-                        message,
-                        conversationId: this.conversationId,
-                        maxResults: 5,
-                        emailContext: this.currentEmailContext?.contextForAI || '',
-                        contextId: this.currentEmailContext?.contextId || null,
-                        thinkingEnabled: this.thinkingEnabled,
-                        thinkingLevel: this.thinkingEnabled ? this.thinkingLevel : null,
-                        jsonOutput: isJsonMode
-                    };
+                    const payload = this.buildChatPayload(message, isJsonMode);
 
                     this.messageInput.disabled = true;
                     this.sendButton.disabled = true;
@@ -673,16 +689,7 @@
                     const assistantDiv = this.addMessage('', 'assistant');
                     assistantDiv.innerHTML = '<div class="assistant-thinking relative"><div class="phase-badge phase-thinking">Analyzing email...</div><div class="thinking-skeleton rounded-xl border border-slate-200 bg-slate-50/80 p-3"><div class="thinking-line"></div><div class="thinking-line"></div><div class="thinking-line short"></div><div class="thinking-cursor-bar"></div></div></div>';
 
-                    const payload = {
-                        message: "__INSIGHTS_TRIGGER__", // Backend detects this special trigger
-                        conversationId: this.conversationId,
-                        maxResults: 5,
-                        emailContext: this.currentEmailContext?.contextForAI || '',
-                        contextId: this.currentEmailContext?.contextId || null,
-                        thinkingEnabled: this.thinkingEnabled,
-                        thinkingLevel: this.thinkingEnabled ? this.thinkingLevel : null,
-                        jsonOutput: false // Insights always uses normal mode
-                    };
+                    const payload = this.buildChatPayload(this.insightsTrigger, false);
 
                     this.messageInput.disabled = true;
                     this.sendButton.disabled = true;
