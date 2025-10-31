@@ -7,6 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ComposerAI - Email Chat Interface</title>
     <th:block th:fragment="extraHead">
+        <link rel="stylesheet" th:href="@{/css/email-table.css}" />
         <style>
             .message-block { display: flex; }
             .message-user { max-width: 64%; }
@@ -298,6 +299,7 @@
             </div>
         </main>
 
+        <script src="/js/email-list-component.js"></script>
         <script th:inline="javascript">
             // Auto-generated from backend Java enums - single source of truth
             // See: GlobalModelAttributes.java → SseEventType.java, ReasoningStreamAdapter.Phase
@@ -541,67 +543,147 @@
                     const iso = (emailData.dateIso || '').trim();
                     const previewMd = (emailData.parsedMarkdown || emailData.parsedPlain || '').trim();
                     const previewId = 'email-preview-' + (++this.previewCounter);
-                    const previewHtml = previewMd.length > 0 ? window.ComposerAI.renderMarkdown(previewMd) : '<p class="text-xs italic text-slate-500">Email preview unavailable.</p>';
 
-                    const toggleWrapper = document.createElement('div');
-                    toggleWrapper.className = 'overflow-hidden rounded-2xl border border-blue-200/60 bg-blue-50/40';
-                    toggleWrapper.innerHTML =
-                        '<div class="flex items-center gap-2 px-3.5 py-2.5">' +
-                        '<button type="button" class="flex flex-1 items-center gap-3 rounded-xl px-2 py-1.5 text-left transition hover:bg-blue-100/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200" data-role="preview-toggle" aria-expanded="false" aria-controls="' + previewId + '">' +
-                        '<span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700">' +
-                        '<svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2.25 6.75A3.75 3.75 0 016 3h12a3.75 3.75 0 013.75 3.75v10.5A3.75 3.75 0 0118 21H6a3.75 3.75 0 01-3.75-3.75V6.75zm3.82-.456a.75.75 0 00-.82 1.26l6 3.9a.75.75 0 00.82 0l6-3.9a.75.75 0 00-.82-1.26L12 9.694 6.07 6.294z"/></svg>' +
-                        '</span>' +
-                        '<span class="flex-1 truncate text-sm font-semibold text-slate-800">' + subject + '</span>' +
-                        '<span class="ml-auto flex flex-shrink-0 items-center gap-2">' +
-                        '<span class="rounded-md bg-white/70 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600" data-role="email-date" data-original-label="' + dateLabel + '" ' + (iso ? 'data-date-iso="' + window.ComposerAI.escapeHtml(iso) + '"' : '') + '>' + dateLabel + '</span>' +
-                        '<svg class="h-4 w-4 text-slate-500 transition-transform" data-role="preview-chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>' +
-                        '</span>' +
-                        '</button>' +
-                        '<button type="button" data-role="quick-insights" class="group flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-sm transition-all hover:shadow-md hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300" title="Get AI insights about this email" aria-label="Analyze email with AI">' +
-                        '<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-                        '<path d="M9.813 3.063l.75 3.75m3.937-3.75l-.75 3.75m-6 .937l3.75.75m9.375 0l-3.75.75m-9.375 6l3.75-.75m9.375 0l-3.75-.75m-6 5.063l.75-3.75m3.937 3.75l-.75-3.75M12 18.75a6.75 6.75 0 100-13.5 6.75 6.75 0 000 13.5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
-                        '</svg>' +
-                        '</button>' +
-                        '</div>' +
-                        '<div id="' + previewId + '" data-role="preview-body" class="hidden border-t border-blue-100/70 bg-white/90 px-3.5 py-3">' +
-                        '<div class="chat-markdown">' +
-                        '<p><strong>From:</strong> ' + from + '</p>' +
-                        '<div class="chat-markdown">' + previewHtml + '</div>' +
-                        '</div>' +
-                        '</div>';
+                    // Create email card with dropdown menu using our component
+                    const emailCard = document.createElement('div');
+                    emailCard.className = 'email-card';
+                    emailCard.innerHTML = `
+                        <div class="email-card-header">
+                            <div class="email-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M2.25 6.75A3.75 3.75 0 016 3h12a3.75 3.75 0 013.75 3.75v10.5A3.75 3.75 0 0118 21H6a3.75 3.75 0 01-3.75-3.75V6.75zm3.82-.456a.75.75 0 00-.82 1.26l6 3.9a.75.75 0 00.82 0l6-3.9a.75.75 0 00-.82-1.26L12 9.694 6.07 6.294z"/>
+                                </svg>
+                            </div>
+                            <div class="email-info">
+                                <div class="email-subject">${subject}</div>
+                                <div class="email-meta">
+                                    <span class="email-sender">${from}</span>
+                                    <span class="email-date" data-original-label="${dateLabel}" ${iso ? 'data-date-iso="' + window.ComposerAI.escapeHtml(iso) + '"' : ''}>${dateLabel}</span>
+                                </div>
+                            </div>
+                            <div class="email-actions">
+                                <button type="button" class="email-expand-btn" data-email-id="${previewId}" aria-label="Expand email">
+                                    <svg class="email-expand-icon" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/>
+                                    </svg>
+                                </button>
+                                <div class="email-dropdown">
+                                    <button type="button" class="email-dropdown-trigger" aria-label="Email actions">
+                                        <svg viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                                        </svg>
+                                    </button>
+                                    <div class="email-dropdown-menu" style="display: none;">
+                                        <button onclick="handleEmailAction('${previewId}', 'view-full')">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                            </svg>
+                                            View Full Content
+                                        </button>
+                                        <button onclick="handleEmailAction('${previewId}', 'copy')">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                            </svg>
+                                            Copy to Clipboard
+                                        </button>
+                                        <button onclick="handleEmailAction('${previewId}', 'insights')">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                <path d="M9.813 3.063l.75 3.75m3.937-3.75l-.75 3.75m-6 .937l3.75.75m9.375 0l-3.75.75m-9.375 6l3.75-.75m9.375 0l-3.75-.75m-6 5.063l.75-3.75m3.937 3.75l-.75-3.75M12 18.75a6.75 6.75 0 100-13.5 6.75 6.75 0 000 13.5z" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                            Get AI Insights
+                                        </button>
+                                        <button onclick="handleEmailAction('${previewId}', 'download')">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                            Download
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="email-preview" id="${previewId}" style="display: none;">
+                            <div class="chat-markdown">
+                                ${previewMd.length > 0 ? window.ComposerAI.renderMarkdown(previewMd) : '<p class="text-xs italic text-slate-500">Email preview unavailable.</p>'}
+                            </div>
+                        </div>
+                    `;
 
-                    const toggleBtn = toggleWrapper.querySelector('[data-role="preview-toggle"]');
-                    const previewBody = toggleWrapper.querySelector('[data-role="preview-body"]');
-                    const previewChevron = toggleWrapper.querySelector('[data-role="preview-chevron"]');
-                    const insightsBtn = toggleWrapper.querySelector('[data-role="quick-insights"]');
+                    // Store email data for dropdown actions
+                    emailCard.dataset.emailSubject = subject;
+                    emailCard.dataset.emailContent = previewMd;
 
-                    toggleBtn.addEventListener('click', (e) => {
-                        // Don't toggle if clicking the insights button
-                        if (e.target.closest('[data-role="quick-insights"]')) return;
-
-                        const expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
-                        const nextExpanded = !expanded;
-                        toggleBtn.setAttribute('aria-expanded', String(nextExpanded));
-                        previewBody.classList.toggle('hidden', !nextExpanded);
-                        previewChevron.style.transform = nextExpanded ? 'rotate(180deg)' : 'rotate(0)';
+                    // Expand/collapse functionality
+                    const expandBtn = emailCard.querySelector('.email-expand-btn');
+                    const preview = emailCard.querySelector('.email-preview');
+                    const expandIcon = emailCard.querySelector('.email-expand-icon');
+                    
+                    expandBtn.addEventListener('click', () => {
+                        const isExpanded = preview.style.display !== 'none';
+                        preview.style.display = isExpanded ? 'none' : 'block';
+                        emailCard.classList.toggle('expanded', !isExpanded);
+                        expandIcon.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
                     });
 
-                    // Quick Insights: Trigger backend insights endpoint (all logic in Java)
-                    insightsBtn.addEventListener('click', (e) => {
-                        e.stopPropagation(); // Don't trigger toggle
-                        this.triggerInsights();
+                    // Dropdown functionality
+                    const dropdownTrigger = emailCard.querySelector('.email-dropdown-trigger');
+                    const dropdownMenu = emailCard.querySelector('.email-dropdown-menu');
+                    
+                    dropdownTrigger.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const isVisible = dropdownMenu.style.display !== 'none';
+                        // Close all other dropdowns
+                        document.querySelectorAll('.email-dropdown-menu').forEach(menu => menu.style.display = 'none');
+                        dropdownMenu.style.display = isVisible ? 'none' : 'block';
+                    });
+
+                    // Close dropdown when clicking outside
+                    document.addEventListener('click', () => {
+                        dropdownMenu.style.display = 'none';
                     });
 
                     const wrapper = document.createElement('div');
                     wrapper.className = 'message-block w-full';
                     const surface = document.createElement('div');
                     surface.className = 'assistant-surface';
-                    surface.appendChild(toggleWrapper);
+                    surface.appendChild(emailCard);
                     wrapper.appendChild(surface);
                     this.messages.appendChild(wrapper);
-                    this.localizeDate(toggleWrapper.querySelector('[data-role="email-date"]'));
+                    this.localizeDate(emailCard.querySelector('.email-date'));
                     this.applyMarkdownEnhancements(surface);
                     this.messages.scrollTop = this.messages.scrollHeight;
+                }
+
+                handleEmailAction(emailId, action) {
+                    const emailCard = document.querySelector(`[data-email-id="${emailId}"]`)?.closest('.email-card');
+                    if (!emailCard) return;
+
+                    const subject = emailCard.dataset.emailSubject || 'Email';
+                    const content = emailCard.dataset.emailContent || '';
+
+                    switch(action) {
+                        case 'view-full':
+                            alert(`Full Content:\n\n${content}`);
+                            break;
+                        case 'copy':
+                            navigator.clipboard.writeText(content).then(() => {
+                                this.showUploadStatus('Email content copied to clipboard!', 'success');
+                            });
+                            break;
+                        case 'insights':
+                            this.triggerInsights();
+                            break;
+                        case 'download':
+                            const blob = new Blob([content], { type: 'text/plain' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = subject + '.txt';
+                            a.click();
+                            URL.revokeObjectURL(url);
+                            this.showUploadStatus('Email downloaded!', 'success');
+                            break;
+                    }
                 }
 
                 buildChatPayload(message, jsonOutput) {
@@ -1182,7 +1264,9 @@
 
             document.addEventListener('DOMContentLoaded', function () {
                 try {
-                    new ComposerAIChat();
+                    const chat = new ComposerAIChat();
+                    // Make handleEmailAction globally accessible for dropdown menu
+                    window.handleEmailAction = (emailId, action) => chat.handleEmailAction(emailId, action);
                 } catch (error) {
                     console.error('ComposerAI: Failed to initialize chat interface:', error);
                 }
