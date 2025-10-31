@@ -317,8 +317,10 @@ public class ChatService {
     private String resolveUploadedContext(String conversationId, ChatRequest request) {
         String contextId = request.getContextId();
         logger.debug("Resolving uploaded context: contextId={}, conversationId={}", contextId, conversationId);
-        
-        Optional<String> stored = emailContextRegistry.contextForAi(contextId);
+
+        Optional<String> stored = StringUtils.isBlank(contextId)
+            ? Optional.empty()
+            : emailContextRegistry.contextForAi(contextId);
         if (stored.isPresent()) {
             logger.debug("Found cached context for contextId={} (length={})", contextId, stored.get().length());
             return stored.get();
