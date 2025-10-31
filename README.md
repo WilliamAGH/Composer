@@ -99,18 +99,18 @@ export LLM_MODEL="anthropic/claude-3.7-sonnet"
 
 #### Provider Routing
 
-**Note**: Provider routing configuration is currently **read but not applied** to requests. OpenRouter will use its default routing behavior. Custom provider routing will be enabled in a future update once streaming support is implemented.
+**Note**: Provider routing configuration is now supported and applied to requests. You can control provider selection and routing behavior using the environment variables below.
 
 Control which providers OpenRouter uses:
 
 ```bash
-# Prefer specific provider(s) (not yet applied to requests)
+# Prefer specific provider(s)
 export LLM_PROVIDER_ORDER="anthropic,openai"
 
-# Sort by price (cheapest first), throughput, or latency (not yet applied)
+# Sort by price (cheapest first), throughput, or latency
 export LLM_PROVIDER_SORT="price"
 
-# Disable fallbacks (not yet applied)
+# Disable fallbacks
 export LLM_PROVIDER_ALLOW_FALLBACKS="false"
 ```
 
