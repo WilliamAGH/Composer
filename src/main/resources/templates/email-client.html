@@ -442,7 +442,7 @@
                     
                     const windowHtml = `
                         <div id="${windowId}" class="compose-window active" style="right: ${this.composeWindows.length * 20 + 1.5}rem;">
-                            <div class="compose-header p-3 border-b flex items-center justify-between cursor-move" style="border-color: rgba(226, 232, 240, 0.6); background: rgba(248, 250, 252, 0.95);">
+                            <div class="compose-header p-3 border-b flex items-center justify-between" style="border-color: rgba(226, 232, 240, 0.6); background: rgba(248, 250, 252, 0.95);">
                                 <div class="flex items-center gap-2">
                                     <svg class="icon-sm" style="color: #64748b;" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                         ${isReply ? 
@@ -530,8 +530,17 @@
                         isReply: isReply
                     });
                     
+                    // Ensure default anchored position
+                    windowElement.style.left = 'auto';
+                    windowElement.style.top = 'auto';
+                    windowElement.style.right = '1.5rem';
+                    windowElement.style.bottom = '0';
+
                     // Attach event listeners
                     this.attachComposeWindowListeners(windowId);
+                    
+                    // Normalize positioning for all windows
+                    this.repositionComposeWindows();
                     
                     // Focus first input
                     setTimeout(() => {
@@ -547,12 +556,14 @@
                     const window = this.composeWindows.find(w => w.id === windowId);
                     
                     // Close button
-                    windowElement.querySelector('.close-btn').addEventListener('click', () => {
+                    windowElement.querySelector('.close-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
                         this.closeComposeWindow(windowId);
                     });
                     
                     // Minimize button
-                    windowElement.querySelector('.minimize-btn').addEventListener('click', () => {
+                    windowElement.querySelector('.minimize-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
                         window.minimized = !window.minimized;
                         windowElement.classList.toggle('minimized', window.minimized);
                     });
@@ -569,6 +580,8 @@
                             this.sendFromComposeWindow(windowId);
                         }
                     });
+                    
+                    // Drag support intentionally disabled
                 }
 
                 closeComposeWindow(windowId) {
@@ -581,8 +594,11 @@
                 }
 
                 repositionComposeWindows() {
-                    this.composeWindows.forEach((window, index) => {
-                        window.element.style.right = `${index * 20 + 1.5}rem`;
+                    this.composeWindows.forEach((window) => {
+                        window.element.style.right = '1.5rem';
+                        window.element.style.bottom = '0';
+                        window.element.style.left = 'auto';
+                        window.element.style.top = 'auto';
                     });
                 }
 
