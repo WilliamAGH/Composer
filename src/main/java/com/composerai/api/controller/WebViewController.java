@@ -28,6 +28,12 @@ public class WebViewController {
         return "chat";
     }
 
+    @GetMapping("/email-client")
+    public String emailClient(org.springframework.ui.Model model, jakarta.servlet.http.HttpSession session) {
+        model.addAttribute("uiNonce", getOrCreateSessionNonce(session));
+        return "email-client";
+    }
+
     private String getOrCreateSessionNonce(jakarta.servlet.http.HttpSession session) {
         Object existing = session.getAttribute("UI_NONCE");
         String nonce = existing instanceof String s && !s.isBlank() ? s : com.composerai.api.util.IdGenerator.generate(24);
