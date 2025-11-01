@@ -16,6 +16,7 @@ Refer to `README.md` (Technology Stack and Requirements) for current runtime ver
 ## Backend Development Principles
 
 - Write DRY code: whenever considering adding any code, always first review existing related code available to use/re-use
+- Before creating new functionality or modifying existing behavior, pause to confirm the why (business goal, defect, compliance need) so the implementation and tests target the right outcome; if the rationale is unclear, ask before coding.
 - Use idiomatic modern Java JDK 21+ practices, and use whatever built in defaults are available in Java 21 and Spring Boot 3+ instead of custom code
 - Do NOT make new files without explicit permission to do so first
 - Favor composition over inheritance; keep services stateless
@@ -64,6 +65,7 @@ Refer to `README.md` (Technology Stack and Requirements) for current runtime ver
 - Update `README.md` and API docs whenever endpoints, configuration, or workflows change
 - Maintain changelog snippets in commit messages; use imperative mood.
 - Leave concise code comments only where intent is not obvious (e.g., tricky algorithms or non-obvious constraints)
+- When creating or updating functionality, align documentation with the confirmed why: update or add JSDoc/JavaDoc to include a brief statement of why the class or method exists (when known) alongside other key notes—keep it factual and succinct.
 
 ## LLM Agent Rules — Mandatory (project-wide)
 
