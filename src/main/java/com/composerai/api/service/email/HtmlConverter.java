@@ -258,6 +258,7 @@ public final class HtmlConverter {
     public static String cleanupOutput(String content, boolean suppressUtility) {
         if (content == null || content.isBlank()) return content;
         content = normalizeInvisible(content)
+            .replaceAll("(?is)<script[^>]*>.*?</script>", " ")
             .replaceAll("(?i)<br\\s*/?>", "\n");
         String[] lines = content.split("\r?\n", -1);
         StringBuilder sb = new StringBuilder(content.length());
