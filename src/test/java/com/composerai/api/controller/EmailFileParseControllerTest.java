@@ -1,6 +1,9 @@
 package com.composerai.api.controller;
 
+import com.composerai.api.service.CompanyLogoProvider;
 import com.composerai.api.service.ContextBuilder;
+import com.composerai.api.service.EmailParsingService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
@@ -8,19 +11,22 @@ import org.springframework.mock.web.MockMultipartFile;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+import com.composerai.api.model.EmailMessage;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class EmailControllerTest {
+class EmailFileParseControllerTest {
 
     private static final String SAMPLE_EMAIL = "From: sender@example.com\nSubject: Test";
 
     @Test
     void parseEmail_withNullMetadata_usesFallbackValues() throws Exception {
         ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
-        EmailController controller = controllerWithPayload(registry, "{\n" +
+        EmailFileParseController controller = controllerWithPayload(registry, "{\n" +
             "  \"content\": {\"plainText\": \"Body\", \"markdown\": \"**Body**\"},\n" +
             "  \"metadata\": {\"subject\": null, \"from\": null, \"date\": null}\n" +
             "}");
@@ -35,18 +41,21 @@ class EmailControllerTest {
 
         assertEquals(200, response.getStatusCode().value());
         Map<String, Object> body = response.getBody();
+        assertNotNull(body.get("emailMessage"));
         assertEquals("No subject", body.get("subject"));
         assertEquals("Unknown sender", body.get("from"));
         assertEquals("Unknown date", body.get("date"));
         assertNotNull(body.get("contextId"));
         String contextId = body.get("contextId").toString();
         assertTrue(registry.contextForAi(contextId).isPresent(), "context should be cached");
+        Map<?, ?> emailMessageJson = new ObjectMapper().convertValue(body.get("emailMessage"), Map.class);
+        assertFalse(emailMessageJson.containsKey("emailBodyRaw"), "emailBodyRaw should not be serialized");
     }
 
     @Test
     void parseEmail_withDateMetadataPreservesIso() throws Exception {
         ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
-        EmailController controller = controllerWithPayload(registry, "{\n" +
+        EmailFileParseController controller = controllerWithPayload(registry, "{\n" +
             "  \"content\": {\"plainText\": \"Body\", \"markdown\": \"**Body**\"},\n" +
             "  \"metadata\": {\"subject\": \"Status\", \"from\": \"Ops\", \"date\": \"Oct 01, 2025 at 4:30 PM -07:00\", \"dateIso\": \"2025-10-01T23:30:00Z\"}\n" +
             "}");
@@ -65,9 +74,50 @@ class EmailControllerTest {
     }
 
     @Test
+    void parseEmail_sanitizesContentOutputs() throws Exception {
+        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        EmailFileParseController controller = controllerWithPayload(registry, "{\n" +
+            "  \"content\": {\"plainText\": \"Hello <script>alert('x')</script> body\", \"markdown\": \"**Hello** <script>alert(1)</script>\"},\n" +
+            "  \"metadata\": {\"subject\": \"Status\", \"from\": \"Ops\", \"date\": \"Oct 01, 2025 at 4:30 PM -07:00\"}\n" +
+            "}");
+
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "message.eml",
+            "message/rfc822",
+            SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8)
+        );
+
+        ResponseEntity<Map<String, Object>> response = controller.parseEmail(file);
+
+        Map<String, Object> body = response.getBody();
+        EmailMessage emailMessage = (EmailMessage) body.get("emailMessage");
+        assertNotNull(emailMessage);
+        String text = emailMessage.emailBodyTransformedText();
+        assertNotNull(text);
+        assertFalse(text.contains("<script"));
+
+        String markdown = emailMessage.emailBodyTransformedMarkdown();
+        if (markdown != null) {
+            assertFalse(markdown.contains("<script"));
+        }
+
+        String parsedPlain = (String) body.get("parsedPlain");
+        if (parsedPlain != null) {
+            assertFalse(parsedPlain.contains("<script"));
+        }
+
+        String parsedMarkdown = (String) body.get("parsedMarkdown");
+        if (parsedMarkdown != null) {
+            assertFalse(parsedMarkdown.contains("<script"));
+        }
+    }
+
+    @Test
     void parseEmail_withUnsupportedExtension_throwsException() {
         ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
-        EmailController controller = new EmailController(registry);
+        EmailFileParseController controller = new EmailFileParseController(
+            new EmailParsingService(registry, new ObjectMapper(), new CompanyLogoProvider()));
         MockMultipartFile file = new MockMultipartFile(
             "file",
             "document.pdf",
@@ -81,7 +131,8 @@ class EmailControllerTest {
     @Test
     void parseEmail_withReceivedHeaderUsesReceivedDate() throws Exception {
         ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
-        EmailController controller = new EmailController(registry);
+        EmailFileParseController controller = new EmailFileParseController(
+            new EmailParsingService(registry, new ObjectMapper(), new CompanyLogoProvider()));
         String eml = String.join("\r\n",
             "Received: from mail.example.net by inbound.example.net; Wed, 01 Oct 2025 18:45:00 +0530",
             "Subject: Received fallback",
@@ -110,12 +161,13 @@ class EmailControllerTest {
         assertEquals("Received", metadata.get("dateSource"));
     }
 
-    private EmailController controllerWithPayload(ContextBuilder.EmailContextRegistry registry, String payload) {
-        return new EmailController(registry) {
+    private EmailFileParseController controllerWithPayload(ContextBuilder.EmailContextRegistry registry, String payload) {
+        EmailParsingService emailParsingService = new EmailParsingService(registry, new ObjectMapper(), new CompanyLogoProvider()) {
             @Override
             protected String convertEmail(com.composerai.api.service.HtmlToText.Options options) {
                 return payload;
             }
         };
+        return new EmailFileParseController(emailParsingService);
     }
 }
