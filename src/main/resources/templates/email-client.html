@@ -14,6 +14,7 @@
                 height: 100vh;
                 overflow: hidden;
                 background: linear-gradient(180deg, #f8fafc 0%, #f5f5f7 100%);
+                position: relative;
             }
 
             .sidebar {
@@ -25,10 +26,17 @@
                 display: flex;
                 flex-direction: column;
                 transition: transform 0.3s ease;
+                position: relative;
             }
 
             .sidebar.closed {
                 transform: translateX(-100%);
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                pointer-events: none;
+                z-index: 30;
             }
 
             .email-list {
@@ -37,6 +45,32 @@
                 background: rgba(255, 255, 255, 0.9);
                 display: flex;
                 flex-direction: column;
+            }
+
+            .email-list-toolbar {
+                position: relative;
+                transition: padding-left 0.3s ease;
+            }
+
+            #menuToggle {
+                transition: transform 0.3s ease, left 0.3s ease;
+            }
+
+            .email-client-container.sidebar-open .email-list-toolbar {
+                padding-left: 3.25rem;
+            }
+
+            .email-client-container.sidebar-open #menuToggle {
+                position: absolute;
+                top: 50%;
+                left: 0;
+                transform: translate(-50%, -50%);
+                z-index: 40;
+            }
+
+            .email-client-container.sidebar-collapsed #menuToggle {
+                position: static;
+                transform: none;
             }
 
             .email-content {
@@ -246,6 +280,15 @@
                 .email-list {
                     width: 20rem;
                 }
+
+                .email-client-container.sidebar-open .email-list-toolbar {
+                    padding-left: 0;
+                }
+
+                .email-client-container.sidebar-open #menuToggle {
+                    position: static;
+                    transform: none;
+                }
             }
         </style>
     </th:block>
@@ -260,7 +303,7 @@
                     <svg class="h-6 w-6" style="color: #0f172a;" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                         <path d="M3 8L10.89 13.26C11.2187 13.4793 11.6049 13.5963 12 13.5963C12.3951 13.5963 12.7813 13.4793 13.11 13.26L21 8M5 19H19C19.5304 19 20.0391 18.7893 20.4142 18.4142C20.7893 18.0391 21 17.5304 21 17V7C21 6.46957 20.7893 5.96086 20.4142 5.58579C20.0391 5.21071 19.5304 5 19 5H5C4.46957 5 3.96086 5.21071 3.58579 5.58579C3.21071 5.96086 3 6.46957 3 7V17C3 17.5304 3.21071 18.0391 3.58579 18.4142C3.96086 18.7893 4.46957 19 5 19Z" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                    <h1 class="text-xl font-bold" style="color: #0f172a;">InboxAI</h1>
+                    <h1 class="text-xl font-bold" style="color: #0f172a;">ComposerAI</h1>
                 </div>
                 <button id="composeBtn" class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold transition" 
                     style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; border: none; cursor: pointer;"
@@ -318,7 +361,7 @@
         <!-- Email List -->
         <div class="email-list">
             <div class="p-4 border-b" style="border-color: rgba(226, 232, 240, 0.6);">
-                <div class="flex items-center gap-2 mb-3">
+                <div class="email-list-toolbar flex items-center gap-2 mb-3 relative">
                     <button id="menuToggle" class="flex items-center justify-center w-10 h-10 rounded-xl border" 
                         style="border-color: rgba(226, 232, 240, 0.8); background: white; cursor: pointer;"
                         aria-label="Toggle sidebar menu"
@@ -357,64 +400,138 @@
 
         <script th:inline="javascript">
             const UI_NONCE = /*[[${uiNonce}]]*/ null;
+            const EMAIL_MESSAGES = /*[[${emailMessages}]]*/ [];
 
-            const SAMPLE_EMAILS = [
+            function deriveAvatarUrl(emailMessage) {
+                if (emailMessage.avatarUrl) {
+                    return emailMessage.avatarUrl;
+                }
+                if (emailMessage.companyLogoUrl) {
+                    return emailMessage.companyLogoUrl;
+                }
+                const seed = (emailMessage.senderEmail || emailMessage.senderName || 'unknown').trim();
+                const hash = Array.from(seed).reduce((acc, char) => acc + char.charCodeAt(0), 0) % 70;
+                return `https://i.pravatar.cc/150?img=${hash + 1}`;
+            }
+
+            function deriveTimestampDisplay(message) {
+                if (message.receivedTimestampDisplay) {
+                    return message.receivedTimestampDisplay;
+                }
+                if (message.receivedTimestampIso) {
+                    try {
+                        const date = new Date(message.receivedTimestampIso);
+                        if (!Number.isNaN(date.getTime())) {
+                            return date.toLocaleString();
+                        }
+                    } catch (error) {
+                        // no-op fallback
+                    }
+                }
+                return '';
+            }
+
+            function buildEmailPreview(message) {
+                if (message.preview) {
+                    return message.preview;
+                }
+                const source = message.emailBodyTransformedText || '';
+                const normalized = source.trim().replace(/\s+/g, ' ');
+                if (normalized.length <= 180) {
+                    return normalized;
+                }
+                return `${normalized.slice(0, 177)}...`;
+            }
+
+            function mapEmailMessageToClientModel(message, index) {
+                const contentMarkdown = message.emailBodyTransformedMarkdown || '';
+                const contentText = message.emailBodyTransformedText || '';
+                const contentHtml = typeof message.emailBodyHtml === 'string' && message.emailBodyHtml.trim().length > 0
+                    ? message.emailBodyHtml
+                    : null;
+                return {
+                    id: message.id || message.contextId || `email-${index + 1}`,
+                    from: message.senderName || message.senderEmail || 'Unknown sender',
+                    fromEmail: message.senderEmail || '',
+                    subject: message.subject || 'No subject',
+                    preview: buildEmailPreview(message),
+                    content: contentText,
+                    contentText,
+                    contentMarkdown,
+                    contentHtml,
+                    timestamp: deriveTimestampDisplay(message),
+                    timestampIso: message.receivedTimestampIso || null,
+                    read: index > 0,
+                    starred: false,
+                    avatar: deriveAvatarUrl(message),
+                    labels: Array.isArray(message.labels) ? message.labels : [],
+                    contextId: message.contextId || null
+                };
+            }
+
+            const FALLBACK_SAMPLE_EMAILS = [
                 {
-                    id: '1',
-                    from: 'Sarah Johnson',
-                    fromEmail: 'sarah.j@company.com',
-                    subject: 'Q4 Marketing Strategy Review',
-                    preview: "Hi team, I've compiled the Q4 marketing metrics and would like to schedule...",
-                    content: "Hi team, I've compiled the Q4 marketing metrics and would like to schedule a review meeting next week. The campaign performance has exceeded our expectations with a 45% increase in engagement. Let's discuss the strategy for Q1.",
-                    timestamp: '10:30 AM',
+                    id: 'sample-1',
+                    from: 'ComposerAI',
+                    fromEmail: 'hello@composerai.app',
+                    subject: 'Welcome to ComposerAI',
+                    preview: 'Compose, summarize, and translate your inbox with AI-powered workflows.',
+                    content: 'Welcome to ComposerAI! Upload emails, connect your inbox, and unlock AI-powered compose, summarize, and translate workflows.',
+                    contentText: 'Welcome to ComposerAI! Upload emails, connect your inbox, and unlock AI-powered compose, summarize, and translate workflows.',
+                    contentMarkdown: '',
+                    contentHtml: null,
+                    timestamp: 'Just now',
                     read: false,
                     starred: true,
-                    avatar: 'https://i.pravatar.cc/150?img=1',
-                    labels: ['Work', 'Important']
-                },
-                {
-                    id: '2',
-                    from: 'Michael Chen',
-                    fromEmail: 'm.chen@tech.io',
-                    subject: 'New Feature Deployment Schedule',
-                    preview: "The new authentication system is ready for deployment. Here's the timeline...",
-                    content: "The new authentication system is ready for deployment. Here's the timeline we're proposing: staging environment testing on Monday, production deployment on Wednesday. Please review the attached documentation.",
-                    timestamp: 'Yesterday',
-                    read: true,
-                    starred: false,
-                    avatar: 'https://i.pravatar.cc/150?img=2',
-                    labels: ['Development']
-                },
-                {
-                    id: '3',
-                    from: 'Emma Williams',
-                    fromEmail: 'emma.w@design.co',
-                    subject: 'Design System Updates',
-                    preview: "I've updated the component library with the new color palette and typography...",
-                    content: "I've updated the component library with the new color palette and typography guidelines. All components now support dark mode out of the box. The documentation has been updated accordingly.",
-                    timestamp: '2 days ago',
-                    read: true,
-                    starred: false,
-                    avatar: 'https://i.pravatar.cc/150?img=3',
-                    labels: ['Design']
+                    avatar: 'https://i.pravatar.cc/150?img=5',
+                    labels: ['Product'],
+                    contextId: null
                 }
             ];
 
             class EmailClient {
                 constructor() {
-                    this.emails = SAMPLE_EMAILS;
+                    const serverMessages = Array.isArray(EMAIL_MESSAGES) ? EMAIL_MESSAGES : [];
+                    this.originalMessages = serverMessages;
+                    const mappedEmails = serverMessages.map((message, index) => mapEmailMessageToClientModel(message, index));
+                    const seedEmails = mappedEmails.length > 0 ? mappedEmails : FALLBACK_SAMPLE_EMAILS;
+                    this.emails = seedEmails.map(email => ({ ...email }));
                     this.selectedEmail = null;
                     this.sidebarOpen = true;
                     this.composeWindows = [];
                     this.composeWindowIdCounter = 0;
+                    this.conversationId = (self.crypto?.randomUUID?.() ?? `conv-${Date.now()}`);
+                    this.defaultMaxResults = 5;
+                    this.supportedCommands = new Set(['compose', 'draft', 'summarize', 'translate', 'tone']);
+                    this.commandDefaults = {
+                        summarize: 'Summarize the selected email in a few concise paragraphs, highlighting key actions.',
+                        translate: 'Translate the selected email into English.',
+                        draft: 'Draft a courteous reply to the selected email outlining next steps.',
+                        compose: 'Compose a helpful email response based on the selected email.',
+                        tone: 'Adjust the email to a friendly but professional tone.',
+                        explain: 'Explain the selected email in clear, plain language so the intent is easy to understand.'
+                    };
+                    this.commandTitles = {
+                        summarize: 'AI Summary',
+                        translate: 'AI Translation',
+                        draft: 'AI Draft Reply',
+                        compose: 'AI Compose',
+                        tone: 'AI Tone Adjustment',
+                        explain: 'AI Explanation'
+                    };
+                    this.aiResponsePanel = null;
                     
                     this.initializeElements();
+                    this.updateSidebarState();
                     this.attachEventListeners();
                     this.renderEmailList();
-                    this.selectEmail(this.emails[0]);
+                    if (this.emails.length > 0) {
+                        this.selectEmail(this.emails[0]);
+                    }
                 }
 
                 initializeElements() {
+                    this.container = document.querySelector('.email-client-container');
                     this.sidebar = document.getElementById('sidebar');
                     this.emailList = document.getElementById('emailList');
                     this.emailContent = document.getElementById('emailContent');
@@ -430,9 +547,20 @@
                     this.searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
                 }
 
+                updateSidebarState() {
+                    const isCollapsed = !this.sidebarOpen;
+                    if (this.sidebar) {
+                        this.sidebar.classList.toggle('closed', isCollapsed);
+                    }
+                    if (this.container) {
+                        this.container.classList.toggle('sidebar-collapsed', isCollapsed);
+                        this.container.classList.toggle('sidebar-open', !isCollapsed);
+                    }
+                }
+
                 toggleSidebar() {
                     this.sidebarOpen = !this.sidebarOpen;
-                    this.sidebar.classList.toggle('closed', !this.sidebarOpen);
+                    this.updateSidebarState();
                 }
 
                 openComposeWindow(options = {}) {
@@ -527,7 +655,8 @@
                         id: windowId,
                         element: windowElement,
                         minimized: false,
-                        isReply: isReply
+                        isReply: isReply,
+                        relatedEmailId: options.emailId || null
                     });
                     
                     // Ensure default anchored position
@@ -547,6 +676,8 @@
                         const firstInput = windowElement.querySelector('input, textarea');
                         if (firstInput) firstInput.focus();
                     }, 100);
+
+                    return this.composeWindows[this.composeWindows.length - 1];
                 }
 
                 attachComposeWindowListeners(windowId) {
@@ -800,22 +931,50 @@
                                 </div>
                             </div>
                             <div class="flex-1 p-6 overflow-y-auto">
-                                <div class="prose prose-sm max-w-none">
-                                    <p style="color: #0f172a; line-height: 1.65; font-size: 0.95rem;">
-                                        ${this.escapeHtml(email.content)}
-                                    </p>
+                                <div class="prose prose-sm max-w-none" data-role="email-body" style="color: #0f172a; line-height: 1.65; font-size: 0.95rem;">
                                 </div>
+                            </div>
+                            <div id="aiResponsePanel" class="border-t" style="border-color: rgba(226, 232, 240, 0.8); background: rgba(248, 250, 252, 0.65); padding: 1.5rem; display: none;">
+                                <div class="flex items-center justify-between gap-2">
+                                    <div data-role="ai-response-title" class="text-sm font-semibold" style="color: #475569;">AI Assistant</div>
+                                    <button type="button" data-role="ai-response-close" class="text-xs font-semibold px-2 py-1 rounded-lg" 
+                                        style="color: #64748b; background: rgba(255, 255, 255, 0.8); border: 1px solid rgba(226, 232, 240, 0.8);">
+                                        Clear
+                                    </button>
+                                </div>
+                                <div data-role="ai-response-body" class="prose prose-sm max-w-none mt-3 text-slate-700"></div>
                             </div>
                         </div>
                     `;
+
+                    const bodyContainer = this.emailContent.querySelector('[data-role="email-body"]');
+                    if (bodyContainer) {
+                        if (email.contentHtml) {
+                            bodyContainer.innerHTML = email.contentHtml;
+                        } else {
+                            const fallbackText = email.contentText || email.content || '';
+                            bodyContainer.textContent = fallbackText;
+                            bodyContainer.style.whiteSpace = 'pre-wrap';
+                        }
+                    }
 
                     // Attach reply handler - opens compose window for reply
                     const replyBtn = document.getElementById('replyBtn');
                     if (replyBtn) {
                         replyBtn.addEventListener('click', () => {
-                            this.openComposeWindow({ replyTo: email.from });
+                            this.openComposeWindow({ replyTo: email.from, emailId: email.id });
                         });
                     }
+
+                    const aiPanel = document.getElementById('aiResponsePanel');
+                    if (aiPanel) {
+                        this.aiResponsePanel = aiPanel;
+                        const closeBtn = aiPanel.querySelector('[data-role="ai-response-close"]');
+                        if (closeBtn) {
+                            closeBtn.addEventListener('click', () => this.clearAiResponse());
+                        }
+                    }
+                    this.clearAiResponse();
                 }
 
                 toggleStar(emailId) {
@@ -841,6 +1000,291 @@
                     if (starredBadge) starredBadge.textContent = starredCount;
                 }
 
+                async triggerAiCommand(command) {
+                    if (!this.selectedEmail) {
+                        alert('Select an email first.');
+                        return;
+                    }
+
+                    const title = this.getTitleForCommand(command);
+                    const instruction = this.buildInstructionForCommand(command);
+                    this.setMainCommandButtonsDisabled(true);
+                    this.setAiResponseState({ status: 'loading', title });
+                    try {
+                        const data = await this.callAiCommand(command, instruction, { contextId: this.selectedEmail?.contextId });
+                        if (command === 'draft') {
+                            const draftText = this.extractPlainTextFromResponse(data);
+                            this.applyAiDraftToCompose(draftText, title);
+                        } else {
+                            const html = this.extractHtmlFromResponse(data);
+                            this.setAiResponseState({ status: 'success', title, html });
+                        }
+                    } catch (error) {
+                        const message = error?.message || 'Unable to complete request.';
+                        this.setAiResponseState({ status: 'error', title, message });
+                    } finally {
+                        this.setMainCommandButtonsDisabled(false);
+                    }
+                }
+
+                ensureReplyWindowForSelectedEmail() {
+                    if (!this.selectedEmail) {
+                        return null;
+                    }
+                    let composeWindow = this.composeWindows.find(w => w.isReply && w.relatedEmailId === this.selectedEmail.id);
+                    if (!composeWindow) {
+                        composeWindow = this.openComposeWindow({
+                            replyTo: this.selectedEmail.from,
+                            emailId: this.selectedEmail.id
+                        });
+                    }
+                    if (composeWindow && composeWindow.element) {
+                        composeWindow.minimized = false;
+                        composeWindow.element.classList.remove('minimized');
+                        composeWindow.element.classList.add('active');
+                        const textarea = composeWindow.element.querySelector('.compose-message');
+                        if (textarea) {
+                            textarea.focus();
+                        }
+                    }
+                    return composeWindow;
+                }
+
+                applyAiDraftToCompose(draftText, title) {
+                    const composeWindow = this.ensureReplyWindowForSelectedEmail();
+                    if (!composeWindow) {
+                        this.setAiResponseState({
+                            status: 'error',
+                            title,
+                            message: 'Unable to open compose window for draft reply.'
+                        });
+                        return;
+                    }
+
+                    if (!draftText || draftText.trim().length === 0) {
+                        this.setAiResponseState({
+                            status: 'error',
+                            title,
+                            message: 'AI returned an empty draft. Try again or refine the request.'
+                        });
+                        return;
+                    }
+
+                    const textarea = composeWindow.element.querySelector('.compose-message');
+                    if (!textarea) {
+                        this.setAiResponseState({
+                            status: 'error',
+                            title,
+                            message: 'Composer textarea is unavailable.'
+                        });
+                        return;
+                    }
+
+                    textarea.value = draftText;
+                    textarea.focus();
+                    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+                    this.setAiResponseState({
+                        status: 'success',
+                        title,
+                        html: '<div class="text-sm text-slate-600">Draft inserted into the reply composer. Review and edit before sending.</div>'
+                    });
+                }
+
+                async triggerComposeAi(windowId, command) {
+                    const composeWindow = this.composeWindows.find(w => w.id === windowId);
+                    if (!composeWindow) {
+                        console.warn('Compose window not found:', windowId);
+                        return;
+                    }
+                    const windowElement = composeWindow.element;
+                    const textarea = windowElement.querySelector('.compose-message');
+                    if (!textarea) {
+                        return;
+                    }
+
+                    const currentDraft = textarea.value.trim();
+                    const instruction = this.buildComposeInstruction(command, currentDraft, composeWindow.isReply);
+                    this.setComposeButtonsDisabled(windowElement, true);
+
+                    try {
+                        const data = await this.callAiCommand(command, instruction, { contextId: this.selectedEmail?.contextId });
+                        const text = this.extractPlainTextFromResponse(data);
+                        if (text) {
+                            textarea.value = text;
+                        }
+                    } catch (error) {
+                        alert(`AI ${command} failed: ${error?.message || 'Unknown error'}`);
+                    } finally {
+                        this.setComposeButtonsDisabled(windowElement, false);
+                    }
+                }
+
+                buildInstructionForCommand(command) {
+                    return this.commandDefaults[command] || 'Assist with the selected email.';
+                }
+
+                buildComposeInstruction(command, currentDraft, isReply) {
+                    if (command === 'tone') {
+                        if (currentDraft.length > 0) {
+                            return `Friendly and professional tone.
+
+Current draft:
+${currentDraft}`;
+                        }
+                        return 'Adjust the tone to be friendly yet professional.';
+                    }
+
+                    if (currentDraft.length > 0) {
+                        return currentDraft;
+                    }
+
+                    if (command === 'draft') {
+                        return isReply
+                            ? 'Draft a thoughtful reply acknowledging the email and outlining next steps.'
+                            : 'Draft a concise email that introduces the topic and requests next steps.';
+                    }
+
+                    if (command === 'compose') {
+                        return 'Compose a polished email based on the current conversation context.';
+                    }
+
+                    return this.commandDefaults[command] || 'Assist with the email draft.';
+                }
+
+                getTitleForCommand(command) {
+                    return this.commandTitles[command] || 'AI Assistant';
+                }
+
+                setMainCommandButtonsDisabled(disabled) {
+                    if (!this.emailContent) return;
+                    this.emailContent.querySelectorAll('.ai-command-btn').forEach(btn => {
+                        btn.disabled = disabled;
+                        btn.setAttribute('aria-busy', String(disabled));
+                        btn.style.opacity = disabled ? '0.6' : '1';
+                    });
+                }
+
+                setComposeButtonsDisabled(windowElement, disabled) {
+                    windowElement.querySelectorAll('.ai-command-btn').forEach(btn => {
+                        btn.disabled = disabled;
+                        btn.setAttribute('aria-busy', String(disabled));
+                        btn.style.opacity = disabled ? '0.6' : '1';
+                    });
+                }
+
+                clearAiResponse() {
+                    if (!this.aiResponsePanel) {
+                        return;
+                    }
+                    this.aiResponsePanel.style.display = 'none';
+                    const titleEl = this.aiResponsePanel.querySelector('[data-role="ai-response-title"]');
+                    const bodyEl = this.aiResponsePanel.querySelector('[data-role="ai-response-body"]');
+                    if (titleEl) {
+                        titleEl.textContent = 'AI Assistant';
+                    }
+                    if (bodyEl) {
+                        bodyEl.innerHTML = '';
+                    }
+                }
+
+                setAiResponseState({ status, title, html, message }) {
+                    if (!this.aiResponsePanel) {
+                        this.aiResponsePanel = document.getElementById('aiResponsePanel');
+                    }
+                    if (!this.aiResponsePanel) {
+                        return;
+                    }
+                    this.aiResponsePanel.style.display = 'block';
+                    const titleEl = this.aiResponsePanel.querySelector('[data-role="ai-response-title"]');
+                    const bodyEl = this.aiResponsePanel.querySelector('[data-role="ai-response-body"]');
+                    if (titleEl) {
+                        titleEl.textContent = title || 'AI Assistant';
+                    }
+                    if (bodyEl) {
+                        if (status === 'loading') {
+                            bodyEl.innerHTML = '<div class="text-sm text-slate-500">Thinking...</div>';
+                        } else if (status === 'error') {
+                            bodyEl.innerHTML = `<div class="text-sm text-rose-600">${window.ComposerAI.escapeHtml(message || 'Something went wrong.')}</div>`;
+                        } else {
+                            bodyEl.innerHTML = html || '<div class="text-sm text-slate-500">No response received.</div>';
+                        }
+                    }
+                }
+
+                async callAiCommand(command, instruction, { contextId } = {}) {
+                    const payload = {
+                        message: instruction && instruction.trim().length > 0 ? instruction.trim() : (this.commandDefaults[command] || 'Assist with the selected email.'),
+                        conversationId: this.conversationId,
+                        maxResults: this.defaultMaxResults,
+                        thinkingEnabled: false,
+                        jsonOutput: false
+                    };
+
+                    if (contextId) {
+                        payload.contextId = contextId;
+                    }
+
+                    if (this.supportedCommands.has(command)) {
+                        payload.aiCommand = command;
+                    }
+
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-UI-Request': UI_NONCE
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    let data;
+                    try {
+                        data = await response.json();
+                    } catch (error) {
+                        data = null;
+                    }
+
+                    if (!response.ok) {
+                        const errorMessage = data?.message || data?.error || `Request failed with status ${response.status}`;
+                        throw new Error(errorMessage);
+                    }
+
+                    if (data?.conversationId) {
+                        this.conversationId = data.conversationId;
+                    }
+
+                    return data;
+                }
+
+                extractHtmlFromResponse(data) {
+                    if (!data) {
+                        return '<div class="text-sm text-slate-500">No response received.</div>';
+                    }
+                    if (data.sanitizedHtml && data.sanitizedHtml.trim().length > 0) {
+                        return data.sanitizedHtml;
+                    }
+                    if (data.response && data.response.trim().length > 0) {
+                        return window.ComposerAI.renderMarkdown(data.response);
+                    }
+                    return '<div class="text-sm text-slate-500">No response received.</div>';
+                }
+
+                extractPlainTextFromResponse(data) {
+                    if (!data) {
+                        return '';
+                    }
+                    if (data.response && data.response.trim().length > 0) {
+                        return data.response.trim();
+                    }
+                    if (data.sanitizedHtml && data.sanitizedHtml.trim().length > 0) {
+                        const temp = document.createElement('div');
+                        temp.innerHTML = data.sanitizedHtml;
+                        return temp.textContent.trim();
+                    }
+                    return '';
+                }
+
                 escapeHtml(text) {
                     const div = document.createElement('div');
                     div.textContent = text;
@@ -849,25 +1293,19 @@
             }
 
             function handleAICommand(command) {
-                console.log('AI Command:', command);
-                alert(`AI ${command} command triggered! (This would integrate with ComposerAI backend)`);
+                if (window.emailClient instanceof EmailClient) {
+                    window.emailClient.triggerAiCommand(command);
+                }
             }
 
             function handleComposeAI(windowId, command) {
-                console.log('Compose AI Command:', windowId, command);
-                const windowElement = document.getElementById(windowId);
-                if (!windowElement) return;
-                
-                const textarea = windowElement.querySelector('.compose-message');
-                if (textarea && command === 'draft') {
-                    textarea.value = 'Thank you for your email. I\'ll review this and get back to you shortly.\n\nBest regards';
-                } else {
-                    alert(`AI ${command} triggered! (This would integrate with ComposerAI backend)`);
+                if (window.emailClient instanceof EmailClient) {
+                    window.emailClient.triggerComposeAi(windowId, command);
                 }
             }
 
             document.addEventListener('DOMContentLoaded', () => {
-                new EmailClient();
+                window.emailClient = new EmailClient();
             });
         </script>
     </div>
