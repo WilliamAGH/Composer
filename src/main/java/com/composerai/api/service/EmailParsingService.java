@@ -1,5 +1,6 @@
 package com.composerai.api.service;
 
+import com.composerai.api.config.AppProperties;
 import com.composerai.api.model.EmailMessage;
 import com.composerai.api.model.EmailMessageContextFormatter;
 import com.composerai.api.service.CompanyLogoProvider;
@@ -41,6 +42,7 @@ public class EmailParsingService {
     private final EmailContextRegistry emailContextRegistry;
     private final ObjectMapper objectMapper;
     private final CompanyLogoProvider companyLogoProvider;
+    private final AppProperties appProperties;
 
     public Map<String, Object> parseEmailFile(MultipartFile file) {
         validateFile(file);
@@ -122,6 +124,12 @@ public class EmailParsingService {
             String sanitizedMarkdown = cleanedMarkdown.isBlank() ? null : cleanedMarkdown;
             String emailBody = sanitizedMarkdown != null ? sanitizedMarkdown : cleanedPlainText;
 
+            String originalHtml = null;
+            Object originalHtmlNode = content.get("originalHtml");
+            if (originalHtmlNode instanceof String originalHtmlString) {
+                originalHtml = normalizeHtmlCandidate(originalHtmlString);
+            }
+
             String subject = firstNonBlank(metadata, "subject");
             if (subject == null) {
                 subject = "No subject";
@@ -141,7 +149,8 @@ public class EmailParsingService {
             String companyLogoUrl = deriveCompanyLogoUrl(sender.email());
 
             String markdownForHtml = sanitizedMarkdown != null ? sanitizedMarkdown : cleanedPlainText;
-            String renderedHtml = HtmlConverter.markdownToSafeHtml(markdownForHtml);
+            String renderedFromMarkdown = HtmlConverter.markdownToSafeHtml(markdownForHtml);
+            String renderedHtml = resolveEmailHtml(originalHtml, renderedFromMarkdown);
 
             parsedDocument.put("contextId", contextId);
 
@@ -275,15 +284,42 @@ public class EmailParsingService {
         return null;
     }
 
+    private static final int MAX_CONTEXT_ID_LENGTH = 200;
+    private static final int CONTEXT_ID_PREFIX_LENGTH = 48;
+    private static final int HASH_BYTES = 16; // 128-bit suffix keeps IDs compact and unique
+
     private static String resolveContextId(Map<String, Object> metadata) {
         String messageId = firstNonBlank(metadata, "messageId", "id");
-        if (messageId != null) {
-            String normalized = messageId.replaceAll("[^A-Za-z0-9._:-]", "");
-            if (!normalized.isBlank()) {
-                return normalized;
+        if (!StringUtils.isBlank(messageId)) {
+            String sanitized = messageId.replaceAll("[^A-Za-z0-9._:-]", "");
+            if (!StringUtils.isBlank(sanitized)) {
+                return normalizeContextIdLength(sanitized);
             }
         }
         return IdGenerator.uuidV7();
+    }
+
+    private static String normalizeContextIdLength(String candidate) {
+        if (candidate.length() <= MAX_CONTEXT_ID_LENGTH) {
+            return candidate;
+        }
+
+        String prefix = candidate.substring(0, Math.min(CONTEXT_ID_PREFIX_LENGTH, candidate.length()));
+        String hashSuffix = computeHashSuffix(candidate);
+        String combined = prefix + "-" + hashSuffix;
+        return combined.length() <= MAX_CONTEXT_ID_LENGTH
+            ? combined
+            : combined.substring(0, MAX_CONTEXT_ID_LENGTH);
+    }
+
+    private static String computeHashSuffix(String value) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(hash, 0, HASH_BYTES);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 algorithm not available", e);
+        }
     }
 
     private static String resolveMessageId(Map<String, Object> metadata) {
@@ -368,6 +404,31 @@ public class EmailParsingService {
             return companyLogoUrl;
         }
         return companyLogoProvider.fallbackAvatarUrl();
+    }
+
+    private AppProperties.EmailRenderMode effectiveRenderMode() {
+        AppProperties.EmailRendering rendering = appProperties.getEmailRendering();
+        AppProperties.EmailRenderMode mode = rendering != null ? rendering.getMode() : null;
+        return mode != null ? mode : AppProperties.EmailRenderMode.HTML;
+    }
+
+    private String resolveEmailHtml(String originalHtml, String markdownHtml) {
+        AppProperties.EmailRenderMode mode = effectiveRenderMode();
+        String normalizedOriginal = normalizeHtmlCandidate(originalHtml);
+        String normalizedMarkdown = normalizeHtmlCandidate(markdownHtml);
+        return switch (mode) {
+            case HTML -> normalizedOriginal != null ? normalizedOriginal : normalizedMarkdown;
+            case MARKDOWN -> normalizedMarkdown;
+            case PLAINTEXT -> null;
+        };
+    }
+
+    private static String normalizeHtmlCandidate(String candidate) {
+        if (candidate == null) {
+            return null;
+        }
+        String trimmed = candidate.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private record StructuredParticipant(String name, String email) {}

@@ -1,6 +1,7 @@
 package com.composerai.api.service.email;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -22,19 +23,23 @@ public final class EmailDocumentBuilder {
         Map<String, Object> metadata,
         String plainText,
         String markdown,
+        String originalHtml,
         Map<String, Object> cleanupPolicies
     ) {
+        Map<String, Object> content = new LinkedHashMap<>();
+        content.put("plainText", plainText == null ? "" : plainText);
+        content.put("markdown", markdown == null ? "" : markdown);
+        if (originalHtml != null) {
+            content.put("originalHtml", originalHtml);
+        }
+
         return Map.of(
             "id", id,
             "metadata", metadata,
-            "content", Map.of(
-                "plainText", plainText,
-                "markdown", markdown
-            ),
+            "content", content,
             "cleanupPolicies", cleanupPolicies,
             "createdAt", Instant.now().toString()
         );
     }
 }
-
 
