@@ -18,5 +18,7 @@ ENV JAVA_OPTS=""
 COPY --from=builder /workspace/target/*.jar /app/app.jar
 # Copy static assets built into the JAR context for serving
 COPY --from=builder /workspace/src/main/resources/static /app/static
+# Copy bundled sample email data for the email client view
+COPY data /app/data
 EXPOSE 8080
 ENTRYPOINT ["/bin/sh","-c","java ${JAVA_OPTS} -jar /app/app.jar"]
