@@ -1,5 +1,6 @@
 package com.composerai.api.controller;
 
+import com.composerai.api.config.AppProperties;
 import com.composerai.api.service.CompanyLogoProvider;
 import com.composerai.api.service.ContextBuilder;
 import com.composerai.api.service.EmailParsingService;
@@ -18,6 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 class EmailFileParseControllerTest {
 
@@ -117,7 +120,7 @@ class EmailFileParseControllerTest {
     void parseEmail_withUnsupportedExtension_throwsException() {
         ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
         EmailFileParseController controller = new EmailFileParseController(
-            new EmailParsingService(registry, new ObjectMapper(), new CompanyLogoProvider()));
+            new EmailParsingService(registry, new ObjectMapper(), new CompanyLogoProvider(), new AppProperties()));
         MockMultipartFile file = new MockMultipartFile(
             "file",
             "document.pdf",
@@ -132,7 +135,7 @@ class EmailFileParseControllerTest {
     void parseEmail_withReceivedHeaderUsesReceivedDate() throws Exception {
         ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
         EmailFileParseController controller = new EmailFileParseController(
-            new EmailParsingService(registry, new ObjectMapper(), new CompanyLogoProvider()));
+            new EmailParsingService(registry, new ObjectMapper(), new CompanyLogoProvider(), new AppProperties()));
         String eml = String.join("\r\n",
             "Received: from mail.example.net by inbound.example.net; Wed, 01 Oct 2025 18:45:00 +0530",
             "Subject: Received fallback",
@@ -161,8 +164,161 @@ class EmailFileParseControllerTest {
         assertEquals("Received", metadata.get("dateSource"));
     }
 
+    @Test
+    void parseEmail_htmlModeUsesOriginalHtml() throws Exception {
+        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        AppProperties props = new AppProperties();
+        props.getEmailRendering().setMode(AppProperties.EmailRenderMode.HTML);
+        String payload = """
+            {
+              "content": {
+                "plainText": "Plain body",
+                "markdown": "*Plain* body",
+                "originalHtml": "<div id='original'>Original</div>"
+              },
+              "metadata": {
+                "subject": "Demo",
+                "from": "Ops",
+                "date": "Oct 01, 2025 at 4:30 PM -07:00"
+              }
+            }
+            """;
+
+        EmailFileParseController controller = controllerWithPayload(registry, payload, props);
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "message.eml",
+            "message/rfc822",
+            SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8)
+        );
+
+        ResponseEntity<Map<String, Object>> response = controller.parseEmail(file);
+        Map<String, Object> body = response.getBody();
+        EmailMessage emailMessage = (EmailMessage) body.get("emailMessage");
+
+        assertNotNull(emailMessage);
+        assertEquals("<div id='original'>Original</div>", emailMessage.emailBodyHtml());
+        assertEquals("<div id='original'>Original</div>", body.get("parsedHtml"));
+    }
+
+    @Test
+    void parseEmail_markdownModeUsesSanitizedHtml() throws Exception {
+        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        AppProperties props = new AppProperties();
+        props.getEmailRendering().setMode(AppProperties.EmailRenderMode.MARKDOWN);
+        String payload = """
+            {
+              "content": {
+                "plainText": "Plain body",
+                "markdown": "*Plain* body",
+                "originalHtml": "<div id='original'>Original</div>"
+              },
+              "metadata": {
+                "subject": "Demo",
+                "from": "Ops",
+                "date": "Oct 01, 2025 at 4:30 PM -07:00"
+              }
+            }
+            """;
+
+        EmailFileParseController controller = controllerWithPayload(registry, payload, props);
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "message.eml",
+            "message/rfc822",
+            SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8)
+        );
+
+        ResponseEntity<Map<String, Object>> response = controller.parseEmail(file);
+        Map<String, Object> body = response.getBody();
+        EmailMessage emailMessage = (EmailMessage) body.get("emailMessage");
+
+        assertNotNull(emailMessage);
+        assertNotNull(emailMessage.emailBodyHtml());
+        assertNotEquals("<div id='original'>Original</div>", emailMessage.emailBodyHtml());
+        assertTrue(emailMessage.emailBodyHtml().contains("<em>Plain</em>"));
+        assertEquals(emailMessage.emailBodyHtml(), body.get("parsedHtml"));
+    }
+
+    @Test
+    void parseEmail_plaintextModeSuppressesHtml() throws Exception {
+        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        AppProperties props = new AppProperties();
+        props.getEmailRendering().setMode(AppProperties.EmailRenderMode.PLAINTEXT);
+        String payload = """
+            {
+              "content": {
+                "plainText": "Plain body",
+                "markdown": "*Plain* body",
+                "originalHtml": "<div id='original'>Original</div>"
+              },
+              "metadata": {
+                "subject": "Demo",
+                "from": "Ops",
+                "date": "Oct 01, 2025 at 4:30 PM -07:00"
+              }
+            }
+            """;
+
+        EmailFileParseController controller = controllerWithPayload(registry, payload, props);
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "message.eml",
+            "message/rfc822",
+            SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8)
+        );
+
+        ResponseEntity<Map<String, Object>> response = controller.parseEmail(file);
+        Map<String, Object> body = response.getBody();
+        EmailMessage emailMessage = (EmailMessage) body.get("emailMessage");
+
+        assertNotNull(emailMessage);
+        assertNull(emailMessage.emailBodyHtml());
+        assertEquals("Plain body", emailMessage.emailBodyTransformedText());
+        assertNull(body.get("parsedHtml"));
+    }
+
+    @Test
+    void parseEmail_longMessageIdProducesDeterministicBoundedContextId() throws Exception {
+        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        String longMessageId = "<" + "alpha-" + "x".repeat(220) + "@example-domain.test>";
+        String payload = """
+            {
+              "content": {"plainText": "Body", "markdown": "Body"},
+              "metadata": {
+                "subject": "Status",
+                "from": "Ops",
+                "date": "Oct 01, 2025 at 4:30 PM -07:00",
+                "messageId": "%s"
+              }
+            }
+            """.formatted(longMessageId.replace("\"", "\\\""));
+
+        EmailFileParseController controller = controllerWithPayload(registry, payload);
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "message.eml",
+            "message/rfc822",
+            SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8)
+        );
+
+        ResponseEntity<Map<String, Object>> first = controller.parseEmail(file);
+        ResponseEntity<Map<String, Object>> second = controller.parseEmail(file);
+
+        String contextId1 = first.getBody().get("contextId").toString();
+        String contextId2 = second.getBody().get("contextId").toString();
+
+        assertEquals(contextId1, contextId2, "Context IDs should be deterministic for identical inputs");
+        assertTrue(contextId1.length() <= 200, "Context ID should not exceed DTO limit");
+        assertTrue(contextId1.matches("[A-Za-z0-9._:-]+"), "Context ID should contain only safe characters");
+    }
+
     private EmailFileParseController controllerWithPayload(ContextBuilder.EmailContextRegistry registry, String payload) {
-        EmailParsingService emailParsingService = new EmailParsingService(registry, new ObjectMapper(), new CompanyLogoProvider()) {
+        return controllerWithPayload(registry, payload, new AppProperties());
+    }
+
+    private EmailFileParseController controllerWithPayload(ContextBuilder.EmailContextRegistry registry, String payload, AppProperties appProperties) {
+        EmailParsingService emailParsingService = new EmailParsingService(registry, new ObjectMapper(), new CompanyLogoProvider(), appProperties) {
             @Override
             protected String convertEmail(com.composerai.api.service.HtmlToText.Options options) {
                 return payload;
