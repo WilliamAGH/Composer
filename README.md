@@ -155,6 +155,7 @@ export LLM_REASONING="medium"
 | `LLM_PROVIDER_SORT` | - | Sort providers: `price`, `throughput`, `latency` (OpenRouter only) |
 | `LLM_PROVIDER_ALLOW_FALLBACKS` | `true` | Allow fallback providers (OpenRouter only) |
 | `LLM_DEBUG_FETCH` | `false` | Log full request/response bodies |
+| `RENDER_EMAILS_WITH` | `HTML` | Email client render mode: `HTML`, `MARKDOWN`, or `PLAINTEXT` |
 
 \* `minimal` only supported by OpenAI. Automatically converts to `low` for other providers.
 
