@@ -29,6 +29,10 @@
                 position: relative;
             }
 
+            .sidebar-header {
+                padding-top: 1.25rem;
+            }
+
             .sidebar.closed {
                 transform: translateX(-100%);
                 position: absolute;
@@ -49,28 +53,25 @@
 
             .email-list-toolbar {
                 position: relative;
-                transition: padding-left 0.3s ease;
+                align-items: center;
+            }
+
+            .email-list-header {
+                padding-top: 0.75rem;
+                padding-bottom: 0.75rem;
             }
 
             #menuToggle {
-                transition: transform 0.3s ease, left 0.3s ease;
-            }
-
-            .email-client-container.sidebar-open .email-list-toolbar {
-                padding-left: 3.25rem;
+                transition: margin-left 0.3s ease;
+                flex-shrink: 0;
             }
 
             .email-client-container.sidebar-open #menuToggle {
-                position: absolute;
-                top: 50%;
-                left: 0;
-                transform: translate(-50%, -50%);
-                z-index: 40;
+                margin-left: -0.5rem;
             }
 
             .email-client-container.sidebar-collapsed #menuToggle {
-                position: static;
-                transform: none;
+                margin-left: 0;
             }
 
             .email-content {
@@ -281,12 +282,8 @@
                     width: 20rem;
                 }
 
-                .email-client-container.sidebar-open .email-list-toolbar {
-                    padding-left: 0;
-                }
-
                 .email-client-container.sidebar-open #menuToggle {
-                    position: static;
+                    margin-left: 0;
                     transform: none;
                 }
             }
@@ -298,7 +295,7 @@
     <div th:fragment="content" class="email-client-container">
         <!-- Sidebar -->
         <div id="sidebar" class="sidebar">
-            <div class="p-4 border-b" style="border-color: rgba(226, 232, 240, 0.6);">
+            <div class="sidebar-header p-4 border-b" style="border-color: rgba(226, 232, 240, 0.6);">
                 <div class="flex items-center gap-2 mb-4">
                     <svg class="h-6 w-6" style="color: #0f172a;" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                         <path d="M3 8L10.89 13.26C11.2187 13.4793 11.6049 13.5963 12 13.5963C12.3951 13.5963 12.7813 13.4793 13.11 13.26L21 8M5 19H19C19.5304 19 20.0391 18.7893 20.4142 18.4142C20.7893 18.0391 21 17.5304 21 17V7C21 6.46957 20.7893 5.96086 20.4142 5.58579C20.0391 5.21071 19.5304 5 19 5H5C4.46957 5 3.96086 5.21071 3.58579 5.58579C3.21071 5.96086 3 6.46957 3 7V17C3 17.5304 3.21071 18.0391 3.58579 18.4142C3.96086 18.7893 4.46957 19 5 19Z" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
@@ -360,8 +357,8 @@
 
         <!-- Email List -->
         <div class="email-list">
-            <div class="p-4 border-b" style="border-color: rgba(226, 232, 240, 0.6);">
-                <div class="email-list-toolbar flex items-center gap-2 mb-3 relative">
+            <div class="email-list-header px-4 border-b" style="border-color: rgba(226, 232, 240, 0.6);">
+                <div class="email-list-toolbar flex items-center gap-3">
                     <button id="menuToggle" class="flex items-center justify-center w-10 h-10 rounded-xl border" 
                         style="border-color: rgba(226, 232, 240, 0.8); background: white; cursor: pointer;"
                         aria-label="Toggle sidebar menu"
@@ -443,6 +440,41 @@
                 return `${normalized.slice(0, 177)}...`;
             }
 
+            function buildEmailContextString(email) {
+                if (!email) {
+                    return '';
+                }
+                const lines = [];
+                const subject = email.subject || 'No subject';
+                const fromName = email.from || email.fromEmail || 'Unknown sender';
+                const fromEmail = email.fromEmail ? ` <${email.fromEmail}>` : '';
+                const toName = email.to || email.toEmail || '';
+                const toEmail = email.toEmail ? ` <${email.toEmail}>` : '';
+                const timestamp = email.timestamp || 'Unknown date';
+
+                lines.push('=== Email Metadata ===');
+                lines.push(`Subject: ${subject}`);
+                lines.push(`From: ${fromName}${fromEmail}`);
+                if (toName || toEmail) {
+                    lines.push(`To: ${(toName || 'Unknown recipient')}${toEmail}`);
+                }
+                lines.push(`Email sent on: ${timestamp}`);
+                if (email.timestampIso) {
+                    lines.push(`Email sent (ISO): ${email.timestampIso}`);
+                }
+                lines.push('');
+                lines.push('=== Email Body ===');
+                const body = (email.contentMarkdown && email.contentMarkdown.trim().length > 0)
+                    ? email.contentMarkdown.trim()
+                    : (email.contentText && email.contentText.trim().length > 0)
+                        ? email.contentText.trim()
+                        : (email.content && email.content.trim().length > 0)
+                            ? email.content.trim()
+                            : '(Email body is empty)';
+                lines.push(body);
+                return lines.join('\n');
+            }
+
             function mapEmailMessageToClientModel(message, index) {
                 const contentMarkdown = message.emailBodyTransformedMarkdown || '';
                 const contentText = message.emailBodyTransformedText || '';
@@ -453,6 +485,8 @@
                     id: message.id || message.contextId || `email-${index + 1}`,
                     from: message.senderName || message.senderEmail || 'Unknown sender',
                     fromEmail: message.senderEmail || '',
+                    to: message.recipientName || message.recipientEmail || '',
+                    toEmail: message.recipientEmail || '',
                     subject: message.subject || 'No subject',
                     preview: buildEmailPreview(message),
                     content: contentText,
@@ -474,6 +508,8 @@
                     id: 'sample-1',
                     from: 'ComposerAI',
                     fromEmail: 'hello@composerai.app',
+                    to: 'ComposerAI Team',
+                    toEmail: 'hello@composerai.app',
                     subject: 'Welcome to ComposerAI',
                     preview: 'Compose, summarize, and translate your inbox with AI-powered workflows.',
                     content: 'Welcome to ComposerAI! Upload emails, connect your inbox, and unlock AI-powered compose, summarize, and translate workflows.',
@@ -849,6 +885,12 @@
                                                 <span class="font-medium">${this.escapeHtml(email.from)}</span>
                                                 <span>&lt;${this.escapeHtml(email.fromEmail)}&gt;</span>
                                             </div>
+                                            ${(email.to || email.toEmail) ? `
+                                            <div class="flex items-center gap-2 text-xs mt-1" style="color: #94a3b8;">
+                                                <span>To:</span>
+                                                <span>${this.escapeHtml(email.to || 'Unknown recipient')}</span>
+                                                ${email.toEmail ? `<span>&lt;${this.escapeHtml(email.toEmail)}&gt;</span>` : ''}
+                                            </div>` : ''}
                                             <p class="text-xs mt-1" style="color: #94a3b8;">
                                                 ${email.timestamp}
                                             </p>
@@ -1221,8 +1263,16 @@ ${currentDraft}`;
                         jsonOutput: false
                     };
 
-                    if (contextId) {
-                        payload.contextId = contextId;
+                    const activeEmail = this.selectedEmail;
+                    const derivedContextId = contextId || (activeEmail && activeEmail.contextId);
+                    if (derivedContextId) {
+                        payload.contextId = derivedContextId;
+                    }
+                    if (activeEmail) {
+                        const contextString = buildEmailContextString(activeEmail);
+                        if (contextString && contextString.trim().length > 0) {
+                            payload.emailContext = contextString;
+                        }
                     }
 
                     if (this.supportedCommands.has(command)) {
