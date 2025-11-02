@@ -7,287 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ComposerAI - Email Client</title>
     <th:block th:fragment="extraHead">
-        <style>
-            /* Email Client Specific Styles */
-            .email-client-container {
-                display: flex;
-                height: 100vh;
-                overflow: hidden;
-                background: linear-gradient(180deg, #f8fafc 0%, #f5f5f7 100%);
-                position: relative;
-            }
-
-            .sidebar {
-                width: 16rem;
-                background: rgba(255, 255, 255, 0.75);
-                border-right: 1px solid rgba(226, 232, 240, 0.8);
-                -webkit-backdrop-filter: blur(12px);
-                backdrop-filter: blur(12px);
-                display: flex;
-                flex-direction: column;
-                transition: transform 0.3s ease;
-                position: relative;
-            }
-
-            .sidebar-header {
-                padding-top: 1.25rem;
-            }
-
-            .sidebar.closed {
-                transform: translateX(-100%);
-                position: absolute;
-                left: 0;
-                top: 0;
-                bottom: 0;
-                pointer-events: none;
-                z-index: 30;
-            }
-
-            .email-list {
-                width: 24rem;
-                border-right: 1px solid rgba(226, 232, 240, 0.8);
-                background: rgba(255, 255, 255, 0.9);
-                display: flex;
-                flex-direction: column;
-            }
-
-            .email-list-toolbar {
-                position: relative;
-                align-items: center;
-            }
-
-            .email-list-header {
-                padding-top: 0.75rem;
-                padding-bottom: 0.75rem;
-            }
-
-            #menuToggle {
-                transition: margin-left 0.3s ease;
-                flex-shrink: 0;
-            }
-
-            .email-client-container.sidebar-open #menuToggle {
-                margin-left: -0.5rem;
-            }
-
-            .email-client-container.sidebar-collapsed #menuToggle {
-                margin-left: 0;
-            }
-
-            .email-content {
-                flex: 1;
-                background: rgba(255, 255, 255, 0.95);
-                display: flex;
-                flex-direction: column;
-            }
-
-            .email-item {
-                padding: 1rem;
-                border-bottom: 1px solid rgba(226, 232, 240, 0.6);
-                cursor: pointer;
-                transition: background-color 0.15s ease;
-            }
-
-            .email-item:hover {
-                background: rgba(241, 245, 249, 0.7);
-            }
-
-            .email-item.selected {
-                background: rgba(226, 232, 240, 0.5);
-            }
-
-            .email-item.unread {
-                background: rgba(59, 130, 246, 0.03);
-            }
-
-            .nav-item {
-                width: 100%;
-                display: flex;
-                align-items: center;
-                gap: 0.75rem;
-                padding: 0.75rem;
-                border-radius: 0.75rem;
-                transition: background-color 0.15s ease;
-                text-align: left;
-                border: none;
-                background: transparent;
-                cursor: pointer;
-                color: #64748b;
-                font-size: 0.95rem;
-            }
-
-            .nav-item:hover {
-                background: rgba(226, 232, 240, 0.4);
-                color: #0f172a;
-            }
-
-            .badge {
-                margin-left: auto;
-                padding: 0.15rem 0.5rem;
-                border-radius: 9999px;
-                background: rgba(226, 232, 240, 0.6);
-                font-size: 0.75rem;
-                font-weight: 600;
-                color: #475569;
-            }
-
-            .compose-window {
-                position: fixed;
-                bottom: 0;
-                right: 1.5rem;
-                width: 90%;
-                max-width: 560px;
-                background: rgba(255, 255, 255, 0.98);
-                border-radius: 20px 20px 0 0;
-                border: 1px solid rgba(226, 232, 240, 0.8);
-                border-bottom: none;
-                box-shadow: 0 -10px 40px -10px rgba(15, 23, 42, 0.25);
-                overflow: hidden;
-                z-index: 1000;
-                display: none;
-                flex-direction: column;
-                max-height: 600px;
-                animation: slideUp 0.2s ease-out;
-            }
-
-            .compose-window.active {
-                display: flex;
-            }
-
-            .compose-window.minimized {
-                max-height: 48px;
-            }
-
-            @keyframes slideUp {
-                from {
-                    opacity: 0;
-                    transform: translateY(20px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-
-            .compose-windows-container {
-                position: fixed;
-                bottom: 0;
-                right: 0;
-                left: 0;
-                pointer-events: none;
-                z-index: 1000;
-            }
-
-            .compose-windows-container > * {
-                pointer-events: auto;
-            }
-
-            .ai-command-btn {
-                display: inline-flex;
-                align-items: center;
-                gap: 0.5rem;
-                padding: 0.5rem 0.85rem;
-                border-radius: 0.75rem;
-                border: 1px solid rgba(226, 232, 240, 0.8);
-                background: rgba(255, 255, 255, 0.9);
-                font-size: 0.875rem;
-                font-weight: 500;
-                color: #475569;
-                cursor: pointer;
-                transition: all 0.15s ease;
-            }
-
-            .ai-command-btn:hover {
-                background: rgba(248, 250, 252, 1);
-                border-color: rgba(148, 163, 184, 0.5);
-                color: #0f172a;
-            }
-
-            .ai-command-btn svg {
-                width: 1rem;
-                height: 1rem;
-            }
-
-            .avatar {
-                width: 2.5rem;
-                height: 2.5rem;
-                border-radius: 50%;
-                object-fit: cover;
-            }
-
-            .avatar-lg {
-                width: 3rem;
-                height: 3rem;
-            }
-
-            .empty-state {
-                flex: 1;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: #94a3b8;
-                text-align: center;
-            }
-
-            .reply-section {
-                padding: 1rem;
-                border-top: 1px solid rgba(226, 232, 240, 0.8);
-                background: rgba(255, 255, 255, 0.98);
-                -webkit-backdrop-filter: blur(8px);
-                backdrop-filter: blur(8px);
-            }
-
-
-            .icon {
-                width: 1.25rem;
-                height: 1.25rem;
-                stroke-width: 1.8;
-            }
-
-            .icon-sm {
-                width: 1rem;
-                height: 1rem;
-            }
-
-            .label-badge {
-                display: inline-block;
-                padding: 0.15rem 0.5rem;
-                border-radius: 0.5rem;
-                background: rgba(226, 232, 240, 0.5);
-                font-size: 0.7rem;
-                font-weight: 600;
-                color: #475569;
-            }
-
-            .star-icon {
-                fill: none;
-                transition: all 0.15s ease;
-            }
-
-            .star-icon.starred {
-                fill: #facc15;
-                stroke: #facc15;
-            }
-
-            @media (max-width: 768px) {
-                .sidebar {
-                    position: absolute;
-                    left: 0;
-                    top: 0;
-                    height: 100%;
-                    z-index: 100;
-                }
-                
-                .email-list {
-                    width: 20rem;
-                }
-
-                .email-client-container.sidebar-open #menuToggle {
-                    margin-left: 0;
-                    transform: none;
-                }
-            }
-        </style>
+        <link rel="stylesheet" href="/css/email-client.css">
     </th:block>
 </head>
 
@@ -302,12 +22,12 @@
                     </svg>
                     <h1 class="text-xl font-bold" style="color: #0f172a;">ComposerAI</h1>
                 </div>
-                <button id="composeBtn" class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold transition" 
+                <button id="composeBtn" class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold transition"
                     style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; border: none; cursor: pointer;"
                     onmouseover="this.style.background='linear-gradient(135deg, #1e293b 0%, #334155 100%)'"
                     onmouseout="this.style.background='linear-gradient(135deg, #0f172a 0%, #1e293b 100%)'">
                     <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path d="M9.813 3.063l.75 3.75m3.937-3.75l-.75 3.75m-6 .937l3.75.75m9.375 0l-3.75.75m-9.375 6l3.75-.75m9.375 0l-3.75-.75m-6 5.063l.75-3.75m3.937 3.75l-.75-3.75M12 18.75a6.75 6.75 0 100-13.5 6.75 6.75 0 000 13.5z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                     Compose
                 </button>
@@ -641,7 +361,7 @@
                             </div>
                             <div class="compose-body p-4 space-y-3 flex-1 overflow-y-auto">
                                 ${!isReply ? '<input type="text" class="compose-to w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2" placeholder="To" style="border-color: rgba(226, 232, 240, 0.8); font-size: 0.875rem;">' : ''}
-                                ${!isReply ? '<input type="text" class="compose-subject w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2" placeholder="Subject" style="border-color: rgba(226, 232, 240, 0.8); font-size: 0.875rem;">' : ''}
+                                <input type="text" class="compose-subject w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2" placeholder="Subject" style="border-color: rgba(226, 232, 240, 0.8); font-size: 0.875rem;">
                                 <div class="flex gap-2 flex-wrap">
                                     <button class="ai-command-btn" onclick="handleComposeAI('${windowId}', 'draft')">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -660,6 +380,14 @@
                                     placeholder="Type your ${isReply ? 'reply' : 'message'}..." 
                                     rows="${isReply ? 6 : 8}" 
                                     style="border-color: rgba(226, 232, 240, 0.8); font-size: 0.875rem;"></textarea>
+                                <div class="compose-attachments hidden bg-white/70 border rounded-lg px-3 py-2 text-xs" 
+                                    style="border-color: rgba(226, 232, 240, 0.6); color: #475569;">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="uppercase font-semibold tracking-wide" style="letter-spacing: 0.08em; font-size: 0.65rem;">Attachments</span>
+                                        <span class="compose-attachments-count" style="font-size: 0.65rem;"></span>
+                                    </div>
+                                    <ul class="compose-attachments-list space-y-1"></ul>
+                                </div>
                             </div>
                             <div class="compose-footer p-3 border-t flex gap-2" style="border-color: rgba(226, 232, 240, 0.6); background: rgba(248, 250, 252, 0.5);">
                                 <button class="send-btn flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition text-sm" 
@@ -671,8 +399,8 @@
                                     </svg>
                                     Send
                                 </button>
-                                <button class="attach-btn flex items-center gap-2 px-3 py-2 rounded-lg font-semibold border transition text-sm" 
-                                    style="background: white; border-color: rgba(226, 232, 240, 0.8); color: #475569; cursor: pointer;"
+                                <label class="attach-btn flex items-center gap-2 px-3 py-2 rounded-lg font-semibold border transition text-sm cursor-pointer" 
+                                    style="background: white; border-color: rgba(226, 232, 240, 0.8); color: #475569;"
                                     onmouseover="this.style.background='rgba(248, 250, 252, 1)'"
                                     onmouseout="this.style.background='white'"
                                     title="Attach file">
@@ -680,7 +408,8 @@
                                         <path d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" stroke-linecap="round" stroke-linejoin="round"/>
                                     </svg>
                                     Attach
-                                </button>
+                                    <input type="file" class="compose-attachment-input sr-only" accept=".eml,.msg,.txt,.pdf,.doc,.docx,.ppt,.pptx,.html,.md" />
+                                </label>
                             </div>
                         </div>
                     `;
@@ -694,7 +423,9 @@
                         element: windowElement,
                         minimized: false,
                         isReply: isReply,
-                        relatedEmailId: options.emailId || null
+                        relatedEmailId: options.emailId || null,
+                        attachments: [],
+                        attachmentCounter: 0
                     });
                     
                     // Ensure default anchored position
@@ -723,6 +454,7 @@
                     if (!windowElement) return;
                     
                     const window = this.composeWindows.find(w => w.id === windowId);
+                    const attachmentsList = windowElement.querySelector('.compose-attachments-list');
                     
                     // Close button
                     windowElement.querySelector('.close-btn').addEventListener('click', (e) => {
@@ -742,6 +474,37 @@
                         this.sendFromComposeWindow(windowId);
                     });
                     
+                    // Attachment remove delegation
+                    if (attachmentsList) {
+                        attachmentsList.addEventListener('click', (e) => {
+                            const removeButton = e.target.closest('[data-remove-attachment]');
+                            if (removeButton) {
+                                e.preventDefault();
+                                const attachmentId = removeButton.getAttribute('data-remove-attachment');
+                                this.removeAttachmentFromWindow(windowId, attachmentId);
+                            }
+                        });
+                    }
+
+                    // Attach file button handler via shared FileUploadHandler abstraction
+                    const attachButton = windowElement.querySelector('.attach-btn');
+                    const attachmentInput = windowElement.querySelector('.compose-attachment-input');
+                    if (attachButton && attachmentInput && window.ComposerAI?.FileUploadHandler) {
+                        try {
+                            new window.ComposerAI.FileUploadHandler({
+                                dropArea: attachButton,
+                                fileInput: attachmentInput,
+                                onFileSelected: (file) => {
+                                    attachmentInput.value = '';
+                                    this.handleComposeAttachment(windowId, file);
+                                },
+                                validExtensions: ['.eml', '.msg', '.txt', '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.html', '.md']
+                            });
+                        } catch (error) {
+                            console.error('Failed to initialize attachment handler for compose window', error);
+                        }
+                    }
+
                     // Cmd/Ctrl+Enter to send
                     windowElement.querySelector('.compose-message').addEventListener('keydown', (e) => {
                         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -751,6 +514,106 @@
                     });
                     
                     // Drag support intentionally disabled
+                }
+
+                handleComposeAttachment(windowId, file) {
+                    if (!file) {
+                        return;
+                    }
+                    try {
+                        this.addAttachmentToWindow(windowId, file);
+                    } catch (error) {
+                        console.error('Failed to attach file', error);
+                        alert((error && error.message) ? error.message : 'Unable to attach file.');
+                    }
+                }
+
+                addAttachmentToWindow(windowId, file) {
+                    const composeWindow = this.composeWindows.find(w => w.id === windowId);
+                    if (!composeWindow) {
+                        throw new Error('Compose window not found.');
+                    }
+                    if (!composeWindow.attachments) {
+                        composeWindow.attachments = [];
+                    }
+                    composeWindow.attachmentCounter = (composeWindow.attachmentCounter || 0) + 1;
+                    const attachmentId = `${windowId}-attachment-${composeWindow.attachmentCounter}`;
+                    composeWindow.attachments.push({
+                        id: attachmentId,
+                        file,
+                        name: (file && file.name) ? file.name : 'Attachment',
+                        size: (file && typeof file.size === 'number') ? file.size : 0
+                    });
+                    this.renderComposeAttachments(windowId);
+                }
+
+                renderComposeAttachments(windowId) {
+                    const composeWindow = this.composeWindows.find(w => w.id === windowId);
+                    if (!composeWindow) {
+                        return;
+                    }
+                    const windowElement = document.getElementById(windowId);
+                    if (!windowElement) {
+                        return;
+                    }
+                    const container = windowElement.querySelector('.compose-attachments');
+                    const list = windowElement.querySelector('.compose-attachments-list');
+                    const countLabel = windowElement.querySelector('.compose-attachments-count');
+                    if (!container || !list) {
+                        return;
+                    }
+
+                    const attachments = composeWindow.attachments || [];
+                    if (attachments.length === 0) {
+                        container.classList.add('hidden');
+                        list.innerHTML = '';
+                        if (countLabel) {
+                            countLabel.textContent = '';
+                        }
+                        return;
+                    }
+
+                    const markup = attachments.map((attachment) => {
+                        const safeName = window.ComposerAI?.escapeHtml
+                            ? window.ComposerAI.escapeHtml(attachment.name || 'Attachment')
+                            : (attachment.name || 'Attachment');
+                        const sizeLabel = (typeof attachment.size === 'number' && window.ComposerAI?.formatFileSize)
+                            ? window.ComposerAI.formatFileSize(attachment.size)
+                            : '';
+                        return `
+                            <li class="compose-attachment-item flex items-center justify-between gap-3 rounded-lg border border-slate-200/80 bg-white/90 px-3 py-2 shadow-sm">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <svg class="icon-sm flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="color: #0f172a;">
+                                        <path d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32" stroke-linecap="round" stroke-linejoin="round"></path>
+                                    </svg>
+                                    <div class="min-w-0">
+                                        <p class="truncate font-semibold" style="font-size: 0.75rem;">${safeName}</p>
+                                        ${sizeLabel ? `<p class="text-slate-500" style="font-size: 0.65rem;">${sizeLabel}</p>` : ''}
+                                    </div>
+                                </div>
+                                <button type="button" class="remove-attachment text-slate-500 hover:text-slate-800 transition" data-remove-attachment="${attachment.id}" title="Remove attachment">
+                                    <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                </button>
+                            </li>
+                        `;
+                    }).join('');
+
+                    list.innerHTML = markup;
+                    container.classList.remove('hidden');
+                    if (countLabel) {
+                        countLabel.textContent = `${attachments.length} file${attachments.length === 1 ? '' : 's'}`;
+                    }
+                }
+
+                removeAttachmentFromWindow(windowId, attachmentId) {
+                    const composeWindow = this.composeWindows.find(w => w.id === windowId);
+                    if (!composeWindow || !composeWindow.attachments) {
+                        return;
+                    }
+                    composeWindow.attachments = composeWindow.attachments.filter(att => att.id !== attachmentId);
+                    this.renderComposeAttachments(windowId);
                 }
 
                 closeComposeWindow(windowId) {
@@ -774,24 +637,34 @@
                 sendFromComposeWindow(windowId) {
                     const windowElement = document.getElementById(windowId);
                     if (!windowElement) return;
-                    
+
                     const window = this.composeWindows.find(w => w.id === windowId);
+                    if (!window) {
+                        console.warn('Compose window not found when attempting to send.', windowId);
+                        return;
+                    }
                     const message = windowElement.querySelector('.compose-message').value.trim();
-                    
+                    const subject = windowElement.querySelector('.compose-subject').value.trim();
+                    const attachments = Array.isArray(window.attachments)
+                        ? window.attachments.map(att => ({
+                            name: att.name,
+                            size: att.size
+                        }))
+                        : [];
+
                     if (window.isReply) {
-                        if (message) {
-                            console.log('Sending reply:', message);
+                        if (subject && message) {
+                            console.log('Sending reply:', { subject, message, attachments });
                             alert('Reply sent successfully!');
                             this.closeComposeWindow(windowId);
                         } else {
-                            alert('Please enter a message');
+                            alert('Please enter subject and message');
                         }
                     } else {
                         const to = windowElement.querySelector('.compose-to').value.trim();
-                        const subject = windowElement.querySelector('.compose-subject').value.trim();
-                        
+
                         if (to && subject && message) {
-                            console.log('Sending email:', { to, subject, message });
+                            console.log('Sending email:', { to, subject, message, attachments });
                             alert('Email sent successfully!');
                             this.closeComposeWindow(windowId);
                         } else {
@@ -818,21 +691,21 @@
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center justify-between mb-1">
                                         <span class="font-semibold truncate" style="color: ${email.read ? '#64748b' : '#0f172a'}; font-size: 0.875rem;">
-                                            ${this.escapeHtml(email.from)}
+                                            ${window.ComposerAI.escapeHtml(email.from)}
                                         </span>
                                         <span class="text-xs ml-2" style="color: #94a3b8; flex-shrink: 0;">
                                             ${email.timestamp}
                                         </span>
                                     </div>
                                     <p class="text-sm truncate mb-1" style="color: ${email.read ? '#64748b' : '#0f172a'}; font-weight: ${email.read ? '400' : '500'};">
-                                        ${this.escapeHtml(email.subject)}
+                                        ${window.ComposerAI.escapeHtml(email.subject)}
                                     </p>
                                     <p class="text-xs truncate" style="color: #94a3b8;">
-                                        ${this.escapeHtml(email.preview)}
+                                        ${window.ComposerAI.escapeHtml(email.preview)}
                                     </p>
                                     ${email.labels.length > 0 ? `
                                         <div class="flex gap-1 mt-2">
-                                            ${email.labels.map(label => `<span class="label-badge">${this.escapeHtml(label)}</span>`).join('')}
+                                            ${email.labels.map(label => `<span class="label-badge">${window.ComposerAI.escapeHtml(label)}</span>`).join('')}
                                         </div>
                                     ` : ''}
                                 </div>
@@ -881,17 +754,17 @@
                                         <img src="${email.avatar}" alt="${email.from}" class="avatar avatar-lg">
                                         <div>
                                             <h2 class="text-xl font-semibold mb-1" style="color: #0f172a;">
-                                                ${this.escapeHtml(email.subject)}
+                                                ${window.ComposerAI.escapeHtml(email.subject)}
                                             </h2>
                                             <div class="flex items-center gap-2 text-sm" style="color: #64748b;">
-                                                <span class="font-medium">${this.escapeHtml(email.from)}</span>
-                                                <span>&lt;${this.escapeHtml(email.fromEmail)}&gt;</span>
+                                                <span class="font-medium">${window.ComposerAI.escapeHtml(email.from)}</span>
+                                                <span>&lt;${window.ComposerAI.escapeHtml(email.fromEmail)}&gt;</span>
                                             </div>
                                             ${(email.to || email.toEmail) ? `
                                             <div class="flex items-center gap-2 text-xs mt-1" style="color: #94a3b8;">
                                                 <span>To:</span>
-                                                <span>${this.escapeHtml(email.to || 'Unknown recipient')}</span>
-                                                ${email.toEmail ? `<span>&lt;${this.escapeHtml(email.toEmail)}&gt;</span>` : ''}
+                                                <span>${window.ComposerAI.escapeHtml(email.to || 'Unknown recipient')}</span>
+                                                ${email.toEmail ? `<span>&lt;${window.ComposerAI.escapeHtml(email.toEmail)}&gt;</span>` : ''}
                                             </div>` : ''}
                                             <p class="text-xs mt-1" style="color: #94a3b8;">
                                                 ${email.timestamp}
@@ -975,7 +848,9 @@
                                 </div>
                             </div>
                             <div class="flex-1 p-6 overflow-y-auto">
-                                <div class="prose prose-sm max-w-none" data-role="email-body" style="color: #0f172a; line-height: 1.65; font-size: 0.95rem;">
+                                <div class="email-body-container" data-role="email-body-container" style="position: relative; contain: layout style paint; isolation: isolate; overflow: hidden;">
+                                    <div class="prose prose-sm max-w-none" data-role="email-body" style="color: #0f172a; line-height: 1.65; font-size: 0.95rem;">
+                                    </div>
                                 </div>
                             </div>
                             <div id="aiResponsePanel" class="border-t" style="border-color: rgba(226, 232, 240, 0.8); background: rgba(248, 250, 252, 0.65); padding: 1.5rem; display: none;">
@@ -992,18 +867,21 @@
                     `;
 
                     const bodyContainer = this.emailContent.querySelector('[data-role="email-body"]');
-                    if (bodyContainer) {
+                    const bodyContainerWrapper = this.emailContent.querySelector('[data-role="email-body-container"]');
+                    if (bodyContainer && bodyContainerWrapper) {
                         const applyProse = EMAIL_RENDER_MODE === (EMAIL_RENDER_MODES.MARKDOWN || 'MARKDOWN');
                         bodyContainer.classList.toggle('prose', applyProse);
                         bodyContainer.classList.toggle('prose-sm', applyProse);
 
                         if (email.contentHtml) {
-                            bodyContainer.style.whiteSpace = 'normal';
-                            bodyContainer.innerHTML = email.contentHtml;
+                            // Use sandboxed iframe for complete isolation
+                            EmailRenderer.renderInIframe(bodyContainerWrapper, email.contentHtml);
                         } else {
+                            // Safe plaintext rendering
+                            bodyContainer.style.whiteSpace = 'pre-wrap';
                             const fallbackText = email.contentText || email.content || '';
                             bodyContainer.textContent = fallbackText;
-                            bodyContainer.style.whiteSpace = 'pre-wrap';
+                            bodyContainer.style.display = 'block';
                         }
                     }
 
@@ -1120,6 +998,7 @@
                     }
 
                     const textarea = composeWindow.element.querySelector('.compose-message');
+                    const subjectInput = composeWindow.element.querySelector('.compose-subject');
                     if (!textarea) {
                         this.setAiResponseState({
                             status: 'error',
@@ -1129,7 +1008,11 @@
                         return;
                     }
 
-                    textarea.value = draftText;
+                    const parsed = this.parseSubjectAndBody(draftText);
+                    if (subjectInput && parsed.subject) {
+                        subjectInput.value = parsed.subject;
+                    }
+                    textarea.value = parsed.body;
                     textarea.focus();
                     textarea.setSelectionRange(textarea.value.length, textarea.value.length);
 
@@ -1148,19 +1031,28 @@
                     }
                     const windowElement = composeWindow.element;
                     const textarea = windowElement.querySelector('.compose-message');
+                    const subjectInput = windowElement.querySelector('.compose-subject');
                     if (!textarea) {
                         return;
                     }
 
                     const currentDraft = textarea.value.trim();
+                    const currentSubject = subjectInput ? subjectInput.value.trim() : '';
                     const instruction = this.buildComposeInstruction(command, currentDraft, composeWindow.isReply);
                     this.setComposeButtonsDisabled(windowElement, true);
 
                     try {
-                        const data = await this.callAiCommand(command, instruction, { contextId: this.selectedEmail?.contextId });
+                        const data = await this.callAiCommand(command, instruction, {
+                            contextId: this.selectedEmail?.contextId,
+                            subject: currentSubject
+                        });
                         const text = this.extractPlainTextFromResponse(data);
                         if (text) {
-                            textarea.value = text;
+                            const parsed = this.parseSubjectAndBody(text);
+                            if (subjectInput && parsed.subject) {
+                                subjectInput.value = parsed.subject;
+                            }
+                            textarea.value = parsed.body;
                         }
                     } catch (error) {
                         alert(`AI ${command} failed: ${error?.message || 'Unknown error'}`);
@@ -1261,7 +1153,7 @@ ${currentDraft}`;
                     }
                 }
 
-                async callAiCommand(command, instruction, { contextId } = {}) {
+                async callAiCommand(command, instruction, { contextId, subject } = {}) {
                     const payload = {
                         message: instruction && instruction.trim().length > 0 ? instruction.trim() : (this.commandDefaults[command] || 'Assist with the selected email.'),
                         conversationId: this.conversationId,
@@ -1284,6 +1176,10 @@ ${currentDraft}`;
 
                     if (this.supportedCommands.has(command)) {
                         payload.aiCommand = command;
+                    }
+
+                    if (subject && subject.trim().length > 0) {
+                        payload.subject = subject.trim();
                     }
 
                     const response = await fetch('/api/chat', {
@@ -1327,6 +1223,24 @@ ${currentDraft}`;
                     return '<div class="text-sm text-slate-500">No response received.</div>';
                 }
 
+                parseSubjectAndBody(text) {
+                    if (!text || text.trim().length === 0) {
+                        return { subject: '', body: '' };
+                    }
+
+                    const trimmed = text.trim();
+                    const subjectMatch = trimmed.match(/^Subject:\s*(.+?)$/m);
+
+                    if (subjectMatch) {
+                        const subject = subjectMatch[1].trim();
+                        const subjectEndIndex = trimmed.indexOf(subjectMatch[0]) + subjectMatch[0].length;
+                        const body = trimmed.substring(subjectEndIndex).replace(/^\s*\n+/, '').trim();
+                        return { subject, body };
+                    }
+
+                    return { subject: '', body: trimmed };
+                }
+
                 extractPlainTextFromResponse(data) {
                     if (!data) {
                         return '';
@@ -1342,11 +1256,6 @@ ${currentDraft}`;
                     return '';
                 }
 
-                escapeHtml(text) {
-                    const div = document.createElement('div');
-                    div.textContent = text;
-                    return div.innerHTML;
-                }
             }
 
             function handleAICommand(command) {
@@ -1365,6 +1274,8 @@ ${currentDraft}`;
                 window.emailClient = new EmailClient();
             });
         </script>
+        <!-- Load email renderer module after DOM is ready -->
+        <script src="/js/email-renderer.js"></script>
     </div>
 </body>
 
