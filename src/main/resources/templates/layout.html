@@ -118,7 +118,7 @@
                 headers['X-UI-Request'] = uiNonce;
             }
             
-            const response = await fetch('/api/parse-email', {
+            const response = await fetch('/api/qa/parse-email', {
                 method: 'POST',
                 headers: headers,
                 body: formData

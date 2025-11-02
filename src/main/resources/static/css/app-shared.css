@@ -6,12 +6,12 @@
  * - Keep selectors semantic and update comments when sharing new usage.
  */
 
-/* Global: normalize box-sizing across diagnostics and email-backend layouts */
+/* Global: normalize box-sizing across QA diagnostics and email file parser layouts */
 * {
     box-sizing: border-box;
 }
 
-/* Global: base typography and background for diagnostics & email-backend pages */
+/* Global: base typography and background for QA diagnostics & email file parser pages */
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     margin: 0;
@@ -20,12 +20,12 @@ body {
     line-height: 1.6;
 }
 
-/* Layout: primary container wrapper used in diagnostics and email-backend root cards */
+/* Layout: primary container wrapper used in QA diagnostics and email file parser root cards */
 /* Legacy container removed: Tailwind utilities now manage layout */
 
 /* Legacy header and button styles removed; replaced with Tailwind utilities */
 
-/* Forms: spacing for input groups used in diagnostics and email-backend forms */
+/* Forms: spacing for input groups used in QA diagnostics and email file parser forms */
 /* Legacy form and component styles removed; Tailwind utilities now handle UI */
 
 /* Chat: Streaming cursor animation */
