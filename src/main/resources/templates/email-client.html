@@ -397,6 +397,8 @@
 
         <script th:inline="javascript">
             const UI_NONCE = /*[[${uiNonce}]]*/ null;
+            const EMAIL_RENDER_MODES = /*[[${emailRenderModes}]]*/ {};
+            const EMAIL_RENDER_MODE = (/*[[${emailRenderMode}]]*/ 'HTML').toUpperCase();
             const EMAIL_MESSAGES = /*[[${emailMessages}]]*/ [];
 
             function deriveAvatarUrl(emailMessage) {
@@ -991,7 +993,12 @@
 
                     const bodyContainer = this.emailContent.querySelector('[data-role="email-body"]');
                     if (bodyContainer) {
+                        const applyProse = EMAIL_RENDER_MODE === (EMAIL_RENDER_MODES.MARKDOWN || 'MARKDOWN');
+                        bodyContainer.classList.toggle('prose', applyProse);
+                        bodyContainer.classList.toggle('prose-sm', applyProse);
+
                         if (email.contentHtml) {
+                            bodyContainer.style.whiteSpace = 'normal';
                             bodyContainer.innerHTML = email.contentHtml;
                         } else {
                             const fallbackText = email.contentText || email.content || '';
@@ -1362,4 +1369,3 @@ ${currentDraft}`;
 </body>
 
 </html>
-
