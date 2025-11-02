@@ -50,6 +50,10 @@ public class ChatRequest {
              message = "aiCommand must be one of: compose, draft, summarize, translate, tone")
     private String aiCommand;
 
+    // Optional: Email subject for compose/draft commands
+    @Size(max = 500, message = "subject cannot exceed 500 characters")
+    private String subject;
+
     // Custom constructor for common test case: message, conversationId, maxResults
     public ChatRequest(String message, String conversationId, int maxResults) {
         this.message = message;

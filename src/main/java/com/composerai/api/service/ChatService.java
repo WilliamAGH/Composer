@@ -111,7 +111,7 @@ public class ChatService {
         if (!StringUtils.isBlank(command)) {
             String template = aiCommandPromptProperties.promptFor(command).orElse(null);
             if (!StringUtils.isBlank(template)) {
-                return renderCommandTemplate(template, originalMessage);
+                return renderCommandTemplate(template, originalMessage, request.getSubject());
             }
         }
 
@@ -131,15 +131,22 @@ public class ChatService {
         return HtmlConverter.cleanupOutput(cleaned.trim(), true);
     }
 
-    private String renderCommandTemplate(String template, String instruction) {
+    private String renderCommandTemplate(String template, String instruction, String subject) {
         String safeInstruction = instruction == null ? "" : instruction.trim();
-        if (template.contains("{{instruction}}")) {
-            return template.replace("{{instruction}}", safeInstruction);
+        String safeSubject = subject == null ? "" : subject.trim();
+
+        String rendered = template;
+        if (rendered.contains("{{instruction}}")) {
+            rendered = rendered.replace("{{instruction}}", safeInstruction);
+        } else if (!StringUtils.isBlank(safeInstruction)) {
+            rendered = rendered + "\n\nAdditional direction:\n" + safeInstruction;
         }
-        if (StringUtils.isBlank(safeInstruction)) {
-            return template;
+
+        if (!StringUtils.isBlank(safeSubject)) {
+            rendered = rendered + "\n\nSubject: " + safeSubject;
         }
-        return template + "\n\nAdditional direction:\n" + safeInstruction;
+
+        return rendered;
     }
 
     /**

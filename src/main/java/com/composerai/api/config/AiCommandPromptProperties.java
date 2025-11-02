@@ -33,11 +33,11 @@ public class AiCommandPromptProperties {
 
     private static Map<String, Command> defaultPrompts() {
         Map<String, Command> defaults = new LinkedHashMap<>();
-        defaults.put("compose", new Command("Compose a professional reply using the email context above. Respect prior conversation tone and incorporate these instructions: {{instruction}}"));
-        defaults.put("draft", new Command("Draft an email response based on the email context above. Apply the following direction: {{instruction}}"));
+        defaults.put("compose", new Command("Compose a professional reply using the email context above. Respect prior conversation tone and incorporate these instructions: {{instruction}}\n\nProvide your response in this exact format:\nSubject: [your subject line]\n\n[email body]"));
+        defaults.put("draft", new Command("Draft an email response based on the email context above. Apply the following direction: {{instruction}}\n\nProvide your response in this exact format:\nSubject: [your subject line]\n\n[email body]"));
         defaults.put("summarize", new Command("Summarize the email content in the provided context. Highlight key points, decisions, and follow-up needs. Additional guidance: {{instruction}}"));
         defaults.put("translate", new Command("Translate the email context into the target language described here: {{instruction}}. Preserve formatting and keep proper nouns unchanged."));
-        defaults.put("tone", new Command("Rewrite the draft in the email context to match this tone guidance: {{instruction}}. Return only the adjusted email body."));
+        defaults.put("tone", new Command("Rewrite the draft in the email context to match this tone guidance: {{instruction}}. Provide your response in this exact format:\nSubject: [your subject line]\n\n[email body]"));
         return defaults;
     }
 
