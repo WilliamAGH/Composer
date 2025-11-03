@@ -155,6 +155,89 @@
     color: #475569;
 }
 
+/* ============================================================================
+   BUTTON UTILITIES
+   Shared button treatments to replace inline styles
+   ============================================================================ */
+
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: none;
+    border-radius: 0.75rem;
+    padding: 0.65rem 1rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #ffffff;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    cursor: pointer;
+    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.btn-primary:hover,
+.btn-primary:focus-visible {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    box-shadow: 0 15px 30px -15px rgba(15, 23, 42, 0.35);
+}
+
+.btn-primary:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.35), 0 15px 30px -15px rgba(15, 23, 42, 0.35);
+}
+
+.btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.75rem;
+    padding: 0.55rem 0.9rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #475569;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    background: rgba(255, 255, 255, 0.95);
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus-visible {
+    background: rgba(248, 250, 252, 1);
+    border-color: rgba(203, 213, 225, 0.9);
+    color: #0f172a;
+}
+
+.btn-secondary:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.35);
+}
+
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.btn-secondary.btn-icon {
+    padding: 0;
+    width: 2.25rem;
+    height: 2.25rem;
+}
+
+.glass-panel {
+    border-radius: 1rem;
+    border: 1px solid rgba(226, 232, 240, 0.7);
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.12);
+    padding: 1.25rem;
+    backdrop-filter: blur(10px);
+}
+
 
 /* ============================================================================
    COMPOSE WINDOW
