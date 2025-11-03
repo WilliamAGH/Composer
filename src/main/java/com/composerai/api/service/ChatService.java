@@ -361,15 +361,11 @@ public class ChatService {
         logger.warn("Context lookup failed for contextId={} (conversationId={})", contextId, conversationId);
         
         if (!StringUtils.isBlank(request.getEmailContext())) {
-            if (StringUtils.isBlank(contextId)) {
-                logger.warn("Dropping provided emailContext because contextId is missing (conversationId={})", conversationId);
-            } else {
-                logger.warn("Falling back to request payload emailContext for contextId={} (length={})", 
-                    contextId, request.getEmailContext().length());
-                return HtmlConverter.cleanupOutput(request.getEmailContext(), true);
-            }
+            logger.warn("Using emailContext from request payload (contextId={}, length={}, conversationId={})",
+                contextId, request.getEmailContext().length(), conversationId);
+            return HtmlConverter.cleanupOutput(request.getEmailContext(), true);
         } else if (!StringUtils.isBlank(contextId)) {
-            logger.error("No uploaded context found: contextId={}, no fallback payload (conversationId={})", 
+            logger.error("No uploaded context found: contextId={}, no fallback payload (conversationId={})",
                 contextId, conversationId);
         }
         return "";
