@@ -1,6 +1,7 @@
 package com.composerai.api.config;
 
 import com.composerai.api.config.AppProperties;
+import com.composerai.api.config.AiCommandPromptProperties;
 import com.composerai.api.dto.SseEventType;
 import com.composerai.api.service.ReasoningStreamAdapter;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -20,9 +21,12 @@ import java.util.stream.Collectors;
 public class GlobalModelAttributes {
 
     private final AppProperties appProperties;
+    private final AiCommandPromptProperties aiCommandPromptProperties;
 
-    public GlobalModelAttributes(AppProperties appProperties) {
+    public GlobalModelAttributes(AppProperties appProperties,
+                                 AiCommandPromptProperties aiCommandPromptProperties) {
         this.appProperties = appProperties;
+        this.aiCommandPromptProperties = aiCommandPromptProperties;
     }
 
     /**
@@ -69,5 +73,15 @@ public class GlobalModelAttributes {
         AppProperties.EmailRendering rendering = appProperties.getEmailRendering();
         AppProperties.EmailRenderMode mode = rendering != null ? rendering.getMode() : null;
         return mode != null ? mode.name() : AppProperties.EmailRenderMode.HTML.name();
+    }
+
+    @ModelAttribute("aiCommandPromptTemplates")
+    public Map<String, String> aiCommandPromptTemplates() {
+        return aiCommandPromptProperties.promptTemplates();
+    }
+
+    @ModelAttribute("aiCommandDefaultInstructions")
+    public Map<String, String> aiCommandDefaultInstructions() {
+        return aiCommandPromptProperties.defaultInstructions();
     }
 }
