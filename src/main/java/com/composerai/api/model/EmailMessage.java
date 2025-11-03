@@ -14,6 +14,9 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class EmailMessage {
 
+    private static final String FALLBACK_RECIPIENT_EMAIL = "user@example.com";
+    private static final String FALLBACK_RECIPIENT_NAME = "InboxAI User";
+
     private final String id;
     private final String contextId;
     private final String senderName;
@@ -41,10 +44,18 @@ public class EmailMessage {
     protected EmailMessage(BuilderBase<?> builder) {
         this.id = builder.id;
         this.contextId = builder.contextId;
-        this.senderEmail = normalize(builder.senderEmail);
+        String normalizedSenderEmail = normalize(builder.senderEmail);
+        this.senderEmail = normalizedSenderEmail;
         this.senderName = defaultIfBlank(builder.senderName, this.senderEmail);
-        this.recipientEmail = normalize(builder.recipientEmail);
-        this.recipientName = defaultIfBlank(builder.recipientName, this.recipientEmail);
+
+        String normalizedRecipientEmail = normalize(builder.recipientEmail);
+        String effectiveRecipientName = defaultIfBlank(builder.recipientName, normalizedRecipientEmail);
+        if (isFallbackRecipient(effectiveRecipientName, normalizedRecipientEmail)) {
+            normalizedRecipientEmail = null;
+            effectiveRecipientName = null;
+        }
+        this.recipientEmail = normalizedRecipientEmail;
+        this.recipientName = effectiveRecipientName;
         this.subject = defaultIfBlank(builder.subject, "No subject");
         String rawBody = defaultIfBlank(builder.emailBodyRaw, "");
         this.emailBodyRaw = rawBody;
@@ -465,5 +476,15 @@ public class EmailMessage {
         }
         String trimmed = candidate.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static boolean isFallbackRecipient(String name, String email) {
+        if (email == null) {
+            return false;
+        }
+        if (!FALLBACK_RECIPIENT_EMAIL.equalsIgnoreCase(email)) {
+            return false;
+        }
+        return name == null || name.isBlank() || FALLBACK_RECIPIENT_NAME.equalsIgnoreCase(name);
     }
 }
