@@ -122,6 +122,9 @@ public final class EmailHtmlSanitizer {
      * Allows common email formatting while blocking dangerous elements.
      */
     private static Safelist buildEmailDisplaySafelist() {
+        // Start with relaxed() which includes: b, blockquote, br, caption, cite, code, col, colgroup, dd, div, dl, dt,
+        // em, h1-h6, i, img, li, ol, p, pre, q, small, span, strike, strong, sub, sup, table, tbody, td, tfoot, th,
+        // thead, tr, u, ul
         return Safelist.relaxed()
             // Allow data URIs for inline images (common in emails)
             .addProtocols("img", "src", "http", "https", "data")
@@ -130,10 +133,10 @@ public final class EmailHtmlSanitizer {
             .addAttributes("table", "border", "cellpadding", "cellspacing", "style", "width")
             .addAttributes("td", "colspan", "rowspan", "style", "width")
             .addAttributes("th", "colspan", "rowspan", "style", "width")
-            .addAttributes("div", "style", "class")
-            .addAttributes("span", "style", "class")
-            .addAttributes("p", "style", "class")
+            .addAttributes("div", "style", "class", "id")
+            .addAttributes("span", "style", "class", "id")
+            .addAttributes("p", "style", "class", "id")
             .addAttributes("a", "style", "class", "href", "title", "rel", "target")
-            .addAttributes(":all", "class");
+            .addAttributes(":all", "class", "id");
     }
 }

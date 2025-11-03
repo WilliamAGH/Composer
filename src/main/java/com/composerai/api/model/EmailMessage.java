@@ -464,10 +464,6 @@ public class EmailMessage {
             return null;
         }
         String trimmed = candidate.trim();
-        if (trimmed.isEmpty()) {
-            return null;
-        }
-        // Sanitize HTML for safe display (prevents XSS and layout breaks)
-        return com.composerai.api.service.email.EmailHtmlSanitizer.sanitize(trimmed);
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

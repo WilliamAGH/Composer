@@ -1,0 +1,87 @@
+<th:block th:fragment="compose-window-template">
+    <template id="composeWindowTemplate">
+        <div class="compose-window" data-compose-window>
+            <div class="compose-header p-3 border-b flex items-center justify-between"
+                 style="border-color: rgba(226, 232, 240, 0.6); background: rgba(248, 250, 252, 0.95);">
+                <div class="flex items-center gap-2" data-role="header-title">
+                    <svg class="icon-sm text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+                              stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <span class="text-sm font-semibold text-slate-600" data-role="header-label">New Message</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" class="btn-icon h-8 w-8 text-slate-400 hover:text-slate-600"
+                            data-action="minimize" aria-label="Minimize compose window">
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M6 12h12" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    </button>
+                    <button type="button" class="btn-icon h-8 w-8 text-slate-400 hover:text-slate-600"
+                            data-action="close" aria-label="Close compose window">
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="compose-body p-4 space-y-3 flex-1 overflow-y-auto">
+                <div class="compose-to-wrapper" data-role="to-row">
+                    <input type="text" data-role="input-to"
+                           class="compose-to w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-200"
+                           placeholder="To" style="border-color: rgba(226, 232, 240, 0.8); font-size: 0.875rem;" />
+                </div>
+                <input type="text" data-role="input-subject"
+                       class="compose-subject w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-200"
+                       placeholder="Subject" style="border-color: rgba(226, 232, 240, 0.8); font-size: 0.875rem;" />
+                <div class="flex gap-2 flex-wrap" data-role="ai-actions">
+                    <button type="button" class="ai-command-btn btn-secondary" data-ai-command="draft">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-4 w-4">
+                            <path d="M9.813 3.063l.75 3.75m3.937-3.75l-.75 3.75m-6 .937l3.75.75m9.375 0l-3.75.75m-9.375 6l3.75-.75m9.375 0l-3.75-.75m-6 5.063l.75-3.75m3.937 3.75l-.75-3.75M12 18.75a6.75 6.75 0 100-13.5 6.75 6.75 0 000 13.5z"
+                                  stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <span>AI Compose</span>
+                    </button>
+                    <button type="button" class="ai-command-btn btn-secondary" data-ai-command="tone">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-4 w-4">
+                            <path d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"
+                                  stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <span>Adjust Tone</span>
+                    </button>
+                </div>
+                <textarea data-role="input-message"
+                          class="compose-message w-full px-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-200 resize-none"
+                          rows="8" placeholder="Type your message..."
+                          style="border-color: rgba(226, 232, 240, 0.8); font-size: 0.875rem;"></textarea>
+                <div class="compose-attachments hidden bg-white/70 border rounded-lg px-3 py-2 text-xs"
+                     data-role="attachments"
+                     style="border-color: rgba(226, 232, 240, 0.6); color: #475569;">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="uppercase font-semibold tracking-wide" style="letter-spacing: 0.08em; font-size: 0.65rem;">Attachments</span>
+                        <span class="compose-attachments-count" data-role="attachments-count" style="font-size: 0.65rem;"></span>
+                    </div>
+                    <ul class="compose-attachments-list space-y-1" data-role="attachments-list"></ul>
+                </div>
+            </div>
+            <div class="compose-footer p-3 border-t flex gap-2"
+                 style="border-color: rgba(226, 232, 240, 0.6); background: rgba(248, 250, 252, 0.5);">
+                <button type="button" class="btn-primary send-btn" data-action="send">
+                    <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <span>Send</span>
+                </button>
+                <label class="btn-secondary attach-btn" data-role="attach-button">
+                    <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13"
+                              stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <span>Attach</span>
+                    <input type="file" class="sr-only" data-role="input-attachment"
+                           accept=".eml,.msg,.txt,.pdf,.doc,.docx,.ppt,.pptx,.html,.md" />
+                </label>
+            </div>
+        </div>
+    </template>
+</th:block>
