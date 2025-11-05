@@ -363,11 +363,11 @@ public class ChatService {
         if (!StringUtils.isBlank(request.getEmailContext())) {
             logger.warn("Using emailContext from request payload (contextId={}, length={}, conversationId={})",
                 contextId, request.getEmailContext().length(), conversationId);
-            return HtmlConverter.cleanupOutput(request.getEmailContext(), true);
-        } else if (!StringUtils.isBlank(contextId)) {
+            // Don't suppress utility text - frontend already built clean context
+            return HtmlConverter.cleanupOutput(request.getEmailContext(), false);
+        }
             logger.error("No uploaded context found: contextId={}, no fallback payload (conversationId={})",
                 contextId, conversationId);
-        }
         return "";
     }
 
