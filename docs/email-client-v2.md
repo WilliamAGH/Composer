@@ -22,12 +22,12 @@ Email safety model
 - Remote images: default behavior relies on sanitizer + CSP; optional “display images” toggle can be added to widen img-src or hydrate lazy images.
 
 Local development
-- Backend only: `make run` (Spring serves /email-client-v2; requires a prior frontend build).
-- Frontend dev (recommended): `make fe-dev` (Vite on :5173, proxies /api to Spring on :8080). The dev index.html provides minimal bootstrap and Tailwind.
+- Spring only (serve built assets): `make build-java` (after a Vite build) and `make run` then open `/email-client-v2`.
+- Frontend dev (recommended): `make fe-dev` (Vite on :5173, proxies /api to Spring). Keep Spring running with `make run` for APIs.
 
 Build and deploy
-- Build frontend: `make fe-build` → emits `/static/app/email-client/email-client.js`.
-- Build all: `make build-all` → builds Svelte bundle then Maven package.
+- Single entry: `make build` → builds Vite bundle then packages the Spring Boot JAR.
+- Sub-builds: `make build-vite` (frontend only) and `make build-java` (backend only).
 - Production JAR serves the Svelte assets directly from `/app/email-client/`.
 
 File map

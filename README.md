@@ -29,18 +29,18 @@ Templates accept the `{{instruction}}` placeholder, which is replaced with the u
 
 ## Email Rendering & Isolation
 
-- All `EmailMessage.emailBodyHtml` values are sanitized server-side via `EmailHtmlSanitizer` before they ever reach Thymeleaf or the browser. When the sanitizer strips everything, the system gracefully falls back to Markdown/Plaintext bodies based on `RENDER_EMAILS_WITH`.
-- The `/email-client` UI now renders sanitized HTML inside a sandboxed iframe with its own scroll container, so malicious styles, scripts, or layout resets cannot escape or restyle the host page.
-- Sandboxing is always on in HTML mode; the render-mode toggle only decides whether we attempt to show original HTML or Markdown-derived HTML after sanitization.
+- All `EmailMessage.emailBodyHtml` values are sanitized server-side via `EmailHtmlSanitizer`.
+- The Svelte client at `/email-client-v2` renders sanitized HTML inside a sandboxed iframe (scripts disabled, same-origin enabled for sizing, inner scrollbars suppressed). If no HTML remains, it falls back to Markdown text.
+- The legacy `/email-client` page remains available during rollout.
 
 ## Technology Stack
 
-- **Runtime**: Java 21 (OpenJDK build) running on Spring Boot 3.3.x
-- **Build**: Maven 3.9+, Spring Boot Maven Plugin
-- **Web Layer**: Spring MVC, Jakarta Validation, Thymeleaf templates
-- **Frontend Styling**: Tailwind CSS via CDN with soft gradients, translucent panels, and shadowed cards for a polished, product-grade aesthetic
-- **Integrations**: OpenAI Java SDK (official, `com.openai:openai-java`—see `pom.xml` for version), Qdrant gRPC client, Flexmark, JSoup, Jakarta Mail
-- **Containerization**: Multi-stage Docker build based on OpenJDK 21
+- **Runtime**: Java 21 (Spring Boot 3.3.x)
+- **Frontend**: Svelte + Vite (assets emitted under `src/main/resources/static/app/email-client/`), Tailwind utilities; lucide icons
+- **Server UI**: Thymeleaf host templates for bootstrapping and CSP/nonce injection
+- **Build**: `make build` (Vite → Maven)
+- **Integrations**: OpenAI Java SDK, Qdrant, Flexmark, JSoup, Jakarta Mail
+- **Containers**: Multi-stage Docker build
 
 ## Requirements
 
@@ -180,12 +180,14 @@ mvn spring-boot:run -Dspring-boot.run.profiles=local
 
 Helpful Makefile targets:
 
-- `make run` – `SPRING_PROFILES_ACTIVE=local mvn spring-boot:run`
-- `make build` – Package JAR with tests skipped
+- `make run` – Run Spring Boot locally (profile=local)
+- `make build` – Build frontend (Vite) then backend (Maven) into a single JAR
+- `make build-vite` – Build only the Svelte bundle into `src/main/resources/static/app/email-client/`
+- `make build-java` – Build only the Spring Boot JAR
+- `make fe-dev` – Start Vite dev server with API proxy
 - `make test` – Run the full Maven test suite (override with `MAVEN_TEST_FLAGS="-DskipITs"` etc.)
 - `make docker-build` – Build `composerai-api:local`
 - `make docker-run-local` – Run container with local profile variables
-- `make deps-refresh` – Purge cached OpenAI SDK artifacts and rebuild to pull fresh dependencies
 
 ## Docker Usage
 
