@@ -1,20 +1,23 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { X } from 'lucide-svelte';
-  import { isMobile } from './viewport';
-  
+  import { isMobile, isTablet, viewport } from './viewport';
+
   export let open = true;
   export let title = 'AI Summary';
   export let html = '';
 
   const dispatch = createEventDispatcher();
   $: mobile = $isMobile;
+  $: tablet = $isTablet;
+  $: viewportType = $viewport;
 
   function close() { dispatch('close'); }
 </script>
 
 {#if open}
-<div class="w-full border-t border-slate-200 bg-white/95 flex flex-col" style="height: 50vh; min-height: 300px; max-height: 600px;">
+<div class="w-full border-t border-slate-200 bg-white/95 flex flex-col"
+     style="height: {mobile ? '40vh' : tablet ? '45vh' : '50vh'}; min-height: {mobile ? '250px' : '300px'}; max-height: {mobile ? '400px' : tablet ? '500px' : '600px'};">
   <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50/70">
     <div class="text-base font-semibold text-slate-900">{title}</div>
     <button type="button" class="h-8 w-8 grid place-items-center text-slate-500 hover:text-slate-800" on:click={close} title="Close">

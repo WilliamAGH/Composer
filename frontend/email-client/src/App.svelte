@@ -3,8 +3,8 @@
   import EmailIframe from './lib/EmailIframe.svelte';
   import ComposeWindow from './lib/ComposeWindow.svelte';
   import AISummaryPanel from './lib/AISummaryPanel.svelte';
-  import { isMobile } from './lib/viewport';
-import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, Archive, Trash2, Reply, Forward, ArrowLeft } from 'lucide-svelte';
+  import { isMobile, isTablet, isDesktop, isWide, viewport } from './lib/viewport';
+import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, Archive, Trash2, Reply, Forward, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-svelte';
     export let bootstrap = {};
 
   const FALLBACK_COMMAND_TITLES = {
@@ -26,7 +26,12 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
 
   // Viewport responsive
   $: mobile = $isMobile;
+  $: tablet = $isTablet;
+  $: desktop = $isDesktop;
+  $: wide = $isWide;
+  $: viewportType = $viewport;
   let showDrawer = false;
+  let showEmailList = true; // For tablet view toggle
 
   // AI summary panel
   let aiOpen = false;
@@ -74,7 +79,8 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
     return normalized.length <= 180 ? normalized : `${normalized.slice(0,177)}...`;
   }
 
-  $: if (!mobile && !selected && filtered.length) selected = filtered[0];
+  // Auto-select first email on larger screens when none selected
+  $: if ((tablet || desktop || wide) && !selected && filtered.length) selected = filtered[0];
 
   function selectEmail(e) { selected = e; selected.read = true; }
   function toggleSidebar() { sidebarOpen = !sidebarOpen; }
@@ -150,8 +156,29 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
   }
 
   // ---------- AI integration (parity with v1) ----------
+  /**
+   * Build email context string for AI commands.
+   *
+   * CONTEXT FLOW:
+   * 1. Backend HtmlConverter processes email HTML → cleansed markdown (emailBodyTransformedMarkdown)
+   * 2. Frontend receives as contentMarkdown field
+   * 3. This function returns the pre-processed markdown directly
+   * 4. Backend uses this without re-processing when emailContext is provided
+   *
+   * This maintains the integrity of the Java backend's context processing chain.
+   */
   function buildEmailContextString(email) {
     if (!email) return '';
+
+    // Prefer the pre-processed markdown from backend (already cleansed by HtmlConverter)
+    // This maintains the chain of context from Java's HtmlConverter processing
+    if (email.contentMarkdown && email.contentMarkdown.trim()) {
+      // Return the cleansed markdown directly without wrapping in metadata
+      // The backend already has this metadata when needed
+      return email.contentMarkdown.trim();
+    }
+
+    // Fallback to building context with metadata if no markdown available
     const lines = [];
     lines.push('=== Email Metadata ===');
     lines.push(`Subject: ${email.subject || 'No subject'}`);
@@ -161,11 +188,20 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
     if (email.timestampIso) lines.push(`Email sent (ISO): ${email.timestampIso}`);
     lines.push('');
     lines.push('=== Email Body ===');
-    const body = (email.contentMarkdown || email.contentText || '').trim();
+    const body = (email.contentText || '').trim();
     lines.push(body.length > 0 ? body : '(Email body is empty)');
     return lines.join('\n');
   }
 
+  /**
+   * Call AI command with email context.
+   *
+   * Context priority:
+   * 1. contextId - References pre-stored context in backend EmailContextRegistry
+   * 2. emailContext - Fallback to sending markdown content directly
+   *
+   * The backend's ChatService will use contextId first, then emailContext as fallback.
+   */
   async function callAiCommand(command, instruction, { contextId, subject } = {}) {
     const payload = {
       message: instruction,
@@ -174,10 +210,23 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
       thinkingEnabled: false,
       jsonOutput: false
     };
-    if (contextId) payload.contextId = contextId;
-    if (['compose', 'draft', 'summarize', 'translate', 'tone'].includes(command)) payload.aiCommand = command;
-    if (subject && subject.trim()) payload.subject = subject.trim();
-    if (selected) {
+
+    // Prefer contextId when available (backend has pre-processed context)
+    if (contextId) {
+      payload.contextId = contextId;
+    }
+
+    if (['compose', 'draft', 'summarize', 'translate', 'tone'].includes(command)) {
+      payload.aiCommand = command;
+    }
+
+    if (subject && subject.trim()) {
+      payload.subject = subject.trim();
+    }
+
+    // Only send emailContext if no contextId is available
+    // This ensures we use the backend's pre-processed context when possible
+    if (selected && !contextId) {
       const ctx = buildEmailContextString(selected);
       if (ctx) payload.emailContext = ctx;
     }
@@ -231,7 +280,10 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
       const target = composes[composes.length - 1];
       try {
         const instruction = buildComposeInstruction(command, target?.body || '', true);
-        const data = await callAiCommand(command, instruction, { contextId: selected.contextId, subject: target?.subject });
+        const data = await callAiCommand(command, instruction, {
+          contextId: selected.contextId,
+          subject: target?.subject || selected.subject
+        });
         let draftText = (data?.response && data.response.trim()) || '';
         if (!draftText && data?.sanitizedHtml) {
           const temp = document.createElement('div'); temp.innerHTML = data.sanitizedHtml; draftText = temp.textContent.trim();
@@ -249,7 +301,11 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
     // Summarize/Translate show in inline panel
     try {
       const instruction = (command === 'summarize') ? 'Provide a concise summary of the selected email.' : 'Translate the selected email to English.';
-      const data = await callAiCommand(command, instruction, { contextId: selected.contextId });
+      // Pass contextId to use backend's pre-processed context if available
+      const data = await callAiCommand(command, instruction, {
+        contextId: selected.contextId,
+        subject: selected.subject
+      });
       const html = (data?.response && window.ComposerAI?.renderMarkdown ? window.ComposerAI.renderMarkdown(data.response) : '')
                 || (data?.sanitizedHtml || data?.sanitizedHTML || '')
                 || '<div class="text-sm text-slate-500">No response received.</div>';
@@ -261,16 +317,17 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
 <div class="h-[100dvh] flex overflow-hidden bg-gradient-to-b from-slate-50 to-slate-100">
   <!-- Sidebar -->
   <aside class="shrink-0 border-r border-slate-200 bg-white/80 backdrop-blur transition-all duration-200"
-         class:w-64={((!mobile && sidebarOpen) || mobile)}
-         class:w-0={!mobile && !sidebarOpen}
-         class:overflow-hidden={!mobile && !sidebarOpen}
-         class:border-r-0={!mobile && !sidebarOpen}
-         class:fixed={mobile}
-         class:inset-y-0={mobile}
-         class:left-0={mobile}
-         class:z-[60]={mobile}
-         class:shadow-xl={mobile}
-         class:hidden={mobile && !showDrawer}>
+         class:w-64={((wide && sidebarOpen) || (desktop && sidebarOpen))}
+         class:w-16={desktop && !sidebarOpen}
+         class:w-0={tablet && !sidebarOpen}
+         class:overflow-hidden={!sidebarOpen && (tablet || (desktop && !sidebarOpen))}
+         class:border-r-0={!sidebarOpen && (tablet || desktop)}
+         class:fixed={mobile || tablet}
+         class:inset-y-0={mobile || tablet}
+         class:left-0={mobile || tablet}
+         class:z-[60]={mobile || tablet}
+         class:shadow-xl={mobile || tablet}
+         class:hidden={(mobile || tablet) && !showDrawer}>
     <div class="p-4 border-b border-slate-200">
       <div class="flex items-center gap-2 mb-4">
         <InboxIcon class="h-6 w-6 text-slate-900" />
@@ -325,7 +382,7 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
       </button>
     </nav>
   </aside>
-  {#if mobile && showDrawer}
+  {#if (mobile || tablet) && showDrawer}
     <button type="button" class="fixed inset-0 bg-black/30 z-[50]" aria-label="Close menu overlay"
             on:click={() => (showDrawer = false)}
             on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showDrawer = false; } }}>
@@ -334,10 +391,13 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
 
   <!-- List -->
   <section class="shrink-0 flex flex-col bg-white/90 border-r border-slate-200"
-           class:w-96={!mobile && sidebarOpen}
-           class:w-[28rem]={!mobile && !sidebarOpen}
+           class:w-[22rem]={wide}
+           class:w-[20rem]={desktop}
+           class:w-[18rem]={tablet && showEmailList}
+           class:w-0={tablet && !showEmailList}
            class:w-full={mobile}
            class:hidden={mobile && selected}
+           class:overflow-hidden={tablet && !showEmailList}
   >
     <div class="px-4 py-3 border-b border-slate-200">
       <div class="flex items-center gap-2">
@@ -376,11 +436,22 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
   <!-- Content -->
   <section class="flex-1 flex flex-col bg-white/95 relative"
            class:hidden={mobile && !selected}>
-    {#if mobile}
+    {#if mobile || tablet}
       <div class="px-4 py-3 border-b border-slate-200 flex items-center gap-2">
-        <button type="button" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={() => { selected = null; showDrawer = false; }} aria-label="Back to list">
-          <ArrowLeft class="h-4 w-4" />
-        </button>
+        {#if mobile}
+          <button type="button" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={() => { selected = null; showDrawer = false; }} aria-label="Back to list">
+            <ArrowLeft class="h-4 w-4" />
+          </button>
+        {/if}
+        {#if tablet}
+          <button type="button" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={() => showEmailList = !showEmailList} aria-label="Toggle email list">
+            {#if showEmailList}
+              <ChevronLeft class="h-4 w-4" />
+            {:else}
+              <ChevronRight class="h-4 w-4" />
+            {/if}
+          </button>
+        {/if}
         <button type="button" title="Toggle menu" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={handleMenuClick} aria-label="Open folders">
           <Menu class="h-4 w-4" />
         </button>
@@ -398,7 +469,12 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
         </div>
       </div>
     {:else}
-      <div class="px-4 py-3 border-b border-slate-200" class:p-6={!mobile}>
+      <div class="border-b border-slate-200"
+           class:px-4={mobile}
+           class:px-5={tablet}
+           class:px-6={desktop || wide}
+           class:py-3={mobile || tablet}
+           class:py-4={desktop || wide}>
           <div class="flex items-start gap-3" class:flex-col={mobile}>
             <div class="flex items-start gap-3 min-w-0 flex-1">
               <img src={selected.avatar || selected.companyLogoUrl || ('https://i.pravatar.cc/120?u=' + encodeURIComponent(selected.fromEmail || selected.from))} alt={escapeHtml(selected.from)} class="h-10 w-10 rounded-full object-cover shrink-0" class:h-12={!mobile} class:w-12={!mobile} loading="lazy"/>
@@ -438,7 +514,10 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
           </div>
         </div>
       <div class="overflow-y-auto" class:flex-1={!aiOpen} class:flex-initial={aiOpen}>
-        <div class="w-full max-w-full overflow-x-hidden" class:p-4={!selected.contentHtml} class:sm:p-6={!selected.contentHtml}>
+        <div class="w-full max-w-full overflow-x-hidden"
+             class:p-4={!selected.contentHtml && (mobile || tablet)}
+             class:p-5={!selected.contentHtml && desktop}
+             class:p-6={!selected.contentHtml && wide}>
           {#if selected.contentHtml}
             <EmailIframe html={selected.contentHtml} />
           {:else}
