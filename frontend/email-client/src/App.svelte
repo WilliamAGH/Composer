@@ -437,7 +437,7 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
             {/each}
           </div>
         </div>
-      <div class="flex-1 overflow-y-auto" class:flex-initial={aiOpen}>
+      <div class="overflow-y-auto" class:flex-1={!aiOpen} class:flex-initial={aiOpen}>
         <div class="w-full max-w-full overflow-x-hidden" class:p-4={!selected.contentHtml} class:sm:p-6={!selected.contentHtml}>
           {#if selected.contentHtml}
             <EmailIframe html={selected.contentHtml} />
@@ -448,7 +448,7 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
           {/if}
         </div>
       </div>
-      
+
       <!-- AI Summary Panel - inline at bottom of content area -->
       {#if aiOpen}
         <AISummaryPanel open={true} title={aiTitle} html={aiHtml} on:close={() => (aiOpen = false)} />
