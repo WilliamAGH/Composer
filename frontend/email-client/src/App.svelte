@@ -1,7 +1,8 @@
 <script>
   import { onMount } from 'svelte';
   import EmailIframe from './lib/EmailIframe.svelte';
-  import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, Archive, Trash2 } from 'lucide-svelte';
+  import ComposeWindow from './lib/ComposeWindow.svelte';
+import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, Archive, Trash2, Reply, Forward } from 'lucide-svelte';
   export let bootstrap = {};
 
   const FALLBACK_COMMAND_TITLES = {
@@ -16,6 +17,10 @@
   let search = '';
   let emails = Array.isArray(bootstrap.messages) ? bootstrap.messages.map(mapEmail) : [];
   let selected = null;
+  let conversationId = null;
+
+  // Compose windows
+  let composes = [];
 
   // UI state
   let sidebarOpen = true;
@@ -62,6 +67,15 @@
 
   function selectEmail(e) { selected = e; selected.read = true; }
   function toggleSidebar() { sidebarOpen = !sidebarOpen; }
+
+  function openCompose() {
+    composes = [...composes, { id: crypto.randomUUID(), isReply: false, to: '', subject: '', body: '' }];
+  }
+  function openReply() {
+    if (!selected) return;
+    composes = [...composes, { id: crypto.randomUUID(), isReply: true, to: selected.fromEmail || '', subject: `Re: ${selected.subject}`, body: '' }];
+  }
+  function closeCompose(id) { composes = composes.filter(c => c.id !== id); }
 
   function matchesMailbox(e) {
     const labels = (e.labels || []).map(l => String(l).toLowerCase());
@@ -122,6 +136,77 @@
       hour: 'numeric', minute: '2-digit', hour12: true, timeZoneName: 'short'
     });
   }
+
+  // ---------- AI integration (parity with v1) ----------
+  function buildEmailContextString(email) {
+    if (!email) return '';
+    const lines = [];
+    lines.push('=== Email Metadata ===');
+    lines.push(`Subject: ${email.subject || 'No subject'}`);
+    lines.push(`From: ${email.from}${email.fromEmail ? ` <${email.fromEmail}>` : ''}`);
+    if (email.to || email.toEmail) lines.push(`To: ${(email.to || 'Unknown recipient')}${email.toEmail ? ` <${email.toEmail}>` : ''}`);
+    if (email.timestamp) lines.push(`Email sent on: ${email.timestamp}`);
+    if (email.timestampIso) lines.push(`Email sent (ISO): ${email.timestampIso}`);
+    lines.push('');
+    lines.push('=== Email Body ===');
+    const body = (email.contentMarkdown || email.contentText || '').trim();
+    lines.push(body.length > 0 ? body : '(Email body is empty)');
+    return lines.join('\n');
+  }
+
+  async function callAiCommand(command, instruction, { contextId, subject } = {}) {
+    const payload = {
+      message: instruction,
+      conversationId,
+      maxResults: 5,
+      thinkingEnabled: false,
+      jsonOutput: false
+    };
+    if (contextId) payload.contextId = contextId;
+    if (['compose', 'draft', 'summarize', 'translate', 'tone'].includes(command)) payload.aiCommand = command;
+    if (subject && subject.trim()) payload.subject = subject.trim();
+    if (selected) {
+      const ctx = buildEmailContextString(selected);
+      if (ctx) payload.emailContext = ctx;
+    }
+
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-UI-Request': uiNonce || '' },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok) throw new Error((data && (data.message || data.error)) || `HTTP ${resp.status}`);
+    if (data?.conversationId) conversationId = data.conversationId;
+    return data;
+  }
+
+  function parseSubjectAndBody(text) {
+    if (!text || !text.trim()) return { subject: '', body: '' };
+    const trimmed = text.trim();
+    const m = trimmed.match(/^Subject:\s*(.+?)$/m);
+    if (m) {
+      const subject = m[1].trim();
+      const subjectEnd = trimmed.indexOf(m[0]) + m[0].length;
+      const body = trimmed.substring(subjectEnd).replace(/^\s*\n+/, '').trim();
+      return { subject, body };
+    }
+    return { subject: '', body: trimmed };
+  }
+
+  function buildComposeInstruction(command, currentDraft, isReply) {
+    if (command === 'draft') {
+      if (currentDraft && currentDraft.length > 0) return `Improve this ${isReply ? 'reply' : 'draft'} while preserving the intent:\n\n${currentDraft}`;
+      return isReply ? 'Draft a courteous reply addressing the key points from the email above.' : 'Draft a helpful email based on the selected context.';
+    }
+    if (command === 'compose') {
+      return currentDraft && currentDraft.length > 0 ? `Polish this email draft and make it clear and concise:\n\n${currentDraft}` : 'Compose a professional reply using the email context above.';
+    }
+    if (command === 'tone') {
+      return currentDraft && currentDraft.length > 0 ? `Adjust the tone of this email to be friendly but professional:\n\n${currentDraft}` : 'Adjust the email to a friendly but professional tone.';
+    }
+    return 'Assist with the selected email.';
+  }
 </script>
 
 <div class="h-screen flex overflow-hidden bg-gradient-to-b from-slate-50 to-slate-100">
@@ -136,7 +221,7 @@
         <InboxIcon class="h-6 w-6 text-slate-900" />
         <h1 class="text-xl font-bold text-slate-900">ComposerAI</h1>
       </div>
-      <button class="inline-flex items-center gap-2 w-full justify-center rounded-xl px-4 py-2 font-semibold text-white bg-gradient-to-br from-slate-900 to-slate-800 shadow ring-1 ring-slate-900/10">
+      <button class="inline-flex items-center gap-2 w-full justify-center rounded-xl px-4 py-2 font-semibold text-white bg-gradient-to-br from-slate-900 to-slate-800 shadow ring-1 ring-slate-900/10" on:click={openCompose}>
         <Pencil class="h-4 w-4" /> Compose
       </button>
     </div>
@@ -223,10 +308,10 @@
         {/each}
       {/if}
     </div>
-  </section>
+</section>
 
   <!-- Content -->
-  <section class="flex-1 flex flex-col bg-white/95">
+  <section class="flex-1 flex flex-col bg-white/95 relative">
     {#if !selected}
       <div class="flex-1 grid place-items-center text-slate-400">
         <div class="text-center">
@@ -252,9 +337,18 @@
             </div>
           </div>
           <div class="flex gap-2">
-            <button class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600" title="Reply">↩</button>
-            <button class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600" title="Archive">⤓</button>
-            <button class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600" title="Delete">✕</button>
+            <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Reply" aria-label="Reply" on:click={openReply}>
+              <Reply class="h-4 w-4" />
+            </button>
+            <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Forward" aria-label="Forward">
+              <Forward class="h-4 w-4" />
+            </button>
+            <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Archive" aria-label="Archive">
+              <Archive class="h-4 w-4" />
+            </button>
+            <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Delete" aria-label="Delete">
+              <Trash2 class="h-4 w-4" />
+            </button>
           </div>
         </div>
         <div class="mt-4 flex flex-wrap gap-2">
@@ -277,5 +371,29 @@
         </div>
       </div>
     {/if}
+    {#each composes as c (c.id)}
+      <ComposeWindow open={true} isReply={c.isReply} to={c.to} subject={c.subject} body={c.body} uiNonce={uiNonce}
+        on:close={() => closeCompose(c.id)}
+        on:send={(e) => { /* hook actual send later; close for now */ closeCompose(c.id); }}
+        on:requestAi={async (e) => {
+          const { command, draft, subject: subj } = e.detail;
+          try {
+            const instruction = buildComposeInstruction(command, draft || '', c.isReply);
+            const data = await callAiCommand(command, instruction, { contextId: selected?.contextId, subject: subj });
+            const text = (data?.response && data.response.trim()) || '';
+            const html = (data?.sanitizedHtml || data?.sanitizedHTML || '').trim();
+            let draftText = text;
+            if (!draftText && html) {
+              const temp = document.createElement('div'); temp.innerHTML = html; draftText = temp.textContent.trim();
+            }
+            if (draftText) {
+              const parsed = parseSubjectAndBody(draftText);
+              c.subject = parsed.subject || c.subject;
+              c.body = parsed.body || draftText;
+              composes = [...composes];
+            }
+          } catch (err) { alert(err?.message || 'AI request failed'); }
+        }} />
+    {/each}
   </section>
 </div>
