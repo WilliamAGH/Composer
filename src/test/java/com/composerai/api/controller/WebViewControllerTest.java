@@ -9,8 +9,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
-import com.composerai.api.model.EmailMessage;
-
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -119,23 +117,9 @@ class WebViewControllerTest {
     }
 
     @Test
-    void emailClient_ShouldExposeEmailMessagesFromProvider() throws Exception {
-        when(emailMessageProvider.loadEmails()).thenReturn(List.of(
-            EmailMessage.builder()
-                .id("sample")
-                .contextId("ctx-1")
-                .senderName("Sample Sender")
-                .senderEmail("sender@example.com")
-                .subject("Sample Email")
-                .emailBodyRaw("Body")
-                .emailBodyTransformedText("Body")
-                .build()
-        ));
-
+    void legacyEmailClientPath_ShouldRedirectToEmailClientV2() throws Exception {
         mockMvc.perform(get("/email-client"))
-            .andExpect(status().isOk())
-            .andExpect(content().string(containsString("const EMAIL_MESSAGES")))
-            .andExpect(content().string(containsString("sample")))
-            .andExpect(content().string(containsString("ctx-1")));
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/email-client-v2"));
     }
 }

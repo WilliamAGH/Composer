@@ -31,7 +31,7 @@ Templates accept the `{{instruction}}` placeholder, which is replaced with the u
 
 - All `EmailMessage.emailBodyHtml` values are sanitized server-side via `EmailHtmlSanitizer`.
 - The Svelte client at `/email-client-v2` renders sanitized HTML inside a sandboxed iframe (scripts disabled, same-origin enabled for sizing, inner scrollbars suppressed). If no HTML remains, it falls back to Markdown text.
-- The legacy `/email-client` page remains available during rollout.
+- `/email-client` now redirects to `/email-client-v2` so bookmarks continue working while the legacy view is removed.
 
 ## Technology Stack
 

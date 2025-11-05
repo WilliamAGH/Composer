@@ -1,6 +1,6 @@
 # Email Client v2 (Svelte) — Architecture and Flow
 
-Status: Experimental rollout under /email-client-v2
+Status: Canonical client served at /email-client-v2 (legacy route /email-client redirects here)
 
 Overview
 - Host: Thymeleaf template `templates/email-client-v2.html` injects bootstrap data and CSP/nonce.
@@ -38,5 +38,5 @@ File map
   - `src/main.js`, `src/App.svelte`, `src/lib/EmailIframe.svelte`
 
 Cutover
-- Validate /email-client-v2 in staging.
-- Flip route from `/email-client` to use the new template after sign-off; keep old page available for rollback.
+- Validate `/email-client-v2` in staging (legacy path already redirects here).
+- `/email-client` remains as a redirect only; there is no separate fallback template.

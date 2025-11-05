@@ -32,11 +32,9 @@ public class WebViewController {
     }
 
     @GetMapping("/email-client")
-    public String emailClient(Model model, HttpSession session) {
-        model.addAttribute("uiNonce", uiNonceService.getOrCreateSessionNonce(session));
-        List<com.composerai.api.model.EmailMessage> emailMessages = emailMessageProvider.loadEmails();
-        model.addAttribute("emailMessages", emailMessages);
-        return "email-client";
+    public String emailClientLegacyRedirect() {
+        // Preserve backward-compatible path while serving the modern UI
+        return "redirect:/email-client-v2";
     }
 
     @GetMapping("/email-client-v2")
