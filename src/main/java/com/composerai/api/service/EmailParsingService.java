@@ -149,7 +149,16 @@ public class EmailParsingService {
 
             String companyLogoUrl = deriveCompanyLogoUrl(sender.email());
 
-            String markdownForHtml = sanitizedMarkdown != null ? sanitizedMarkdown : cleanedPlainText;
+            // For plain text emails, ensure proper paragraph breaks by converting single line breaks
+            // to double line breaks (markdown paragraph breaks) if no markdown was extracted
+            String markdownForHtml;
+            if (sanitizedMarkdown != null) {
+                markdownForHtml = sanitizedMarkdown;
+            } else {
+                // Convert single line breaks to paragraph breaks for better rendering
+                // This ensures plain text emails have proper visual separation
+                markdownForHtml = cleanedPlainText.replaceAll("(?<!\n)\n(?!\n)", "\n\n");
+            }
             String renderedFromMarkdown = HtmlConverter.markdownToSafeHtml(markdownForHtml);
             String renderedHtml = resolveEmailHtml(originalHtml, renderedFromMarkdown);
 
