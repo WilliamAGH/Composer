@@ -78,6 +78,10 @@ const EmailRenderer = (() => {
             // Set a conservative initial height; will be auto-resized
             iframe.style.height = '200px';
 
+            container.style.width = '100%';
+            container.style.maxWidth = '100%';
+            container.style.overflowX = 'hidden';
+            container.style.position = 'relative';
             container.appendChild(iframe);
 
             const handleReady = () => {
@@ -150,27 +154,101 @@ const EmailRenderer = (() => {
                         padding: 0;
                         height: auto;
                         min-height: 0;
-                        overflow: hidden; /* prevent inner scrollbar; parent resizes iframe */
+                        width: 100%;
+                        max-width: 100%;
+                        overflow-x: hidden !important; /* prevent horizontal scroll; parent resizes iframe */
+                        overflow-y: hidden !important; /* parent controls scroll */
                     }
-                    *, *::before, *::after { box-sizing: border-box; }
+                    *, *::before, *::after {
+                        box-sizing: border-box !important;
+                        max-width: 100%;
+                    }
                     body {
                         font-family: inherit;
                         font-size: inherit;
                         line-height: inherit;
                         color: inherit;
                         background: transparent;
+                        word-break: break-word;
+                        overflow-wrap: anywhere;
+                        -webkit-text-size-adjust: 100%;
                     }
                     .email-wrapper {
-                        width: 100%;
-                    }
-                    img, video {
+                        width: 100% !important;
                         max-width: 100% !important;
-                        height: auto !important;
+                        overflow-x: hidden !important;
+                        box-sizing: border-box !important;
                     }
-                    table { width: 100%; border-collapse: separate; }
-                    /* Hide any accidental scrollbars in some engines */
+                    /* Force all images, videos, and media to scale down */
+                    img, video, svg, canvas, picture {
+                        max-width: 100% !important;
+                        width: auto !important;
+                        height: auto !important;
+                        display: block !important;
+                    }
+                    /* Override any inline width on images */
+                    img[width], video[width], svg[width] {
+                        width: auto !important;
+                        max-width: 100% !important;
+                    }
+                    /* Block elements should never exceed viewport width */
+                    div, p, table, ul, ol, li, header, footer, section, article, main, aside,
+                    h1, h2, h3, h4, h5, h6, blockquote, pre, form, fieldset {
+                        max-width: 100% !important;
+                        overflow-x: hidden !important;
+                        box-sizing: border-box !important;
+                    }
+                    /* Force tables to be responsive - ultra aggressive for email HTML */
+                    table, table * {
+                        max-width: 100% !important;
+                    }
+                    table {
+                        width: 100% !important;
+                        table-layout: fixed !important;
+                        border-collapse: collapse !important;
+                    }
+                    table[width="600"],
+                    table[width="100%"],
+                    table[width],
+                    td[width],
+                    th[width] {
+                        width: 100% !important;
+                        max-width: 100% !important;
+                    }
+                    /* Specific override for nested tables */
+                    table table {
+                        width: 100% !important;
+                        max-width: 100% !important;
+                    }
+                    td, th {
+                        word-break: break-word;
+                        overflow-wrap: anywhere;
+                        max-width: 100% !important;
+                    }
+                    /* Text content wrapping */
+                    pre, code {
+                        white-space: pre-wrap !important;
+                        word-break: break-word !important;
+                        overflow-wrap: anywhere !important;
+                        max-width: 100% !important;
+                    }
+                    a, span, strong, em, b, i {
+                        word-break: break-word;
+                        overflow-wrap: anywhere;
+                        max-width: 100% !important;
+                    }
+                    /* Strip any hard-coded sizing that breaks layout */
+                    [style*="min-width"] { min-width: 0 !important; }
+                    [style*="width:"] { max-width: 100% !important; }
+                    /* Remove any attempt at fixed positioning */
+                    [style*="position: fixed"],
+                    [style*="position:fixed"] {
+                        position: static !important;
+                    }
+                    /* Hide any accidental scrollbars */
                     ::-webkit-scrollbar { width: 0; height: 0; }
                     html { scrollbar-width: none; }
+                    * { scrollbar-width: none; }
                 </style>
             </head>
             <body>
