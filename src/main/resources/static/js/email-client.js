@@ -246,14 +246,17 @@ class EmailClientApp {
             ? `<div class="flex items-center gap-2 text-xs mt-1 text-slate-400"><span>To:</span><span>${window.ComposerAI.escapeHtml(email.to || 'Unknown recipient')}</span>${email.toEmail ? `<span>&lt;${window.ComposerAI.escapeHtml(email.toEmail)}&gt;</span>` : ''}</div>`
             : '';
 
-        const hasHtmlBody = typeof email.contentHtml === 'string' && email.contentHtml.trim().length > 0;
+        const hasHtmlBody = !!(email.contentHtml && String(email.contentHtml).trim().length > 0);
         const markdownBody = email.contentMarkdown || email.contentText || '';
-        const contentBody = hasHtmlBody
-            ? '<div class="email-body" data-role="email-html-container"></div>'
-            : `<div class="email-body" data-role="email-text">${window.ComposerAI.renderMarkdown(markdownBody)}</div>`;
+        const htmlPanelMarkup = '<div class="email-html-container" data-role="email-html-container"></div>';
+        const textPanelMarkup = this.#buildMarkdownPanel(markdownBody);
+        const contentBody = hasHtmlBody ? htmlPanelMarkup : textPanelMarkup;
+        const panelClass = hasHtmlBody
+            ? 'email-panel email-panel--html'
+            : 'email-panel email-panel--markdown';
 
         this.emailContent.innerHTML = `
-            <div class="flex-1 flex flex-col">
+            <div class="flex-1 flex flex-col email-content-wrapper">
                 <div class="p-6 border-b" style="border-color: rgba(226, 232, 240, 0.6);">
                     <div class="flex items-start justify-between mb-4">
                         <div class="flex items-start gap-4">
@@ -291,13 +294,16 @@ class EmailClientApp {
                         ${this.#renderAiCommandButtons()}
                     </div>
                 </div>
-                <div class="flex-1 overflow-y-auto">
-                    <div class="p-6 space-y-6">
-                        <div class="prose prose-sm max-w-none text-slate-700" data-role="email-body">
-                            ${contentBody}
-                        </div>
-                        <div id="aiResponsePanel" class="hidden space-y-2" data-role="ai-response-panel">
-                            <div class="glass-panel" data-role="ai-response-body"></div>
+                <div class="flex-1 overflow-y-auto email-body-scroll">
+                    <div class="p-6" data-role="email-body-shell">
+                        <div class="${panelClass}" data-role="email-panel">
+                            <div class="email-panel-body">
+                                ${contentBody}
+                                <div id="aiResponsePanel" class="hidden space-y-2" data-role="ai-response-panel">
+                                    <h3 class="text-sm font-semibold text-slate-700 mb-2" data-role="ai-response-title">AI Assistant</h3>
+                                    <div class="glass-panel" data-role="ai-response-body"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -308,10 +314,21 @@ class EmailClientApp {
         if (hasHtmlBody) {
             const htmlContainer = this.emailContent.querySelector('[data-role="email-html-container"]');
             if (htmlContainer) {
-                if (window.EmailRenderer?.renderInIframe) {
-                    window.EmailRenderer.renderInIframe(htmlContainer, email.contentHtml);
-                } else {
-                    htmlContainer.innerHTML = window.ComposerAI.renderMarkdown(markdownBody);
+                try {
+                    if (window.EmailRenderer?.renderInIframe) {
+                        window.EmailRenderer.renderInIframe(htmlContainer, String(email.contentHtml || ''));
+                    } else {
+                        console.warn('EmailRenderer is not available; falling back to Markdown rendering.');
+                        htmlContainer.className = 'email-text-panel prose prose-sm max-w-none text-slate-700';
+                        htmlContainer.innerHTML = window.ComposerAI.renderMarkdown(markdownBody);
+                    }
+                } catch (e) {
+                    console.error('Failed to render sanitized HTML; falling back to Markdown.', e);
+                    // Robust fallback: never leave container empty
+                    const fallbackPanel = document.createElement('div');
+                    fallbackPanel.className = 'email-text-panel prose prose-sm max-w-none text-slate-700';
+                    fallbackPanel.innerHTML = window.ComposerAI.renderMarkdown(markdownBody);
+                    htmlContainer.replaceWith(fallbackPanel);
                 }
             }
         }
@@ -695,15 +712,22 @@ class EmailClientApp {
         return { subject: '', body: trimmed };
     }
 
+    #buildMarkdownPanel(markdownBody) {
+        const safeMarkdown = typeof markdownBody === 'string' ? markdownBody : '';
+        return `<div class="email-text-panel prose prose-sm max-w-none text-slate-700">${window.ComposerAI.renderMarkdown(safeMarkdown)}</div>`;
+    }
+
     #extractHtmlFromResponse(data) {
         if (!data) {
             return '<div class="text-sm text-slate-500">No response received.</div>';
         }
-        if (data.sanitizedHtml && data.sanitizedHtml.trim().length > 0) {
-            return data.sanitizedHtml;
-        }
+        // Prefer rendering raw markdown/text on the client so single newlines become <br>
         if (data.response && data.response.trim().length > 0) {
             return window.ComposerAI.renderMarkdown(data.response);
+        }
+        const html = (data.sanitizedHtml || data.sanitizedHTML || data.renderedHtml || data.renderedHTML || '').trim();
+        if (html.length > 0) {
+            return html;
         }
         return '<div class="text-sm text-slate-500">No response received.</div>';
     }
@@ -726,10 +750,22 @@ class EmailClientApp {
 
 document.addEventListener('DOMContentLoaded', () => {
     const bootstrap = window.__EMAIL_CLIENT_BOOTSTRAP__ || {};
-    window.emailClient = new EmailClientApp({
-        messages: bootstrap.messages,
-        commandDefaults: bootstrap.commandDefaults || {},
-        commandTemplates: bootstrap.commandTemplates || {},
-        uiNonce: bootstrap.uiNonce || null
-    });
+    
+    // Wait for EmailRenderer to be available before initializing
+    const initApp = () => {
+        window.emailClient = new EmailClientApp({
+            messages: bootstrap.messages,
+            commandDefaults: bootstrap.commandDefaults || {},
+            commandTemplates: bootstrap.commandTemplates || {},
+            uiNonce: bootstrap.uiNonce || null
+        });
+    };
+    
+    // EmailRenderer should already be loaded, but check just in case
+    if (window.EmailRenderer) {
+        initApp();
+    } else {
+        // Fallback: wait briefly for EmailRenderer to load
+        setTimeout(initApp, 50);
+    }
 });

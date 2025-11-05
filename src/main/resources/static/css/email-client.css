@@ -103,6 +103,19 @@
     background: rgba(255, 255, 255, 0.95);
     display: flex;
     flex-direction: column;
+    min-height: 0;
+}
+
+.email-content-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.email-body-scroll {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .email-item {
@@ -236,6 +249,124 @@
     box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.12);
     padding: 1.25rem;
     backdrop-filter: blur(10px);
+}
+
+/* Ensure AI response content has proper spacing */
+.glass-panel p {
+    margin: 0.75rem 0;
+}
+
+.glass-panel p:first-child {
+    margin-top: 0;
+}
+
+.glass-panel p:last-child {
+    margin-bottom: 0;
+}
+
+.glass-panel ul,
+.glass-panel ol {
+    margin: 0.75rem 0;
+    padding-left: 1.5rem;
+}
+
+.glass-panel li {
+    margin: 0.25rem 0;
+}
+
+
+/* ============================================================================
+   EMAIL CONTENT DISPLAY
+   Reader surface for HTML + Markdown bodies
+   ============================================================================ */
+
+.email-panel {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9));
+    border-radius: 1.5rem;
+    border: 1px solid rgba(226, 232, 240, 0.85);
+    box-shadow: 0 30px 60px -24px rgba(15, 23, 42, 0.25);
+    min-height: 500px;
+    display: flex;
+    flex-direction: column;
+}
+
+.email-panel-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1.5rem;
+}
+
+.email-panel--html .email-panel-body {
+    padding: 0.75rem;
+    background: #f8f9fa;
+}
+
+.email-panel--html #aiResponsePanel {
+    padding: 0 1.5rem 1.5rem;
+}
+
+.email-html-container {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
+    background: #ffffff;
+    border-radius: 8px;
+    border: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.email-html-container--loading {
+    cursor: progress;
+}
+
+.email-html-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.email-html-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    background: rgba(248, 250, 252, 0.85);
+    color: #475569;
+    font-size: 0.9rem;
+    z-index: 2;
+    backdrop-filter: blur(6px);
+    border-radius: 1.5rem;
+}
+
+.email-html-loading-indicator {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px;
+    border: 3px solid rgba(148, 163, 184, 0.35);
+    border-top-color: #0f172a;
+    animation: email-html-spin 1s linear infinite;
+}
+
+@keyframes email-html-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.email-text-panel {
+    width: 100%;
+    color: #475569;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    padding: 1rem;
 }
 
 

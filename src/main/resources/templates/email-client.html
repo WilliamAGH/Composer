@@ -113,6 +113,8 @@
         <div id="composeWindowsContainer" class="compose-windows-container"></div>
         <th:block th:replace="~{fragments/email-compose :: compose-window-template}"></th:block>
 
+        <!-- Load EmailRenderer before module to ensure it's available -->
+        <script src="/js/email-renderer.js"></script>
         <script th:inline="javascript">
             const UI_NONCE = /*[[${uiNonce}]]*/ null;
             window.__EMAIL_CLIENT_BOOTSTRAP__ = {
@@ -123,7 +125,6 @@
             };
         </script>
         <script type="module" src="/js/email-client.js"></script>
-        <script src="/js/email-renderer.js"></script>
     </div>
 </body>
 

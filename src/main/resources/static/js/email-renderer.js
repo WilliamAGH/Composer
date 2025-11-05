@@ -30,190 +30,205 @@ const EmailRenderer = (() => {
      */
     function renderInIframe(container, htmlContent) {
         if (!container || !htmlContent) {
-            return;
+            throw new Error('EmailRenderer requires a target container and HTML content.');
         }
 
-        // Clear previous content
-        container.innerHTML = '';
+        // Client-side sanitization (defense in depth - server already sanitizes)
+        const sanitizedHtml = typeof htmlContent === 'string' ? htmlContent : String(htmlContent || '');
+        if (!sanitizedHtml || sanitizedHtml.trim().length === 0) {
+            throw new Error('EmailRenderer received empty sanitized HTML.');
+        }
 
-        // Client-side sanitization (defense in depth - server already sanitized)
-        const sanitizedHtml = sanitizeHtml(htmlContent);
+        try {
+            // Expose for debugging in the browser console when diagnosing rendering issues
+            window.__EMAIL_RENDERER_DEBUG__ = window.__EMAIL_RENDERER_DEBUG__ || [];
+            window.__EMAIL_RENDERER_DEBUG__.push({
+                timestamp: Date.now(),
+                length: sanitizedHtml.length,
+                preview: sanitizedHtml.slice(0, 1200)
+            });
+            if (window.__EMAIL_RENDERER_DEBUG__.length > 20) {
+                window.__EMAIL_RENDERER_DEBUG__.shift();
+            }
 
-        // Create fully isolated iframe
-        const iframe = document.createElement('iframe');
+            // Reset container and show loading affordance
+            container.innerHTML = '';
+            container.classList.add('email-html-container--loading');
 
-        // Critical security attributes
-        iframe.setAttribute('sandbox', 'allow-same-origin'); // Minimal permissions
-        iframe.setAttribute('referrerpolicy', 'no-referrer');
+            const loadingOverlay = document.createElement('div');
+            loadingOverlay.className = 'email-html-loading';
+            loadingOverlay.innerHTML = `
+                <div class="email-html-loading-indicator"></div>
+                <p>Rendering email&hellip;</p>
+            `;
+            container.appendChild(loadingOverlay);
 
-        // Styling for seamless integration
-        iframe.style.cssText = `
-            width: 100%;
-            border: none;
-            display: block;
-            overflow: hidden;
-            min-height: 200px;
-            color-scheme: light;
-        `;
+            const iframe = document.createElement('iframe');
+            iframe.className = 'email-html-iframe';
+            iframe.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox');
+            iframe.setAttribute('referrerpolicy', 'no-referrer');
+            iframe.setAttribute('loading', 'lazy');
+            iframe.setAttribute('aria-label', 'Email body');
+            iframe.setAttribute('title', 'Email body');
 
-        container.appendChild(iframe);
+            container.appendChild(iframe);
 
-        // Write content to iframe
-        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-        const fullHtml = buildIframeDocument(sanitizedHtml);
+            const handleReady = () => {
+                container.classList.remove('email-html-container--loading');
+                if (loadingOverlay.parentNode === container) {
+                    loadingOverlay.remove();
+                }
+            };
 
-        iframeDoc.open();
-        iframeDoc.write(fullHtml);
-        iframeDoc.close();
+            const fullHtml = buildIframeDocument(sanitizedHtml);
+            if ('srcdoc' in iframe) {
+                iframe.srcdoc = fullHtml;
+            } else {
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                iframeDoc.open();
+                iframeDoc.write(fullHtml);
+                iframeDoc.close();
+            }
 
-        // Setup auto-resize
-        setupAutoResize(iframe, iframeDoc);
+            attachContentReadyListener(iframe, handleReady);
+            iframe.addEventListener('load', handleReady, { once: true });
+        } catch (error) {
+            console.error('EmailRenderer failed to render sanitized HTML.', error);
+            throw error;
+        }
+    }
+
+    function attachContentReadyListener(iframe, handleReady) {
+        try {
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (iframeDoc && iframeDoc.readyState === 'complete') {
+                handleReady();
+                return;
+            }
+            const targetWindow = iframe.contentWindow;
+            if (targetWindow) {
+                const onDomReady = () => {
+                    targetWindow.removeEventListener('DOMContentLoaded', onDomReady);
+                    handleReady();
+                };
+                targetWindow.addEventListener('DOMContentLoaded', onDomReady);
+            } else {
+                iframe.addEventListener('load', handleReady, { once: true });
+            }
+        } catch (e) {
+            iframe.addEventListener('load', handleReady, { once: true });
+        }
     }
 
     /**
      * Build complete HTML document for iframe with security headers and styling.
      */
     function buildIframeDocument(bodyContent) {
+        // NOTE: frame-ancestors cannot be enforced from a meta tag, so it is intentionally omitted.
         return `
             <!DOCTYPE html>
             <html>
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <meta http-equiv="Content-Security-Policy" content="script-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';">
+                <meta http-equiv="Content-Security-Policy"
+                    content="default-src 'none'; img-src http: https: data: cid:; style-src 'unsafe-inline' https: data:; font-src https: data:; script-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'none';">
                 <style>
-                    /* Reset and containment */
-                    * {
-                        max-width: 100%;
-                        word-wrap: break-word;
-                    }
-                    html, body {
+                    html {
                         margin: 0;
-                        padding: 16px;
-                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                        font-size: 0.95rem;
-                        line-height: 1.65;
-                        color: #0f172a;
-                        background: transparent;
-                        overflow-wrap: break-word;
-                        word-break: break-word;
+                        padding: 0;
+                        height: 100%;
                     }
                     body {
-                        contain: layout style paint;
+                        margin: 0;
+                        padding: 0;
+                        font-family: inherit;
+                        font-size: inherit;
+                        line-height: inherit;
+                        color: inherit;
+                        background: transparent;
+                        min-height: 100%;
+                        box-sizing: border-box;
                     }
-                    /* Prevent layout breaks */
-                    img {
+                    .email-wrapper {
+                        min-height: 100%;
+                        width: 100%;
+                    }
+                    img, video {
                         max-width: 100% !important;
                         height: auto !important;
                     }
                     table {
-                        max-width: 100%;
-                        table-layout: fixed;
-                    }
-                    /* Neutralize potentially dangerous elements */
-                    iframe, object, embed, applet {
-                        display: none !important;
-                    }
-                    /* Prevent fixed/absolute positioning from breaking layout */
-                    [style*="position: fixed"],
-                    [style*="position:fixed"],
-                    [style*="position: absolute"],
-                    [style*="position:absolute"] {
-                        position: relative !important;
+                        width: 100%;
+                        border-collapse: separate;
                     }
                 </style>
             </head>
             <body>
-                ${bodyContent}
+                <div class="email-wrapper">
+                    ${bodyContent}
+                </div>
             </body>
             </html>
         `;
     }
 
-    /**
-     * Setup auto-resize functionality for iframe to match content height.
-     */
-    function setupAutoResize(iframe, iframeDoc) {
-        const resizeIframe = () => {
-            try {
-                const body = iframeDoc.body;
-                const html = iframeDoc.documentElement;
-                const height = Math.max(
-                    body.scrollHeight,
-                    body.offsetHeight,
-                    html.clientHeight,
-                    html.scrollHeight,
-                    html.offsetHeight
-                );
-                iframe.style.height = Math.min(height + 20, 10000) + 'px'; // Cap at 10000px
-            } catch (error) {
-                // Cross-origin error - use fallback height
-                iframe.style.height = '600px';
-            }
-        };
-
-        // Resize on load
-        iframe.addEventListener('load', () => {
-            resizeIframe();
-
-            // Re-resize when images load
-            const images = iframeDoc.querySelectorAll('img');
-            images.forEach(img => {
-                img.addEventListener('load', resizeIframe);
-                img.addEventListener('error', resizeIframe);
-            });
-        });
-
-        // Periodic resize check (for dynamic content)
-        let resizeAttempts = 0;
-        const resizeInterval = setInterval(() => {
-            resizeIframe();
-            resizeAttempts++;
-            if (resizeAttempts > 10) {
-                clearInterval(resizeInterval);
-            }
-        }, 100);
+    function scheduleIframeAutosize(iframe) {
+        if (!iframe) return;
+        const adjust = () => resizeIframeToContent(iframe);
+        // Initial adjustments + delayed retries for late-loading assets
+        adjust();
+        [100, 300, 800, 1500].forEach((delay) => setTimeout(adjust, delay));
+        bindIframeMutationObserver(iframe, adjust);
     }
 
-    /**
-     * Client-side HTML sanitization (defense in depth).
-     * Server should already sanitize, but this provides additional safety.
-     */
-    function sanitizeHtml(html) {
-        if (!html) return '';
+    function resizeIframeToContent(iframe) {
+        try {
+            const doc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (!doc) {
+                return;
+            }
+            const body = doc.body;
+            const html = doc.documentElement;
+            const heightCandidates = [
+                body?.scrollHeight,
+                body?.offsetHeight,
+                html?.scrollHeight,
+                html?.offsetHeight
+            ].filter((value) => typeof value === 'number' && !Number.isNaN(value));
+            const computedHeight = heightCandidates.length > 0 ? Math.max(...heightCandidates) : 0;
+            iframe.style.height = `${Math.max(computedHeight, 200)}px`;
+        } catch (err) {
+            console.warn('Unable to auto-resize email iframe height.', err);
+            iframe.style.height = '100%';
+        }
+    }
 
-        const temp = document.createElement('div');
-        temp.innerHTML = html;
+    function bindIframeMutationObserver(iframe, callback) {
+        try {
+            const doc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (!doc || !doc.body) {
+                return;
+            }
+            const resizeHandler = () => callback();
+            const observer = new MutationObserver(resizeHandler);
+            observer.observe(doc.body, { attributes: true, childList: true, subtree: true, characterData: true });
+            const cleanups = [];
 
-        // Remove dangerous tags
-        temp.querySelectorAll('script').forEach(el => el.remove());
-        const dangerousTags = ['iframe', 'object', 'embed', 'applet', 'link', 'style', 'base', 'meta', 'form'];
-        dangerousTags.forEach(tag => {
-            temp.querySelectorAll(tag).forEach(el => el.remove());
-        });
+            if (iframe.contentWindow && typeof iframe.contentWindow.addEventListener === 'function') {
+                iframe.contentWindow.addEventListener('resize', resizeHandler);
+                cleanups.push(() => iframe.contentWindow.removeEventListener('resize', resizeHandler));
+            }
 
-        // Remove event handlers and javascript: URLs
-        temp.querySelectorAll('*').forEach(el => {
-            Array.from(el.attributes).forEach(attr => {
-                if (attr.name.startsWith('on')) {
-                    el.removeAttribute(attr.name);
-                }
-                if (attr.value && attr.value.toLowerCase().includes('javascript:')) {
-                    el.removeAttribute(attr.name);
-                }
+            Array.from(doc.images || []).forEach((img) => {
+                img.addEventListener('load', resizeHandler);
+                cleanups.push(() => img.removeEventListener('load', resizeHandler));
             });
 
-            // Neutralize dangerous CSS
-            if (el.hasAttribute('style')) {
-                const style = el.getAttribute('style');
-                if (style.includes('position') && (style.includes('fixed') || style.includes('absolute'))) {
-                    const cleaned = style.replace(/position\s*:\s*(fixed|absolute)/gi, 'position: relative');
-                    el.setAttribute('style', cleaned);
-                }
-            }
-        });
-
-        return temp.innerHTML;
+            // The observer automatically disconnects when the iframe is removed from the DOM.
+        } catch (err) {
+            console.debug('EmailRenderer mutation observer unavailable.', err);
+        }
     }
 
     // Public API
@@ -225,4 +240,9 @@ const EmailRenderer = (() => {
 // Export for use in other scripts (if using modules)
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = EmailRenderer;
+}
+
+// Ensure the renderer is available to browser scripts
+if (typeof window !== 'undefined') {
+    window.EmailRenderer = EmailRenderer;
 }
