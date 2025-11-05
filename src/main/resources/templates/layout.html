@@ -53,12 +53,14 @@
         window.ComposerAI.renderMarkdown = function(markdown) {
             if (!markdown || typeof markdown !== 'string') return '';
             try {
-                const rawHtml = marked.parse(markdown);
+                // Preserve single newlines as <br> and enable GFM for lists/tables
+                const rawHtml = marked.parse(markdown, { breaks: true, gfm: true });
                 return DOMPurify.sanitize(rawHtml, {
                     ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 
                                    'ul', 'ol', 'li', 'a', 'code', 'pre', 'blockquote', 'table', 'thead', 
-                                   'tbody', 'tr', 'th', 'td', 'hr', 'div', 'span'],
-                    ALLOWED_ATTR: ['href', 'title', 'target', 'rel', 'class'],
+                                   'tbody', 'tr', 'th', 'td', 'hr', 'div', 'span', 'img'],
+                    ALLOWED_ATTR: ['href', 'title', 'target', 'rel', 'class', 'src', 'alt', 'width', 'height',
+                                   'loading', 'decoding', 'style', 'srcset', 'sizes'],
                     ALLOW_DATA_ATTR: false
                 });
             } catch (e) {

@@ -27,6 +27,12 @@ Templates accept the `{{instruction}}` placeholder, which is replaced with the u
 - **Diagnostics Control Panel** – Ships a rich, static diagnostics dashboard tailored for observing health checks, mock retrieval responses, and LLM outputs.
 - **CLI Utilities** – Includes `HtmlToText` tooling for converting raw email sources to Markdown or plain text, enabling batch processing workflows.
 
+## Email Rendering & Isolation
+
+- All `EmailMessage.emailBodyHtml` values are sanitized server-side via `EmailHtmlSanitizer` before they ever reach Thymeleaf or the browser. When the sanitizer strips everything, the system gracefully falls back to Markdown/Plaintext bodies based on `RENDER_EMAILS_WITH`.
+- The `/email-client` UI now renders sanitized HTML inside a sandboxed iframe with its own scroll container, so malicious styles, scripts, or layout resets cannot escape or restyle the host page.
+- Sandboxing is always on in HTML mode; the render-mode toggle only decides whether we attempt to show original HTML or Markdown-derived HTML after sanitization.
+
 ## Technology Stack
 
 - **Runtime**: Java 21 (OpenJDK build) running on Spring Boot 3.3.x
