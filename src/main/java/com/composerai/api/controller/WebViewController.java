@@ -21,7 +21,8 @@ public class WebViewController {
 
     @GetMapping({"/", "/index"})
     public String index() {
-        return "redirect:/chat";
+        // Make email client v2 the root landing page
+        return "redirect:/email-client-v2";
     }
 
     @GetMapping("/chat")

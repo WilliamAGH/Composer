@@ -112,10 +112,10 @@ class WebViewControllerTest {
     }
 
     @Test
-    void indexPage_ShouldRedirectToChat() throws Exception {
+    void indexPage_ShouldRedirectToEmailClientV2() throws Exception {
         mockMvc.perform(get("/"))
             .andExpect(status().is3xxRedirection())
-            .andExpect(redirectedUrl("/chat"));
+            .andExpect(redirectedUrl("/email-client-v2"));
     }
 
     @Test
