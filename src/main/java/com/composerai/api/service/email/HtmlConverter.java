@@ -306,10 +306,14 @@ public final class HtmlConverter {
 
         MarkdownRenderer() {
             MutableDataSet options = new MutableDataSet();
+            // Use GITHUB profile which has sensible defaults
             ParserEmulationProfile.GITHUB_DOC.setIn(options);
-            // Enable hard breaks on single newlines for plain text emails
-            options.set(HtmlRenderer.HARD_BREAK, "<br />\n");
+
+            // CRITICAL: Enable hard line breaks - this makes single newlines render as <br>
+            // Without this, markdown collapses single newlines into spaces
             options.set(HtmlRenderer.SOFT_BREAK, "<br />\n");
+            options.set(HtmlRenderer.HARD_BREAK, "<br />\n");
+
             options.set(Parser.EXTENSIONS, java.util.Arrays.asList(
                 TablesExtension.create(),
                 AutolinkExtension.create(),
