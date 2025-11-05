@@ -65,11 +65,18 @@ const EmailRenderer = (() => {
 
             const iframe = document.createElement('iframe');
             iframe.className = 'email-html-iframe';
-            iframe.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox');
+            // allow-same-origin is required so the parent can read iframe content size; scripts remain disabled
+            iframe.setAttribute('sandbox', 'allow-same-origin allow-popups allow-popups-to-escape-sandbox');
             iframe.setAttribute('referrerpolicy', 'no-referrer');
             iframe.setAttribute('loading', 'lazy');
             iframe.setAttribute('aria-label', 'Email body');
             iframe.setAttribute('title', 'Email body');
+            // Inline styles so we don't rely on external CSS in v2
+            iframe.style.width = '100%';
+            iframe.style.display = 'block';
+            iframe.style.border = '0';
+            // Set a conservative initial height; will be auto-resized
+            iframe.style.height = '200px';
 
             container.appendChild(iframe);
 
@@ -78,6 +85,8 @@ const EmailRenderer = (() => {
                 if (loadingOverlay.parentNode === container) {
                     loadingOverlay.remove();
                 }
+                // Resize once the content is ready
+                scheduleIframeAutosize(iframe);
             };
 
             const fullHtml = buildIframeDocument(sanitizedHtml);
@@ -90,6 +99,8 @@ const EmailRenderer = (() => {
                 iframeDoc.close();
             }
 
+            // Kick off autosize immediately and then again on readiness
+            scheduleIframeAutosize(iframe);
             attachContentReadyListener(iframe, handleReady);
             iframe.addEventListener('load', handleReady, { once: true });
         } catch (error) {
@@ -134,34 +145,32 @@ const EmailRenderer = (() => {
                 <meta http-equiv="Content-Security-Policy"
                     content="default-src 'none'; img-src http: https: data: cid:; style-src 'unsafe-inline' https: data:; font-src https: data:; script-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'none';">
                 <style>
-                    html {
+                    html, body {
                         margin: 0;
                         padding: 0;
-                        height: 100%;
+                        height: auto;
+                        min-height: 0;
+                        overflow: hidden; /* prevent inner scrollbar; parent resizes iframe */
                     }
+                    *, *::before, *::after { box-sizing: border-box; }
                     body {
-                        margin: 0;
-                        padding: 0;
                         font-family: inherit;
                         font-size: inherit;
                         line-height: inherit;
                         color: inherit;
                         background: transparent;
-                        min-height: 100%;
-                        box-sizing: border-box;
                     }
                     .email-wrapper {
-                        min-height: 100%;
                         width: 100%;
                     }
                     img, video {
                         max-width: 100% !important;
                         height: auto !important;
                     }
-                    table {
-                        width: 100%;
-                        border-collapse: separate;
-                    }
+                    table { width: 100%; border-collapse: separate; }
+                    /* Hide any accidental scrollbars in some engines */
+                    ::-webkit-scrollbar { width: 0; height: 0; }
+                    html { scrollbar-width: none; }
                 </style>
             </head>
             <body>
@@ -178,6 +187,7 @@ const EmailRenderer = (() => {
         const adjust = () => resizeIframeToContent(iframe);
         // Initial adjustments + delayed retries for late-loading assets
         adjust();
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(adjust);
         [100, 300, 800, 1500].forEach((delay) => setTimeout(adjust, delay));
         bindIframeMutationObserver(iframe, adjust);
     }
@@ -196,8 +206,32 @@ const EmailRenderer = (() => {
                 html?.scrollHeight,
                 html?.offsetHeight
             ].filter((value) => typeof value === 'number' && !Number.isNaN(value));
-            const computedHeight = heightCandidates.length > 0 ? Math.max(...heightCandidates) : 0;
-            iframe.style.height = `${Math.max(computedHeight, 200)}px`;
+
+            // Fallback measurement for absolutely-positioned content: compute max element bottom
+            let maxBottom = 0;
+            try {
+                if (body && body.getElementsByTagName) {
+                    const els = body.getElementsByTagName('*');
+                    const limit = Math.min(els.length, 5000);
+                    for (let i = 0; i < limit; i++) {
+                        const el = els[i];
+                        const rect = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+                        if (rect && Number.isFinite(rect.bottom)) {
+                            if (rect.bottom > maxBottom) maxBottom = rect.bottom;
+                        }
+                    }
+                }
+            } catch (_) {
+                // best-effort only
+            }
+
+            const computedHeight = Math.max(
+                0,
+                ...(heightCandidates.length ? heightCandidates : [0]),
+                Math.ceil(maxBottom)
+            );
+
+            iframe.style.height = `${Math.max(computedHeight, 300)}px`;
         } catch (err) {
             console.warn('Unable to auto-resize email iframe height.', err);
             iframe.style.height = '100%';

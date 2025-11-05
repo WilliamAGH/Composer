@@ -37,4 +37,12 @@ public class WebViewController {
         model.addAttribute("emailMessages", emailMessages);
         return "email-client";
     }
+
+    @GetMapping("/email-client-v2")
+    public String emailClientV2(Model model, HttpSession session) {
+        model.addAttribute("uiNonce", uiNonceService.getOrCreateSessionNonce(session));
+        List<com.composerai.api.model.EmailMessage> emailMessages = emailMessageProvider.loadEmails();
+        model.addAttribute("emailMessages", emailMessages);
+        return "email-client-v2";
+    }
 }
