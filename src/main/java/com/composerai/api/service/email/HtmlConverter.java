@@ -307,6 +307,9 @@ public final class HtmlConverter {
         MarkdownRenderer() {
             MutableDataSet options = new MutableDataSet();
             ParserEmulationProfile.GITHUB_DOC.setIn(options);
+            // Enable hard breaks on single newlines for plain text emails
+            options.set(HtmlRenderer.HARD_BREAK, "<br />\n");
+            options.set(HtmlRenderer.SOFT_BREAK, "<br />\n");
             options.set(Parser.EXTENSIONS, java.util.Arrays.asList(
                 TablesExtension.create(),
                 AutolinkExtension.create(),
@@ -317,8 +320,8 @@ public final class HtmlConverter {
             this.renderer = HtmlRenderer.builder(options)
                 .escapeHtml(true)
                 .percentEncodeUrls(true)
-                // Preserve single newlines as <br> so model-emitted line breaks render in UI
-                .softBreak("<br>")
+                // Preserve single newlines as <br> so line breaks render properly
+                .softBreak("<br />\n")
                 .build();
 
             Safelist safelist = Safelist.basicWithImages();

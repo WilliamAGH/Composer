@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import EmailIframe from './lib/EmailIframe.svelte';
   import ComposeWindow from './lib/ComposeWindow.svelte';
-  import Modal from './lib/Modal.svelte';
+  import AISummaryPanel from './lib/AISummaryPanel.svelte';
   import { isMobile } from './lib/viewport';
 import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, Archive, Trash2, Reply, Forward, ArrowLeft } from 'lucide-svelte';
     export let bootstrap = {};
@@ -28,7 +28,7 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
   $: mobile = $isMobile;
   let showDrawer = false;
 
-  // AI modal
+  // AI summary panel
   let aiOpen = false;
   let aiTitle = '';
   let aiHtml = '';
@@ -246,7 +246,7 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
       return;
     }
 
-    // Summarize/Translate show in modal
+    // Summarize/Translate show in inline panel
     try {
       const instruction = (command === 'summarize') ? 'Provide a concise summary of the selected email.' : 'Translate the selected email to English.';
       const data = await callAiCommand(command, instruction, { contextId: selected.contextId });
@@ -437,7 +437,7 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
             {/each}
           </div>
         </div>
-      <div class="flex-1 overflow-y-auto">
+      <div class="flex-1 overflow-y-auto" class:flex-initial={aiOpen}>
         <div class="w-full max-w-full overflow-x-hidden" class:p-4={!selected.contentHtml} class:sm:p-6={!selected.contentHtml}>
           {#if selected.contentHtml}
             <EmailIframe html={selected.contentHtml} />
@@ -448,6 +448,11 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
           {/if}
         </div>
       </div>
+      
+      <!-- AI Summary Panel - inline at bottom of content area -->
+      {#if aiOpen}
+        <AISummaryPanel open={true} title={aiTitle} html={aiHtml} on:close={() => (aiOpen = false)} />
+      {/if}
     {/if}
     {#each composes as c (c.id)}
       <ComposeWindow open={true} isReply={c.isReply} to={c.to} subject={c.subject} body={c.body}
@@ -473,6 +478,5 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
           } catch (err) { alert(err?.message || 'AI request failed'); }
         }} />
     {/each}
-    <Modal open={aiOpen} title={aiTitle} html={aiHtml} on:close={() => (aiOpen = false)} />
   </section>
 </div>
