@@ -1,5 +1,6 @@
 package com.composerai.api.config;
 
+import com.composerai.api.config.AppProperties;
 import com.composerai.api.dto.SseEventType;
 import com.composerai.api.service.ReasoningStreamAdapter;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -17,6 +18,12 @@ import java.util.stream.Collectors;
  */
 @ControllerAdvice
 public class GlobalModelAttributes {
+
+    private final AppProperties appProperties;
+
+    public GlobalModelAttributes(AppProperties appProperties) {
+        this.appProperties = appProperties;
+    }
 
     /**
      * Exposes SSE event type mappings to all templates.
@@ -46,5 +53,21 @@ public class GlobalModelAttributes {
                 Enum::name,
                 Enum::name
             ));
+    }
+
+    @ModelAttribute("emailRenderModes")
+    public Map<String, String> emailRenderModes() {
+        return Arrays.stream(AppProperties.EmailRenderMode.values())
+            .collect(Collectors.toMap(
+                Enum::name,
+                Enum::name
+            ));
+    }
+
+    @ModelAttribute("emailRenderMode")
+    public String emailRenderMode() {
+        AppProperties.EmailRendering rendering = appProperties.getEmailRendering();
+        AppProperties.EmailRenderMode mode = rendering != null ? rendering.getMode() : null;
+        return mode != null ? mode.name() : AppProperties.EmailRenderMode.HTML.name();
     }
 }

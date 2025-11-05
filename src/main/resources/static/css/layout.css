@@ -1,0 +1,277 @@
+/**
+ * layout.css - Global Shared Styles
+ *
+ * PURPOSE:
+ * This file contains styles that are used across MULTIPLE pages in the application.
+ * Only define classes here if they are reused in 2+ pages.
+ *
+ * BEFORE ADDING NEW STYLES:
+ * 1. Search this file first for existing similar styles
+ * 2. Check if the style is page-specific (chat.css, email-client.css)
+ * 3. If used in only ONE page, put it in that page's CSS file instead
+ *
+ * ORGANIZATION:
+ * - Global resets and base styles
+ * - Shared UI components (used across pages)
+ * - Shared animations and keyframes
+ * - Shared utility classes
+ *
+ * @author William Callahan
+ * @since 2025-11-02
+ */
+
+/* ============================================================================
+   GLOBAL RESETS & BASE STYLES
+   ============================================================================ */
+
+/**
+ * Box-sizing: Ensure all elements use border-box model
+ * Used by: All pages
+ */
+* {
+    box-sizing: border-box;
+}
+
+/**
+ * Body: Base typography and background
+ * Used by: All pages
+ */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    margin: 0;
+    background-color: #f8fafc;
+    color: #1f2937;
+    line-height: 1.6;
+}
+
+
+/* ============================================================================
+   SHARED CHAT/STREAMING UI COMPONENTS
+   Used by: chat.html, email-client.html (future AI features)
+   ============================================================================ */
+
+/**
+ * Assistant Surface: Card/bubble wrapper for AI assistant messages
+ * Used by: chat.html
+ * Future: email-client.html (when AI compose is added)
+ *
+ * Design: Translucent white card with soft shadow and rounded corners
+ * following the app's glass morphism aesthetic.
+ */
+.assistant-surface {
+    width: 100%;
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    background: rgba(255, 255, 255, 0.88);
+    box-shadow: 0 12px 24px -18px rgba(15, 23, 42, 0.25);
+    padding: 0.85rem 1.15rem;
+}
+
+@media (min-width: 640px) {
+    .assistant-surface {
+        padding: 1rem 1.35rem;
+    }
+}
+
+/**
+ * Assistant Thinking: Loading skeleton shown while AI is processing
+ * Used by: chat.html
+ * Future: email-client.html (AI compose)
+ *
+ * Shows animated placeholder lines to indicate active processing.
+ */
+.assistant-thinking .thinking-skeleton {
+    position: relative;
+    overflow: hidden;
+    border-radius: 16px;
+    padding: 0.65rem 0.9rem;
+    border: 1px solid rgba(226, 232, 240, 0.85);
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0.88) 0%, rgba(241, 245, 249, 0.66) 100%);
+}
+
+.assistant-thinking .thinking-row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-bottom: 0.45rem;
+}
+
+.assistant-thinking .thinking-row:last-child {
+    margin-bottom: 0;
+}
+
+.assistant-thinking .thinking-dot {
+    height: 0.35rem;
+    width: 0.35rem;
+    border-radius: 9999px;
+    background: rgba(148, 163, 184, 0.55);
+}
+
+.assistant-thinking .thinking-line {
+    height: 7px;
+    flex: 1;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, rgba(226, 232, 240, .32) 0%, rgba(226, 232, 240, .7) 50%, rgba(226, 232, 240, .32) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1000ms ease-in-out infinite;
+}
+
+.assistant-thinking .thinking-row:nth-child(2) .thinking-line {
+    width: 68%;
+}
+
+.assistant-thinking .thinking-row:nth-child(3) .thinking-line {
+    width: 46%;
+}
+
+.assistant-thinking .thinking-cursor-bar {
+    position: absolute;
+    top: 12%;
+    left: 0;
+    height: 76%;
+    width: 2px;
+    background: rgba(15, 23, 42, .22);
+    animation: cursor-sweep 1500ms ease-in-out infinite;
+}
+
+/**
+ * Streaming Cursor: Blinking cursor shown during SSE streaming
+ * Used by: chat.html
+ * Future: email-client.html (AI compose)
+ *
+ * Indicates that content is actively being streamed from the server.
+ */
+.streaming-cursor {
+    display: inline-block;
+    animation: blink 900ms steps(1, end) infinite;
+}
+
+/**
+ * Phase Badge: Status indicator for AI processing phases
+ * Used by: chat.html (thinking/streaming states)
+ * Future: email-client.html (AI compose states)
+ *
+ * Shows current phase: thinking, streaming, etc.
+ */
+.phase-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .7rem;
+    letter-spacing: .08em;
+    margin-bottom: .5rem;
+    border-radius: 9999px;
+    padding: .15rem .6rem;
+    border: 1px solid rgba(148, 163, 184, .45);
+    background: rgba(241, 245, 249, .7);
+    color: #334155;
+}
+
+.phase-badge.phase-thinking {
+    background: rgba(241, 245, 249, .8);
+}
+
+.phase-badge.phase-streaming {
+    background: rgba(226, 232, 240, .7);
+}
+
+/**
+ * Message Block: Container for chat messages
+ * Used by: chat.html
+ * Future: email-client.html (AI conversations)
+ */
+.message-block {
+    display: flex;
+}
+
+/**
+ * Message Assistant: Typography styles for AI assistant messages
+ * Used by: chat.html
+ *
+ * Ensures proper spacing and list formatting in assistant responses.
+ */
+.message-assistant p {
+    margin: 0.5em 0;
+}
+
+.message-assistant p:first-child {
+    margin-top: 0;
+}
+
+.message-assistant p:last-child {
+    margin-bottom: 0;
+}
+
+.message-assistant ul,
+.message-assistant ol {
+    margin: 0.5em 0;
+    padding-left: 1.5em;
+}
+
+.message-assistant li {
+    margin: 0.25em 0;
+}
+
+
+/* ============================================================================
+   SHARED DROPDOWN COMPONENTS
+   Used by: chat.html (thinking mode selector)
+   ============================================================================ */
+
+/**
+ * Thinking Dropdown Menu: Dropdown for selecting AI thinking level
+ * Used by: chat.html
+ *
+ * Responsive dropdown that adjusts position based on available viewport space.
+ */
+.thinking-dropdown-menu {
+    max-height: min(300px, calc(100vh - 200px));
+}
+
+
+/* ============================================================================
+   SHARED ANIMATIONS
+   Used across multiple components and pages
+   ============================================================================ */
+
+/**
+ * Shimmer: Left-to-right shimmer effect for loading states
+ * Used by: .thinking-line (assistant thinking skeleton)
+ */
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/**
+ * Cursor Sweep: Left-to-right sweep for cursor bar in loading states
+ * Used by: .thinking-cursor-bar (assistant thinking skeleton)
+ */
+@keyframes cursor-sweep {
+    0% {
+        left: 0;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+/**
+ * Blink: Simple on/off blinking animation
+ * Used by: .streaming-cursor (SSE streaming indicator)
+ */
+@keyframes blink {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: .2;
+    }
+    100% {
+        opacity: 1;
+    }
+}

@@ -1,14 +1,22 @@
 package com.composerai.api.controller;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.List;
+
+import com.composerai.api.model.EmailMessage;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 /**
  * Integration tests for WebViewController and GlobalModelAttributes.
@@ -19,6 +27,18 @@ class WebViewControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockBean
+    private UiNonceService uiNonceService;
+
+    @MockBean
+    private com.composerai.api.service.email.EmailMessageProvider emailMessageProvider;
+
+    @BeforeEach
+    void setup() {
+        when(uiNonceService.getOrCreateSessionNonce(any())).thenReturn("nonce");
+        when(emailMessageProvider.loadEmails()).thenReturn(List.of());
+    }
 
     @Test
     void chatPage_ShouldRenderSuccessfully() throws Exception {
@@ -99,16 +119,23 @@ class WebViewControllerTest {
     }
 
     @Test
-    void diagnosticsPage_ShouldRenderSuccessfully() throws Exception {
-        mockMvc.perform(get("/diagnostics"))
-            .andExpect(status().isOk())
-            .andExpect(view().name("diagnostics"));
-    }
+    void emailClient_ShouldExposeEmailMessagesFromProvider() throws Exception {
+        when(emailMessageProvider.loadEmails()).thenReturn(List.of(
+            EmailMessage.builder()
+                .id("sample")
+                .contextId("ctx-1")
+                .senderName("Sample Sender")
+                .senderEmail("sender@example.com")
+                .subject("Sample Email")
+                .emailBodyRaw("Body")
+                .emailBodyTransformedText("Body")
+                .build()
+        ));
 
-    @Test
-    void emailBackendPage_ShouldRenderSuccessfully() throws Exception {
-        mockMvc.perform(get("/email-backend"))
+        mockMvc.perform(get("/email-client"))
             .andExpect(status().isOk())
-            .andExpect(view().name("email-backend"));
+            .andExpect(content().string(containsString("const EMAIL_MESSAGES")))
+            .andExpect(content().string(containsString("sample")))
+            .andExpect(content().string(containsString("ctx-1")));
     }
 }

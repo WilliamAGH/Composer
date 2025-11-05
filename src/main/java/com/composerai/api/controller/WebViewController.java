@@ -1,37 +1,40 @@
 package com.composerai.api.controller;
 
+import com.composerai.api.service.email.EmailMessageProvider;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+
+import java.util.List;
 
 @Controller
 public class WebViewController {
+
+    private final UiNonceService uiNonceService;
+    private final EmailMessageProvider emailMessageProvider;
+
+    public WebViewController(UiNonceService uiNonceService, EmailMessageProvider emailMessageProvider) {
+        this.uiNonceService = uiNonceService;
+        this.emailMessageProvider = emailMessageProvider;
+    }
 
     @GetMapping({"/", "/index"})
     public String index() {
         return "redirect:/chat";
     }
 
-    @GetMapping("/diagnostics")
-    public String diagnostics() {
-        return "diagnostics";
-    }
-
-    @GetMapping({"/email-backend"})
-    public String emailBackend(org.springframework.ui.Model model, jakarta.servlet.http.HttpSession session) {
-        model.addAttribute("uiNonce", getOrCreateSessionNonce(session));
-        return "email-backend";
-    }
-
     @GetMapping("/chat")
-    public String chat(org.springframework.ui.Model model, jakarta.servlet.http.HttpSession session) {
-        model.addAttribute("uiNonce", getOrCreateSessionNonce(session));
+    public String chat(Model model, HttpSession session) {
+        model.addAttribute("uiNonce", uiNonceService.getOrCreateSessionNonce(session));
         return "chat";
     }
 
-    private String getOrCreateSessionNonce(jakarta.servlet.http.HttpSession session) {
-        Object existing = session.getAttribute("UI_NONCE");
-        String nonce = existing instanceof String s && !s.isBlank() ? s : com.composerai.api.util.IdGenerator.generate(24);
-        session.setAttribute("UI_NONCE", nonce);
-        return nonce;
+    @GetMapping("/email-client")
+    public String emailClient(Model model, HttpSession session) {
+        model.addAttribute("uiNonce", uiNonceService.getOrCreateSessionNonce(session));
+        List<com.composerai.api.model.EmailMessage> emailMessages = emailMessageProvider.loadEmails();
+        model.addAttribute("emailMessages", emailMessages);
+        return "email-client";
     }
 }

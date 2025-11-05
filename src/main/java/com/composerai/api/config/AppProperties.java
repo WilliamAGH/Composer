@@ -1,10 +1,14 @@
 package com.composerai.api.config;
 
+import com.composerai.api.util.StringUtils;
+import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.Locale;
 
 @Getter
 @Setter
@@ -15,6 +19,16 @@ public class AppProperties {
     private Hsts hsts = new Hsts();
     @NestedConfigurationProperty
     private Cors cors = new Cors();
+    @NestedConfigurationProperty
+    private EmailRendering emailRendering = new EmailRendering();
+
+    @PostConstruct
+    void hydrateFromEnvironment() {
+        String configured = System.getenv("RENDER_EMAILS_WITH");
+        if (!StringUtils.isBlank(configured)) {
+            emailRendering.setMode(configured);
+        }
+    }
 
     @Getter
     @Setter
@@ -30,5 +44,44 @@ public class AppProperties {
          * https://composerai.app,https://dev.composerai.app
          */
         private String allowedOrigins = "http://localhost:8080,https://composerai.app,https://dev.composerai.app";
+    }
+
+    @Getter
+    public static class EmailRendering {
+        private EmailRenderMode mode = EmailRenderMode.HTML;
+
+        public void setMode(EmailRenderMode mode) {
+            this.mode = mode == null ? EmailRenderMode.HTML : mode;
+        }
+
+        public void setMode(String mode) {
+            this.mode = EmailRenderMode.from(mode);
+        }
+    }
+
+    public enum EmailRenderMode {
+        HTML,
+        MARKDOWN,
+        PLAINTEXT;
+
+        public static EmailRenderMode from(String value) {
+            if (value == null) {
+                return HTML;
+            }
+            String trimmed = value.trim();
+            if (trimmed.isEmpty()) {
+                return HTML;
+            }
+            String normalized = trimmed
+                .replace('-', '_')
+                .replace(' ', '_')
+                .toUpperCase(Locale.ROOT);
+            return switch (normalized) {
+                case "HTML" -> HTML;
+                case "MARKDOWN", "MD" -> MARKDOWN;
+                case "PLAINTEXT", "PLAIN_TEXT", "PLAIN" -> PLAINTEXT;
+                default -> HTML;
+            };
+        }
     }
 }

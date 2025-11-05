@@ -1,0 +1,19 @@
+From: Michael Chen <m.chen@tech.io>
+To: InboxAI User <user@example.com>
+Subject: New Feature Deployment Schedule
+Date: Tue, 30 Sep 2025 14:15:00 -0700
+Message-ID: <sample-michael-chen@composerai>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+
+The new authentication system is ready for deployment.
+
+Here's the timeline we're proposing:
+- Staging environment testing on Monday
+- Production deployment on Wednesday
+
+Please review the attached documentation and flag any blockers.
+
+Thanks,
+Michael

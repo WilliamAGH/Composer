@@ -91,7 +91,7 @@ public final class EmailPipeline {
 
                     String id = meta.get("messageId") != null && !meta.get("messageId").toString().isBlank()
                         ? meta.get("messageId").toString() : com.composerai.api.service.HtmlToText.normalizeBaseName(options.inputFile);
-                    Map<String, Object> doc = EmailDocumentBuilder.buildDocument(id, meta, plain, markdown, policies);
+                    Map<String, Object> doc = EmailDocumentBuilder.buildDocument(id, meta, plain, markdown, html, policies);
                     return new ObjectMapper().writeValueAsString(doc);
                 } else {
                     String metaHeader = options.includeMetadata ? EmailExtractor.buildMetadataHeader(message, options.format) : "";
@@ -121,7 +121,7 @@ public final class EmailPipeline {
                     "suppressUtility", options.suppressUtility
                 );
                 String id = com.composerai.api.service.HtmlToText.normalizeBaseName(options.inputFile);
-                Map<String, Object> doc = EmailDocumentBuilder.buildDocument(id, meta, plain, markdown, policies);
+                Map<String, Object> doc = EmailDocumentBuilder.buildDocument(id, meta, plain, markdown, html, policies);
                 return new ObjectMapper().writeValueAsString(doc);
             }
             return HtmlConverter.convertHtml(html, options.format, options.urlsPolicy, options.suppressUtility);

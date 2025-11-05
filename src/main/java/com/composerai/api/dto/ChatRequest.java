@@ -45,6 +45,15 @@ public class ChatRequest {
     // Optional: Request JSON output instead of rendered HTML
     private boolean jsonOutput = false;
 
+    // Optional: Structured AI command (e.g., compose, summarize, translate, tone, draft)
+    @Pattern(regexp = "^(compose|draft|summarize|translate|tone)$", flags = {Pattern.Flag.CASE_INSENSITIVE},
+             message = "aiCommand must be one of: compose, draft, summarize, translate, tone")
+    private String aiCommand;
+
+    // Optional: Email subject for compose/draft commands
+    @Size(max = 500, message = "subject cannot exceed 500 characters")
+    private String subject;
+
     // Custom constructor for common test case: message, conversationId, maxResults
     public ChatRequest(String message, String conversationId, int maxResults) {
         this.message = message;

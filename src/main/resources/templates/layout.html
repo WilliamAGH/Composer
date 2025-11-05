@@ -34,24 +34,7 @@
             },
         };
     </script>
-    <style>
-        .assistant-thinking .thinking-skeleton{position:relative;overflow:hidden;border-radius:16px;padding:0.65rem 0.9rem;border:1px solid rgba(226,232,240,0.85);background:linear-gradient(180deg,rgba(248,250,252,0.88) 0%,rgba(241,245,249,0.66) 100%)}
-        .assistant-thinking .thinking-row{display:flex;align-items:center;gap:0.55rem;margin-bottom:0.45rem}
-        .assistant-thinking .thinking-row:last-child{margin-bottom:0}
-        .assistant-thinking .thinking-dot{height:0.35rem;width:0.35rem;border-radius:9999px;background:rgba(148,163,184,0.55)}
-        .assistant-thinking .thinking-line{height:7px;flex:1;border-radius:9999px;background:linear-gradient(90deg,rgba(226,232,240,.32) 0%,rgba(226,232,240,.7) 50%,rgba(226,232,240,.32) 100%);background-size:200% 100%;animation:shimmer 1000ms ease-in-out infinite}
-        .assistant-thinking .thinking-row:nth-child(2) .thinking-line{width:68%}
-        .assistant-thinking .thinking-row:nth-child(3) .thinking-line{width:46%}
-        .assistant-thinking .thinking-cursor-bar{position:absolute;top:12%;left:0;height:76%;width:2px;background:rgba(15,23,42,.22);animation:cursor-sweep 1500ms ease-in-out infinite}
-        .streaming-cursor{display:inline-block;animation:blink 900ms steps(1,end) infinite}
-        .phase-badge{display:inline-flex;align-items:center;gap:.4rem;font-size:.7rem;letter-spacing:.08em;margin-bottom:.5rem;border-radius:9999px;padding:.15rem .6rem;border:1px solid rgba(148,163,184,.45);background:rgba(241,245,249,.7);color:#334155}
-        .phase-badge.phase-thinking{background:rgba(241,245,249,.8)}
-        .phase-badge.phase-streaming{background:rgba(226,232,240,.7)}
-        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-        @keyframes cursor-sweep{0%{left:0}100%{left:100%}}
-        @keyframes blink{0%{opacity:1}50%{opacity:.2}100%{opacity:1}}
-    </style>
-    <link rel="stylesheet" href="/css/app-shared.css" />
+    <link rel="stylesheet" href="/css/layout.css" />
     <title th:text="${pageTitle}">ComposerAI</title>
     <th:block th:if="${headContent} != null" th:replace="${headContent}"></th:block>
 </head>
@@ -118,7 +101,7 @@
                 headers['X-UI-Request'] = uiNonce;
             }
             
-            const response = await fetch('/api/parse-email', {
+            const response = await fetch('/api/qa/parse-email', {
                 method: 'POST',
                 headers: headers,
                 body: formData

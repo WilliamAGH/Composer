@@ -4,14 +4,26 @@ Java 21 Spring Boot backend that powers the ComposerAI: a chat interface for rea
 
 ## Developer Routes
 
-- `/diagnostics` – internal diagnostics workspace with health checks, mock retrievals, and UI preview controls.
-- `/email-backend` – email parsing tooling for uploading `.eml`/`.txt` files and inspecting normalized output.
+- `/qa/diagnostics` – internal diagnostics workspace with health checks, mock retrievals, and UI preview controls.
+- `/qa/email-file-parser` – QA-only email parsing workspace for uploading `.eml`/`.txt` files and inspecting normalized output produced by the shared `EmailParsingService` pipeline.
+
+### Customizing AI Command Prompts
+
+The chat service renders AI helper flows (compose, draft, summarize, translate, tone) using templates sourced from `AiCommandPromptProperties`. Override them per environment in `application.properties` (or profile-specific variants) with the `ai.commands.prompts.<command>.template` key. Supported commands today are `compose`, `draft`, `summarize`, `translate`, and `tone`.
+
+```properties
+# application-local.properties
+ai.commands.prompts.compose.template=Compose a concise, action-oriented reply: {{instruction}}
+ai.commands.prompts.tone.template=Adjust the draft to a friendly yet professional tone: {{instruction}}
+```
+
+Templates accept the `{{instruction}}` placeholder, which is replaced with the user message passed from the UI. If a custom template is omitted or blank the service falls back to the built-in defaults.
 
 ## Feature Highlights
 
 - **Chat Orchestration** – Routes chat requests through OpenAI-compatible models, classifies user intent, and stitches email snippets into responses.
 - **Vector Retrieval Stub** – Integrates with Qdrant for similarity search; ships with placeholder extraction logic so teams can map real payloads incrementally.
-- **Email Parsing Workspace** – Provides an interactive HTML workspace for uploading `.eml`/`.txt` files and returning cleaned text output via the `/api/parse-email` endpoint.
+- **Email Parsing Workspace (QA)** – Provides an interactive HTML workspace for uploading `.eml`/`.txt` files and returning cleaned text output via the `/api/qa/parse-email` endpoint.
 - **Diagnostics Control Panel** – Ships a rich, static diagnostics dashboard tailored for observing health checks, mock retrieval responses, and LLM outputs.
 - **CLI Utilities** – Includes `HtmlToText` tooling for converting raw email sources to Markdown or plain text, enabling batch processing workflows.
 
@@ -143,6 +155,7 @@ export LLM_REASONING="medium"
 | `LLM_PROVIDER_SORT` | - | Sort providers: `price`, `throughput`, `latency` (OpenRouter only) |
 | `LLM_PROVIDER_ALLOW_FALLBACKS` | `true` | Allow fallback providers (OpenRouter only) |
 | `LLM_DEBUG_FETCH` | `false` | Log full request/response bodies |
+| `RENDER_EMAILS_WITH` | `HTML` | Email client render mode: `HTML`, `MARKDOWN`, or `PLAINTEXT` |
 
 \* `minimal` only supported by OpenAI. Automatically converts to `low` for other providers.
 
@@ -182,8 +195,8 @@ The runtime stage uses `openjdk:21-jdk-slim` and copies static assets for direct
 
 ## Static Workspaces
 
-- Diagnostics dashboard: `http://localhost:8080/diagnostics`
-- Email parser UI: `http://localhost:8080/email-backend`
+- Diagnostics dashboard: `http://localhost:8080/qa/diagnostics`
+- Email parser UI: `http://localhost:8080/qa/email-file-parser`
 - Redirect landing page: `http://localhost:8080/`
 
 Each workspace follows the house design language: layered glass cards over soft gradients, deep slate or charcoal accents, diffused shadows, disciplined spacing, and crisp system typography.
@@ -196,7 +209,7 @@ Each workspace follows the house design language: layered glass cards over soft 
 | `GET` | `/api/chat/health` | Chat-specific heartbeat |
 | `POST` | `/api/chat` | Main chat endpoint accepting message, optional conversation ID, `maxResults`, and a `contextId` referencing normalized email content |
 | `POST` | `/api/chat/stream` | SSE stream of incremental tokens for live responses |
-| `POST` | `/api/parse-email` | Multipart upload for `.eml`/`.txt` files that streams them through the normalization pipeline and returns a `contextId` for subsequent chat calls |
+| `POST` | `/api/qa/parse-email` | QA-only multipart upload for `.eml`/`.txt` files that streams them through the shared `EmailParsingService` and returns a `contextId` for subsequent chat calls |
 
 ### Example Chat Request
 
@@ -209,9 +222,9 @@ Content-Type: application/json
   "conversationId": "thread-123",
   "maxResults": 5,
   "contextId": "7c2f0a22-88d2-4bec-aad4-1f81f9b6f5af",
-  "emailContext": "(optional) sanitized preview returned by /api/parse-email"
+  "emailContext": "(optional) sanitized preview returned by /api/qa/parse-email"
 }
-
+`contextId` should originate from `/api/qa/parse-email`; if it is omitted or invalid, the server drops any supplied `emailContext` string and proceeds with vector-search context only. This guarantees that only normalized pipeline output can reach downstream LLM calls.
 `contextId` must originate from `/api/parse-email`; if it is omitted or invalid, the server drops any supplied `emailContext` string and proceeds with vector-search context only. This guarantees that only the normalized pipeline output can reach downstream LLM calls.
 ```
 

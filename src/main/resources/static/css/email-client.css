@@ -1,0 +1,343 @@
+/**
+ * email-client.css - Email Client Interface Styles
+ *
+ * PURPOSE:
+ * Styles specific to the email client interface (/email-client route).
+ * These styles are ONLY used on the email client page.
+ *
+ * BEFORE ADDING NEW STYLES:
+ * 1. Check if the style exists in layout.css (shared across pages)
+ * 2. If reused in chat or other pages, move to layout.css instead
+ * 3. Search this file for similar existing styles before creating new ones
+ *
+ * ORGANIZATION:
+ * - Layout and containers
+ * - Sidebar and navigation
+ * - Email list and items
+ * - Email content display
+ * - Compose window
+ * - UI elements (badges, avatars, icons)
+ *
+ * @author William Callahan
+ * @since 2025-11-02
+ */
+
+/* ============================================================================
+   LAYOUT & CONTAINERS
+   Main page layout and container structures
+   ============================================================================ */
+
+/**
+ * Email Client Container: Root container for the entire email client
+ * Used by: email-client.html only
+ *
+ * Design: Full-height flex layout with gradient background
+ */
+.email-client-container {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    background: linear-gradient(180deg, #f8fafc 0%, #f5f5f7 100%);
+    position: relative;
+}
+
+.sidebar {
+    width: 16rem;
+    background: rgba(255, 255, 255, 0.75);
+    border-right: 1px solid rgba(226, 232, 240, 0.8);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease;
+    position: relative;
+}
+
+.sidebar-header {
+    padding-top: 1.25rem;
+}
+
+.sidebar.closed {
+    transform: translateX(-100%);
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 30;
+}
+
+.email-list {
+    width: 24rem;
+    border-right: 1px solid rgba(226, 232, 240, 0.8);
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    flex-direction: column;
+}
+
+.email-list-toolbar {
+    position: relative;
+    align-items: center;
+}
+
+.email-list-header {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+}
+
+#menuToggle {
+    transition: margin-left 0.3s ease;
+    flex-shrink: 0;
+}
+
+.email-client-container.sidebar-open #menuToggle {
+    margin-left: -0.5rem;
+}
+
+.email-client-container.sidebar-collapsed #menuToggle {
+    margin-left: 0;
+}
+
+.email-content {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.95);
+    display: flex;
+    flex-direction: column;
+}
+
+.email-item {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.email-item:hover {
+    background: rgba(241, 245, 249, 0.7);
+}
+
+.email-item.selected {
+    background: rgba(226, 232, 240, 0.5);
+}
+
+.email-item.unread {
+    background: rgba(59, 130, 246, 0.03);
+}
+
+.nav-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+    transition: background-color 0.15s ease;
+    text-align: left;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #64748b;
+    font-size: 0.95rem;
+}
+
+.nav-item:hover {
+    background: rgba(226, 232, 240, 0.4);
+    color: #0f172a;
+}
+
+.badge {
+    margin-left: auto;
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    background: rgba(226, 232, 240, 0.6);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+
+/* ============================================================================
+   COMPOSE WINDOW
+   Floating compose window for email composition
+   ============================================================================ */
+
+/**
+ * Compose Window: Floating window for composing new emails
+ * Used by: email-client.html only
+ *
+ * Design: Fixed-position bottom-right window with slide-up animation
+ */
+.compose-window {
+    position: fixed;
+    bottom: 0;
+    right: 1.5rem;
+    width: 90%;
+    max-width: 560px;
+    background: rgba(255, 255, 255, 0.98);
+    border-radius: 20px 20px 0 0;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    border-bottom: none;
+    box-shadow: 0 -10px 40px -10px rgba(15, 23, 42, 0.25);
+    overflow: hidden;
+    z-index: 1000;
+    display: none;
+    flex-direction: column;
+    max-height: 600px;
+    animation: slideUp 0.2s ease-out;
+}
+
+.compose-window.active {
+    display: flex;
+}
+
+.compose-window.minimized {
+    max-height: 48px;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.compose-windows-container {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.compose-windows-container > * {
+    pointer-events: auto;
+}
+
+.ai-command-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.85rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    background: rgba(255, 255, 255, 0.9);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.ai-command-btn:hover {
+    background: rgba(248, 250, 252, 1);
+    border-color: rgba(148, 163, 184, 0.5);
+    color: #0f172a;
+}
+
+.ai-command-btn svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+
+/* ============================================================================
+   UI ELEMENTS
+   Reusable UI components (badges, avatars, icons)
+   ============================================================================ */
+
+/**
+ * Avatar: Circular user avatar image
+ * Used by: email-client.html only
+ *
+ * Design: Circular image with object-fit cover
+ */
+.avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.avatar-lg {
+    width: 3rem;
+    height: 3rem;
+}
+
+.empty-state {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    text-align: center;
+}
+
+.reply-section {
+    padding: 1rem;
+    border-top: 1px solid rgba(226, 232, 240, 0.8);
+    background: rgba(255, 255, 255, 0.98);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+}
+
+
+.icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    stroke-width: 1.8;
+}
+
+.icon-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+.label-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.5rem;
+    background: rgba(226, 232, 240, 0.5);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+.star-icon {
+    fill: none;
+    transition: all 0.15s ease;
+}
+
+.star-icon.starred {
+    fill: #facc15;
+    stroke: #facc15;
+}
+
+
+/* ============================================================================
+   RESPONSIVE DESIGN
+   Mobile and tablet adaptations
+   ============================================================================ */
+
+@media (max-width: 768px) {
+    .sidebar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        z-index: 100;
+    }
+
+    .email-list {
+        width: 20rem;
+    }
+
+    .email-client-container.sidebar-open #menuToggle {
+        margin-left: 0;
+        transform: none;
+    }
+}

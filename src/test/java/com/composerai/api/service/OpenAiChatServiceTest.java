@@ -2,6 +2,7 @@ package com.composerai.api.service;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import com.composerai.api.config.AiCommandPromptProperties;
 import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
 import com.composerai.api.config.MagicEmailProperties;
@@ -238,6 +239,7 @@ class ChatServiceContextPropagationTest {
         openAiProperties = new OpenAiProperties();
         ErrorMessagesProperties errorMessagesProperties = new ErrorMessagesProperties();
         MagicEmailProperties magicEmailProperties = new MagicEmailProperties();
+        AiCommandPromptProperties aiCommandPromptProperties = new AiCommandPromptProperties();
 
         chatService = new ChatService(
             vectorSearchService,
@@ -248,6 +250,7 @@ class ChatServiceContextPropagationTest {
             emailContextRegistry,
             conversationRegistry,
             magicEmailProperties,
+            aiCommandPromptProperties,
             executorService
         );
     }

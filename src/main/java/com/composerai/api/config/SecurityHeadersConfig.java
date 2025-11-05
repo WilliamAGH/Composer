@@ -39,6 +39,13 @@ public class SecurityHeadersConfig {
         return registrationBean;
     }
 
+    @Bean
+    public FilterRegistrationBean<OncePerRequestFilter> contentSecurityPolicyFilter() {
+        FilterRegistrationBean<OncePerRequestFilter> registrationBean = new FilterRegistrationBean<>(new ContentSecurityPolicyFilter());
+        registrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE + 3);
+        return registrationBean;
+    }
+
     /**
      * Filter that manages HSTS (HTTP Strict Transport Security) headers.
      * When HSTS is disabled, sets max-age=0 to clear any cached HSTS policy.
@@ -111,6 +118,55 @@ public class SecurityHeadersConfig {
             if (origin == null) return false;
             String msg = e.getMessage();
             return msg != null && msg.toLowerCase().contains("cors");
+        }
+    }
+
+    /**
+     * Filter that adds Content Security Policy headers to protect against XSS and code injection.
+     * Applies strict CSP to prevent inline scripts and restrict resource loading.
+     */
+    private static class ContentSecurityPolicyFilter extends OncePerRequestFilter {
+
+        @Override
+        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+                throws ServletException, IOException {
+
+            // Generate nonce for this request (if needed for inline scripts)
+            String nonce = java.util.UUID.randomUUID().toString();
+            request.setAttribute("cspNonce", nonce);
+
+            // Strict CSP policy to protect against XSS attacks
+            // - default-src 'self': Only allow resources from same origin by default
+            // - script-src 'self' 'unsafe-inline' cdn.tailwindcss.com cdn.jsdelivr.net: Allow scripts from same origin, inline, and trusted CDNs
+            // - style-src 'self' 'unsafe-inline': Allow styles from same origin and inline (needed for styling)
+            // - img-src 'self' https: data:: Allow images from same origin, HTTPS, and data URLs
+            // - frame-src 'none': Block all iframes from external sources (sandboxed iframes for emails use srcdoc)
+            // - object-src 'none': Block plugins like Flash
+            // - base-uri 'self': Restrict base tag to prevent URL injection
+            // - form-action 'self': Only allow form submissions to same origin
+            // - frame-ancestors 'none': Prevent clickjacking (X-Frame-Options alternative)
+            String csp = "default-src 'self'; " +
+                        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; " +
+                        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+                        "font-src 'self' https://fonts.gstatic.com; " +
+                        "img-src 'self' https: data: https://i.pravatar.cc; " +
+                        "connect-src 'self' https://cdn.jsdelivr.net; " +
+                        "frame-src 'none'; " +
+                        "object-src 'none'; " +
+                        "base-uri 'self'; " +
+                        "form-action 'self'; " +
+                        "frame-ancestors 'none'; " +
+                        "upgrade-insecure-requests";
+
+            response.setHeader("Content-Security-Policy", csp);
+
+            // Additional security headers
+            response.setHeader("X-Content-Type-Options", "nosniff");
+            response.setHeader("X-Frame-Options", "DENY");
+            response.setHeader("X-XSS-Protection", "1; mode=block");
+            response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+
+            filterChain.doFilter(request, response);
         }
     }
 

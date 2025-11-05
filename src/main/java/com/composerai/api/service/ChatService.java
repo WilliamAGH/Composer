@@ -1,5 +1,6 @@
 package com.composerai.api.service;
 
+import com.composerai.api.config.AiCommandPromptProperties;
 import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
 import com.composerai.api.config.MagicEmailProperties;
@@ -44,6 +45,7 @@ public class ChatService {
     private final ConversationRegistry conversationRegistry;
     private final ExecutorService streamingExecutor;
     private final MagicEmailProperties magicEmailProperties;
+    private final AiCommandPromptProperties aiCommandPromptProperties;
 
     private static final String INSIGHTS_TRIGGER = "__INSIGHTS_TRIGGER__";
     private static final Pattern MARKDOWN_LINK_PATTERN = Pattern.compile("\\[([^\\]]+)\\]\\(([^\\)]*)\\)");
@@ -54,6 +56,7 @@ public class ChatService {
                        ContextBuilder contextBuilder, ContextBuilder.EmailContextRegistry emailContextRegistry,
                        ConversationRegistry conversationRegistry,
                        MagicEmailProperties magicEmailProperties,
+                       AiCommandPromptProperties aiCommandPromptProperties,
                        @Qualifier("chatStreamExecutor") ExecutorService streamingExecutor) {
         this.vectorSearchService = vectorSearchService;
         this.openAiChatService = openAiChatService;
@@ -64,6 +67,7 @@ public class ChatService {
         this.conversationRegistry = conversationRegistry;
         this.streamingExecutor = streamingExecutor;
         this.magicEmailProperties = magicEmailProperties;
+        this.aiCommandPromptProperties = aiCommandPromptProperties;
     }
 
     private record ChatContext(float[] embedding, List<EmailContext> emailContext, String contextString) {}
@@ -92,7 +96,8 @@ public class ChatService {
         return new ChatContext(queryVector, emailContext, contextBuilder.buildFromEmailList(emailContext));
     }
 
-    private String resolvePromptForModel(String originalMessage, boolean jsonOutput, String mergedContext) {
+    private String resolvePromptForModel(ChatRequest request, String mergedContext) {
+        String originalMessage = request.getMessage();
         if (INSIGHTS_TRIGGER.equals(originalMessage)) {
             String prompt = magicEmailProperties.getInsights().getPrompt();
             String sanitizedContext = sanitizeInsightsContext(mergedContext);
@@ -101,7 +106,16 @@ public class ChatService {
             }
             return prompt + "\n\nContext:\n" + sanitizedContext;
         }
-        return formatMessageForOutput(originalMessage, jsonOutput);
+
+        String command = request.getAiCommand();
+        if (!StringUtils.isBlank(command)) {
+            String template = aiCommandPromptProperties.promptFor(command).orElse(null);
+            if (!StringUtils.isBlank(template)) {
+                return renderCommandTemplate(template, originalMessage, request.getSubject());
+            }
+        }
+
+        return formatMessageForOutput(originalMessage, request.isJsonOutput());
     }
 
     private String sanitizeInsightsContext(String context) {
@@ -115,6 +129,24 @@ public class ChatService {
         cleaned = cleaned.replaceAll("\\(\\s*\\)", "");
         cleaned = cleaned.replaceAll("\\s{2,}", " ");
         return HtmlConverter.cleanupOutput(cleaned.trim(), true);
+    }
+
+    private String renderCommandTemplate(String template, String instruction, String subject) {
+        String safeInstruction = instruction == null ? "" : instruction.trim();
+        String safeSubject = subject == null ? "" : subject.trim();
+
+        String rendered = template;
+        if (rendered.contains("{{instruction}}")) {
+            rendered = rendered.replace("{{instruction}}", safeInstruction);
+        } else if (!StringUtils.isBlank(safeInstruction)) {
+            rendered = rendered + "\n\nAdditional direction:\n" + safeInstruction;
+        }
+
+        if (!StringUtils.isBlank(safeSubject)) {
+            rendered = rendered + "\n\nSubject: " + safeSubject;
+        }
+
+        return rendered;
     }
 
     /**
@@ -144,7 +176,7 @@ public class ChatService {
             if (INSIGHTS_TRIGGER.equals(originalMessage)) {
                 fullContext = sanitizeInsightsContext(fullContext);
             }
-            String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, fullContext);
+            String userMessageForModel = resolvePromptForModel(request, fullContext);
             List<OpenAiChatService.ConversationTurn> history = conversationRegistry.history(conversationId);
 
             // Debug log context structure for troubleshooting
@@ -235,7 +267,7 @@ public class ChatService {
         if (INSIGHTS_TRIGGER.equals(originalMessage)) {
             fullContext = sanitizeInsightsContext(fullContext);
         }
-        String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, fullContext);
+        String userMessageForModel = resolvePromptForModel(request, fullContext);
         Consumer<String> htmlConsumer = jsonOutput ? null : onToken;
         Consumer<String> jsonConsumer = jsonOutput ? onToken : null;
         List<OpenAiChatService.ConversationTurn> history = conversationRegistry.history(conversationId);
@@ -262,7 +294,7 @@ public class ChatService {
         if (INSIGHTS_TRIGGER.equals(originalMessage)) {
             fullContext = sanitizeInsightsContext(fullContext);
         }
-        String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, fullContext);
+        String userMessageForModel = resolvePromptForModel(request, fullContext);
         Consumer<String> htmlConsumer = jsonOutput ? null : onToken;
         Consumer<String> jsonConsumer = jsonOutput ? onToken : null;
         List<OpenAiChatService.ConversationTurn> history = conversationRegistry.history(conversationId);
@@ -289,7 +321,7 @@ public class ChatService {
                 if (INSIGHTS_TRIGGER.equals(originalMessage)) {
                     fullContext = sanitizeInsightsContext(fullContext);
                 }
-                String userMessageForModel = resolvePromptForModel(originalMessage, jsonOutput, fullContext);
+                String userMessageForModel = resolvePromptForModel(request, fullContext);
                 List<OpenAiChatService.ConversationTurn> history = conversationRegistry.history(conversationId);
                 String userMessageId = com.composerai.api.util.IdGenerator.uuidV7();
                 String assistantMessageId = com.composerai.api.util.IdGenerator.uuidV7();
