@@ -178,13 +178,15 @@ const EmailRenderer = (() => {
                         max-width: 100% !important;
                         overflow-x: hidden !important;
                         box-sizing: border-box !important;
+                        padding: 16px !important; /* Consistent left/right margins for text and images */
                     }
-                    /* Force all images, videos, and media to scale down */
+                    /* Force all images, videos, and media to scale down within padded container */
                     img, video, svg, canvas, picture {
                         max-width: 100% !important;
                         width: auto !important;
                         height: auto !important;
                         display: block !important;
+                        box-sizing: border-box !important;
                     }
                     /* Override any inline width on images */
                     img[width], video[width], svg[width] {

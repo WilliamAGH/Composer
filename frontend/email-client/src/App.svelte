@@ -398,52 +398,47 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
         </div>
       </div>
     {:else}
-      <div class="p-6 border-b border-slate-200">
-          <div class="flex items-start gap-4 justify-between">
-          <div class="flex items-start gap-4">
-            {#if mobile}
-              <button type="button" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={() => { selected = null; showDrawer = false; }} aria-label="Back to list">
-                <ArrowLeft class="h-4 w-4" />
-              </button>
-            {/if}
-            <img src={selected.avatar || selected.companyLogoUrl || ('https://i.pravatar.cc/120?u=' + encodeURIComponent(selected.fromEmail || selected.from))} alt={escapeHtml(selected.from)} class="h-12 w-12 rounded-full object-cover" loading="lazy"/>
-            <div>
-              <h2 class="text-xl font-semibold text-slate-900">{escapeHtml(selected.subject)}</h2>
-              <div class="flex items-center gap-2 text-sm text-slate-600">
-                <span class="font-medium">{escapeHtml(selected.from)}</span>
-                {#if selected.fromEmail}<span>&lt;{escapeHtml(selected.fromEmail)}&gt;</span>{/if}
+      <div class="px-4 py-3 border-b border-slate-200" class:p-6={!mobile}>
+          <div class="flex items-start gap-3" class:flex-col={mobile}>
+            <div class="flex items-start gap-3 min-w-0 flex-1">
+              <img src={selected.avatar || selected.companyLogoUrl || ('https://i.pravatar.cc/120?u=' + encodeURIComponent(selected.fromEmail || selected.from))} alt={escapeHtml(selected.from)} class="h-10 w-10 rounded-full object-cover shrink-0" class:h-12={!mobile} class:w-12={!mobile} loading="lazy"/>
+              <div class="min-w-0 flex-1">
+                <h2 class="text-lg font-semibold text-slate-900 break-words" class:text-xl={!mobile}>{escapeHtml(selected.subject)}</h2>
+                <div class="flex items-center gap-1 text-sm text-slate-600 flex-wrap">
+                  <span class="font-medium truncate">{escapeHtml(selected.from)}</span>
+                  {#if selected.fromEmail}<span class="text-xs truncate">&lt;{escapeHtml(selected.fromEmail)}&gt;</span>{/if}
+                </div>
+                {#if selected.to || selected.toEmail}
+                  <div class="text-xs mt-1 text-slate-400 truncate">To: {escapeHtml(selected.to || 'Unknown recipient')} {#if selected.toEmail}<span>&lt;{escapeHtml(selected.toEmail)}&gt;</span>{/if}</div>
+                {/if}
+                <p class="text-xs mt-1 text-slate-400">{formatFullDate(selected.timestampIso, selected.timestamp)}</p>
               </div>
-              {#if selected.to || selected.toEmail}
-                <div class="text-xs mt-1 text-slate-400">To: {escapeHtml(selected.to || 'Unknown recipient')} {#if selected.toEmail}<span>&lt;{escapeHtml(selected.toEmail)}&gt;</span>{/if}</div>
-              {/if}
-<p class="text-xs mt-1 text-slate-400">{formatFullDate(selected.timestampIso, selected.timestamp)}</p>
+            </div>
+            <div class="flex gap-2 shrink-0" class:w-full={mobile} class:justify-end={mobile}>
+              <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Reply" aria-label="Reply" on:click={openReply}>
+                <Reply class="h-4 w-4" />
+              </button>
+              <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Forward" aria-label="Forward">
+                <Forward class="h-4 w-4" />
+              </button>
+              <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Archive" aria-label="Archive">
+                <Archive class="h-4 w-4" />
+              </button>
+              <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Delete" aria-label="Delete">
+                <Trash2 class="h-4 w-4" />
+              </button>
             </div>
           </div>
-          <div class="flex gap-2">
-            <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Reply" aria-label="Reply" on:click={openReply}>
-              <Reply class="h-4 w-4" />
-            </button>
-            <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Forward" aria-label="Forward">
-              <Forward class="h-4 w-4" />
-            </button>
-            <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Archive" aria-label="Archive">
-              <Archive class="h-4 w-4" />
-            </button>
-            <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Delete" aria-label="Delete">
-              <Trash2 class="h-4 w-4" />
-            </button>
+          <div class="mt-4 flex flex-wrap gap-2">
+            {#each Object.keys(FALLBACK_COMMAND_TITLES) as key}
+              <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50" on:click={() => runMainAiCommand(key)}>
+                {FALLBACK_COMMAND_TITLES[key]}
+              </button>
+            {/each}
           </div>
         </div>
-        <div class="mt-4 flex flex-wrap gap-2">
-          {#each Object.keys(FALLBACK_COMMAND_TITLES) as key}
-            <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50" on:click={() => runMainAiCommand(key)}>
-              {FALLBACK_COMMAND_TITLES[key]}
-            </button>
-          {/each}
-        </div>
-      </div>
       <div class="flex-1 overflow-y-auto">
-        <div class="p-4 sm:p-6 w-full max-w-full overflow-x-hidden">
+        <div class="w-full max-w-full overflow-x-hidden" class:p-4={!selected.contentHtml} class:sm:p-6={!selected.contentHtml}>
           {#if selected.contentHtml}
             <EmailIframe html={selected.contentHtml} />
           {:else}
