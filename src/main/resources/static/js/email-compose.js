@@ -1,3 +1,7 @@
+/*
+ * DEPRECATED: email compose window (v1). Superseded by Svelte ComposeWindow.svelte
+ * in frontend/email-client/src/lib/ComposeWindow.svelte. Scheduled for deletion after v2 cutover.
+ */
 const DEFAULT_ATTACHMENT_EXTENSIONS = ['.eml', '.msg', '.txt', '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.html', '.md'];
 
 const noop = () => {};

@@ -1,3 +1,8 @@
+/*
+ * DEPRECATED: email-client v1 script. Replaced by Svelte UI located at
+ * frontend/email-client (built to /static/app/email-client/). This file is
+ * retained temporarily for fallback and is scheduled for deletion.
+ */
 import { ComposeManager } from './email-compose.js';
 
 const FALLBACK_COMMAND_TITLES = {
