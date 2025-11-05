@@ -372,7 +372,7 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
       </div>
     {/if}
     {#each composes as c (c.id)}
-      <ComposeWindow open={true} isReply={c.isReply} to={c.to} subject={c.subject} body={c.body} uiNonce={uiNonce}
+      <ComposeWindow open={true} isReply={c.isReply} to={c.to} subject={c.subject} body={c.body}
         on:close={() => closeCompose(c.id)}
         on:send={(e) => { /* hook actual send later; close for now */ closeCompose(c.id); }}
         on:requestAi={async (e) => {

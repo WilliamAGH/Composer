@@ -6,7 +6,6 @@
   export let to = '';
   export let subject = '';
   export let body = '';
-  export let uiNonce = null;
 
   const dispatch = createEventDispatcher();
   let inputTo, inputSubject, inputMessage, fileInput;
