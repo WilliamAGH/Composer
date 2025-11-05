@@ -2,8 +2,10 @@
   import { onMount } from 'svelte';
   import EmailIframe from './lib/EmailIframe.svelte';
   import ComposeWindow from './lib/ComposeWindow.svelte';
-import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, Archive, Trash2, Reply, Forward } from 'lucide-svelte';
-  export let bootstrap = {};
+  import Modal from './lib/Modal.svelte';
+  import { isMobile } from './lib/viewport';
+import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, Archive, Trash2, Reply, Forward, ArrowLeft } from 'lucide-svelte';
+    export let bootstrap = {};
 
   const FALLBACK_COMMAND_TITLES = {
     summarize: 'AI Summary',
@@ -21,6 +23,15 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
 
   // Compose windows
   let composes = [];
+
+  // Viewport responsive
+  $: mobile = $isMobile;
+  let showDrawer = false;
+
+  // AI modal
+  let aiOpen = false;
+  let aiTitle = '';
+  let aiHtml = '';
 
   // UI state
   let sidebarOpen = true;
@@ -63,10 +74,11 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
     return normalized.length <= 180 ? normalized : `${normalized.slice(0,177)}...`;
   }
 
-  $: if (!selected && filtered.length) selected = filtered[0];
+  $: if (!mobile && !selected && filtered.length) selected = filtered[0];
 
   function selectEmail(e) { selected = e; selected.read = true; }
   function toggleSidebar() { sidebarOpen = !sidebarOpen; }
+  function handleMenuClick() { mobile ? (showDrawer = !showDrawer) : toggleSidebar(); }
 
   function openCompose() {
     composes = [...composes, { id: crypto.randomUUID(), isReply: false, to: '', subject: '', body: '' }];
@@ -207,15 +219,58 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
     }
     return 'Assist with the selected email.';
   }
+
+  async function runMainAiCommand(command) {
+    if (!selected) return alert('Select an email first.');
+    const title = FALLBACK_COMMAND_TITLES[command] || 'AI Assistant';
+
+    // Draft/Compose/Tone write into a compose window
+    if (command === 'draft' || command === 'compose' || command === 'tone') {
+      // open a reply compose
+      openReply();
+      const target = composes[composes.length - 1];
+      try {
+        const instruction = buildComposeInstruction(command, target?.body || '', true);
+        const data = await callAiCommand(command, instruction, { contextId: selected.contextId, subject: target?.subject });
+        let draftText = (data?.response && data.response.trim()) || '';
+        if (!draftText && data?.sanitizedHtml) {
+          const temp = document.createElement('div'); temp.innerHTML = data.sanitizedHtml; draftText = temp.textContent.trim();
+        }
+        if (draftText) {
+          const parsed = parseSubjectAndBody(draftText);
+          target.subject = parsed.subject || target.subject;
+          target.body = parsed.body || draftText;
+          composes = [...composes];
+        }
+      } catch (e) { alert(e?.message || 'Unable to draft.'); }
+      return;
+    }
+
+    // Summarize/Translate show in modal
+    try {
+      const instruction = (command === 'summarize') ? 'Provide a concise summary of the selected email.' : 'Translate the selected email to English.';
+      const data = await callAiCommand(command, instruction, { contextId: selected.contextId });
+      const html = (data?.response && window.ComposerAI?.renderMarkdown ? window.ComposerAI.renderMarkdown(data.response) : '')
+                || (data?.sanitizedHtml || data?.sanitizedHTML || '')
+                || '<div class="text-sm text-slate-500">No response received.</div>';
+      aiTitle = title; aiHtml = html; aiOpen = true;
+    } catch (e) { alert(e?.message || 'Unable to complete request.'); }
+  }
 </script>
 
-<div class="h-screen flex overflow-hidden bg-gradient-to-b from-slate-50 to-slate-100">
+<div class="h-[100dvh] flex overflow-hidden bg-gradient-to-b from-slate-50 to-slate-100">
   <!-- Sidebar -->
   <aside class="shrink-0 border-r border-slate-200 bg-white/80 backdrop-blur transition-all duration-200"
-         class:w-64={sidebarOpen}
-         class:w-0={!sidebarOpen}
-         class:overflow-hidden={!sidebarOpen}
-         class:border-r-0={!sidebarOpen}>
+         class:w-64={((!mobile && sidebarOpen) || mobile)}
+         class:w-0={!mobile && !sidebarOpen}
+         class:overflow-hidden={!mobile && !sidebarOpen}
+         class:border-r-0={!mobile && !sidebarOpen}
+         class:fixed={mobile}
+         class:inset-y-0={mobile}
+         class:left-0={mobile}
+         class:z-[60]={mobile}
+         class:shadow-xl={mobile}
+         class:hidden={mobile && !showDrawer}>
     <div class="p-4 border-b border-slate-200">
       <div class="flex items-center gap-2 mb-4">
         <InboxIcon class="h-6 w-6 text-slate-900" />
@@ -270,15 +325,23 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
       </button>
     </nav>
   </aside>
+  {#if mobile && showDrawer}
+    <button type="button" class="fixed inset-0 bg-black/30 z-[50]" aria-label="Close menu overlay"
+            on:click={() => (showDrawer = false)}
+            on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showDrawer = false; } }}>
+    </button>
+  {/if}
 
   <!-- List -->
   <section class="shrink-0 flex flex-col bg-white/90 border-r border-slate-200"
-           class:w-96={sidebarOpen}
-           class:w-[28rem]={!sidebarOpen}
+           class:w-96={!mobile && sidebarOpen}
+           class:w-[28rem]={!mobile && !sidebarOpen}
+           class:w-full={mobile}
+           class:hidden={mobile && selected}
   >
     <div class="px-4 py-3 border-b border-slate-200">
       <div class="flex items-center gap-2">
-        <button type="button" title="Toggle sidebar" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={toggleSidebar}>
+        <button type="button" title="Toggle menu" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={handleMenuClick}>
           <Menu class="h-4 w-4" />
         </button>
         <div class="relative flex-1">
@@ -311,7 +374,22 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
 </section>
 
   <!-- Content -->
-  <section class="flex-1 flex flex-col bg-white/95 relative">
+  <section class="flex-1 flex flex-col bg-white/95 relative"
+           class:hidden={mobile && !selected}>
+    {#if mobile}
+      <div class="px-4 py-3 border-b border-slate-200 flex items-center gap-2">
+        <button type="button" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={() => { selected = null; showDrawer = false; }} aria-label="Back to list">
+          <ArrowLeft class="h-4 w-4" />
+        </button>
+        <button type="button" title="Toggle menu" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={handleMenuClick} aria-label="Open folders">
+          <Menu class="h-4 w-4" />
+        </button>
+        <div class="relative flex-1">
+          <input placeholder="Search emails..." bind:value={search}
+                 class="w-full pl-3 pr-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-200" />
+        </div>
+      </div>
+    {/if}
     {#if !selected}
       <div class="flex-1 grid place-items-center text-slate-400">
         <div class="text-center">
@@ -321,8 +399,13 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
       </div>
     {:else}
       <div class="p-6 border-b border-slate-200">
-        <div class="flex items-start gap-4 justify-between">
+          <div class="flex items-start gap-4 justify-between">
           <div class="flex items-start gap-4">
+            {#if mobile}
+              <button type="button" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={() => { selected = null; showDrawer = false; }} aria-label="Back to list">
+                <ArrowLeft class="h-4 w-4" />
+              </button>
+            {/if}
             <img src={selected.avatar || selected.companyLogoUrl || ('https://i.pravatar.cc/120?u=' + encodeURIComponent(selected.fromEmail || selected.from))} alt={escapeHtml(selected.from)} class="h-12 w-12 rounded-full object-cover" loading="lazy"/>
             <div>
               <h2 class="text-xl font-semibold text-slate-900">{escapeHtml(selected.subject)}</h2>
@@ -353,18 +436,18 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
         </div>
         <div class="mt-4 flex flex-wrap gap-2">
           {#each Object.keys(FALLBACK_COMMAND_TITLES) as key}
-            <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50" on:click={() => { /* hook AI later */ }}>
+            <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50" on:click={() => runMainAiCommand(key)}>
               {FALLBACK_COMMAND_TITLES[key]}
             </button>
           {/each}
         </div>
       </div>
       <div class="flex-1 overflow-y-auto">
-        <div class="p-6">
+        <div class="p-4 sm:p-6 w-full max-w-full overflow-x-hidden">
           {#if selected.contentHtml}
             <EmailIframe html={selected.contentHtml} />
           {:else}
-            <div class="prose prose-sm max-w-none text-slate-700">
+            <div class="prose prose-sm max-w-none text-slate-700 break-words">
               {@html renderMarkdown(selected.contentMarkdown || selected.contentText || '')}
             </div>
           {/if}
@@ -395,5 +478,6 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
           } catch (err) { alert(err?.message || 'AI request failed'); }
         }} />
     {/each}
+    <Modal open={aiOpen} title={aiTitle} html={aiHtml} on:close={() => (aiOpen = false)} />
   </section>
 </div>

@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { X, Minus, Paperclip, Send, Wand2, Highlighter } from 'lucide-svelte';
+  import { isMobile } from './viewport';
   export let open = true;
   export let isReply = false;
   export let to = '';
@@ -8,6 +9,7 @@
   export let body = '';
 
   const dispatch = createEventDispatcher();
+  $: mobile = $isMobile;
   let inputTo, inputSubject, inputMessage, fileInput;
   let attachments = [];
 
@@ -31,7 +33,7 @@
 </script>
 
 {#if open}
-<div class="compose-window fixed bottom-0 right-6 max-w-[560px] w-[92vw] bg-white/95 border border-slate-200 rounded-t-2xl shadow-2xl overflow-hidden z-[1000] flex flex-col">
+<div class={mobile ? 'fixed inset-0 w-full h-[100dvh] bg-white border border-slate-200 rounded-none shadow-2xl overflow-hidden z-[1000] flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]' : 'compose-window fixed bottom-0 right-6 max-w-[560px] w-[92vw] bg-white/95 border border-slate-200 rounded-t-2xl shadow-2xl overflow-hidden z-[1000] flex flex-col'}>
   <div class="flex items-center justify-between px-3 py-2 border-b border-slate-200 bg-slate-50/70">
     <div class="text-sm font-semibold text-slate-700">{isReply ? 'Reply' : 'New Message'}</div>
     <div class="flex items-center gap-1.5">
