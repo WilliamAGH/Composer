@@ -1,11 +1,15 @@
 <script>
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import EmailIframe from './lib/EmailIframe.svelte';
   import ComposeWindow from './lib/ComposeWindow.svelte';
-  import AISummaryPanel from './lib/LegacyAISummaryPanel.svelte';
+  import AiSummaryWindow from './lib/AiSummaryWindow.svelte';
+  import WindowDock from './lib/window/WindowDock.svelte';
   import AiLoadingJourney from './lib/AiLoadingJourney.svelte';
   import { buildAiJourney, AI_JOURNEY_EVENTS } from './lib/aiJourney';
   import { isMobile, isTablet, isDesktop, isWide, viewport } from './lib/viewport';
+  import { createWindowManager } from './lib/window/windowStore';
+  import { createComposeWindow, createSummaryWindow, WindowKind } from './lib/window/windowTypes';
   import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, Archive, Trash2, Reply, Forward, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-svelte';
   export let bootstrap = {};
 
@@ -21,9 +25,21 @@
   let emails = Array.isArray(bootstrap.messages) ? bootstrap.messages.map(mapEmail) : [];
   let selected = null;
   let conversationId = null;
-
-  // Compose windows
-  let composes = [];
+  const windowManager = createWindowManager();
+  const windowsStore = windowManager.windows;
+  const floatingStore = windowManager.floating;
+  const dockedStore = windowManager.docked;
+  const minimizedStore = windowManager.minimized;
+  const windowErrorStore = windowManager.lastError;
+  let windowNotice = '';
+  let windowNoticeTimer = null;
+  $: windows = $windowsStore;
+  $: floatingWindows = $floatingStore;
+  $: dockedWindows = $dockedStore;
+  $: minimizedWindows = $minimizedStore;
+  $: windowAlert = $windowErrorStore ? $windowErrorStore.message : '';
+  const MAX_COMPOSE_WINDOWS = 4;
+  const MAX_SUMMARY_WINDOWS = 3;
 
   // Viewport responsive
   $: mobile = $isMobile;
@@ -33,11 +49,6 @@
   $: viewportType = $viewport;
   let showDrawer = false;
   let showEmailList = true; // For tablet view toggle
-
-  // AI summary panel
-  let aiOpen = false;
-  let aiTitle = '';
-  let aiHtml = '';
 
   // UI state
   let sidebarOpen = true;
@@ -158,26 +169,89 @@
   function toggleSidebar() { sidebarOpen = !sidebarOpen; }
   function handleMenuClick() { mobile ? (showDrawer = !showDrawer) : toggleSidebar(); }
 
+  function showWindowLimitMessage() {
+    const err = get(windowErrorStore);
+    if (!err) return;
+    windowNotice = err.message;
+    clearTimeout(windowNoticeTimer);
+    windowNoticeTimer = setTimeout(() => {
+      windowNotice = '';
+    }, 4000);
+  }
+
   function openCompose() {
-    composes = [...composes, { id: crypto.randomUUID(), isReply: false, to: '', subject: '', body: '', minimized: false }];
+    const result = windowManager.open(createComposeWindow());
+    if (!result.ok) {
+      showWindowLimitMessage();
+    }
   }
+
   function openReply() {
-    if (!selected) return;
-    composes = [
-      ...composes,
-      {
-        id: crypto.randomUUID(),
-        isReply: true,
-        to: selected.fromEmail || '',
-        subject: `Re: ${selected.subject}`,
-        body: '',
-        minimized: false
-      }
-    ];
+    if (!selected) return alert('Select an email first.');
+    const descriptor = createComposeWindow(selected, {
+      to: selected.fromEmail || '',
+      subject: `Re: ${selected.subject || ''}`,
+      isReply: true,
+      title: selected.subject ? `Reply: ${selected.subject}` : 'Reply'
+    });
+    const result = windowManager.open(descriptor);
+    if (!result.ok) {
+      showWindowLimitMessage();
+    }
   }
-  function closeCompose(id) { composes = composes.filter(c => c.id !== id); }
-  function toggleComposeMinimize(id) {
-    composes = composes.map(c => (c.id === id ? { ...c, minimized: !c.minimized } : c));
+
+  function handleWindowClose(event) {
+    windowManager.close(event.detail.id);
+  }
+
+  function handleWindowToggle(event) {
+    windowManager.toggleMinimize(event.detail.id);
+  }
+
+  function handleComposeSend(event) {
+    // Placeholder: sending closes the draft for now.
+    windowManager.close(event.detail.id);
+  }
+
+  async function triggerComposeAi(detail) {
+    const { id, command, draft, subject: draftSubject, isReply } = detail;
+    const ready = await ensureAiCatalogLoaded();
+    if (!ready) return alert('AI helpers are unavailable. Please try again.');
+    const fn = getFunctionMeta(command);
+    if (!fn) return alert('Command unavailable.');
+    const instruction = buildComposeInstruction(command, draft || '', isReply, fn);
+    const win = get(windowsStore).find((w) => w.id === id);
+    const relatedEmail = win?.contextId ? emails.find((e) => e.id === win.contextId) : selected;
+    const commandArgs = mergeDefaultArgs(fn, null);
+    try {
+      const data = await callAiCommand(command, instruction, {
+        contextId: relatedEmail?.contextId || relatedEmail?.id,
+        subject: draftSubject || relatedEmail?.subject,
+        journeyScope: 'compose',
+        journeyLabel: draftSubject || relatedEmail?.subject || 'draft',
+        journeyHeadline: deriveJourneyHeadline(command, fn.label || 'AI Assistant'),
+        commandArgs
+      });
+      let draftText = (data?.response && data.response.trim()) || '';
+      if (!draftText && data?.sanitizedHtml) {
+        const temp = document.createElement('div');
+        temp.innerHTML = data.sanitizedHtml;
+        draftText = temp.textContent.trim();
+      }
+      if (draftText) {
+        const parsed = parseSubjectAndBody(draftText);
+        windowManager.updateComposeDraft(id, {
+          subject: parsed.subject || draftSubject,
+          body: parsed.body || draftText
+        });
+      }
+    } catch (error) {
+      alert(error?.message || 'Unable to complete AI request.');
+    }
+  }
+
+  function handleComposeRequestAi(event) {
+    triggerComposeAi(event.detail);
   }
 
   function matchesMailbox(e) {
@@ -590,29 +664,28 @@
 
     const targetsCompose = Array.isArray(fn.scopes) && fn.scopes.includes('compose');
     if (targetsCompose) {
-      openReply();
-      const target = composes[composes.length - 1];
+      const descriptor = createComposeWindow(selected, {
+        to: selected.fromEmail || '',
+        subject: `Re: ${selected.subject || ''}`,
+        isReply: true,
+        title: selected.subject ? `Reply: ${selected.subject}` : fn.label || 'AI Compose'
+      });
+      const result = windowManager.open(descriptor);
+      if (!result.ok) {
+        showWindowLimitMessage();
+        return;
+      }
       try {
-        const instruction = buildComposeInstruction(command, target?.body || '', true, fn);
-        const data = await callAiCommand(command, instruction, {
-          contextId: selected.contextId,
-          subject: target?.subject || selected.subject,
-          journeyScope: 'compose',
-          journeyLabel: target?.subject || selected.subject || 'reply',
-          journeyHeadline: deriveJourneyHeadline(command, title),
-          commandArgs
+        await triggerComposeAi({
+          id: descriptor.id,
+          command,
+          draft: '',
+          subject: descriptor.payload.subject,
+          isReply: descriptor.payload.isReply
         });
-        let draftText = (data?.response && data.response.trim()) || '';
-        if (!draftText && data?.sanitizedHtml) {
-          const temp = document.createElement('div'); temp.innerHTML = data.sanitizedHtml; draftText = temp.textContent.trim();
-        }
-        if (draftText) {
-          const parsed = parseSubjectAndBody(draftText);
-          target.subject = parsed.subject || target.subject;
-          target.body = parsed.body || draftText;
-          composes = [...composes];
-        }
-      } catch (e) { alert(e?.message || 'Unable to draft.'); }
+      } catch (error) {
+        console.error('AI compose failed', error);
+      }
       return;
     }
 
@@ -629,7 +702,8 @@
       const html = (data?.response && window.ComposerAI?.renderMarkdown ? window.ComposerAI.renderMarkdown(data.response) : '')
                 || (data?.sanitizedHtml || data?.sanitizedHTML || '')
                 || '<div class="text-sm text-slate-500">No response received.</div>';
-      aiTitle = title; aiHtml = html; aiOpen = true;
+      const descriptor = createSummaryWindow(selected, html, title);
+      windowManager.open(descriptor);
     } catch (e) { alert(e?.message || 'Unable to complete request.'); }
   }
 </script>
@@ -839,7 +913,7 @@
             {/if}
           </div>
         </div>
-      <div class="overflow-y-auto" class:flex-1={!aiOpen} class:flex-initial={aiOpen}>
+      <div class="overflow-y-auto flex-1">
         <div class="w-full max-w-full overflow-x-hidden"
              class:p-4={!selected.contentHtml && (mobile || tablet)}
              class:p-5={!selected.contentHtml && desktop}
@@ -854,60 +928,44 @@
         </div>
       </div>
 
-      <!-- AI Summary Panel - inline at bottom of content area -->
-      {#if aiOpen}
-        <AISummaryPanel open={true} title={aiTitle} html={aiHtml} on:close={() => (aiOpen = false)} />
-      {/if}
+      <!-- Window stack rendered outside main column -->
     {/if}
-    {#each composes as c (c.id)}
-      <ComposeWindow open={true} isReply={c.isReply} to={c.to} subject={c.subject} body={c.body} minimized={!!c.minimized} aiFunctions={composeAiFunctions}
-        on:close={() => closeCompose(c.id)}
-        on:toggleMinimize={() => toggleComposeMinimize(c.id)}
-        on:send={(e) => { /* hook actual send later; close for now */ closeCompose(c.id); }}
-        on:requestAi={async (e) => {
-          const { command, draft, subject: subj } = e.detail;
-          const ready = await ensureAiCatalogLoaded();
-          if (!ready) {
-            alert('AI helpers are unavailable. Please refresh and try again.');
-            return;
-          }
-          const fn = getFunctionMeta(command);
-          if (!fn) {
-            alert('Command unavailable.');
-            return;
-          }
-          try {
-            if (c.minimized) {
-              c.minimized = false;
-              composes = [...composes];
-            }
-            const instruction = buildComposeInstruction(command, draft || '', c.isReply, fn);
-            const commandArgs = mergeDefaultArgs(fn, null);
-            const data = await callAiCommand(command, instruction, {
-              contextId: selected?.contextId,
-              subject: subj,
-              journeyScope: 'compose',
-              journeyLabel: subj || selected?.subject || 'draft',
-              journeyHeadline: deriveJourneyHeadline(command, fn.label || 'Working on your request'),
-              commandArgs
-            });
-            const text = (data?.response && data.response.trim()) || '';
-            const html = (data?.sanitizedHtml || data?.sanitizedHTML || '').trim();
-            let draftText = text;
-            if (!draftText && html) {
-              const temp = document.createElement('div'); temp.innerHTML = html; draftText = temp.textContent.trim();
-            }
-            if (draftText) {
-              const parsed = parseSubjectAndBody(draftText);
-              c.subject = parsed.subject || c.subject;
-              c.body = parsed.body || draftText;
-              composes = [...composes];
-            }
-          } catch (err) { alert(err?.message || 'AI request failed'); }
-        }} />
-    {/each}
   </section>
 </div>
+
+{#each floatingWindows as win, index}
+  {#if win.kind === WindowKind.COMPOSE}
+    <ComposeWindow
+      windowConfig={win}
+      offsetIndex={index}
+      aiFunctions={composeAiFunctions}
+      on:close={handleWindowClose}
+      on:toggleMinimize={handleWindowToggle}
+      on:send={handleComposeSend}
+      on:requestAi={handleComposeRequestAi}
+    />
+  {/if}
+{/each}
+
+{#each dockedWindows as win (win.id)}
+  {#if win.kind === WindowKind.SUMMARY}
+    <AiSummaryWindow
+      windowConfig={win}
+      on:close={handleWindowClose}
+      on:toggleMinimize={handleWindowToggle}
+    />
+  {/if}
+{/each}
+
+<WindowDock
+  windows={minimizedWindows}
+  on:restore={(event) => windowManager.toggleMinimize(event.detail.id)}
+  on:close={(event) => windowManager.close(event.detail.id)}
+/>
+
+{#if windowNotice}
+  <div class="window-notice">{windowNotice}</div>
+{/if}
 
 <AiLoadingJourney
   steps={aiJourneyOverlay.steps}
@@ -917,3 +975,18 @@
   subhead={aiJourneyOverlay.subhead}
   show={aiJourneyOverlay.visible}
   subdued={aiJourneyOverlay.scope !== 'global'} />
+
+<style>
+  .window-notice {
+    position: fixed;
+    bottom: 90px;
+    right: 24px;
+    background: rgba(15, 23, 42, 0.9);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    z-index: 120;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
+  }
+</style>

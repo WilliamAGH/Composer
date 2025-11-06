@@ -24,13 +24,21 @@
   let subject = '';
   let body = '';
   let isReply = false;
+  let lastBodyVersion = 0;
 
   $: if (!initialized && windowConfig) {
     to = windowConfig.payload?.to || '';
     subject = windowConfig.payload?.subject || '';
     body = windowConfig.payload?.body || '';
     isReply = Boolean(windowConfig.payload?.isReply);
+    lastBodyVersion = windowConfig.payload?.bodyVersion || 0;
     initialized = true;
+  }
+
+  $: if (windowConfig?.payload && windowConfig.payload.bodyVersion !== undefined && windowConfig.payload.bodyVersion !== lastBodyVersion) {
+    body = windowConfig.payload.body || body;
+    subject = windowConfig.payload.subject ?? subject;
+    lastBodyVersion = windowConfig.payload.bodyVersion;
   }
 
   onMount(() => {
@@ -65,7 +73,6 @@
   offsetIndex={offsetIndex}
   on:close={() => dispatch('close', { id: windowConfig.id })}
   on:toggleMinimize={() => dispatch('toggleMinimize', { id: windowConfig.id })}
-  on:focus={() => dispatch('focus', { id: windowConfig.id })}
 >
   <div class="compose-body">
     {#if !isReply}
