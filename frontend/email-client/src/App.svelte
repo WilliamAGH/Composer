@@ -2,20 +2,21 @@
   import { onMount } from 'svelte';
   import EmailIframe from './lib/EmailIframe.svelte';
   import ComposeWindow from './lib/ComposeWindow.svelte';
-  import AISummaryPanel from './lib/AISummaryPanel.svelte';
+  import AISummaryPanel from './lib/LegacyAISummaryPanel.svelte';
+  import AiLoadingJourney from './lib/AiLoadingJourney.svelte';
+  import { buildAiJourney, AI_JOURNEY_EVENTS } from './lib/aiJourney';
   import { isMobile, isTablet, isDesktop, isWide, viewport } from './lib/viewport';
-import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, Archive, Trash2, Reply, Forward, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-svelte';
-    export let bootstrap = {};
+  import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, Archive, Trash2, Reply, Forward, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-svelte';
+  export let bootstrap = {};
 
-  const FALLBACK_COMMAND_TITLES = {
-    summarize: 'AI Summary',
-    translate: 'AI Translation',
-    draft: 'AI Draft Reply',
-    compose: 'AI Compose',
-    tone: 'AI Tone Adjustment'
-  };
+  let aiCatalog = bootstrap.aiFunctions || null;
+  let aiCatalogPromise = null;
+
+  $: aiFunctionsByKey = aiCatalog?.functionsByKey || {};
+  $: aiPrimaryCommandKeys = Array.isArray(aiCatalog?.primaryCommands) ? aiCatalog.primaryCommands : [];
 
   let uiNonce = bootstrap.uiNonce || null;
+  let nonceRefreshPromise = null;
   let search = '';
   let emails = Array.isArray(bootstrap.messages) ? bootstrap.messages.map(mapEmail) : [];
   let selected = null;
@@ -48,6 +49,77 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
   $: filtered = !search
     ? baseEmails
     : baseEmails.filter(e => [e.subject, e.from, e.preview].join(' ').toLowerCase().includes(search.toLowerCase()));
+  $: primaryCommandEntries = (aiPrimaryCommandKeys.length ? aiPrimaryCommandKeys : Object.keys(aiFunctionsByKey || {}))
+    .map((key) => ({ key, meta: aiFunctionsByKey[key] }))
+    .filter((entry) => !!entry.meta);
+  $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
+    .filter((fn) => Array.isArray(fn.scopes) && fn.scopes.includes('compose'));
+
+  /** Returns catalog metadata for a given AI helper key (single source of truth from backend). */
+  function getFunctionMeta(key) {
+    if (!key) return null;
+    return aiFunctionsByKey[key] || null;
+  }
+
+  /** Looks up a variant (e.g., translation language) within a given function definition. */
+  function getVariant(meta, variantKey) {
+    if (!meta || !Array.isArray(meta.variants) || !variantKey) return null;
+    return meta.variants.find((variant) => variant.key === variantKey) || null;
+  }
+
+  /** Merges default arguments defined in the catalog+variant with optional overrides. */
+  function mergeDefaultArgs(meta, variant, overrides = {}) {
+    const merged = { ...(meta?.defaultArgs || {}) };
+    if (variant?.defaultArgs) {
+      Object.assign(merged, variant.defaultArgs);
+    }
+    Object.entries(overrides || {}).forEach(([key, value]) => {
+      if (key && value) merged[key] = value;
+    });
+    return merged;
+  }
+
+  /** Ensures each helper has a deterministic instruction fallback. */
+  function resolveDefaultInstruction(meta, variant) {
+    if (variant?.defaultInstruction) return variant.defaultInstruction;
+    return meta?.defaultInstruction || 'Assist with the selected email.';
+  }
+
+  function hasCatalogMetadata() {
+    return aiFunctionsByKey && Object.keys(aiFunctionsByKey).length > 0;
+  }
+
+  async function loadAiCatalogFromServer() {
+    const resp = await fetch('/api/ai-functions', { headers: { Accept: 'application/json' } });
+    if (!resp.ok) {
+      throw new Error(`Unable to load AI catalog (HTTP ${resp.status})`);
+    }
+    aiCatalog = await resp.json();
+  }
+
+  async function ensureAiCatalogLoaded() {
+    if (hasCatalogMetadata()) return true;
+    if (!aiCatalogPromise) {
+      aiCatalogPromise = loadAiCatalogFromServer()
+        .catch((err) => {
+          console.error('Failed to load AI catalog', err);
+          throw err;
+        })
+        .finally(() => {
+          aiCatalogPromise = null;
+        });
+    }
+    try {
+      await aiCatalogPromise;
+    } catch (err) {
+      return false;
+    }
+    return hasCatalogMetadata();
+  }
+
+  onMount(() => {
+    ensureAiCatalogLoaded().catch(() => {});
+  });
 
   function mapEmail(m, i) {
     const preview = coalescePreview(m);
@@ -87,13 +159,26 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
   function handleMenuClick() { mobile ? (showDrawer = !showDrawer) : toggleSidebar(); }
 
   function openCompose() {
-    composes = [...composes, { id: crypto.randomUUID(), isReply: false, to: '', subject: '', body: '' }];
+    composes = [...composes, { id: crypto.randomUUID(), isReply: false, to: '', subject: '', body: '', minimized: false }];
   }
   function openReply() {
     if (!selected) return;
-    composes = [...composes, { id: crypto.randomUUID(), isReply: true, to: selected.fromEmail || '', subject: `Re: ${selected.subject}`, body: '' }];
+    composes = [
+      ...composes,
+      {
+        id: crypto.randomUUID(),
+        isReply: true,
+        to: selected.fromEmail || '',
+        subject: `Re: ${selected.subject}`,
+        body: '',
+        minimized: false
+      }
+    ];
   }
   function closeCompose(id) { composes = composes.filter(c => c.id !== id); }
+  function toggleComposeMinimize(id) {
+    composes = composes.map(c => (c.id === id ? { ...c, minimized: !c.minimized } : c));
+  }
 
   function matchesMailbox(e) {
     const labels = (e.labels || []).map(l => String(l).toLowerCase());
@@ -155,6 +240,128 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
     });
   }
 
+  const JOURNEY_SCOPE_META = {
+    global: { subhead: 'ComposerAI assistant' },
+    panel: { subhead: 'Mailbox assistant' },
+    compose: { subhead: 'Draft assistant' }
+  };
+
+  let aiJourneyOverlay = {
+    token: null,
+    visible: false,
+    steps: buildAiJourney(),
+    activeStepId: null,
+    completed: new Set(),
+    headline: 'Working on your request',
+    subhead: JOURNEY_SCOPE_META.global.subhead,
+    scope: 'global'
+  };
+  let aiJourneyTimer = null;
+
+  function deriveJourneyHeadline(command, fallback) {
+    const catalogLabel = getFunctionMeta(command)?.label;
+    switch (command) {
+      case 'summarize': return 'Summarizing this email';
+      case 'translate': return 'Translating the thread';
+      case 'draft':
+      case 'compose':
+        return 'Drafting your reply';
+      case 'tone':
+        return 'Retuning the tone';
+      default:
+        return catalogLabel || fallback || 'Working on your request';
+    }
+  }
+
+  function clearJourneyTimer() {
+    if (aiJourneyTimer) {
+      clearTimeout(aiJourneyTimer);
+      aiJourneyTimer = null;
+    }
+  }
+
+  function scheduleJourneyThinking(token) {
+    clearJourneyTimer();
+    if (typeof window === 'undefined') return;
+    aiJourneyTimer = window.setTimeout(() => {
+      if (token && aiJourneyOverlay.token === token) {
+        advanceAiJourney(token, 'ai:llm-thinking');
+      }
+    }, 1100);
+  }
+
+  function beginAiJourney({ scope = 'global', targetLabel = 'message', commandKey, headline } = {}) {
+    const steps = buildAiJourney({ targetLabel, command: commandKey });
+    const token = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+    const defaultHeadline = getFunctionMeta(commandKey)?.label || 'Working on your request';
+    aiJourneyOverlay = {
+      token,
+      visible: true,
+      steps,
+      scope,
+      completed: new Set(),
+      activeStepId: steps[0]?.id || null,
+      headline: headline || deriveJourneyHeadline(commandKey, defaultHeadline),
+      subhead: JOURNEY_SCOPE_META[scope]?.subhead || JOURNEY_SCOPE_META.global.subhead
+    };
+    scheduleJourneyThinking(token);
+    return token;
+  }
+
+  function advanceAiJourney(token, eventId) {
+    if (!token || aiJourneyOverlay.token !== token) return;
+    if (!AI_JOURNEY_EVENTS.includes(eventId)) return;
+    const order = AI_JOURNEY_EVENTS;
+    const targetIndex = order.indexOf(eventId);
+    if (targetIndex === -1) return;
+    const completed = new Set(aiJourneyOverlay.completed);
+    for (let i = 0; i < targetIndex; i++) {
+      completed.add(order[i]);
+    }
+    aiJourneyOverlay = {
+      ...aiJourneyOverlay,
+      completed,
+      activeStepId: eventId
+    };
+  }
+
+  function completeAiJourney(token) {
+    if (!token || aiJourneyOverlay.token !== token) return;
+    clearJourneyTimer();
+    advanceAiJourney(token, 'ai:writing-summary');
+    if (typeof window === 'undefined') {
+      aiJourneyOverlay = { ...aiJourneyOverlay, visible: false, token: null };
+      return;
+    }
+    aiJourneyTimer = window.setTimeout(() => {
+      if (aiJourneyOverlay.token === token) {
+        aiJourneyOverlay = { ...aiJourneyOverlay, visible: false, token: null };
+      }
+    }, 650);
+  }
+
+  function failAiJourney(token) {
+    if (!token || aiJourneyOverlay.token !== token) return;
+    clearJourneyTimer();
+    aiJourneyOverlay = {
+      ...aiJourneyOverlay,
+      headline: 'Unable to finish that request',
+      subhead: 'Please retry in a moment',
+      completed: new Set(),
+      activeStepId: null,
+      visible: true
+    };
+    if (typeof window === 'undefined') {
+      aiJourneyOverlay = { ...aiJourneyOverlay, visible: false, token: null };
+      return;
+    }
+    aiJourneyTimer = window.setTimeout(() => {
+      if (aiJourneyOverlay.token === token) {
+        aiJourneyOverlay = { ...aiJourneyOverlay, visible: false, token: null };
+      }
+    }, 1600);
+  }
+
   // ---------- AI integration (parity with v1) ----------
   /**
    * Build email context string for AI commands.
@@ -194,6 +401,61 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
   }
 
   /**
+   * Request a fresh UI nonce from the backend when the servlet session expires.
+   * The promise is memoized so concurrent 403 retries wait on the same refresh.
+   */
+  async function refreshUiNonce() {
+    if (nonceRefreshPromise) return nonceRefreshPromise;
+    const headers = { 'Content-Type': 'application/json' };
+    if (uiNonce) headers['X-UI-Request'] = uiNonce;
+    nonceRefreshPromise = (async () => {
+      try {
+        const resp = await fetch('/ui/session/nonce', {
+          method: 'POST',
+          headers
+        });
+        const data = await resp.json().catch(() => null);
+        if (!resp.ok) {
+          throw new Error((data && data.error) || `HTTP ${resp.status}`);
+        }
+        if (!data?.uiNonce) {
+          throw new Error('Nonce refresh response missing uiNonce');
+        }
+        uiNonce = data.uiNonce;
+        return uiNonce;
+      } finally {
+        nonceRefreshPromise = null;
+      }
+    })();
+    return nonceRefreshPromise;
+  }
+
+  /**
+   * Keep the servlet session warm with a lightweight /api/chat/health ping.
+   * If it fails we fall back to the on-demand nonce refresh path.
+   */
+  async function pingChatHealth() {
+    if (!uiNonce) return;
+    try {
+      await fetch('/api/chat/health', {
+        method: 'GET',
+        headers: { 'X-UI-Request': uiNonce }
+      });
+    } catch (_) {
+      // Heartbeat is best-effort; failures are handled when sending the next chat request.
+    }
+  }
+
+  onMount(() => {
+    if (!uiNonce) {
+      refreshUiNonce().catch(() => {});
+    }
+    const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000;
+    const heartbeatId = window.setInterval(pingChatHealth, HEARTBEAT_INTERVAL_MS);
+    return () => window.clearInterval(heartbeatId);
+  });
+
+  /**
    * Call AI command with email context.
    *
    * Context priority:
@@ -202,7 +464,11 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
    *
    * The backend's ChatService will use contextId first, then emailContext as fallback.
    */
-  async function callAiCommand(command, instruction, { contextId, subject } = {}) {
+  /**
+   * Sends chat payloads with consistent metadata so the backend sees the same structure regardless
+   * of which UI surface initiated the helper.
+   */
+  async function callAiCommand(command, instruction, { contextId, subject, journeyScope = 'global', journeyLabel, journeyHeadline, commandVariant, commandArgs } = {}) {
     const payload = {
       message: instruction,
       conversationId,
@@ -211,13 +477,24 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
       jsonOutput: false
     };
 
+    const targetLabel = journeyLabel || subject || selected?.subject || 'message';
+    const journeyToken = beginAiJourney({ scope: journeyScope, targetLabel, commandKey: command, headline: journeyHeadline });
+
     // Prefer contextId when available (backend has pre-processed context)
     if (contextId) {
       payload.contextId = contextId;
     }
 
-    if (['compose', 'draft', 'summarize', 'translate', 'tone'].includes(command)) {
+    const commandMeta = getFunctionMeta(command);
+    if (command && commandMeta) {
       payload.aiCommand = command;
+      if (commandVariant) {
+        payload.commandVariant = commandVariant;
+      }
+      const argsPayload = commandArgs && Object.keys(commandArgs).length ? commandArgs : null;
+      if (argsPayload) {
+        payload.commandArgs = argsPayload;
+      }
     }
 
     if (subject && subject.trim()) {
@@ -231,14 +508,41 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
       if (ctx) payload.emailContext = ctx;
     }
 
+    advanceAiJourney(journeyToken, 'ai:context-search');
+
+    try {
+      const data = await postChatPayload(JSON.stringify(payload));
+      advanceAiJourney(journeyToken, 'ai:llm-thinking');
+      completeAiJourney(journeyToken);
+      return data;
+    } catch (err) {
+      failAiJourney(journeyToken);
+      throw err;
+    }
+  }
+
+  /**
+   * POST helper that retries once after silently refreshing the nonce.
+   */
+  async function postChatPayload(body, allowRetry = true) {
     const resp = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-UI-Request': uiNonce || '' },
-      body: JSON.stringify(payload)
+      body
     });
+
+    if (resp.status === 403 && allowRetry) {
+      await refreshUiNonce();
+      return postChatPayload(body, false);
+    }
+
     const data = await resp.json().catch(() => null);
-    if (!resp.ok) throw new Error((data && (data.message || data.error)) || `HTTP ${resp.status}`);
-    if (data?.conversationId) conversationId = data.conversationId;
+    if (!resp.ok) {
+      throw new Error((data && (data.message || data.error)) || `HTTP ${resp.status}`);
+    }
+    if (data?.conversationId) {
+      conversationId = data.conversationId;
+    }
     return data;
   }
 
@@ -255,34 +559,48 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
     return { subject: '', body: trimmed };
   }
 
-  function buildComposeInstruction(command, currentDraft, isReply) {
+  /** Builds compose/draft instructions while preserving catalog defaults and current user drafts. */
+  function buildComposeInstruction(command, currentDraft, isReply, meta) {
+    const fallback = resolveDefaultInstruction(meta, null);
     if (command === 'draft') {
       if (currentDraft && currentDraft.length > 0) return `Improve this ${isReply ? 'reply' : 'draft'} while preserving the intent:\n\n${currentDraft}`;
-      return isReply ? 'Draft a courteous reply addressing the key points from the email above.' : 'Draft a helpful email based on the selected context.';
+      return isReply ? fallback : `${fallback}`;
     }
     if (command === 'compose') {
-      return currentDraft && currentDraft.length > 0 ? `Polish this email draft and make it clear and concise:\n\n${currentDraft}` : 'Compose a professional reply using the email context above.';
+      return currentDraft && currentDraft.length > 0 ? `Polish this email draft and make it clear and concise:\n\n${currentDraft}` : fallback;
     }
     if (command === 'tone') {
-      return currentDraft && currentDraft.length > 0 ? `Adjust the tone of this email to be friendly but professional:\n\n${currentDraft}` : 'Adjust the email to a friendly but professional tone.';
+      return currentDraft && currentDraft.length > 0 ? `Adjust the tone of this email to be friendly but professional:\n\n${currentDraft}` : fallback;
     }
-    return 'Assist with the selected email.';
+    return fallback;
   }
 
+  /** Entry point for primary AI actions (summary, translation, compose helpers). */
   async function runMainAiCommand(command) {
     if (!selected) return alert('Select an email first.');
-    const title = FALLBACK_COMMAND_TITLES[command] || 'AI Assistant';
+    const ready = await ensureAiCatalogLoaded();
+    if (!ready) {
+      alert('AI helpers are unavailable. Please refresh and try again.');
+      return;
+    }
+    const fn = getFunctionMeta(command);
+    if (!fn) return alert('Command unavailable.');
+    const title = fn.label || 'AI Assistant';
+    const commandArgs = mergeDefaultArgs(fn, null);
 
-    // Draft/Compose/Tone write into a compose window
-    if (command === 'draft' || command === 'compose' || command === 'tone') {
-      // open a reply compose
+    const targetsCompose = Array.isArray(fn.scopes) && fn.scopes.includes('compose');
+    if (targetsCompose) {
       openReply();
       const target = composes[composes.length - 1];
       try {
-        const instruction = buildComposeInstruction(command, target?.body || '', true);
+        const instruction = buildComposeInstruction(command, target?.body || '', true, fn);
         const data = await callAiCommand(command, instruction, {
           contextId: selected.contextId,
-          subject: target?.subject || selected.subject
+          subject: target?.subject || selected.subject,
+          journeyScope: 'compose',
+          journeyLabel: target?.subject || selected.subject || 'reply',
+          journeyHeadline: deriveJourneyHeadline(command, title),
+          commandArgs
         });
         let draftText = (data?.response && data.response.trim()) || '';
         if (!draftText && data?.sanitizedHtml) {
@@ -298,13 +616,15 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
       return;
     }
 
-    // Summarize/Translate show in inline panel
     try {
-      const instruction = (command === 'summarize') ? 'Provide a concise summary of the selected email.' : 'Translate the selected email to English.';
-      // Pass contextId to use backend's pre-processed context if available
+      const instruction = resolveDefaultInstruction(fn, null);
       const data = await callAiCommand(command, instruction, {
         contextId: selected.contextId,
-        subject: selected.subject
+        subject: selected.subject,
+        journeyScope: 'panel',
+        journeyLabel: selected.subject,
+        journeyHeadline: deriveJourneyHeadline(command, title),
+        commandArgs
       });
       const html = (data?.response && window.ComposerAI?.renderMarkdown ? window.ComposerAI.renderMarkdown(data.response) : '')
                 || (data?.sanitizedHtml || data?.sanitizedHTML || '')
@@ -506,11 +826,17 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
             </div>
           </div>
           <div class="mt-4 flex flex-wrap gap-2">
-            {#each Object.keys(FALLBACK_COMMAND_TITLES) as key}
-              <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50" on:click={() => runMainAiCommand(key)}>
-                {FALLBACK_COMMAND_TITLES[key]}
+            {#if primaryCommandEntries.length === 0}
+              <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50" on:click={() => runMainAiCommand('summarize')}>
+                Run AI Assistant
               </button>
-            {/each}
+            {:else}
+              {#each primaryCommandEntries as entry (entry.key)}
+                <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50" on:click={() => runMainAiCommand(entry.key)}>
+                  {entry.meta.label || entry.key}
+                </button>
+              {/each}
+            {/if}
           </div>
         </div>
       <div class="overflow-y-auto" class:flex-1={!aiOpen} class:flex-initial={aiOpen}>
@@ -534,14 +860,37 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
       {/if}
     {/if}
     {#each composes as c (c.id)}
-      <ComposeWindow open={true} isReply={c.isReply} to={c.to} subject={c.subject} body={c.body}
+      <ComposeWindow open={true} isReply={c.isReply} to={c.to} subject={c.subject} body={c.body} minimized={!!c.minimized} aiFunctions={composeAiFunctions}
         on:close={() => closeCompose(c.id)}
+        on:toggleMinimize={() => toggleComposeMinimize(c.id)}
         on:send={(e) => { /* hook actual send later; close for now */ closeCompose(c.id); }}
         on:requestAi={async (e) => {
           const { command, draft, subject: subj } = e.detail;
+          const ready = await ensureAiCatalogLoaded();
+          if (!ready) {
+            alert('AI helpers are unavailable. Please refresh and try again.');
+            return;
+          }
+          const fn = getFunctionMeta(command);
+          if (!fn) {
+            alert('Command unavailable.');
+            return;
+          }
           try {
-            const instruction = buildComposeInstruction(command, draft || '', c.isReply);
-            const data = await callAiCommand(command, instruction, { contextId: selected?.contextId, subject: subj });
+            if (c.minimized) {
+              c.minimized = false;
+              composes = [...composes];
+            }
+            const instruction = buildComposeInstruction(command, draft || '', c.isReply, fn);
+            const commandArgs = mergeDefaultArgs(fn, null);
+            const data = await callAiCommand(command, instruction, {
+              contextId: selected?.contextId,
+              subject: subj,
+              journeyScope: 'compose',
+              journeyLabel: subj || selected?.subject || 'draft',
+              journeyHeadline: deriveJourneyHeadline(command, fn.label || 'Working on your request'),
+              commandArgs
+            });
             const text = (data?.response && data.response.trim()) || '';
             const html = (data?.sanitizedHtml || data?.sanitizedHTML || '').trim();
             let draftText = text;
@@ -559,3 +908,12 @@ import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, A
     {/each}
   </section>
 </div>
+
+<AiLoadingJourney
+  steps={aiJourneyOverlay.steps}
+  activeStepId={aiJourneyOverlay.activeStepId}
+  completed={aiJourneyOverlay.completed}
+  headline={aiJourneyOverlay.headline}
+  subhead={aiJourneyOverlay.subhead}
+  show={aiJourneyOverlay.visible}
+  subdued={aiJourneyOverlay.scope !== 'global'} />

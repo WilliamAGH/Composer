@@ -1,87 +1,216 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import { X, Minus, Paperclip, Send, Wand2, Highlighter } from 'lucide-svelte';
+  import { Paperclip, Send, Wand2, Highlighter } from 'lucide-svelte';
   import { isMobile } from './viewport';
-  export let open = true;
-  export let isReply = false;
-  export let to = '';
-  export let subject = '';
-  export let body = '';
+  import WindowFrame from './window/WindowFrame.svelte';
+
+  /**
+   * Compose window leveraging the shared WindowFrame chrome. Keeps feature-specific controls here while
+   * the generic frame handles positioning/minimize logic via the window store.
+   */
+  export let windowConfig;
+  export let offsetIndex = 0;
+  export let aiFunctions = [];
 
   const dispatch = createEventDispatcher();
   $: mobile = $isMobile;
-  let inputTo, inputSubject, inputMessage, fileInput;
+  let inputTo;
+  let inputSubject;
+  let inputMessage;
+  let fileInput;
   let attachments = [];
+  let initialized = false;
+  let to = '';
+  let subject = '';
+  let body = '';
+  let isReply = false;
+
+  $: if (!initialized && windowConfig) {
+    to = windowConfig.payload?.to || '';
+    subject = windowConfig.payload?.subject || '';
+    body = windowConfig.payload?.body || '';
+    isReply = Boolean(windowConfig.payload?.isReply);
+    initialized = true;
+  }
 
   onMount(() => {
     setTimeout(() => (isReply ? inputSubject?.focus() : (inputTo || inputSubject)?.focus()), 50);
   });
 
-  function close() { dispatch('close'); }
-  function minimize() { /* optional; keep for parity */ }
-  function send() { dispatch('send', { to, subject, message: body, attachments }); }
+  function send() {
+    dispatch('send', { id: windowConfig.id, to, subject, body, attachments });
+  }
 
   function requestAi(command) {
-    dispatch('requestAi', { command, draft: body, subject, isReply });
+    dispatch('requestAi', { id: windowConfig.id, command, draft: body, subject, isReply });
   }
 
   function onFilesSelected(files) {
     if (!files || files.length === 0) return;
-    for (const f of files) attachments = [...attachments, { name: f.name, size: f.size }];
-    fileInput.value = '';
+    for (const file of files) {
+      attachments = [...attachments, { name: file.name, size: file.size }];
+    }
+    if (fileInput) fileInput.value = '';
   }
 </script>
 
-{#if open}
-<div class={mobile ? 'fixed inset-0 w-full h-[100dvh] bg-white border border-slate-200 rounded-none shadow-2xl overflow-hidden z-[1000] flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]' : 'compose-window fixed bottom-0 right-6 max-w-[560px] w-[92vw] bg-white/95 border border-slate-200 rounded-t-2xl shadow-2xl overflow-hidden z-[1000] flex flex-col'}>
-  <div class="flex items-center justify-between px-3 py-2 border-b border-slate-200 bg-slate-50/70">
-    <div class="text-sm font-semibold text-slate-700">{isReply ? 'Reply' : 'New Message'}</div>
-    <div class="flex items-center gap-1.5">
-      <button type="button" class="h-8 w-8 grid place-items-center text-slate-500 hover:text-slate-800" on:click={minimize} title="Minimize"><Minus class="h-4 w-4" /></button>
-      <button type="button" class="h-8 w-8 grid place-items-center text-slate-500 hover:text-slate-800" on:click={close} title="Close"><X class="h-4 w-4" /></button>
-    </div>
-  </div>
-  <div class="p-4 space-y-3 overflow-y-auto">
+{#if windowConfig}
+<WindowFrame
+  open={true}
+  title={windowConfig.title || (isReply ? 'Reply' : 'New Message')}
+  mode="floating"
+  minimized={windowConfig.minimized}
+  allowMinimize={!mobile}
+  allowClose={true}
+  offsetIndex={offsetIndex}
+  on:close={() => dispatch('close', { id: windowConfig.id })}
+  on:toggleMinimize={() => dispatch('toggleMinimize', { id: windowConfig.id })}
+  on:focus={() => dispatch('focus', { id: windowConfig.id })}
+>
+  <div class="compose-body">
     {#if !isReply}
-      <input bind:this={inputTo} bind:value={to} placeholder="To" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-200 border-slate-200" />
+      <input
+        bind:this={inputTo}
+        bind:value={to}
+        placeholder="To"
+        class="field" />
     {/if}
-    <input bind:this={inputSubject} bind:value={subject} placeholder="Subject" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-200 border-slate-200" />
+    <input
+      bind:this={inputSubject}
+      bind:value={subject}
+      placeholder="Subject"
+      class="field" />
 
-    <div class="flex gap-2 flex-wrap">
-      <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50" on:click={() => requestAi('draft')}>
-        <Wand2 class="h-4 w-4" /> AI Compose
-      </button>
-      <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50" on:click={() => requestAi('tone')}>
-        <Highlighter class="h-4 w-4" /> Adjust Tone
-      </button>
+    <div class="ai-actions">
+      {#if !aiFunctions || aiFunctions.length === 0}
+        <button type="button" class="ai-chip" on:click={() => requestAi('draft')}>
+          <Wand2 class="h-4 w-4" /> AI Compose
+        </button>
+        <button type="button" class="ai-chip" on:click={() => requestAi('tone')}>
+          <Highlighter class="h-4 w-4" /> Adjust Tone
+        </button>
+      {:else}
+        {#each aiFunctions as fn (fn.key)}
+          <button type="button" class="ai-chip" on:click={() => requestAi(fn.key)}>
+            {#if fn.key === 'tone'}
+              <Highlighter class="h-4 w-4" />
+            {:else}
+              <Wand2 class="h-4 w-4" />
+            {/if}
+            {fn.label || 'AI Assist'}
+          </button>
+        {/each}
+      {/if}
     </div>
 
-    <textarea bind:this={inputMessage} bind:value={body} rows={isReply ? 6 : 8} placeholder={isReply ? 'Type your reply...' : 'Type your message...'} class="w-full px-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-200 border-slate-200 resize-none"></textarea>
+    <textarea
+      bind:this={inputMessage}
+      bind:value={body}
+      rows={isReply ? 6 : 8}
+      placeholder={isReply ? 'Type your reply...' : 'Type your message...'}
+      class="field textarea"></textarea>
 
     {#if attachments.length}
-    <div class="bg-white/70 border rounded-lg px-3 py-2 text-xs border-slate-200">
-      <div class="flex items-center justify-between mb-2">
-        <span class="uppercase font-semibold tracking-wide text-slate-600">Attachments</span>
-        <span class="text-slate-500">{attachments.length} file{attachments.length === 1 ? '' : 's'}</span>
+      <div class="attachments">
+        <div class="attachments-header">
+          <span>Attachments</span>
+          <span>{attachments.length}</span>
+        </div>
+        <ul>
+          {#each attachments as item}
+            <li>{item.name}</li>
+          {/each}
+        </ul>
       </div>
-      <ul class="space-y-1">
-        {#each attachments as a}
-          <li class="flex items-center justify-between gap-3 rounded-lg border border-slate-200/80 bg-white/90 px-3 py-2 shadow-sm">
-            <div class="min-w-0 text-slate-700 truncate">{a.name}</div>
-          </li>
-        {/each}
-      </ul>
-    </div>
     {/if}
   </div>
-  <div class="p-3 border-t border-slate-200 flex gap-2 bg-slate-50/50">
-    <button type="button" class="inline-flex items-center gap-2 rounded-xl px-3 py-2 font-semibold text-white bg-gradient-to-br from-slate-900 to-slate-800 shadow ring-1 ring-slate-900/10" on:click={send}>
+
+  <div slot="footer" class="compose-footer">
+    <button type="button" class="send-btn" on:click={send}>
       <Send class="h-4 w-4" /> Send
     </button>
-    <label class="inline-flex items-center gap-2 rounded-xl px-3 py-2 font-semibold border border-slate-200 bg-white text-slate-700 cursor-pointer hover:bg-slate-50">
+    <label class="attach-btn">
       <Paperclip class="h-4 w-4" /> Attach
       <input bind:this={fileInput} type="file" class="sr-only" on:change={(e) => onFilesSelected(e.currentTarget.files)} multiple />
     </label>
   </div>
-</div>
+</WindowFrame>
 {/if}
+
+<style>
+  .compose-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .field {
+    width: 100%;
+    border: 1px solid rgba(148, 163, 184, 0.7);
+    border-radius: 12px;
+    padding: 0.65rem 0.85rem;
+  }
+  .textarea {
+    resize: none;
+    min-height: 160px;
+  }
+  .ai-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .ai-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border: 1px solid rgba(148, 163, 184, 0.7);
+    border-radius: 999px;
+    padding: 0.35rem 0.9rem;
+    font-size: 0.85rem;
+    color: #475569;
+    background: white;
+  }
+  .attachments {
+    border: 1px solid rgba(148, 163, 184, 0.7);
+    border-radius: 12px;
+    padding: 0.5rem 0.75rem;
+  }
+  .attachments-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: #475569;
+  }
+  .attachments ul {
+    margin-top: 0.5rem;
+    list-style: none;
+    padding: 0;
+  }
+  .attachments li {
+    font-size: 0.85rem;
+    color: #334155;
+  }
+  .compose-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .send-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.5rem 1.2rem;
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    color: white;
+  }
+  .attach-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.5rem 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.7);
+    cursor: pointer;
+  }
+</style>
