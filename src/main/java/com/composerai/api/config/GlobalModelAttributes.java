@@ -1,7 +1,8 @@
 package com.composerai.api.config;
 
 import com.composerai.api.config.AppProperties;
-import com.composerai.api.config.AiCommandPromptProperties;
+import com.composerai.api.ai.AiFunctionCatalogHelper;
+import com.composerai.api.dto.AiFunctionCatalogDto;
 import com.composerai.api.dto.SseEventType;
 import com.composerai.api.service.ReasoningStreamAdapter;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -21,12 +22,12 @@ import java.util.stream.Collectors;
 public class GlobalModelAttributes {
 
     private final AppProperties appProperties;
-    private final AiCommandPromptProperties aiCommandPromptProperties;
+    private final AiFunctionCatalogHelper aiFunctionCatalogHelper;
 
     public GlobalModelAttributes(AppProperties appProperties,
-                                 AiCommandPromptProperties aiCommandPromptProperties) {
+                                 AiFunctionCatalogHelper aiFunctionCatalogHelper) {
         this.appProperties = appProperties;
-        this.aiCommandPromptProperties = aiCommandPromptProperties;
+        this.aiFunctionCatalogHelper = aiFunctionCatalogHelper;
     }
 
     /**
@@ -75,13 +76,8 @@ public class GlobalModelAttributes {
         return mode != null ? mode.name() : AppProperties.EmailRenderMode.HTML.name();
     }
 
-    @ModelAttribute("aiCommandPromptTemplates")
-    public Map<String, String> aiCommandPromptTemplates() {
-        return aiCommandPromptProperties.promptTemplates();
-    }
-
-    @ModelAttribute("aiCommandDefaultInstructions")
-    public Map<String, String> aiCommandDefaultInstructions() {
-        return aiCommandPromptProperties.defaultInstructions();
+    @ModelAttribute("aiFunctionCatalog")
+    public AiFunctionCatalogDto aiFunctionCatalog() {
+        return aiFunctionCatalogHelper.dto();
     }
 }

@@ -11,10 +11,15 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 import com.composerai.api.util.StringUtils;
+import com.composerai.api.validation.AiCommandValid;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@AiCommandValid
 public class ChatRequest {
 
     @NotBlank(message = "Message cannot be blank")
@@ -46,9 +51,15 @@ public class ChatRequest {
     private boolean jsonOutput = false;
 
     // Optional: Structured AI command (e.g., compose, summarize, translate, tone, draft)
-    @Pattern(regexp = "^(compose|draft|summarize|translate|tone)$", flags = {Pattern.Flag.CASE_INSENSITIVE},
-             message = "aiCommand must be one of: compose, draft, summarize, translate, tone")
+    @Size(max = 64, message = "aiCommand cannot exceed 64 characters")
     private String aiCommand;
+
+    // Optional: Specific variant (e.g., language code for translate)
+    @Size(max = 64, message = "commandVariant cannot exceed 64 characters")
+    private String commandVariant;
+
+    // Optional: Structured arguments (tone=formal, targetLanguage=Spanish, etc.)
+    private Map<String, String> commandArgs = new LinkedHashMap<>();
 
     // Optional: Email subject for compose/draft commands
     @Size(max = 500, message = "subject cannot exceed 500 characters")
@@ -59,6 +70,7 @@ public class ChatRequest {
         this.message = message;
         this.conversationId = conversationId;
         this.maxResults = maxResults;
+        this.commandArgs = new LinkedHashMap<>();
     }
 
     @AssertTrue(message = "contextId is required when emailContext is provided")
@@ -67,5 +79,9 @@ public class ChatRequest {
             return true;
         }
         return !StringUtils.isBlank(contextId);
+    }
+
+    public void setCommandArgs(Map<String, String> commandArgs) {
+        this.commandArgs = commandArgs == null ? new LinkedHashMap<>() : new LinkedHashMap<>(commandArgs);
     }
 }
