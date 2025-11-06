@@ -11,7 +11,7 @@ Data flow
 1) Controller (`WebViewController.emailClientV2`) provides:
    - `uiNonce` via `UiNonceService`
    - `emailMessages` via `EmailMessageProvider.loadEmails()`
-2) Template sets `window.__EMAIL_CLIENT_BOOTSTRAP__ = { uiNonce, messages, commandDefaults, commandTemplates }`.
+2) Template sets `window.__EMAIL_CLIENT_BOOTSTRAP__ = { uiNonce, messages, aiFunctions }` (if `aiFunctions` is null the client now fetches them via `GET /api/ai-functions`).
 3) Svelte mounts to `#email-client-root`, normalizes messages, and renders UI.
 4) Email HTML bodies render in an isolated iframe via `window.EmailRenderer.renderInIframe()`.
 

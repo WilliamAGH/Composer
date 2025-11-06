@@ -9,19 +9,29 @@ Java 21 Spring Boot backend that powers the ComposerAI: a chat interface for rea
 
 ### Customizing AI Command Prompts
 
-The chat service renders AI helper flows (compose, draft, summarize, translate, tone) using templates sourced from `AiCommandPromptProperties`. Override them per environment in `application.properties` (or profile-specific variants) with the `ai.commands.prompts.<command>.template` key. Supported commands today are `compose`, `draft`, `summarize`, `translate`, and `tone`.
+AI helper flows (compose, draft, summarize, translate, tone) are now declared in `AiFunctionCatalogProperties` (`src/main/java/com/composerai/api/config/AiFunctionCatalogProperties.java`) via the `ai.functions.*` namespace. `AiFunctionCatalogHelper` (`src/main/java/com/composerai/api/ai/AiFunctionCatalogHelper.java`) normalizes those properties and exposes them—through `AiFunctionCatalogDto` (`src/main/java/com/composerai/api/dto/AiFunctionCatalogDto.java`)—to:
+
+- Back-end services (`ChatService`) when rendering prompts and enforcing validation.
+- Validation (`AiCommandValidator`) for request safety.
+- Front-end bootstrap JSON (`GlobalModelAttributes` → `aiFunctionCatalog`) so the Svelte client renders buttons, instructions, and variants directly from the catalog.
+- The `/api/ai-functions` endpoint (`AiFunctionCatalogController`) for clients that need to refresh metadata after initial load (the Svelte client now auto-fetches when bootstrapped data is missing).
+
+Each entry defines labels, prompt templates, default instructions, context strategy, scopes, and optional variants (e.g., translation languages). Override any field per environment in `application.properties` (or profile-specific variants).
 
 ```properties
 # application-local.properties
-ai.commands.prompts.compose.template=Compose a concise, action-oriented reply: {{instruction}}
-ai.commands.prompts.tone.template=Adjust the draft to a friendly yet professional tone: {{instruction}}
+ai.functions.compose.prompt-template=Compose a concise, action-oriented reply: {{instruction}}
+ai.functions.compose.default-instruction=Compose a helpful reply using the selected context.
+ai.functions.translate.variants.es.label=AI Translation (Spanish)
+ai.functions.translate.variants.es.default-args.targetLanguage=Spanish
 ```
 
-Templates accept the `{{instruction}}` placeholder, which is replaced with the user message passed from the UI. If a custom template is omitted or blank the service falls back to the built-in defaults.
+Placeholders such as `{{instruction}}`, `{{subject}}`, or keys from `defaultArgs`/`variants.defaultArgs` are replaced server-side before sending prompts to the model. If a custom value is omitted or blank the service falls back to the built-in defaults defined in `AiFunctionCatalogProperties`.
 
 ## Feature Highlights
 
 - **Chat Orchestration** – Routes chat requests through OpenAI-compatible models, classifies user intent, and stitches email snippets into responses.
+- **AI Request Journey Loader** – `frontend/email-client/src/lib/AiLoadingJourney.svelte` renders the deterministic lifecycle defined in `aiJourney.ts`, mirroring `ChatService.prepareChatContext` → `VectorSearchService.searchSimilarEmails` → `OpenAiChatService.generateResponse` so UI copy stays in sync with backend stages.
 - **Vector Retrieval Stub** – Integrates with Qdrant for similarity search; ships with placeholder extraction logic so teams can map real payloads incrementally.
 - **Email Parsing Workspace (QA)** – Provides an interactive HTML workspace for uploading `.eml`/`.txt` files and returning cleaned text output via the `/api/qa/parse-email` endpoint.
 - **Diagnostics Control Panel** – Ships a rich, static diagnostics dashboard tailored for observing health checks, mock retrieval responses, and LLM outputs.
@@ -162,6 +172,7 @@ export LLM_REASONING="medium"
 | `LLM_PROVIDER_ALLOW_FALLBACKS` | `true` | Allow fallback providers (OpenRouter only) |
 | `LLM_DEBUG_FETCH` | `false` | Log full request/response bodies |
 | `RENDER_EMAILS_WITH` | `HTML` | Email client render mode: `HTML`, `MARKDOWN`, or `PLAINTEXT` |
+| `SESSION_TIMEOUT` | `PT8H` | Servlet session timeout (ISO-8601 duration) used for UI nonce + cookie lifetime |
 
 \* `minimal` only supported by OpenAI. Automatically converts to `low` for other providers.
 
@@ -218,6 +229,7 @@ Each workspace follows the house design language: layered glass cards over soft 
 | `POST` | `/api/chat` | Main chat endpoint accepting message, optional conversation ID, `maxResults`, and a `contextId` referencing normalized email content |
 | `POST` | `/api/chat/stream` | SSE stream of incremental tokens for live responses |
 | `POST` | `/api/qa/parse-email` | QA-only multipart upload for `.eml`/`.txt` files that streams them through the shared `EmailParsingService` and returns a `contextId` for subsequent chat calls |
+| `POST` | `/ui/session/nonce` | Renews the UI nonce for the active servlet session (used by the Svelte client to recover after session expiry) |
 
 ### Example Chat Request
 
