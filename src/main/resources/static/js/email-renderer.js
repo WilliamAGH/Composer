@@ -16,6 +16,12 @@
 
 const EmailRenderer = (() => {
   /**
+   * Maximum number of elements to iterate when calculating iframe dimensions.
+   * Prevents performance issues with extremely large/complex emails.
+   */
+  const MAX_ELEMENTS_FOR_SIZING = 5000;
+
+  /**
    * Renders email HTML content in a fully isolated sandboxed iframe.
    *
    * Security layers:
@@ -268,7 +274,7 @@ const EmailRenderer = (() => {
       try {
         if (body?.getElementsByTagName) {
           const els = body.getElementsByTagName("*");
-          const limit = Math.min(els.length, 5000);
+          const limit = Math.min(els.length, MAX_ELEMENTS_FOR_SIZING);
           for (let i = 0; i < limit; i++) {
             const el = els[i];
             const rect = el.getBoundingClientRect
