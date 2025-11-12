@@ -536,18 +536,13 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
       on:toggleSidebar={toggleSidebar}
       on:selectMailbox={(event) => mailbox = event.detail.target}
     />
+    <!-- Mobile/Tablet: Semi-transparent backdrop overlay to close drawer when clicking outside -->
     {#if (mobile || tablet) && showDrawer}
       <button type="button" class="fixed inset-0 bg-black/30 z-[50]" aria-label="Close menu overlay"
               on:click={() => (showDrawer = false)}
               on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showDrawer = false; } }}>
       </button>
     {/if}
-  {#if (mobile || tablet) && showDrawer}
-    <button type="button" class="fixed inset-0 bg-black/30 z-[50]" aria-label="Close menu overlay"
-            on:click={() => (showDrawer = false)}
-            on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showDrawer = false; } }}>
-    </button>
-  {/if}
 
   <!-- List -->
   <section class="shrink-0 flex flex-col bg-white/90 border-r border-slate-200"
