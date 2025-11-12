@@ -28,14 +28,12 @@
   {#each windows as win}
     <button type="button" class="dock-pill" on:click={() => restore(win.id)}>
       <span class="pill-title">{win.title}</span>
-      <span
+      <button
+        type="button"
         class="pill-close"
-        role="button"
-        tabindex="0"
         aria-label="Close window"
         on:click={(event) => close(win.id, event)}
-        on:keydown={(event) => (event.key === 'Enter' || event.key === ' ') && close(win.id, event)}
-      >×</span>
+      >×</button>
     </button>
   {/each}
 </div>
@@ -81,5 +79,8 @@
     justify-content: center;
     width: 1.25rem;
     height: 1.25rem;
+    padding: 0;
+    font-family: inherit;
+    font-size: inherit;
   }
 </style>
