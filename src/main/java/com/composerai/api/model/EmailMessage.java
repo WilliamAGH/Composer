@@ -14,6 +14,14 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class EmailMessage {
 
+    /**
+     * Sentinel values used to identify fallback recipients that should be suppressed from display.
+     * When parsing .eml files without valid recipient headers, the email parser may insert these
+     * placeholder values. They should not be shown to end users as they represent missing data.
+     */
+    private static final String FALLBACK_RECIPIENT_EMAIL = "user@example.com";
+    private static final String FALLBACK_RECIPIENT_NAME = "InboxAI User";
+
     private final String id;
     private final String contextId;
     private final String senderName;
@@ -41,10 +49,18 @@ public class EmailMessage {
     protected EmailMessage(BuilderBase<?> builder) {
         this.id = builder.id;
         this.contextId = builder.contextId;
-        this.senderEmail = normalize(builder.senderEmail);
+        String normalizedSenderEmail = normalize(builder.senderEmail);
+        this.senderEmail = normalizedSenderEmail;
         this.senderName = defaultIfBlank(builder.senderName, this.senderEmail);
-        this.recipientEmail = normalize(builder.recipientEmail);
-        this.recipientName = defaultIfBlank(builder.recipientName, this.recipientEmail);
+
+        String normalizedRecipientEmail = normalize(builder.recipientEmail);
+        String normalizedRecipientName = normalize(builder.recipientName);
+        if (isFallbackRecipient(normalizedRecipientName, normalizedRecipientEmail)) {
+            normalizedRecipientEmail = null;
+            normalizedRecipientName = null;
+        }
+        this.recipientEmail = normalizedRecipientEmail;
+        this.recipientName = defaultIfBlank(normalizedRecipientName, normalizedRecipientEmail);
         this.subject = defaultIfBlank(builder.subject, "No subject");
         String rawBody = defaultIfBlank(builder.emailBodyRaw, "");
         this.emailBodyRaw = rawBody;
@@ -464,10 +480,16 @@ public class EmailMessage {
             return null;
         }
         String trimmed = candidate.trim();
-        if (trimmed.isEmpty()) {
-            return null;
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static boolean isFallbackRecipient(String name, String email) {
+        if (email == null) {
+            return false;
         }
-        // Sanitize HTML for safe display (prevents XSS and layout breaks)
-        return com.composerai.api.service.email.EmailHtmlSanitizer.sanitize(trimmed);
+        if (!FALLBACK_RECIPIENT_EMAIL.equalsIgnoreCase(email)) {
+            return false;
+        }
+        return name == null || name.isBlank() || FALLBACK_RECIPIENT_NAME.equalsIgnoreCase(name);
     }
 }

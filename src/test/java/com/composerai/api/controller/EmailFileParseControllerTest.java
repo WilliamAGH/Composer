@@ -197,8 +197,48 @@ class EmailFileParseControllerTest {
         EmailMessage emailMessage = (EmailMessage) body.get("emailMessage");
 
         assertNotNull(emailMessage);
-        assertEquals("<div id='original'>Original</div>", emailMessage.emailBodyHtml());
-        assertEquals("<div id='original'>Original</div>", body.get("parsedHtml"));
+        String sanitized = emailMessage.emailBodyHtml();
+        assertTrue(sanitized.contains("id=\"original\""), () -> "Sanitized HTML was " + sanitized);
+        assertEquals(sanitized, body.get("parsedHtml"));
+    }
+
+    @Test
+    void parseEmail_htmlModeStripsDangerousMarkup() throws Exception {
+        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        AppProperties props = new AppProperties();
+        props.getEmailRendering().setMode(AppProperties.EmailRenderMode.HTML);
+        String payload = """
+            {
+              "content": {
+                "plainText": "Plain body",
+                "markdown": "*Plain* body",
+                "originalHtml": "<html><head><style>body{background:black!important}</style></head><body><div onclick='alert(1)'>Safe <strong>content</strong></div><script>alert('hack')</script></body></html>"
+              },
+              "metadata": {
+                "subject": "Demo",
+                "from": "Ops",
+                "date": "Oct 01, 2025 at 4:30 PM -07:00"
+              }
+            }
+            """;
+
+        EmailFileParseController controller = controllerWithPayload(registry, payload, props);
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "dangerous.eml",
+            "message/rfc822",
+            SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8)
+        );
+
+        ResponseEntity<Map<String, Object>> response = controller.parseEmail(file);
+        EmailMessage emailMessage = (EmailMessage) response.getBody().get("emailMessage");
+
+        assertNotNull(emailMessage);
+        String sanitized = emailMessage.emailBodyHtml();
+        assertNotNull(sanitized);
+        assertTrue(sanitized.contains("Safe"));
+        assertFalse(sanitized.toLowerCase().contains("script"));
+        assertFalse(sanitized.toLowerCase().contains("onclick"));
     }
 
     @Test

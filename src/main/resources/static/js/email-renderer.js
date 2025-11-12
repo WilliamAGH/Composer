@@ -13,216 +13,348 @@
  * @since 2025-11-02
  * @version 0.0.1
  */
+
 const EmailRenderer = (() => {
-    'use strict';
+  /**
+   * Maximum number of elements to iterate when calculating iframe dimensions.
+   * Prevents performance issues with extremely large/complex emails.
+   */
+  const MAX_ELEMENTS_FOR_SIZING = 5000;
 
-    /**
-     * Renders email HTML content in a fully isolated sandboxed iframe.
-     *
-     * Security layers:
-     * - Sandbox attribute blocks scripts, forms, popups, top-level navigation
-     * - Separate origin prevents access to parent document
-     * - CSS containment prevents style/layout leakage
-     * - Auto-resizing maintains UX while ensuring isolation
-     *
-     * @param {HTMLElement} container - Container element to render iframe into
-     * @param {string} htmlContent - Sanitized HTML content to render
-     */
-    function renderInIframe(container, htmlContent) {
-        if (!container || !htmlContent) {
-            return;
+  /**
+   * Renders email HTML content in a fully isolated sandboxed iframe.
+   *
+   * Security layers:
+   * - Sandbox attribute blocks scripts, forms, popups, top-level navigation
+   * - Separate origin prevents access to parent document
+   * - CSS containment prevents style/layout leakage
+   * - Auto-resizing maintains UX while ensuring isolation
+   *
+   * @param {HTMLElement} container - Container element to render iframe into
+   * @param {string} htmlContent - Sanitized HTML content to render
+   */
+  function renderInIframe(container, htmlContent) {
+    if (!container || !htmlContent) {
+      throw new Error(
+        "EmailRenderer requires a target container and HTML content.",
+      );
+    }
+
+    // Ensure htmlContent is a string (server-side sanitization already applied)
+    const htmlString =
+      typeof htmlContent === "string" ? htmlContent : String(htmlContent);
+    if (!htmlString || htmlString.trim().length === 0) {
+      throw new Error("EmailRenderer received empty sanitized HTML.");
+    }
+
+    try {
+      // Expose for debugging in the browser console when diagnosing rendering issues
+      window.__EMAIL_RENDERER_DEBUG__ = window.__EMAIL_RENDERER_DEBUG__ || [];
+      window.__EMAIL_RENDERER_DEBUG__.push({
+        timestamp: Date.now(),
+        length: htmlString.length,
+        preview: htmlString.slice(0, 1200),
+      });
+      if (window.__EMAIL_RENDERER_DEBUG__.length > 20) {
+        window.__EMAIL_RENDERER_DEBUG__.shift();
+      }
+
+      // Reset container and show loading affordance
+      container.innerHTML = "";
+      container.classList.add("email-html-container--loading");
+
+      const loadingOverlay = document.createElement("div");
+      loadingOverlay.className = "email-html-loading";
+      loadingOverlay.innerHTML = `
+                <div class="email-html-loading-indicator"></div>
+                <p>Rendering email&hellip;</p>
+            `;
+      container.appendChild(loadingOverlay);
+
+      const iframe = document.createElement("iframe");
+      iframe.className = "email-html-iframe";
+      // allow-same-origin is required so the parent can read iframe content size; scripts remain disabled
+      // Popup permissions removed for security (emails should not open windows)
+      iframe.setAttribute(
+        "sandbox",
+        "allow-same-origin",
+      );
+      iframe.setAttribute("referrerpolicy", "no-referrer");
+      iframe.setAttribute("loading", "lazy");
+      iframe.setAttribute("aria-label", "Email body");
+      iframe.setAttribute("title", "Email body");
+      // Inline styles so we don't rely on external CSS in v2
+      iframe.style.width = "100%";
+      iframe.style.display = "block";
+      iframe.style.border = "0";
+      // Set a conservative initial height; will be auto-resized
+      iframe.style.height = "200px";
+
+      container.style.width = "100%";
+      container.style.maxWidth = "100%";
+      container.style.overflowX = "hidden";
+      container.style.position = "relative";
+      container.appendChild(iframe);
+
+      const handleReady = () => {
+        container.classList.remove("email-html-container--loading");
+        if (loadingOverlay.parentNode === container) {
+          loadingOverlay.remove();
         }
+        // Resize once the content is ready
+        scheduleIframeAutosize(iframe);
+      };
 
-        // Clear previous content
-        container.innerHTML = '';
-
-        // Client-side sanitization (defense in depth - server already sanitized)
-        const sanitizedHtml = sanitizeHtml(htmlContent);
-
-        // Create fully isolated iframe
-        const iframe = document.createElement('iframe');
-
-        // Critical security attributes
-        iframe.setAttribute('sandbox', 'allow-same-origin'); // Minimal permissions
-        iframe.setAttribute('referrerpolicy', 'no-referrer');
-
-        // Styling for seamless integration
-        iframe.style.cssText = `
-            width: 100%;
-            border: none;
-            display: block;
-            overflow: hidden;
-            min-height: 200px;
-            color-scheme: light;
-        `;
-
-        container.appendChild(iframe);
-
-        // Write content to iframe
-        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-        const fullHtml = buildIframeDocument(sanitizedHtml);
-
+      const fullHtml = buildIframeDocument(htmlString);
+      if ("srcdoc" in iframe) {
+        iframe.srcdoc = fullHtml;
+      } else {
+        const iframeDoc =
+          iframe.contentDocument || iframe.contentWindow.document;
         iframeDoc.open();
         iframeDoc.write(fullHtml);
         iframeDoc.close();
+      }
 
-        // Setup auto-resize
-        setupAutoResize(iframe, iframeDoc);
+      // Kick off autosize immediately and then again on readiness
+      scheduleIframeAutosize(iframe);
+      attachContentReadyListener(iframe, handleReady);
+      iframe.addEventListener("load", handleReady, { once: true });
+    } catch (error) {
+      console.error("EmailRenderer failed to render sanitized HTML.", error);
+      throw error;
     }
+  }
 
-    /**
-     * Build complete HTML document for iframe with security headers and styling.
-     */
-    function buildIframeDocument(bodyContent) {
-        return `
+  function attachContentReadyListener(iframe, handleReady) {
+    try {
+      const iframeDoc =
+        iframe.contentDocument || iframe.contentWindow?.document;
+      if (iframeDoc && iframeDoc.readyState === "complete") {
+        handleReady();
+        return;
+      }
+      const targetWindow = iframe.contentWindow;
+      if (targetWindow) {
+        const onDomReady = () => {
+          targetWindow.removeEventListener("DOMContentLoaded", onDomReady);
+          handleReady();
+        };
+        targetWindow.addEventListener("DOMContentLoaded", onDomReady);
+      } else {
+        iframe.addEventListener("load", handleReady, { once: true });
+      }
+    } catch (e) {
+      console.debug(
+        "Unable to attach DOMContentLoaded listener to iframe, falling back to load event",
+        e,
+      );
+      iframe.addEventListener("load", handleReady, { once: true });
+    }
+  }
+
+  /**
+   * Build complete HTML document for iframe with security headers and styling.
+   */
+  function buildIframeDocument(bodyContent) {
+    // NOTE: frame-ancestors cannot be enforced from a meta tag, so it is intentionally omitted.
+    return `
             <!DOCTYPE html>
             <html>
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <meta http-equiv="Content-Security-Policy" content="script-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';">
+                <meta http-equiv="Content-Security-Policy"
+                    content="default-src 'none'; img-src http: https: data: cid:; style-src 'unsafe-inline' https: data:; font-src https: data:; script-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'none';">
                 <style>
-                    /* Reset and containment */
-                    * {
-                        max-width: 100%;
-                        word-wrap: break-word;
-                    }
                     html, body {
                         margin: 0;
-                        padding: 16px;
-                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                        font-size: 0.95rem;
-                        line-height: 1.65;
-                        color: #0f172a;
+                        padding: 0;
+                        width: 100%;
+                        min-height: 0;
+                        font: inherit;
+                        color: inherit;
                         background: transparent;
-                        overflow-wrap: break-word;
-                        word-break: break-word;
+                        -webkit-text-size-adjust: 100%;
+                        overflow-x: visible;
+                        overflow-y: auto;
                     }
                     body {
-                        contain: layout style paint;
+                        line-height: inherit;
+                        word-break: break-word;
+                        overflow-wrap: anywhere;
                     }
-                    /* Prevent layout breaks */
-                    img {
-                        max-width: 100% !important;
-                        height: auto !important;
-                    }
-                    table {
+                    .email-wrapper {
+                        width: 100%;
                         max-width: 100%;
-                        table-layout: fixed;
+                        overflow-x: auto;
+                        overflow-y: visible;
+                        box-sizing: border-box;
+                        padding: 16px;
+                        background: transparent;
                     }
-                    /* Neutralize potentially dangerous elements */
-                    iframe, object, embed, applet {
-                        display: none !important;
+                    .email-wrapper img,
+                    .email-wrapper svg,
+                    .email-wrapper video,
+                    .email-wrapper canvas,
+                    .email-wrapper picture {
+                        max-width: 100%;
+                        height: auto;
                     }
-                    /* Prevent fixed/absolute positioning from breaking layout */
+                    .email-wrapper table {
+                        max-width: 100%;
+                    }
+                    /* Restore default table semantics even if inline CSS tries to override them */
+                    .email-wrapper table > tbody {
+                        display: table-row-group !important;
+                    }
+                    .email-wrapper table > thead {
+                        display: table-header-group !important;
+                    }
+                    .email-wrapper table > tfoot {
+                        display: table-footer-group !important;
+                    }
+                    .email-wrapper td,
+                    .email-wrapper th {
+                        word-break: break-word;
+                        overflow-wrap: anywhere;
+                    }
+                    pre, code {
+                        white-space: pre-wrap;
+                        word-break: break-word;
+                        overflow-wrap: anywhere;
+                        max-width: 100%;
+                    }
+                    /* Strip any hard-coded fixed positioning that can escape the iframe */
                     [style*="position: fixed"],
-                    [style*="position:fixed"],
-                    [style*="position: absolute"],
-                    [style*="position:absolute"] {
-                        position: relative !important;
+                    [style*="position:fixed"] {
+                        position: static !important;
                     }
                 </style>
             </head>
             <body>
-                ${bodyContent}
+                <div class="email-wrapper" style="box-sizing: border-box; padding: 16px !important;">
+                    ${bodyContent}
+                </div>
             </body>
             </html>
         `;
-    }
+  }
 
-    /**
-     * Setup auto-resize functionality for iframe to match content height.
-     */
-    function setupAutoResize(iframe, iframeDoc) {
-        const resizeIframe = () => {
-            try {
-                const body = iframeDoc.body;
-                const html = iframeDoc.documentElement;
-                const height = Math.max(
-                    body.scrollHeight,
-                    body.offsetHeight,
-                    html.clientHeight,
-                    html.scrollHeight,
-                    html.offsetHeight
-                );
-                iframe.style.height = Math.min(height + 20, 10000) + 'px'; // Cap at 10000px
-            } catch (error) {
-                // Cross-origin error - use fallback height
-                iframe.style.height = '600px';
+  function scheduleIframeAutosize(iframe) {
+    if (!iframe) return;
+    const adjust = () => resizeIframeToContent(iframe);
+    // Initial adjustments + delayed retries for late-loading assets
+    adjust();
+    if (typeof requestAnimationFrame === "function")
+      requestAnimationFrame(adjust);
+    [100, 300, 800, 1500].forEach((delay) => {
+      setTimeout(adjust, delay);
+    });
+    bindIframeMutationObserver(iframe, adjust);
+  }
+
+  function resizeIframeToContent(iframe) {
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) {
+        return;
+      }
+      const body = doc.body;
+      const html = doc.documentElement;
+      const heightCandidates = [
+        body?.scrollHeight,
+        body?.offsetHeight,
+        html?.scrollHeight,
+        html?.offsetHeight,
+      ].filter((value) => typeof value === "number" && !Number.isNaN(value));
+
+      // Fallback measurement for absolutely-positioned content: compute max element bottom
+      let maxBottom = 0;
+      try {
+        if (body?.getElementsByTagName) {
+          const els = body.getElementsByTagName("*");
+          const limit = Math.min(els.length, MAX_ELEMENTS_FOR_SIZING);
+          for (let i = 0; i < limit; i++) {
+            const el = els[i];
+            const rect = el.getBoundingClientRect
+              ? el.getBoundingClientRect()
+              : null;
+            if (rect && Number.isFinite(rect.bottom)) {
+              if (rect.bottom > maxBottom) maxBottom = rect.bottom;
             }
-        };
+          }
+        }
+      } catch (error) {
+        console.debug(
+          "EmailRenderer: element bounds measurement failed; falling back to basic sizing.",
+          error,
+        );
+        // best-effort only
+      }
 
-        // Resize on load
-        iframe.addEventListener('load', () => {
-            resizeIframe();
+      const computedHeight = Math.max(
+        0,
+        ...(heightCandidates.length ? heightCandidates : [0]),
+        Math.ceil(maxBottom),
+      );
 
-            // Re-resize when images load
-            const images = iframeDoc.querySelectorAll('img');
-            images.forEach(img => {
-                img.addEventListener('load', resizeIframe);
-                img.addEventListener('error', resizeIframe);
-            });
-        });
-
-        // Periodic resize check (for dynamic content)
-        let resizeAttempts = 0;
-        const resizeInterval = setInterval(() => {
-            resizeIframe();
-            resizeAttempts++;
-            if (resizeAttempts > 10) {
-                clearInterval(resizeInterval);
-            }
-        }, 100);
+      iframe.style.height = `${Math.max(computedHeight, 300)}px`;
+    } catch (err) {
+      console.warn("Unable to auto-resize email iframe height.", err);
+      iframe.style.height = "100%";
     }
+  }
 
-    /**
-     * Client-side HTML sanitization (defense in depth).
-     * Server should already sanitize, but this provides additional safety.
-     */
-    function sanitizeHtml(html) {
-        if (!html) return '';
+  function bindIframeMutationObserver(iframe, callback) {
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc || !doc.body) {
+        return;
+      }
+      const resizeHandler = () => callback();
+      const observer = new MutationObserver(resizeHandler);
+      observer.observe(doc.body, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
+      const cleanups = [];
 
-        const temp = document.createElement('div');
-        temp.innerHTML = html;
+      if (
+        iframe.contentWindow &&
+        typeof iframe.contentWindow.addEventListener === "function"
+      ) {
+        iframe.contentWindow.addEventListener("resize", resizeHandler);
+        cleanups.push(() =>
+          iframe.contentWindow.removeEventListener("resize", resizeHandler),
+        );
+      }
 
-        // Remove dangerous tags
-        temp.querySelectorAll('script').forEach(el => el.remove());
-        const dangerousTags = ['iframe', 'object', 'embed', 'applet', 'link', 'style', 'base', 'meta', 'form'];
-        dangerousTags.forEach(tag => {
-            temp.querySelectorAll(tag).forEach(el => el.remove());
-        });
+      Array.from(doc.images || []).forEach((img) => {
+        img.addEventListener("load", resizeHandler);
+        cleanups.push(() => img.removeEventListener("load", resizeHandler));
+      });
 
-        // Remove event handlers and javascript: URLs
-        temp.querySelectorAll('*').forEach(el => {
-            Array.from(el.attributes).forEach(attr => {
-                if (attr.name.startsWith('on')) {
-                    el.removeAttribute(attr.name);
-                }
-                if (attr.value && attr.value.toLowerCase().includes('javascript:')) {
-                    el.removeAttribute(attr.name);
-                }
-            });
-
-            // Neutralize dangerous CSS
-            if (el.hasAttribute('style')) {
-                const style = el.getAttribute('style');
-                if (style.includes('position') && (style.includes('fixed') || style.includes('absolute'))) {
-                    const cleaned = style.replace(/position\s*:\s*(fixed|absolute)/gi, 'position: relative');
-                    el.setAttribute('style', cleaned);
-                }
-            }
-        });
-
-        return temp.innerHTML;
+      // The observer automatically disconnects when the iframe is removed from the DOM.
+    } catch (err) {
+      console.debug("EmailRenderer mutation observer unavailable.", err);
     }
+  }
 
-    // Public API
-    return {
-        renderInIframe
-    };
+  // Public API
+  return {
+    renderInIframe,
+  };
 })();
 
 // Export for use in other scripts (if using modules)
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = EmailRenderer;
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = EmailRenderer;
+}
+
+// Ensure the renderer is available to browser scripts
+if (typeof window !== "undefined") {
+  window.EmailRenderer = EmailRenderer;
 }

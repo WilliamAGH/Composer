@@ -3,9 +3,8 @@ package com.composerai.api.service;
 import com.composerai.api.config.AppProperties;
 import com.composerai.api.model.EmailMessage;
 import com.composerai.api.model.EmailMessageContextFormatter;
-import com.composerai.api.service.CompanyLogoProvider;
 import com.composerai.api.service.ContextBuilder.EmailContextRegistry;
-import com.composerai.api.service.HtmlToText;
+import com.composerai.api.service.email.EmailHtmlSanitizer;
 import com.composerai.api.service.email.HtmlConverter;
 import com.composerai.api.util.IdGenerator;
 import com.composerai.api.util.StringUtils;
@@ -148,6 +147,8 @@ public class EmailParsingService {
 
             String companyLogoUrl = deriveCompanyLogoUrl(sender.email());
 
+            // Use markdown if available, otherwise use plain text
+            // The MarkdownRenderer is configured to preserve single newlines as <br> tags
             String markdownForHtml = sanitizedMarkdown != null ? sanitizedMarkdown : cleanedPlainText;
             String renderedFromMarkdown = HtmlConverter.markdownToSafeHtml(markdownForHtml);
             String renderedHtml = resolveEmailHtml(originalHtml, renderedFromMarkdown);
@@ -414,13 +415,49 @@ public class EmailParsingService {
 
     private String resolveEmailHtml(String originalHtml, String markdownHtml) {
         AppProperties.EmailRenderMode mode = effectiveRenderMode();
-        String normalizedOriginal = normalizeHtmlCandidate(originalHtml);
-        String normalizedMarkdown = normalizeHtmlCandidate(markdownHtml);
-        return switch (mode) {
-            case HTML -> normalizedOriginal != null ? normalizedOriginal : normalizedMarkdown;
-            case MARKDOWN -> normalizedMarkdown;
+        String sanitizedOriginal = sanitizeEmailHtml(originalHtml);
+        String sanitizedMarkdown = sanitizeEmailHtml(markdownHtml);
+
+        if (sanitizedOriginal == null && originalHtml != null && !originalHtml.isBlank()) {
+            log.warn("Sanitized original HTML was empty; will consider fallbacks.");
+        }
+        if (sanitizedMarkdown == null && markdownHtml != null && !markdownHtml.isBlank()) {
+            log.warn("Sanitized markdown-derived HTML was empty; markdown fallback unavailable.");
+        }
+
+        String rendered = switch (mode) {
+            case HTML -> sanitizedOriginal != null ? sanitizedOriginal : sanitizedMarkdown;
+            case MARKDOWN -> sanitizedMarkdown;
             case PLAINTEXT -> null;
         };
+
+        String renderSource = switch (mode) {
+            case HTML -> sanitizedOriginal != null ? "HTML" : (sanitizedMarkdown != null ? "MARKDOWN_FALLBACK" : "UNAVAILABLE");
+            case MARKDOWN -> sanitizedMarkdown != null ? "MARKDOWN" : "UNAVAILABLE";
+            case PLAINTEXT -> "PLAINTEXT";
+        };
+
+        // Only log error if rendering unexpectedly failed (not PLAINTEXT mode where null is expected)
+        if (rendered == null && mode != AppProperties.EmailRenderMode.PLAINTEXT) {
+            log.error("Email rendering failed; mode={}, sanitizedOriginalPresent={}, sanitizedMarkdownPresent={}",
+                mode, sanitizedOriginal != null, sanitizedMarkdown != null);
+        } else if (rendered != null) {
+            log.info("Email rendered using mode={} (source={})", mode, renderSource);
+        }
+
+        return rendered;
+    }
+
+    private String sanitizeEmailHtml(String candidate) {
+        String normalized = normalizeHtmlCandidate(candidate);
+        if (normalized == null) {
+            return null;
+        }
+        String sanitized = EmailHtmlSanitizer.sanitize(normalized);
+        if (sanitized == null || sanitized.isBlank()) {
+            return null;
+        }
+        return sanitized.trim();
     }
 
     private static String normalizeHtmlCandidate(String candidate) {

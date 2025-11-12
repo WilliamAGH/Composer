@@ -1,9 +1,12 @@
 package com.composerai.api.service.email;
 
+import com.composerai.api.util.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.jsoup.safety.Safelist;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Sanitizes email HTML for safe display in isolated iframes.
@@ -44,7 +47,7 @@ public final class EmailHtmlSanitizer {
             Document doc = Jsoup.parse(html);
 
             // Remove dangerous elements that could execute scripts or embed external content
-            doc.select("script, style, noscript, iframe, object, embed, applet, form, input, button, base, meta, link").remove();
+            doc.select("script, noscript, iframe, object, embed, applet, form").remove();
 
             // Remove all JavaScript event handlers and javascript: URLs
             removeJavaScriptHandlers(doc);
@@ -52,12 +55,14 @@ public final class EmailHtmlSanitizer {
             // Neutralize dangerous CSS that could break page layout
             neutralizeDangerousCss(doc);
 
-            // Apply jsoup Safelist for additional sanitization (defense in depth)
-            Safelist safelist = buildEmailDisplaySafelist();
-            String bodyHtml = doc.body().html();
-            String cleaned = Jsoup.clean(bodyHtml, safelist);
+            // Clean up <style> blocks to strip harmful constructs without removing formatting entirely
+            sanitizeStyleTags(doc);
 
-            return cleaned.trim().isEmpty() ? null : cleaned;
+            StringBuilder builder = new StringBuilder();
+            appendHeadStyles(doc, builder);
+            builder.append(buildBodyWrapper(doc.body()));
+            String cleaned = builder.toString();
+            return cleaned.trim().isEmpty() ? null : cleaned.trim();
 
         } catch (Exception e) {
             // On error, return null to prevent any potential XSS
@@ -70,10 +75,16 @@ public final class EmailHtmlSanitizer {
      */
     private static void removeJavaScriptHandlers(Document doc) {
         for (Element el : doc.getAllElements()) {
-            // Remove all on* attributes
-            el.attributes().asList().removeIf(attr ->
-                attr.getKey().toLowerCase().startsWith("on")
-            );
+            // Remove all on* attributes (iterate over copy to avoid concurrent modification)
+            List<String> attrsToRemove = new ArrayList<>();
+            for (var attr : el.attributes()) {
+                if (attr.getKey().toLowerCase().startsWith("on")) {
+                    attrsToRemove.add(attr.getKey());
+                }
+            }
+            for (String attrKey : attrsToRemove) {
+                el.removeAttr(attrKey);
+            }
 
             // Remove javascript: URLs from href and src
             if (el.hasAttr("href") && el.attr("href").toLowerCase().trim().startsWith("javascript:")) {
@@ -87,7 +98,8 @@ public final class EmailHtmlSanitizer {
 
     /**
      * Neutralize CSS that could break the page layout or overlay content.
-     * Specifically targets position:fixed and position:absolute which could escape the iframe.
+     * Specifically targets position:fixed which could escape the iframe.
+     * Preserves background colors and absolute positioning to keep layout fidelity.
      */
     private static void neutralizeDangerousCss(Document doc) {
         for (Element el : doc.getAllElements()) {
@@ -97,14 +109,16 @@ public final class EmailHtmlSanitizer {
 
             String style = el.attr("style");
 
-            // Replace position:fixed and position:absolute with position:relative
-            // This prevents email content from escaping its container
+            // Replace position:fixed with position:relative to avoid viewport overlays.
             String cleanedStyle = style
-                .replaceAll("(?i)position\\s*:\\s*fixed", "position: relative")
-                .replaceAll("(?i)position\\s*:\\s*absolute", "position: relative");
+                .replaceAll("(?i)position\\s*:\\s*fixed", "position: relative");
 
-            // Remove z-index to prevent content overlaying UI
-            cleanedStyle = cleanedStyle.replaceAll("(?i)z-index\\s*:\\s*[^;]+;?", "");
+            // Sanitize background-image URLs to prevent javascript: injection
+            // but preserve valid http/https/data URLs for background images
+            cleanedStyle = cleanedStyle.replaceAll(
+                "(?i)background-image\\s*:\\s*url\\s*\\(\\s*['\"]?\\s*javascript:[^)]*\\)",
+                ""
+            );
 
             // Ensure images are constrained
             if (el.tagName().equalsIgnoreCase("img")) {
@@ -113,27 +127,104 @@ public final class EmailHtmlSanitizer {
                 }
             }
 
-            el.attr("style", cleanedStyle);
+            if (!cleanedStyle.equals(style)) {
+                el.attr("style", cleanedStyle);
+            }
         }
     }
 
-    /**
-     * Build a Safelist tailored for email HTML display.
-     * Allows common email formatting while blocking dangerous elements.
-     */
-    private static Safelist buildEmailDisplaySafelist() {
-        return Safelist.relaxed()
-            // Allow data URIs for inline images (common in emails)
-            .addProtocols("img", "src", "http", "https", "data")
-            // Additional attributes for email styling
-            .addAttributes("img", "alt", "title", "width", "height", "style")
-            .addAttributes("table", "border", "cellpadding", "cellspacing", "style", "width")
-            .addAttributes("td", "colspan", "rowspan", "style", "width")
-            .addAttributes("th", "colspan", "rowspan", "style", "width")
-            .addAttributes("div", "style", "class")
-            .addAttributes("span", "style", "class")
-            .addAttributes("p", "style", "class")
-            .addAttributes("a", "style", "class", "href", "title", "rel", "target")
-            .addAttributes(":all", "class");
+    private static void sanitizeStyleTags(Document doc) {
+        for (Element styleTag : doc.select("style")) {
+            String css = styleTag.data();
+            if (css == null || css.isBlank()) {
+                continue;
+            }
+
+            // Remove dangerous CSS while preserving backgrounds and colors
+            String sanitized = css
+                .replaceAll("(?i)expression\\s*\\(", "")
+                .replaceAll("(?i)url\\s*\\(\\s*['\"]?\\s*javascript:", "url(")
+                .replaceAll("(?i)@import\\s+['\"]?\\s*javascript:", "")
+                .replaceAll("(?i)position\\s*:\\s*fixed", "position: relative");
+
+            styleTag.text(sanitized);
+        }
     }
+
+    private static void appendHeadStyles(Document doc, StringBuilder builder) {
+        if (builder == null || doc.head() == null) {
+            return;
+        }
+        for (Element styleTag : doc.head().select("style")) {
+            String outer = styleTag.outerHtml();
+            if (outer != null && !outer.isBlank()) {
+                builder.append(outer);
+            }
+        }
+    }
+
+    private static String buildBodyWrapper(Element body) {
+        if (body == null) {
+            return "";
+        }
+
+        String originalClass = body.hasAttr("class") ? body.attr("class").trim() : "";
+        String combinedClass = originalClass.isBlank()
+            ? "email-original-body"
+            : "email-original-body " + originalClass;
+
+        StringBuilder builder = new StringBuilder();
+        builder.append("<div class=\"").append(escapeAttributeValue(combinedClass)).append("\"");
+
+        String bodyStyle = body.hasAttr("style") ? body.attr("style").trim() : "";
+        if (!bodyStyle.isBlank()) {
+            appendAttribute(builder, "style", bodyStyle);
+        }
+
+        String bodyBgColor = body.hasAttr("bgcolor") ? body.attr("bgcolor").trim() : "";
+        if (!bodyBgColor.isBlank()) {
+            appendAttribute(builder, "bgcolor", bodyBgColor);
+        }
+
+        String bodyBackground = body.hasAttr("background") ? body.attr("background").trim() : "";
+        if (!bodyBackground.isBlank()) {
+            String safeBackground = StringUtils.sanitizeUrl(bodyBackground);
+            if (safeBackground != null) {
+                appendAttribute(builder, "data-email-background", safeBackground);
+                mergeBackgroundImage(builder, safeBackground);
+            }
+        }
+
+        builder.append('>').append(body.html()).append("</div>");
+        return builder.toString();
+    }
+
+    private static void mergeBackgroundImage(StringBuilder builder, String backgroundUrl) {
+        final String addition = "background-image: url('" + escapeAttributeValue(backgroundUrl) + "'); ";
+        final String stylePrefix = " style=\"";
+        int styleIndex = builder.indexOf(stylePrefix);
+        if (styleIndex >= 0) {
+            int insertionPoint = styleIndex + stylePrefix.length();
+            builder.insert(insertionPoint, addition);
+        } else {
+            appendAttribute(builder, "style", addition.trim());
+        }
+    }
+
+    private static void appendAttribute(StringBuilder builder, String name, String value) {
+        builder.append(' ').append(name)
+            .append("=\"")
+            .append(escapeAttributeValue(value))
+            .append("\"");
+    }
+
+    private static String escapeAttributeValue(String value) {
+        return value
+            .replace("&", "&amp;")
+            .replace("\"", "&quot;")
+            .replace("'", "&#39;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;");
+    }
+
 }

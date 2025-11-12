@@ -13,6 +13,10 @@ Follow these standards to deliver clean, DRY implementations that slot into the 
 
 Refer to `README.md` (Technology Stack and Requirements) for current runtime versions, dependencies, and tooling expectations. Use those values unless a task explicitly overrides them.
 
+- Frontend: Svelte + Vite app lives at `frontend/email-client` and is served by Spring as static assets under `/app/email-client/`.
+- Builds: `make build` composes both (Vite → Maven). Use `make build-vite` or `make build-java` for sub-builds; `make run` launches Spring locally.
+- Do not commit `node_modules/` or built assets (`src/main/resources/static/app/email-client/`).
+
 ## Step 0: Purpose Alignment (Why-First Mandate)
 
 - Pause before building anything new or modifying existing behavior until you can state the precise reason the functionality must change. If the why is unclear or second-hand, stop and ask the user for clarification before touching the codebase.
@@ -48,6 +52,10 @@ Refer to `README.md` (Technology Stack and Requirements) for current runtime ver
 - For CLI utilities, include integration-style tests that exercise argument parsing when practical
 
 ## Front-End & Template Guidance
+
+- Primary UI is Svelte; Thymeleaf hosts the page and injects bootstrap JSON + CSP/nonce.
+- Icons: use `lucide-svelte`.
+- Email HTML must render via the sandboxed iframe (`email-renderer.js`) — never use raw {@html} with email bodies.
 
 - Treat `layout.html` as the shared frame; inject page-specific content through fragments
 - Leverage Tailwind utilities for layout; use `app-shared.css` sparingly for tokens or reset rules

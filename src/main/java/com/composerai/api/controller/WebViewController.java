@@ -21,7 +21,8 @@ public class WebViewController {
 
     @GetMapping({"/", "/index"})
     public String index() {
-        return "redirect:/chat";
+        // Make email client v2 the root landing page
+        return "redirect:/email-client-v2";
     }
 
     @GetMapping("/chat")
@@ -31,10 +32,16 @@ public class WebViewController {
     }
 
     @GetMapping("/email-client")
-    public String emailClient(Model model, HttpSession session) {
+    public String emailClientLegacyRedirect() {
+        // Preserve backward-compatible path while serving the modern UI
+        return "redirect:/email-client-v2";
+    }
+
+    @GetMapping("/email-client-v2")
+    public String emailClientV2(Model model, HttpSession session) {
         model.addAttribute("uiNonce", uiNonceService.getOrCreateSessionNonce(session));
         List<com.composerai.api.model.EmailMessage> emailMessages = emailMessageProvider.loadEmails();
         model.addAttribute("emailMessages", emailMessages);
-        return "email-client";
+        return "email-client-v2";
     }
 }

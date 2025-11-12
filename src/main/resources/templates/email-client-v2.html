@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::body/content}, 'ComposerAI - Email Client v2', ~{::head/extraHead})}">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ComposerAI - Email Client v2</title>
+    <th:block th:fragment="extraHead">
+        <!-- Load the compiled Svelte styles so floating windows retain their chrome -->
+        <link rel="stylesheet" href="/app/email-client/assets/index.css" />
+    </th:block>
+</head>
+
+<body>
+<div th:fragment="content" class="min-h-screen flex flex-col">
+    <div id="email-client-root" class="flex-1"></div>
+
+    <!-- Load EmailRenderer before the app to preserve iframe isolation API -->
+    <script src="/js/email-renderer.js"></script>
+
+    <!-- Bootstrap data for Svelte app -->
+    <script th:inline="javascript">
+        const UI_NONCE = /*[[${uiNonce}]]*/ null;
+        window.__EMAIL_CLIENT_BOOTSTRAP__ = {
+            uiNonce: UI_NONCE,
+            messages: /*[[${emailMessages}]]*/ [],
+            aiFunctions: /*[[${aiFunctionCatalog}]]*/ {}
+        };
+    </script>
+
+    <!-- Built Svelte bundle (emitted by Vite build) -->
+    <script type="module" src="/app/email-client/email-client.js"></script>
+</div>
+</body>
+
+</html>

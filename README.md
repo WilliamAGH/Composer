@@ -9,32 +9,60 @@ Java 21 Spring Boot backend that powers the ComposerAI: a chat interface for rea
 
 ### Customizing AI Command Prompts
 
-The chat service renders AI helper flows (compose, draft, summarize, translate, tone) using templates sourced from `AiCommandPromptProperties`. Override them per environment in `application.properties` (or profile-specific variants) with the `ai.commands.prompts.<command>.template` key. Supported commands today are `compose`, `draft`, `summarize`, `translate`, and `tone`.
+AI helper flows (compose, draft, summarize, translate, tone) are now declared in `AiFunctionCatalogProperties` (`src/main/java/com/composerai/api/config/AiFunctionCatalogProperties.java`) via the `ai.functions.*` namespace. `AiFunctionCatalogHelper` (`src/main/java/com/composerai/api/ai/AiFunctionCatalogHelper.java`) normalizes those properties and exposes them—through `AiFunctionCatalogDto` (`src/main/java/com/composerai/api/dto/AiFunctionCatalogDto.java`)—to:
+
+- Back-end services (`ChatService`) when rendering prompts and enforcing validation.
+- Validation (`AiCommandValidator`) for request safety.
+- Front-end bootstrap JSON (`GlobalModelAttributes` → `aiFunctionCatalog`) so the Svelte client renders buttons, instructions, and variants directly from the catalog.
+- The `/api/ai-functions` endpoint (`AiFunctionCatalogController`) for clients that need to refresh metadata after initial load (the Svelte client now auto-fetches when bootstrapped data is missing).
+
+Each entry defines labels, prompt templates, default instructions, context strategy, scopes, and optional variants (e.g., translation languages). Override any field per environment in `application.properties` (or profile-specific variants).
 
 ```properties
 # application-local.properties
-ai.commands.prompts.compose.template=Compose a concise, action-oriented reply: {{instruction}}
-ai.commands.prompts.tone.template=Adjust the draft to a friendly yet professional tone: {{instruction}}
+ai.functions.compose.prompt-template=Compose a concise, action-oriented reply: {{instruction}}
+ai.functions.compose.default-instruction=Compose a helpful reply using the selected context.
+ai.functions.translate.variants.es.label=AI Translation (Spanish)
+ai.functions.translate.variants.es.default-args.targetLanguage=Spanish
 ```
 
-Templates accept the `{{instruction}}` placeholder, which is replaced with the user message passed from the UI. If a custom template is omitted or blank the service falls back to the built-in defaults.
+Placeholders such as `{{instruction}}`, `{{subject}}`, or keys from `defaultArgs`/`variants.defaultArgs` are replaced server-side before sending prompts to the model. If a custom value is omitted or blank the service falls back to the built-in defaults defined in `AiFunctionCatalogProperties`.
+
+### Email Client Window System
+
+Compose drafts and AI summary panels share a reusable window shell:
+
+- `frontend/email-client/src/lib/window/windowTypes.js` – plain JS factories for window descriptors (kept outside Svelte/Java so multiple components/stores can reuse them without rendering).
+- `frontend/email-client/src/lib/window/windowStore.js` – Svelte store that enforces per-mode limits, manages minimize/focus, and ensures summaries stay tied to their email IDs.
+- `frontend/email-client/src/lib/window/WindowFrame.svelte` – shared chrome for floating/docked windows; feature components (`ComposeWindow.svelte`, `AiSummaryWindow.svelte`) wrap it instead of duplicating markup.
+- `frontend/email-client/src/lib/window/WindowDock.svelte` – renders minimized windows as a bottom dock so they never overlap email content.
+
+Add new AI windows by creating a feature component that wraps `WindowFrame` and registering it with the window store rather than building bespoke panels.
 
 ## Feature Highlights
 
 - **Chat Orchestration** – Routes chat requests through OpenAI-compatible models, classifies user intent, and stitches email snippets into responses.
+- **AI Request Journey Loader** – `frontend/email-client/src/lib/AiLoadingJourney.svelte` renders the deterministic lifecycle defined in `aiJourney.ts`, mirroring `ChatService.prepareChatContext` → `VectorSearchService.searchSimilarEmails` → `OpenAiChatService.generateResponse` so UI copy stays in sync with backend stages.
+- **Mailbox AI Actions** – The email list header now exposes an "AI Actions" dropdown that targets mailbox-wide workflows (e.g., Smart triage & cleanup). The control appears next to the search bar on desktop/tablet and in the mobile toolbar so users can trigger scoped batch actions against the currently filtered messages, reusing the existing AI journey overlay and catalog metadata.
 - **Vector Retrieval Stub** – Integrates with Qdrant for similarity search; ships with placeholder extraction logic so teams can map real payloads incrementally.
 - **Email Parsing Workspace (QA)** – Provides an interactive HTML workspace for uploading `.eml`/`.txt` files and returning cleaned text output via the `/api/qa/parse-email` endpoint.
 - **Diagnostics Control Panel** – Ships a rich, static diagnostics dashboard tailored for observing health checks, mock retrieval responses, and LLM outputs.
 - **CLI Utilities** – Includes `HtmlToText` tooling for converting raw email sources to Markdown or plain text, enabling batch processing workflows.
 
+## Email Rendering & Isolation
+
+- All `EmailMessage.emailBodyHtml` values are sanitized server-side via `EmailHtmlSanitizer`.
+- The Svelte client at `/email-client-v2` renders sanitized HTML inside a sandboxed iframe (scripts disabled, same-origin enabled for sizing, inner scrollbars suppressed). If no HTML remains, it falls back to Markdown text.
+- `/email-client` now redirects to `/email-client-v2` so bookmarks continue working while the legacy view is removed.
+
 ## Technology Stack
 
-- **Runtime**: Java 21 (OpenJDK build) running on Spring Boot 3.3.x
-- **Build**: Maven 3.9+, Spring Boot Maven Plugin
-- **Web Layer**: Spring MVC, Jakarta Validation, Thymeleaf templates
-- **Frontend Styling**: Tailwind CSS via CDN with soft gradients, translucent panels, and shadowed cards for a polished, product-grade aesthetic
-- **Integrations**: OpenAI Java SDK (official, `com.openai:openai-java`—see `pom.xml` for version), Qdrant gRPC client, Flexmark, JSoup, Jakarta Mail
-- **Containerization**: Multi-stage Docker build based on OpenJDK 21
+- **Runtime**: Java 21 (Spring Boot 3.3.x)
+- **Frontend**: Svelte + Vite (assets emitted under `src/main/resources/static/app/email-client/`), Tailwind utilities; lucide icons
+- **Server UI**: Thymeleaf host templates for bootstrapping and CSP/nonce injection
+- **Build**: `make build` (Vite → Maven)
+- **Integrations**: OpenAI Java SDK, Qdrant, Flexmark, JSoup, Jakarta Mail
+- **Containers**: Multi-stage Docker build
 
 ## Requirements
 
@@ -156,6 +184,7 @@ export LLM_REASONING="medium"
 | `LLM_PROVIDER_ALLOW_FALLBACKS` | `true` | Allow fallback providers (OpenRouter only) |
 | `LLM_DEBUG_FETCH` | `false` | Log full request/response bodies |
 | `RENDER_EMAILS_WITH` | `HTML` | Email client render mode: `HTML`, `MARKDOWN`, or `PLAINTEXT` |
+| `SESSION_TIMEOUT` | `PT8H` | Servlet session timeout (ISO-8601 duration) used for UI nonce + cookie lifetime |
 
 \* `minimal` only supported by OpenAI. Automatically converts to `low` for other providers.
 
@@ -174,12 +203,14 @@ mvn spring-boot:run -Dspring-boot.run.profiles=local
 
 Helpful Makefile targets:
 
-- `make run` – `SPRING_PROFILES_ACTIVE=local mvn spring-boot:run`
-- `make build` – Package JAR with tests skipped
+- `make run` – Run Spring Boot locally (profile=local)
+- `make build` – Build frontend (Vite) then backend (Maven) into a single JAR
+- `make build-vite` – Build only the Svelte bundle into `src/main/resources/static/app/email-client/`
+- `make build-java` – Build only the Spring Boot JAR
+- `make fe-dev` – Start Vite dev server with API proxy
 - `make test` – Run the full Maven test suite (override with `MAVEN_TEST_FLAGS="-DskipITs"` etc.)
 - `make docker-build` – Build `composerai-api:local`
 - `make docker-run-local` – Run container with local profile variables
-- `make deps-refresh` – Purge cached OpenAI SDK artifacts and rebuild to pull fresh dependencies
 
 ## Docker Usage
 
@@ -210,6 +241,7 @@ Each workspace follows the house design language: layered glass cards over soft 
 | `POST` | `/api/chat` | Main chat endpoint accepting message, optional conversation ID, `maxResults`, and a `contextId` referencing normalized email content |
 | `POST` | `/api/chat/stream` | SSE stream of incremental tokens for live responses |
 | `POST` | `/api/qa/parse-email` | QA-only multipart upload for `.eml`/`.txt` files that streams them through the shared `EmailParsingService` and returns a `contextId` for subsequent chat calls |
+| `POST` | `/ui/session/nonce` | Renews the UI nonce for the active servlet session (used by the Svelte client to recover after session expiry) |
 
 ### Example Chat Request
 

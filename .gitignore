@@ -88,3 +88,10 @@ application-local.properties
 ComposerAI.*
 Code/email-backend.html.backup
 email-test.html
+
+# Frontend (Svelte) - do not commit build artifacts or local deps
+frontend/email-client/node_modules/
+frontend/email-client/.env*
+frontend/email-client/.vite/
+frontend/email-client/dist/
+src/main/resources/static/app/email-client/

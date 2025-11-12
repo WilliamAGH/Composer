@@ -1,6 +1,7 @@
 package com.composerai.api.service;
 
-import com.composerai.api.config.AiCommandPromptProperties;
+import com.composerai.api.ai.AiFunctionCatalogHelper;
+import com.composerai.api.ai.AiFunctionDefinition;
 import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
 import com.composerai.api.config.MagicEmailProperties;
@@ -21,6 +22,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -45,7 +47,7 @@ public class ChatService {
     private final ConversationRegistry conversationRegistry;
     private final ExecutorService streamingExecutor;
     private final MagicEmailProperties magicEmailProperties;
-    private final AiCommandPromptProperties aiCommandPromptProperties;
+    private final AiFunctionCatalogHelper aiFunctionCatalogHelper;
 
     private static final String INSIGHTS_TRIGGER = "__INSIGHTS_TRIGGER__";
     private static final Pattern MARKDOWN_LINK_PATTERN = Pattern.compile("\\[([^\\]]+)\\]\\(([^\\)]*)\\)");
@@ -56,7 +58,7 @@ public class ChatService {
                        ContextBuilder contextBuilder, ContextBuilder.EmailContextRegistry emailContextRegistry,
                        ConversationRegistry conversationRegistry,
                        MagicEmailProperties magicEmailProperties,
-                       AiCommandPromptProperties aiCommandPromptProperties,
+                       AiFunctionCatalogHelper aiFunctionCatalogHelper,
                        @Qualifier("chatStreamExecutor") ExecutorService streamingExecutor) {
         this.vectorSearchService = vectorSearchService;
         this.openAiChatService = openAiChatService;
@@ -67,7 +69,7 @@ public class ChatService {
         this.conversationRegistry = conversationRegistry;
         this.streamingExecutor = streamingExecutor;
         this.magicEmailProperties = magicEmailProperties;
-        this.aiCommandPromptProperties = aiCommandPromptProperties;
+        this.aiFunctionCatalogHelper = aiFunctionCatalogHelper;
     }
 
     private record ChatContext(float[] embedding, List<EmailContext> emailContext, String contextString) {}
@@ -109,9 +111,16 @@ public class ChatService {
 
         String command = request.getAiCommand();
         if (!StringUtils.isBlank(command)) {
-            String template = aiCommandPromptProperties.promptFor(command).orElse(null);
-            if (!StringUtils.isBlank(template)) {
-                return renderCommandTemplate(template, originalMessage, request.getSubject());
+            AiFunctionDefinition definition = aiFunctionCatalogHelper.find(command, request.getCommandVariant()).orElse(null);
+            if (definition != null) {
+                AiFunctionDefinition.AiFunctionVariant variant = definition.variant(request.getCommandVariant()).orElse(null);
+                String template = resolveTemplate(definition, variant);
+                String instruction = resolveInstruction(originalMessage, definition, variant);
+                String rendered = renderFunctionTemplate(template, instruction, request.getSubject(), definition,
+                    mergeFunctionArgs(definition, variant, request.getCommandArgs()));
+                if (!StringUtils.isBlank(rendered)) {
+                    return rendered;
+                }
             }
         }
 
@@ -131,22 +140,88 @@ public class ChatService {
         return HtmlConverter.cleanupOutput(cleaned.trim(), true);
     }
 
-    private String renderCommandTemplate(String template, String instruction, String subject) {
+    /**
+     * Renders a catalog-derived template, substituting instruction/context placeholders so backend and UI
+     * share identical helper behaviour.
+     */
+    private String renderFunctionTemplate(String template, String instruction, String subject,
+                                          AiFunctionDefinition definition, Map<String, String> args) {
         String safeInstruction = instruction == null ? "" : instruction.trim();
-        String safeSubject = subject == null ? "" : subject.trim();
+        String rendered = template == null ? "" : template;
 
-        String rendered = template;
         if (rendered.contains("{{instruction}}")) {
             rendered = rendered.replace("{{instruction}}", safeInstruction);
         } else if (!StringUtils.isBlank(safeInstruction)) {
             rendered = rendered + "\n\nAdditional direction:\n" + safeInstruction;
         }
 
-        if (!StringUtils.isBlank(safeSubject)) {
-            rendered = rendered + "\n\nSubject: " + safeSubject;
+        if (args != null && !args.isEmpty()) {
+            for (Map.Entry<String, String> entry : args.entrySet()) {
+                String placeholder = "{{" + entry.getKey() + "}}";
+                String value = entry.getValue() == null ? "" : entry.getValue();
+                if (rendered.contains(placeholder)) {
+                    rendered = rendered.replace(placeholder, value);
+                }
+            }
         }
 
-        return rendered;
+        if (definition.allowsSubject() && !StringUtils.isBlank(subject)) {
+            String safeSubject = subject.trim();
+            if (rendered.contains("{{subject}}")) {
+                rendered = rendered.replace("{{subject}}", safeSubject);
+            } else {
+                rendered = rendered + "\n\nSubject: " + safeSubject;
+            }
+        }
+
+        return rendered.trim();
+    }
+
+    /**
+     * Variant-specific template overrides fall back to the base function template when missing.
+     */
+    private String resolveTemplate(AiFunctionDefinition definition, AiFunctionDefinition.AiFunctionVariant variant) {
+        if (variant != null && !StringUtils.isBlank(variant.promptTemplate())) {
+            return variant.promptTemplate();
+        }
+        return definition.promptTemplate();
+    }
+
+    /**
+     * Prefers user-provided instruction, then variant default, then the function default to keep behaviour consistent.
+     */
+    private String resolveInstruction(String provided, AiFunctionDefinition definition,
+                                      AiFunctionDefinition.AiFunctionVariant variant) {
+        if (!StringUtils.isBlank(provided)) {
+            return provided;
+        }
+        if (variant != null && !StringUtils.isBlank(variant.defaultInstruction())) {
+            return variant.defaultInstruction();
+        }
+        return definition.defaultInstruction();
+    }
+
+    /**
+     * Deep merges default args (function + variant) with request overrides so templates only read from one map.
+     */
+    private Map<String, String> mergeFunctionArgs(AiFunctionDefinition definition,
+                                                  AiFunctionDefinition.AiFunctionVariant variant,
+                                                  Map<String, String> requestArgs) {
+        Map<String, String> merged = new LinkedHashMap<>();
+        if (definition.defaultArgs() != null) {
+            merged.putAll(definition.defaultArgs());
+        }
+        if (variant != null && variant.defaultArgs() != null) {
+            merged.putAll(variant.defaultArgs());
+        }
+        if (requestArgs != null) {
+            requestArgs.forEach((key, value) -> {
+                if (!StringUtils.isBlank(key) && value != null) {
+                    merged.put(key.trim(), value);
+                }
+            });
+        }
+        return merged;
     }
 
     /**
@@ -165,6 +240,12 @@ public class ChatService {
         logger.info("Processing chat: convId={}, msgLen={}", conversationId, msgLen);
         boolean jsonOutput = request.isJsonOutput();
         String originalMessage = request.getMessage();
+        String commandKey = request.getAiCommand();
+        boolean isActionMenuCommand = "actions_menu".equalsIgnoreCase(commandKey);
+        if (isActionMenuCommand) {
+            logger.info("Action menu request: convId={}, contextId={}, subject={}, journeyTarget={}",
+                conversationId, request.getContextId(), request.getSubject(), request.getJourneyScopeTarget());
+        }
         try {
             String intent = INSIGHTS_TRIGGER.equals(originalMessage)
                 ? "insights"
@@ -193,6 +274,10 @@ public class ChatService {
             OpenAiChatService.ChatCompletionResult aiResult = openAiChatService.generateResponse(
                 userMessageForModel, fullContext, history,
                 request.isThinkingEnabled(), request.getThinkingLevel(), jsonOutput);
+            if (isActionMenuCommand) {
+                int responseChars = aiResult.rawText() == null ? 0 : aiResult.rawText().length();
+                logger.info("Action menu response: convId={}, contextId={}, chars={}", conversationId, request.getContextId(), responseChars);
+            }
             logger.info("Successfully processed chat request for conversation: {}", conversationId);
             conversationRegistry.append(conversationId,
                 OpenAiChatService.ConversationTurn.userWithId(userMessageId, originalMessage),
@@ -200,6 +285,10 @@ public class ChatService {
             String sanitized = jsonOutput ? null : aiResult.sanitizedHtml();
             return new ChatResponse(aiResult.rawText(), conversationId, ctx.emailContext(), intent, sanitized, userMessageId, assistantMessageId);
         } catch (Exception e) {
+            if (isActionMenuCommand) {
+                logger.warn("Action menu request failed: convId={}, contextId={}, error={}",
+                    conversationId, request.getContextId(), e.getMessage());
+            }
             logger.error("Error processing chat request", e);
             String fallback = errorMessages.getChat().getProcessingError();
             conversationRegistry.append(conversationId,
@@ -361,17 +450,13 @@ public class ChatService {
         logger.warn("Context lookup failed for contextId={} (conversationId={})", contextId, conversationId);
         
         if (!StringUtils.isBlank(request.getEmailContext())) {
-            if (StringUtils.isBlank(contextId)) {
-                logger.warn("Dropping provided emailContext because contextId is missing (conversationId={})", conversationId);
-            } else {
-                logger.warn("Falling back to request payload emailContext for contextId={} (length={})", 
-                    contextId, request.getEmailContext().length());
-                return HtmlConverter.cleanupOutput(request.getEmailContext(), true);
-            }
-        } else if (!StringUtils.isBlank(contextId)) {
-            logger.error("No uploaded context found: contextId={}, no fallback payload (conversationId={})", 
-                contextId, conversationId);
+            logger.warn("Using emailContext from request payload (contextId={}, length={}, conversationId={})",
+                contextId, request.getEmailContext().length(), conversationId);
+            // Don't suppress utility text - frontend already built clean context
+            return HtmlConverter.cleanupOutput(request.getEmailContext(), false);
         }
+            logger.error("No uploaded context found: contextId={}, no fallback payload (conversationId={})",
+                contextId, conversationId);
         return "";
     }
 
