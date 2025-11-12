@@ -40,10 +40,10 @@ const EmailRenderer = (() => {
       );
     }
 
-    // Client-side sanitization (defense in depth - server already sanitizes)
-    const sanitizedHtml =
+    // Ensure htmlContent is a string (server-side sanitization already applied)
+    const htmlString =
       typeof htmlContent === "string" ? htmlContent : String(htmlContent);
-    if (!sanitizedHtml || sanitizedHtml.trim().length === 0) {
+    if (!htmlString || htmlString.trim().length === 0) {
       throw new Error("EmailRenderer received empty sanitized HTML.");
     }
 
@@ -52,8 +52,8 @@ const EmailRenderer = (() => {
       window.__EMAIL_RENDERER_DEBUG__ = window.__EMAIL_RENDERER_DEBUG__ || [];
       window.__EMAIL_RENDERER_DEBUG__.push({
         timestamp: Date.now(),
-        length: sanitizedHtml.length,
-        preview: sanitizedHtml.slice(0, 1200),
+        length: htmlString.length,
+        preview: htmlString.slice(0, 1200),
       });
       if (window.__EMAIL_RENDERER_DEBUG__.length > 20) {
         window.__EMAIL_RENDERER_DEBUG__.shift();
@@ -105,7 +105,7 @@ const EmailRenderer = (() => {
         scheduleIframeAutosize(iframe);
       };
 
-      const fullHtml = buildIframeDocument(sanitizedHtml);
+      const fullHtml = buildIframeDocument(htmlString);
       if ("srcdoc" in iframe) {
         iframe.srcdoc = fullHtml;
       } else {
