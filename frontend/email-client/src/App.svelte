@@ -282,7 +282,8 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
     // This maintains the chain of context from Java's HtmlConverter processing
     if (email.contentMarkdown && email.contentMarkdown.trim()) {
       // Return the cleansed markdown directly without wrapping in metadata
-      // The backend already has this metadata when needed
+      // The backend already has this metadata when contextId is used.
+      // If emailContext is sent directly, the frontend must build and include metadata below.
       return email.contentMarkdown.trim();
     }
 
