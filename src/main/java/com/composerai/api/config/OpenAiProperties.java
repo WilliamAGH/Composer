@@ -17,9 +17,9 @@ import java.util.List;
  *   openai:
  *     api:
  *       key: ${OPENAI_API_KEY}
- *       base-url: ${OPENAI_API_BASE_URL}
+ *       base-url: ${OPENAI_BASE_URL}
  *     model:
- *       chat: ${OPENAI_MODEL}
+ *       chat: ${LLM_MODEL}
  *     embedding:
  *       model: ${OPENAI_EMBEDDING_MODEL}
  *     stream:
