@@ -1045,7 +1045,12 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
               {/if}
             </button>
             {#if mailboxActionsOpen && mailboxActionsHost === 'list'}
-              <div class="absolute right-0 top-[calc(100%+0.5rem)] w-80 rounded-2xl border border-slate-200/70 bg-white/95 shadow-2xl backdrop-blur-xl z-30" role="menu" tabindex="-1" on:click|stopPropagation>
+              <div
+                class="absolute right-0 top-[calc(100%+0.5rem)] w-80 rounded-2xl border border-slate-200/70 bg-white/95 shadow-2xl backdrop-blur-xl z-30"
+                role="menu"
+                tabindex="0"
+                on:click|stopPropagation
+                on:keydown|stopPropagation>
                 <div class="p-3 space-y-2">
                   {#each mailboxCommandEntries as entry (entry.key)}
                     <button
@@ -1153,7 +1158,12 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
                 {/if}
               </button>
               {#if mailboxActionsOpen && mailboxActionsHost === 'mobile'}
-                <div class="absolute right-0 top-[calc(100%+0.5rem)] w-72 rounded-2xl border border-slate-200/70 bg-white/95 shadow-2xl backdrop-blur-xl z-30" role="menu" tabindex="-1" on:click|stopPropagation>
+                <div
+                  class="absolute right-0 top-[calc(100%+0.5rem)] w-72 rounded-2xl border border-slate-200/70 bg-white/95 shadow-2xl backdrop-blur-xl z-30"
+                  role="menu"
+                  tabindex="0"
+                  on:click|stopPropagation
+                  on:keydown|stopPropagation>
                   <div class="p-3 space-y-2">
                     {#each mailboxCommandEntries as entry (entry.key)}
                       <button
@@ -1296,13 +1306,22 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
 {/if}
 
 {#if comingSoonModal.open}
-  <div class="fixed inset-0 z-[180] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4"
-       role="dialog"
-       aria-modal="true"
-       aria-label="Coming soon"
-       on:click={closeComingSoonModal}>
-    <div class="relative w-full max-w-md rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-800 p-6 text-white shadow-[0_35px_80px_rgba(15,23,42,0.55)]"
-         on:click|stopPropagation>
+  <div
+    class="fixed inset-0 z-[180] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4 relative"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Coming soon">
+    <button
+      type="button"
+      class="absolute inset-0 h-full w-full bg-transparent z-0"
+      aria-label="Close coming soon modal"
+      on:click={closeComingSoonModal}>
+      <span class="sr-only">Close</span>
+    </button>
+    <div
+      class="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-800 p-6 text-white shadow-[0_35px_80px_rgba(15,23,42,0.55)]"
+      role="document"
+      tabindex="-1">
       <button type="button" class="absolute right-4 top-4 rounded-full border border-white/20 bg-white/10 p-1 text-white hover:bg-white/20" aria-label="Close" on:click={closeComingSoonModal}>
         ✕
       </button>
