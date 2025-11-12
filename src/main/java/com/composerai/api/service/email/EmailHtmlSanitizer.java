@@ -2,7 +2,6 @@ package com.composerai.api.service.email;
 
 import com.composerai.api.util.StringUtils;
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.Attribute;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
@@ -78,7 +77,7 @@ public final class EmailHtmlSanitizer {
         for (Element el : doc.getAllElements()) {
             // Remove all on* attributes (iterate over copy to avoid concurrent modification)
             List<String> attrsToRemove = new ArrayList<>();
-            for (org.jsoup.nodes.Attribute attr : el.attributes()) {
+            for (var attr : el.attributes()) {
                 if (attr.getKey().toLowerCase().startsWith("on")) {
                     attrsToRemove.add(attr.getKey());
                 }
