@@ -59,12 +59,12 @@
       <AiLoadingJourney
         steps={journeyOverlay.steps}
         activeStepId={journeyOverlay.activeStepId}
-        completed={journeyOverlay.completed}
         headline={journeyOverlay.headline}
         subhead={journeyOverlay.subhead}
         show={journeyOverlay.visible}
         inline={true}
-        subdued={true} />
+        subdued={true}
+        className="border-slate-200" />
     {:else if error}
       <div class="panel-state panel-error">
         <p>{error}</p>
@@ -73,7 +73,9 @@
         </button>
       </div>
     {:else if hasContent}
-      <div class="panel-html" {@html html}></div>
+      <div class="panel-html">
+        {@html html}
+      </div>
     {:else}
       <div class="panel-state">
         <Sparkles class="h-6 w-6 text-slate-400" aria-hidden="true" />
