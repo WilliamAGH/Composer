@@ -37,7 +37,12 @@
 </script>
 
 {#if open && !minimized}
-<div class={mode === 'floating' ? 'window-frame floating' : 'window-frame docked'} role="dialog" aria-modal={mode === 'floating'}>
+<div
+  class={mode === 'floating' ? 'window-frame floating' : 'window-frame docked'}
+  role="dialog"
+  aria-modal={mode === 'floating'}
+  style={mode === 'floating' ? frameStyle : ''}
+>
   <header class="window-header">
     <div class="window-title">{title}</div>
     <div class="window-actions">
