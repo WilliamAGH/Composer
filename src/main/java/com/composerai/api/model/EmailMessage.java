@@ -49,13 +49,13 @@ public class EmailMessage {
         this.senderName = defaultIfBlank(builder.senderName, this.senderEmail);
 
         String normalizedRecipientEmail = normalize(builder.recipientEmail);
-        String effectiveRecipientName = defaultIfBlank(builder.recipientName, normalizedRecipientEmail);
-        if (isFallbackRecipient(effectiveRecipientName, normalizedRecipientEmail)) {
+        String normalizedRecipientName = normalize(builder.recipientName);
+        if (isFallbackRecipient(normalizedRecipientName, normalizedRecipientEmail)) {
             normalizedRecipientEmail = null;
-            effectiveRecipientName = null;
+            normalizedRecipientName = null;
         }
         this.recipientEmail = normalizedRecipientEmail;
-        this.recipientName = effectiveRecipientName;
+        this.recipientName = defaultIfBlank(normalizedRecipientName, normalizedRecipientEmail);
         this.subject = defaultIfBlank(builder.subject, "No subject");
         String rawBody = defaultIfBlank(builder.emailBodyRaw, "");
         this.emailBodyRaw = rawBody;
