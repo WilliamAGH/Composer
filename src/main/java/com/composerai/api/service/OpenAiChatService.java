@@ -519,16 +519,6 @@ public class OpenAiChatService {
             .build()));
     }
 
-    /**
-     * Execute an action with fallback error handling.
-     * Catches any exceptions, logs a warning, and returns the fallback value.
-     *
-     * @param action     the action to execute
-     * @param fallback   the value to return if an exception occurs
-     * @param errorMsg   the error message to log
-     * @param <T>        the return type
-     * @return the result of the action or the fallback value
-     */
     private void logLlmInvocation(String operation, String modelId, boolean streaming, boolean jsonOutput,
                                   boolean thinkingRequested, @Nullable ReasoningEffort reasoningEffort) {
         ProviderCapabilities capabilities = openAiProperties.getProviderCapabilities();
@@ -545,6 +535,16 @@ public class OpenAiChatService {
             operation, provider, modelId, baseUrl, streaming, jsonOutput, thinkingLabel);
     }
 
+    /**
+     * Execute an action with fallback error handling.
+     * Catches any exceptions, logs a warning, and returns the fallback value.
+     *
+     * @param action     the action to execute
+     * @param fallback   the value to return if an exception occurs
+     * @param errorMsg   the error message to log
+     * @param <T>        the return type
+     * @return the result of the action or the fallback value
+     */
     private <T> T executeWithFallback(Supplier<T> action, T fallback, String errorMsg) {
         try {
             return action.get();
