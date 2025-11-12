@@ -139,6 +139,8 @@ public class OpenAiChatService {
             }
 
             List<ResponseInputItem> messages = buildEmailAssistantMessages(emailContext, userMessage, conversationHistory, jsonOutput);
+            String modelId = openAiProperties.getModel().getChat();
+            logLlmInvocation("chat-sync", modelId, false, jsonOutput, thinkingEnabled, null);
 
             String aiResponse = openAiClient.responses().create(ResponseCreateParams.builder()
                 .model(resolveChatModel())
@@ -150,7 +152,8 @@ public class OpenAiChatService {
                 .map(outputText -> outputText.text())
                 .collect(java.util.stream.Collectors.joining());
 
-            logger.info("Chat completion: input={} output={} tokens",
+            logger.info("Chat completion: model={} inputTokens={} outputTokens={}",
+                modelId,
                 (long)(userMessage != null ? userMessage.split("\\s+").length * 1.25 : 0),
                 (long)(aiResponse != null ? aiResponse.split("\\s+").length * 1.25 : 0));
             return ChatCompletionResult.fromRaw(aiResponse, jsonOutput);
@@ -168,6 +171,8 @@ public class OpenAiChatService {
         return executeWithFallback(() -> {
             if (openAiClient == null) return openAiProperties.getIntent().getDefaultCategory();
 
+            String modelId = openAiProperties.getModel().getChat();
+            logLlmInvocation("intent", modelId, false, false, false, null);
             String intent = openAiClient.responses().create(ResponseCreateParams.builder()
                 .model(resolveChatModel())
                 .inputOfResponse(buildIntentAnalysisMessages(userMessage))
@@ -195,6 +200,8 @@ public class OpenAiChatService {
             return;
         }
 
+        String modelId = openAiProperties.getModel().getChat();
+
         ResponseCreateParams.Builder builder = ResponseCreateParams.builder()
             .model(resolveChatModel())
             .inputOfResponse(buildEmailAssistantMessages(emailContext, userMessage, conversationHistory, jsonOutput));
@@ -214,7 +221,6 @@ public class OpenAiChatService {
             builder.maxOutputTokens(openAiProperties.getModel().getMaxOutputTokens());
         }
 
-        String modelId = openAiProperties.getModel().getChat();
         ValidatedThinkingConfig config = ValidatedThinkingConfig.resolve(openAiProperties, modelId, thinkingEnabled, thinkingLevel);
         if (config.enabled() && config.effort() != null) {
             builder.reasoning(Reasoning.builder().effort(config.effort()).build());
@@ -222,6 +228,8 @@ public class OpenAiChatService {
         } else if (thinkingEnabled && !openAiProperties.getProviderCapabilities().supportsReasoning()) {
             logger.debug("Reasoning requested but provider {} does not support it", openAiProperties.getProviderCapabilities().getType());
         }
+
+        logLlmInvocation("chat-stream", modelId, true, jsonOutput, thinkingEnabled, config.effort());
 
         // Add OpenRouter provider routing via SDK's additionalBodyProperties if configured
         if (openAiProperties.getProviderCapabilities().getType() == ProviderCapabilities.ProviderType.OPENROUTER
@@ -361,6 +369,7 @@ public class OpenAiChatService {
         }
         
         return executeWithFallback(() -> {
+            logLlmInvocation("embedding", openAiProperties.getEmbedding().getModel(), false, false, false, null);
             List<Embedding> data = openAiClient.embeddings().create(
                 EmbeddingCreateParams.builder()
                     .model(EmbeddingModel.of(openAiProperties.getEmbedding().getModel()))
@@ -520,6 +529,22 @@ public class OpenAiChatService {
      * @param <T>        the return type
      * @return the result of the action or the fallback value
      */
+    private void logLlmInvocation(String operation, String modelId, boolean streaming, boolean jsonOutput,
+                                  boolean thinkingRequested, @Nullable ReasoningEffort reasoningEffort) {
+        ProviderCapabilities capabilities = openAiProperties.getProviderCapabilities();
+        String provider = capabilities == null || capabilities.getType() == null
+            ? "UNKNOWN"
+            : capabilities.getType().name();
+        String baseUrl = openAiProperties.getApi() != null && openAiProperties.getApi().getBaseUrl() != null
+            ? openAiProperties.getApi().getBaseUrl()
+            : "unset";
+        String thinkingLabel = thinkingRequested
+            ? (reasoningEffort != null ? reasoningEffort.name().toLowerCase(Locale.ROOT) : "enabled")
+            : "disabled";
+        logger.info("LLM {} request: provider={} model={} baseUrl={} streaming={} jsonOutput={} thinking={}",
+            operation, provider, modelId, baseUrl, streaming, jsonOutput, thinkingLabel);
+    }
+
     private <T> T executeWithFallback(Supplier<T> action, T fallback, String errorMsg) {
         try {
             return action.get();
