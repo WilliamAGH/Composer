@@ -529,7 +529,7 @@ public class OpenAiChatService {
             ? openAiProperties.getApi().getBaseUrl()
             : "unset";
         String thinkingLabel = thinkingRequested
-            ? (reasoningEffort != null ? reasoningEffort.name().toLowerCase(Locale.ROOT) : "enabled")
+            ? (reasoningEffort != null ? reasoningEffort.toString().toLowerCase(Locale.ROOT) : "enabled")
             : "disabled";
         logger.info("LLM {} request: provider={} model={} baseUrl={} streaming={} jsonOutput={} thinking={}",
             operation, provider, modelId, baseUrl, streaming, jsonOutput, thinkingLabel);
