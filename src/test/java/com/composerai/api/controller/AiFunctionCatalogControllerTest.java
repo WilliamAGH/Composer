@@ -5,8 +5,9 @@ import com.composerai.api.config.AiFunctionCatalogProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -14,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AiFunctionCatalogController.class)
+@Import(AiFunctionCatalogControllerTest.TestConfig.class)
 class AiFunctionCatalogControllerTest {
 
     @Autowired
@@ -27,11 +29,16 @@ class AiFunctionCatalogControllerTest {
             .andExpect(jsonPath("$.functionsByKey.summarize").exists());
     }
 
-    @Configuration
+    @TestConfiguration
     static class TestConfig {
         @Bean
-        AiFunctionCatalogHelper aiFunctionCatalogHelper() {
-            return new AiFunctionCatalogHelper(new AiFunctionCatalogProperties());
+        AiFunctionCatalogProperties aiFunctionCatalogProperties() {
+            return new AiFunctionCatalogProperties();
+        }
+
+        @Bean
+        AiFunctionCatalogHelper aiFunctionCatalogHelper(AiFunctionCatalogProperties properties) {
+            return new AiFunctionCatalogHelper(properties);
         }
     }
 }
