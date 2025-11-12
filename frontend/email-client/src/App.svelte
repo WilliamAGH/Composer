@@ -2,35 +2,43 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import EmailIframe from './lib/EmailIframe.svelte';
-  import ComposeWindow from './lib/ComposeWindow.svelte';
-  import AiSummaryWindow from './lib/AiSummaryWindow.svelte';
-  import WindowDock from './lib/window/WindowDock.svelte';
-  import AiLoadingJourney from './lib/AiLoadingJourney.svelte';
-  import { buildAiJourney, AI_JOURNEY_EVENTS } from './lib/aiJourney';
-  import { isMobile, isTablet, isDesktop, isWide, viewport } from './lib/viewport';
-  import { createWindowManager } from './lib/window/windowStore';
-  import { createComposeWindow, createSummaryWindow, WindowKind } from './lib/window/windowTypes';
-  import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, Archive, Trash2, Reply, Forward, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-svelte';
+import ComposeWindow from './lib/ComposeWindow.svelte';
+import AiSummaryWindow from './lib/AiSummaryWindow.svelte';
+import WindowDock from './lib/window/WindowDock.svelte';
+import WindowProvider from './lib/window/WindowProvider.svelte';
+import EmailActionToolbar from './lib/EmailActionToolbar.svelte';
+import EmailDetailView from './lib/EmailDetailView.svelte';
+import MailboxSidebar from './lib/MailboxSidebar.svelte';
+import AiLoadingJourney from './lib/AiLoadingJourney.svelte';
+import { isMobile, isTablet, isDesktop, isWide, viewport } from './lib/viewport';
+import { createWindowManager } from './lib/window/windowStore'; // temp use
+import { createComposeWindow, createSummaryWindow, WindowKind } from './lib/window/windowTypes';
+import { catalogStore, hydrateCatalog, ensureCatalogLoaded as ensureCatalog, getFunctionMeta, mergeDefaultArgs, resolveDefaultInstruction } from './lib/services/aiCatalog';
+import { mapEmailMessage, computeMailboxCounts, parseSubjectAndBody } from './lib/services/emailUtils';
+import { createAiJourneyStore } from './lib/services/aiJourneyStore';
+import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, ArrowLeft, ChevronLeft, ChevronRight, Archive, Trash2 } from 'lucide-svelte';
   export let bootstrap = {};
 
-  let aiCatalog = bootstrap.aiFunctions || null;
-  let aiCatalogPromise = null;
-
-  $: aiFunctionsByKey = aiCatalog?.functionsByKey || {};
-  $: aiPrimaryCommandKeys = Array.isArray(aiCatalog?.primaryCommands) ? aiCatalog.primaryCommands : [];
+  hydrateCatalog(bootstrap.aiFunctions || null);
+  const catalog = catalogStore();
+  $: catalogData = $catalog;
+  $: aiFunctionsByKey = catalogData?.functionsByKey || {};
+  $: aiPrimaryCommandKeys = Array.isArray(catalogData?.primaryCommands) ? catalogData.primaryCommands : [];
 
   let uiNonce = bootstrap.uiNonce || null;
   let nonceRefreshPromise = null;
   let search = '';
-  let emails = Array.isArray(bootstrap.messages) ? bootstrap.messages.map(mapEmail) : [];
+  let emails = Array.isArray(bootstrap.messages) ? bootstrap.messages.map(mapEmailMessage) : [];
   let selected = null;
-  let conversationId = null;
-  const windowManager = createWindowManager();
+let conversationId = null;
+const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   const windowsStore = windowManager.windows;
   const floatingStore = windowManager.floating;
   const dockedStore = windowManager.docked;
   const minimizedStore = windowManager.minimized;
   const windowErrorStore = windowManager.lastError;
+  const aiJourney = createAiJourneyStore();
+  const aiJourneyOverlayStore = aiJourney.overlay;
   let windowNotice = '';
   let windowNoticeTimer = null;
   $: windows = $windowsStore;
@@ -38,9 +46,7 @@
   $: dockedWindows = $dockedStore;
   $: minimizedWindows = $minimizedStore;
   $: windowAlert = $windowErrorStore ? $windowErrorStore.message : '';
-  const MAX_COMPOSE_WINDOWS = 4;
-  const MAX_SUMMARY_WINDOWS = 3;
-
+  $: aiJourneyOverlay = $aiJourneyOverlayStore;
   // Viewport responsive
   $: mobile = $isMobile;
   $: tablet = $isTablet;
@@ -66,100 +72,18 @@
   $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
     .filter((fn) => Array.isArray(fn.scopes) && fn.scopes.includes('compose'));
 
-  /** Returns catalog metadata for a given AI helper key (single source of truth from backend). */
-  function getFunctionMeta(key) {
-    if (!key) return null;
-    return aiFunctionsByKey[key] || null;
-  }
-
   /** Looks up a variant (e.g., translation language) within a given function definition. */
   function getVariant(meta, variantKey) {
     if (!meta || !Array.isArray(meta.variants) || !variantKey) return null;
     return meta.variants.find((variant) => variant.key === variantKey) || null;
   }
 
-  /** Merges default arguments defined in the catalog+variant with optional overrides. */
-  function mergeDefaultArgs(meta, variant, overrides = {}) {
-    const merged = { ...(meta?.defaultArgs || {}) };
-    if (variant?.defaultArgs) {
-      Object.assign(merged, variant.defaultArgs);
-    }
-    Object.entries(overrides || {}).forEach(([key, value]) => {
-      if (key && value) merged[key] = value;
-    });
-    return merged;
-  }
-
-  /** Ensures each helper has a deterministic instruction fallback. */
-  function resolveDefaultInstruction(meta, variant) {
-    if (variant?.defaultInstruction) return variant.defaultInstruction;
-    return meta?.defaultInstruction || 'Assist with the selected email.';
-  }
-
-  function hasCatalogMetadata() {
-    return aiFunctionsByKey && Object.keys(aiFunctionsByKey).length > 0;
-  }
-
-  async function loadAiCatalogFromServer() {
-    const resp = await fetch('/api/ai-functions', { headers: { Accept: 'application/json' } });
-    if (!resp.ok) {
-      throw new Error(`Unable to load AI catalog (HTTP ${resp.status})`);
-    }
-    aiCatalog = await resp.json();
-  }
-
-  async function ensureAiCatalogLoaded() {
-    if (hasCatalogMetadata()) return true;
-    if (!aiCatalogPromise) {
-      aiCatalogPromise = loadAiCatalogFromServer()
-        .catch((err) => {
-          console.error('Failed to load AI catalog', err);
-          throw err;
-        })
-        .finally(() => {
-          aiCatalogPromise = null;
-        });
-    }
-    try {
-      await aiCatalogPromise;
-    } catch (err) {
-      return false;
-    }
-    return hasCatalogMetadata();
-  }
-
   onMount(() => {
-    ensureAiCatalogLoaded().catch(() => {});
+    ensureCatalog().catch(() => {});
   });
 
-  function mapEmail(m, i) {
-    const preview = coalescePreview(m);
-    return {
-      id: m?.id || m?.contextId || `email-${i+1}`,
-      contextId: m?.contextId || null,
-      from: m?.senderName || m?.senderEmail || 'Unknown sender',
-      fromEmail: m?.senderEmail || '',
-      to: m?.recipientName || m?.recipientEmail || '',
-      toEmail: m?.recipientEmail || '',
-      subject: m?.subject || 'No subject',
-      preview,
-      contentText: m?.emailBodyTransformedText || '',
-      contentMarkdown: m?.emailBodyTransformedMarkdown || '',
-      contentHtml: typeof m?.emailBodyHtml === 'string' && m.emailBodyHtml.trim().length > 0 ? m.emailBodyHtml : null,
-      timestamp: m?.receivedTimestampDisplay || '',
-      timestampIso: m?.receivedTimestampIso || null,
-      read: Boolean(m?.read),
-      starred: Boolean(m?.starred),
-      avatar: m?.avatarUrl || m?.companyLogoUrl || '',
-      labels: Array.isArray(m?.labels) ? m.labels : [],
-      companyLogoUrl: m?.companyLogoUrl || null
-    };
-  }
-  function coalescePreview(m) {
-    const text = typeof m?.emailBodyTransformedText === 'string' ? m.emailBodyTransformedText.trim() : '';
-    if (!text) return '';
-    const normalized = text.replace(/\s+/g, ' ');
-    return normalized.length <= 180 ? normalized : `${normalized.slice(0,177)}...`;
+  async function ensureCatalogReady() {
+    return ensureCatalog();
   }
 
   // Auto-select first email on larger screens when none selected
@@ -200,14 +124,6 @@
     }
   }
 
-  function handleWindowClose(event) {
-    windowManager.close(event.detail.id);
-  }
-
-  function handleWindowToggle(event) {
-    windowManager.toggleMinimize(event.detail.id);
-  }
-
   function handleComposeSend(event) {
     // Placeholder: sending closes the draft for now.
     windowManager.close(event.detail.id);
@@ -215,9 +131,9 @@
 
   async function triggerComposeAi(detail) {
     const { id, command, draft, subject: draftSubject, isReply } = detail;
-    const ready = await ensureAiCatalogLoaded();
+    const ready = await ensureCatalogReady();
     if (!ready) return alert('AI helpers are unavailable. Please try again.');
-    const fn = getFunctionMeta(command);
+    const fn = getFunctionMeta(catalogData, command);
     if (!fn) return alert('Command unavailable.');
     const instruction = buildComposeInstruction(command, draft || '', isReply, fn);
     const win = get(windowsStore).find((w) => w.id === id);
@@ -268,19 +184,6 @@
     }
   }
 
-  function computeMailboxCounts(list) {
-    const out = { inbox: list.length, starred: 0, snoozed: 0, sent: 0, drafts: 0, archive: 0, trash: 0 };
-    for (const e of list) {
-      const labels = (e.labels || []).map(l => String(l).toLowerCase());
-      if (e.starred) out.starred++;
-      if (labels.includes('snoozed')) out.snoozed++;
-      if (labels.includes('sent')) out.sent++;
-      if (labels.includes('drafts') || labels.includes('draft')) out.drafts++;
-      if (labels.includes('archive') || labels.includes('archived')) out.archive++;
-      if (labels.includes('trash') || labels.includes('deleted')) out.trash++;
-    }
-    return out;
-  }
   function escapeHtml(s) { return window.ComposerAI?.escapeHtml ? window.ComposerAI.escapeHtml(s) : (s || ''); }
   function renderMarkdown(md) { return window.ComposerAI?.renderMarkdown ? window.ComposerAI.renderMarkdown(md || '') : (md || ''); }
 
@@ -320,20 +223,8 @@
     compose: { subhead: 'Draft assistant' }
   };
 
-  let aiJourneyOverlay = {
-    token: null,
-    visible: false,
-    steps: buildAiJourney(),
-    activeStepId: null,
-    completed: new Set(),
-    headline: 'Working on your request',
-    subhead: JOURNEY_SCOPE_META.global.subhead,
-    scope: 'global'
-  };
-  let aiJourneyTimer = null;
-
   function deriveJourneyHeadline(command, fallback) {
-    const catalogLabel = getFunctionMeta(command)?.label;
+    const catalogLabel = getFunctionMeta(catalogData, command)?.label;
     switch (command) {
       case 'summarize': return 'Summarizing this email';
       case 'translate': return 'Translating the thread';
@@ -347,93 +238,22 @@
     }
   }
 
-  function clearJourneyTimer() {
-    if (aiJourneyTimer) {
-      clearTimeout(aiJourneyTimer);
-      aiJourneyTimer = null;
-    }
-  }
-
-  function scheduleJourneyThinking(token) {
-    clearJourneyTimer();
-    if (typeof window === 'undefined') return;
-    aiJourneyTimer = window.setTimeout(() => {
-      if (token && aiJourneyOverlay.token === token) {
-        advanceAiJourney(token, 'ai:llm-thinking');
-      }
-    }, 1100);
-  }
-
   function beginAiJourney({ scope = 'global', targetLabel = 'message', commandKey, headline } = {}) {
-    const steps = buildAiJourney({ targetLabel, command: commandKey });
-    const token = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
-    const defaultHeadline = getFunctionMeta(commandKey)?.label || 'Working on your request';
-    aiJourneyOverlay = {
-      token,
-      visible: true,
-      steps,
-      scope,
-      completed: new Set(),
-      activeStepId: steps[0]?.id || null,
-      headline: headline || deriveJourneyHeadline(commandKey, defaultHeadline),
-      subhead: JOURNEY_SCOPE_META[scope]?.subhead || JOURNEY_SCOPE_META.global.subhead
-    };
-    scheduleJourneyThinking(token);
-    return token;
+    const defaultHeadline = getFunctionMeta(catalogData, commandKey)?.label || 'Working on your request';
+    const subhead = JOURNEY_SCOPE_META[scope]?.subhead || JOURNEY_SCOPE_META.global.subhead;
+    return aiJourney.begin({ scope, targetLabel, commandKey, headline: headline || deriveJourneyHeadline(commandKey, defaultHeadline), subhead });
   }
 
   function advanceAiJourney(token, eventId) {
-    if (!token || aiJourneyOverlay.token !== token) return;
-    if (!AI_JOURNEY_EVENTS.includes(eventId)) return;
-    const order = AI_JOURNEY_EVENTS;
-    const targetIndex = order.indexOf(eventId);
-    if (targetIndex === -1) return;
-    const completed = new Set(aiJourneyOverlay.completed);
-    for (let i = 0; i < targetIndex; i++) {
-      completed.add(order[i]);
-    }
-    aiJourneyOverlay = {
-      ...aiJourneyOverlay,
-      completed,
-      activeStepId: eventId
-    };
+    aiJourney.advance(token, eventId);
   }
 
   function completeAiJourney(token) {
-    if (!token || aiJourneyOverlay.token !== token) return;
-    clearJourneyTimer();
-    advanceAiJourney(token, 'ai:writing-summary');
-    if (typeof window === 'undefined') {
-      aiJourneyOverlay = { ...aiJourneyOverlay, visible: false, token: null };
-      return;
-    }
-    aiJourneyTimer = window.setTimeout(() => {
-      if (aiJourneyOverlay.token === token) {
-        aiJourneyOverlay = { ...aiJourneyOverlay, visible: false, token: null };
-      }
-    }, 650);
+    aiJourney.complete(token);
   }
 
   function failAiJourney(token) {
-    if (!token || aiJourneyOverlay.token !== token) return;
-    clearJourneyTimer();
-    aiJourneyOverlay = {
-      ...aiJourneyOverlay,
-      headline: 'Unable to finish that request',
-      subhead: 'Please retry in a moment',
-      completed: new Set(),
-      activeStepId: null,
-      visible: true
-    };
-    if (typeof window === 'undefined') {
-      aiJourneyOverlay = { ...aiJourneyOverlay, visible: false, token: null };
-      return;
-    }
-    aiJourneyTimer = window.setTimeout(() => {
-      if (aiJourneyOverlay.token === token) {
-        aiJourneyOverlay = { ...aiJourneyOverlay, visible: false, token: null };
-      }
-    }, 1600);
+    aiJourney.fail(token);
   }
 
   // ---------- AI integration (parity with v1) ----------
@@ -559,7 +379,7 @@
       payload.contextId = contextId;
     }
 
-    const commandMeta = getFunctionMeta(command);
+    const commandMeta = getFunctionMeta(catalogData, command);
     if (command && commandMeta) {
       payload.aiCommand = command;
       if (commandVariant) {
@@ -620,19 +440,6 @@
     return data;
   }
 
-  function parseSubjectAndBody(text) {
-    if (!text || !text.trim()) return { subject: '', body: '' };
-    const trimmed = text.trim();
-    const m = trimmed.match(/^Subject:\s*(.+?)$/m);
-    if (m) {
-      const subject = m[1].trim();
-      const subjectEnd = trimmed.indexOf(m[0]) + m[0].length;
-      const body = trimmed.substring(subjectEnd).replace(/^\s*\n+/, '').trim();
-      return { subject, body };
-    }
-    return { subject: '', body: trimmed };
-  }
-
   /** Builds compose/draft instructions while preserving catalog defaults and current user drafts. */
   function buildComposeInstruction(command, currentDraft, isReply, meta) {
     const fallback = resolveDefaultInstruction(meta, null);
@@ -652,12 +459,12 @@
   /** Entry point for primary AI actions (summary, translation, compose helpers). */
   async function runMainAiCommand(command) {
     if (!selected) return alert('Select an email first.');
-    const ready = await ensureAiCatalogLoaded();
+    const ready = await ensureCatalogReady();
     if (!ready) {
       alert('AI helpers are unavailable. Please refresh and try again.');
       return;
     }
-    const fn = getFunctionMeta(command);
+    const fn = getFunctionMeta(catalogData, command);
     if (!fn) return alert('Command unavailable.');
     const title = fn.label || 'AI Assistant';
     const commandArgs = mergeDefaultArgs(fn, null);
@@ -708,74 +515,26 @@
   }
 </script>
 
-<div class="h-[100dvh] flex overflow-hidden bg-gradient-to-b from-slate-50 to-slate-100">
-  <!-- Sidebar -->
-  <aside class="shrink-0 border-r border-slate-200 bg-white/80 backdrop-blur transition-all duration-200"
-         class:w-64={((wide && sidebarOpen) || (desktop && sidebarOpen))}
-         class:w-16={desktop && !sidebarOpen}
-         class:w-0={tablet && !sidebarOpen}
-         class:overflow-hidden={!sidebarOpen && (tablet || (desktop && !sidebarOpen))}
-         class:border-r-0={!sidebarOpen && (tablet || desktop)}
-         class:fixed={mobile || tablet}
-         class:inset-y-0={mobile || tablet}
-         class:left-0={mobile || tablet}
-         class:z-[60]={mobile || tablet}
-         class:shadow-xl={mobile || tablet}
-         class:hidden={(mobile || tablet) && !showDrawer}>
-    <div class="p-4 border-b border-slate-200">
-      <div class="flex items-center gap-2 mb-4">
-        <InboxIcon class="h-6 w-6 text-slate-900" />
-        <h1 class="text-xl font-bold text-slate-900">ComposerAI</h1>
-      </div>
-      <button class="inline-flex items-center gap-2 w-full justify-center rounded-xl px-4 py-2 font-semibold text-white bg-gradient-to-br from-slate-900 to-slate-800 shadow ring-1 ring-slate-900/10" on:click={openCompose}>
-        <Pencil class="h-4 w-4" /> Compose
+<WindowProvider {windowManager}>
+  <div class="h-[100dvh] flex overflow-hidden bg-gradient-to-b from-slate-50 to-slate-100">
+    <MailboxSidebar
+      mailbox={mailbox}
+      mailboxCounts={mailboxCounts}
+      sidebarOpen={sidebarOpen}
+      mobile={mobile}
+      tablet={tablet}
+      desktop={desktop}
+      showDrawer={showDrawer}
+      on:compose={openCompose}
+      on:toggleSidebar={toggleSidebar}
+      on:selectMailbox={(event) => mailbox = event.detail.target}
+    />
+    {#if (mobile || tablet) && showDrawer}
+      <button type="button" class="fixed inset-0 bg-black/30 z-[50]" aria-label="Close menu overlay"
+              on:click={() => (showDrawer = false)}
+              on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showDrawer = false; } }}>
       </button>
-    </div>
-    <nav class="p-2 space-y-1 overflow-y-auto">
-      <button type="button" class="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100"
-              class:bg-slate-100={mailbox==='inbox'} on:click={() => mailbox='inbox'}>
-        <InboxIcon class="h-4 w-4" />
-        <span class="text-slate-900">Inbox</span>
-        <span class="ml-auto rounded-full bg-slate-200 px-2 text-xs font-semibold text-slate-700">{mailboxCounts.inbox}</span>
-      </button>
-      <button type="button" class="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100"
-              class:bg-slate-100={mailbox==='starred'} on:click={() => mailbox='starred'}>
-        <StarIcon class="h-4 w-4" />
-        <span class="text-slate-900">Starred</span>
-        <span class="ml-auto rounded-full bg-slate-200 px-2 text-xs font-semibold text-slate-700">{mailboxCounts.starred}</span>
-      </button>
-      <button type="button" class="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100"
-              class:bg-slate-100={mailbox==='snoozed'} on:click={() => mailbox='snoozed'}>
-        <AlarmClock class="h-4 w-4" />
-        <span class="text-slate-900">Snoozed</span>
-        <span class="ml-auto rounded-full bg-slate-200 px-2 text-xs font-semibold text-slate-700">{mailboxCounts.snoozed}</span>
-      </button>
-      <button type="button" class="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100"
-              class:bg-slate-100={mailbox==='sent'} on:click={() => mailbox='sent'}>
-        <Send class="h-4 w-4" />
-        <span class="text-slate-900">Sent</span>
-        <span class="ml-auto rounded-full bg-slate-200 px-2 text-xs font-semibold text-slate-700">{mailboxCounts.sent}</span>
-      </button>
-      <button type="button" class="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100"
-              class:bg-slate-100={mailbox==='drafts'} on:click={() => mailbox='drafts'}>
-        <Pencil class="h-4 w-4" />
-        <span class="text-slate-900">Drafts</span>
-        <span class="ml-auto rounded-full bg-slate-200 px-2 text-xs font-semibold text-slate-700">{mailboxCounts.drafts}</span>
-      </button>
-      <button type="button" class="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100"
-              class:bg-slate-100={mailbox==='archive'} on:click={() => mailbox='archive'}>
-        <Archive class="h-4 w-4" />
-        <span class="text-slate-900">Archive</span>
-        <span class="ml-auto rounded-full bg-slate-200 px-2 text-xs font-semibold text-slate-700">{mailboxCounts.archive}</span>
-      </button>
-      <button type="button" class="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100"
-              class:bg-slate-100={mailbox==='trash'} on:click={() => mailbox='trash'}>
-        <Trash2 class="h-4 w-4" />
-        <span class="text-slate-900">Trash</span>
-        <span class="ml-auto rounded-full bg-slate-200 px-2 text-xs font-semibold text-slate-700">{mailboxCounts.trash}</span>
-      </button>
-    </nav>
-  </aside>
+    {/if}
   {#if (mobile || tablet) && showDrawer}
     <button type="button" class="fixed inset-0 bg-black/30 z-[50]" aria-label="Close menu overlay"
             on:click={() => (showDrawer = false)}
@@ -869,99 +628,52 @@
            class:px-6={desktop || wide}
            class:py-3={mobile || tablet}
            class:py-4={desktop || wide}>
-          <div class="flex items-start gap-3" class:flex-col={mobile}>
-            <div class="flex items-start gap-3 min-w-0 flex-1">
-              <img src={selected.avatar || selected.companyLogoUrl || ('https://i.pravatar.cc/120?u=' + encodeURIComponent(selected.fromEmail || selected.from))} alt={escapeHtml(selected.from)} class="h-10 w-10 rounded-full object-cover shrink-0" class:h-12={!mobile} class:w-12={!mobile} loading="lazy"/>
-              <div class="min-w-0 flex-1">
-                <h2 class="text-lg font-semibold text-slate-900 break-words" class:text-xl={!mobile}>{escapeHtml(selected.subject)}</h2>
-                <div class="flex items-center gap-1 text-sm text-slate-600 flex-wrap">
-                  <span class="font-medium truncate">{escapeHtml(selected.from)}</span>
-                  {#if selected.fromEmail}<span class="text-xs truncate">&lt;{escapeHtml(selected.fromEmail)}&gt;</span>{/if}
-                </div>
-                {#if selected.to || selected.toEmail}
-                  <div class="text-xs mt-1 text-slate-400 truncate">To: {escapeHtml(selected.to || 'Unknown recipient')} {#if selected.toEmail}<span>&lt;{escapeHtml(selected.toEmail)}&gt;</span>{/if}</div>
-                {/if}
-                <p class="text-xs mt-1 text-slate-400">{formatFullDate(selected.timestampIso, selected.timestamp)}</p>
-              </div>
-            </div>
-            <div class="flex gap-2 shrink-0" class:w-full={mobile} class:justify-end={mobile}>
-              <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Reply" aria-label="Reply" on:click={openReply}>
-                <Reply class="h-4 w-4" />
-              </button>
-              <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Forward" aria-label="Forward">
-                <Forward class="h-4 w-4" />
-              </button>
-              <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Archive" aria-label="Archive">
-                <Archive class="h-4 w-4" />
-              </button>
-              <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Delete" aria-label="Delete">
-                <Trash2 class="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          <div class="mt-4 flex flex-wrap gap-2">
-            {#if primaryCommandEntries.length === 0}
-              <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50" on:click={() => runMainAiCommand('summarize')}>
-                Run AI Assistant
-              </button>
-            {:else}
-              {#each primaryCommandEntries as entry (entry.key)}
-                <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50" on:click={() => runMainAiCommand(entry.key)}>
-                  {entry.meta.label || entry.key}
-                </button>
-              {/each}
-            {/if}
-          </div>
-        </div>
-      <div class="overflow-y-auto flex-1">
-        <div class="w-full max-w-full overflow-x-hidden"
-             class:p-4={!selected.contentHtml && (mobile || tablet)}
-             class:p-5={!selected.contentHtml && desktop}
-             class:p-6={!selected.contentHtml && wide}>
-          {#if selected.contentHtml}
-            <EmailIframe html={selected.contentHtml} />
-          {:else}
-            <div class="prose prose-sm max-w-none text-slate-700 break-words">
-              {@html renderMarkdown(selected.contentMarkdown || selected.contentText || '')}
-            </div>
-          {/if}
-        </div>
+        <EmailActionToolbar
+          email={selected}
+          commands={primaryCommandEntries}
+          mobile={mobile}
+          escapeHtmlFn={escapeHtml}
+          formatFullDateFn={formatFullDate}
+          on:reply={openReply}
+          on:commandSelect={(event) => runMainAiCommand(event.detail.key)}
+        />
       </div>
+      <EmailDetailView
+        email={selected}
+        mobile={mobile}
+        tablet={tablet}
+        desktop={desktop}
+        wide={wide}
+        renderMarkdownFn={renderMarkdown}
+      />
 
       <!-- Window stack rendered outside main column -->
     {/if}
   </section>
-</div>
+  </div>
 
-{#each floatingWindows as win, index}
-  {#if win.kind === WindowKind.COMPOSE}
-    <ComposeWindow
-      windowConfig={win}
-      offsetIndex={index}
-      aiFunctions={composeAiFunctions}
-      on:close={handleWindowClose}
-      on:toggleMinimize={handleWindowToggle}
-      on:send={handleComposeSend}
-      on:requestAi={handleComposeRequestAi}
-    />
-  {/if}
-{/each}
+  {#each floatingWindows as win, index}
+    {#if win.kind === WindowKind.COMPOSE}
+      <ComposeWindow
+        windowConfig={win}
+        offsetIndex={index}
+        aiFunctions={composeAiFunctions}
+        on:send={handleComposeSend}
+        on:requestAi={handleComposeRequestAi}
+      />
+    {/if}
+  {/each}
 
-{#each dockedWindows as win (win.id)}
-  {#if win.kind === WindowKind.SUMMARY}
-    <AiSummaryWindow
-      windowConfig={win}
-      on:close={handleWindowClose}
-      on:toggleMinimize={handleWindowToggle}
-    />
-  {/if}
-{/each}
+  {#each dockedWindows as win (win.id)}
+    {#if win.kind === WindowKind.SUMMARY}
+      <AiSummaryWindow
+        windowConfig={win}
+      />
+    {/if}
+  {/each}
 
-<WindowDock
-  windows={minimizedWindows}
-  on:restore={(event) => windowManager.toggleMinimize(event.detail.id)}
-  on:close={(event) => windowManager.close(event.detail.id)}
-/>
+  <WindowDock windows={minimizedWindows} />
+</WindowProvider>
 
 {#if windowNotice}
   <div class="window-notice">{windowNotice}</div>
