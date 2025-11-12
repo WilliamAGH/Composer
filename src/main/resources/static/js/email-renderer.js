@@ -68,9 +68,10 @@ const EmailRenderer = (() => {
       const iframe = document.createElement("iframe");
       iframe.className = "email-html-iframe";
       // allow-same-origin is required so the parent can read iframe content size; scripts remain disabled
+      // Popup permissions removed for security (emails should not open windows)
       iframe.setAttribute(
         "sandbox",
-        "allow-same-origin allow-popups allow-popups-to-escape-sandbox",
+        "allow-same-origin",
       );
       iframe.setAttribute("referrerpolicy", "no-referrer");
       iframe.setAttribute("loading", "lazy");
