@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -93,6 +95,46 @@ public class UiSessionController {
         if (StringUtils.isBlank(value)) {
             return false;
         }
-        return allowedOrigins.stream().anyMatch(value::startsWith);
+        String normalizedValue = normalizeOrigin(value);
+        if (normalizedValue == null) {
+            return false;
+        }
+        return allowedOrigins.stream()
+            .map(this::normalizeOrigin)
+            .anyMatch(normalizedValue::equals);
+    }
+
+    /**
+     * Normalize origin/referer to scheme://host:port format for exact matching.
+     * Prevents prefix attacks like "https://composerai.app.evil.com" matching "https://composerai.app".
+     */
+    private String normalizeOrigin(String value) {
+        if (StringUtils.isBlank(value)) {
+            return null;
+        }
+        try {
+            URI uri = new URI(value);
+            String scheme = uri.getScheme();
+            String host = uri.getHost();
+            int port = uri.getPort();
+
+            if (scheme == null || host == null) {
+                return null;
+            }
+
+            // Omit default ports
+            boolean isDefaultPort = ("http".equalsIgnoreCase(scheme) && port == 80)
+                || ("https".equalsIgnoreCase(scheme) && port == 443)
+                || port == -1;
+
+            if (isDefaultPort) {
+                return scheme.toLowerCase() + "://" + host.toLowerCase();
+            } else {
+                return scheme.toLowerCase() + "://" + host.toLowerCase() + ":" + port;
+            }
+        } catch (URISyntaxException e) {
+            log.debug("Failed to parse origin: {}", value, e);
+            return null;
+        }
     }
 }
