@@ -113,8 +113,8 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   let mailboxActionsHost = null;
   let mailboxCommandPendingKey = null;
   let mailboxActionError = '';
-  let mailboxMenuListRef;
-  let mailboxMenuMobileRef;
+  let mailboxMenuListRef = null;
+  let mailboxMenuMobileRef = null;
 
   // Derived
   $: mailboxCounts = computeMailboxCounts(emails);
