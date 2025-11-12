@@ -1,5 +1,7 @@
 package com.composerai.api.controller;
 
+import com.composerai.api.ai.AiFunctionCatalogHelper;
+import com.composerai.api.config.AiFunctionCatalogProperties;
 import com.composerai.api.dto.ChatRequest;
 import com.composerai.api.dto.ChatResponse;
 import com.composerai.api.service.ChatService;
@@ -9,6 +11,9 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -25,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ChatController.class)
+@Import(ChatControllerIntegrationTest.TestConfig.class)
 class ChatControllerIntegrationTest {
 
     private static final String BASE_API_PATH = "/api";
@@ -165,5 +171,17 @@ class ChatControllerIntegrationTest {
             any(Runnable.class),
             org.mockito.ArgumentMatchers.<java.util.function.Consumer<Throwable>>any()
         );
+    }
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        AiFunctionCatalogProperties aiFunctionCatalogProperties() {
+            return new AiFunctionCatalogProperties();
+        }
+
+        @Bean
+        AiFunctionCatalogHelper aiFunctionCatalogHelper(AiFunctionCatalogProperties properties) {
+            return new AiFunctionCatalogHelper(properties);
+        }
     }
 }
