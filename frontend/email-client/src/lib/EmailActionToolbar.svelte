@@ -23,7 +23,7 @@
 {#if email}
   <div class="flex items-start gap-3" class:flex-col={mobile}>
     <div class="flex items-start gap-3 min-w-0 flex-1">
-      <img src={email.avatar || email.companyLogoUrl || ('https://i.pravatar.cc/120?u=' + encodeURIComponent(email.fromEmail || email.from))} alt={escapeHtmlFn(email.from)} class="h-10 w-10 rounded-full object-cover shrink-0" class:h-12={!mobile} class:w-12={!mobile} loading="lazy" />
+      <img src={email.avatar || email.companyLogoUrl || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 120 120%22%3E%3Crect fill=%22%23e2e8f0%22 width=%22120%22 height=%22120%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22system-ui%22 font-size=%2248%22 fill=%22%2394a3b8%22%3E%3F%3C/text%3E%3C/svg%3E'} alt={escapeHtmlFn(email.from)} class="h-10 w-10 rounded-full object-cover shrink-0" class:h-12={!mobile} class:w-12={!mobile} loading="lazy" />
       <div class="min-w-0 flex-1">
         <h2 class="text-lg font-semibold text-slate-900 break-words">{escapeHtmlFn(email.subject)}</h2>
         <div class="flex items-center gap-1 text-sm text-slate-600 flex-wrap">
