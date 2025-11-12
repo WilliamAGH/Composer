@@ -76,8 +76,16 @@ public final class EmailHtmlSanitizer {
      */
     private static void removeJavaScriptHandlers(Document doc) {
         for (Element el : doc.getAllElements()) {
-            // Remove all on* attributes using removeIf for better performance
-            el.attributes().removeIf(attr -> attr.getKey().toLowerCase().startsWith("on"));
+            // Remove all on* attributes (iterate over copy to avoid concurrent modification)
+            List<String> attrsToRemove = new ArrayList<>();
+            for (org.jsoup.nodes.Attribute attr : el.attributes()) {
+                if (attr.getKey().toLowerCase().startsWith("on")) {
+                    attrsToRemove.add(attr.getKey());
+                }
+            }
+            for (String attrKey : attrsToRemove) {
+                el.removeAttr(attrKey);
+            }
 
             // Remove javascript: URLs from href and src
             if (el.hasAttr("href") && el.attr("href").toLowerCase().trim().startsWith("javascript:")) {
