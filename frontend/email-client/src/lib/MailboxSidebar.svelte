@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, Archive, Trash2 } from 'lucide-svelte';
+  import { Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, Archive, Trash2 } from 'lucide-svelte';
 
   /** Sidebar navigation for mailboxes and compose trigger. Keeps App.svelte focused on state orchestration. */
   export let mailbox = 'inbox';
@@ -13,6 +13,8 @@
   export let showDrawer = false;
 
   const dispatch = createEventDispatcher();
+  $: drawerMode = mobile || tablet;
+  $: collapsed = !drawerMode && !sidebarOpen;
 
   function select(target) {
     dispatch('selectMailbox', { target });
@@ -21,25 +23,21 @@
   function compose() {
     dispatch('compose');
   }
-
-  function toggleSidebar() {
-    dispatch('toggleSidebar');
-  }
 </script>
 
 <aside class="shrink-0 border-r border-slate-200 bg-white/80 backdrop-blur transition-all duration-200"
-       class:w-[22rem]={wide && sidebarOpen}
-       class:w-72={!wide && desktop && sidebarOpen}
-       class:w-16={desktop && !sidebarOpen}
-       class:w-0={tablet && !sidebarOpen}
-       class:overflow-hidden={!sidebarOpen && (tablet || (desktop && !sidebarOpen))}
-       class:border-r-0={!sidebarOpen && (tablet || desktop)}
-       class:fixed={mobile || tablet}
-       class:inset-y-0={mobile || tablet}
-       class:left-0={mobile || tablet}
-       class:z-[60]={mobile || tablet}
-       class:shadow-xl={mobile || tablet}
-       class:hidden={(mobile || tablet) && !showDrawer}>
+       class:w-56={(wide && sidebarOpen && !drawerMode) || (drawerMode && showDrawer)}
+       class:w-52={desktop && sidebarOpen && !drawerMode}
+       class:w-16={collapsed}
+       class:w-0={drawerMode && !showDrawer}
+       class:overflow-hidden={collapsed}
+       class:border-r-0={collapsed}
+       class:fixed={drawerMode}
+       class:inset-y-0={drawerMode}
+       class:left-0={drawerMode}
+       class:z-[60]={drawerMode}
+       class:shadow-xl={drawerMode}
+       class:hidden={drawerMode && !showDrawer}>
   <div class="p-4 border-b border-slate-200">
     <div class="flex items-center gap-2 mb-4">
       <InboxIcon class="h-6 w-6 text-slate-900" />

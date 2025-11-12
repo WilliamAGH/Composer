@@ -80,6 +80,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   $: wide = $isWide;
   $: viewportType = $viewport;
   let showDrawer = false;
+  $: drawerMode = mobile || tablet;
   let showEmailList = true; // For tablet view toggle
 
   let panelResponses = {};
@@ -101,6 +102,12 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
 
   // UI state
   let sidebarOpen = true;
+  $: if (!drawerMode && showDrawer) {
+    showDrawer = false;
+  }
+  $: if (drawerMode && !sidebarOpen) {
+    sidebarOpen = true;
+  }
   let mailbox = 'inbox'; // inbox, starred, snoozed, sent, drafts, archive, trash
   let mailboxActionsOpen = false;
   let mailboxActionsHost = null;
@@ -339,12 +346,14 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
     // Update selected reference
     selected = emails.find((mail) => mail.id === e.id) ?? e;
   }
-  function toggleSidebar() { sidebarOpen = !sidebarOpen; }
-  function handleMenuClick() {
-    if (mobile) {
+  function toggleSidebar() {
+    if (drawerMode) {
       showDrawer = !showDrawer;
       return;
     }
+    sidebarOpen = !sidebarOpen;
+  }
+  function handleMenuClick() {
     toggleSidebar();
   }
 
@@ -982,11 +991,15 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
       wide={wide}
       showDrawer={showDrawer}
       on:compose={openCompose}
-      on:toggleSidebar={toggleSidebar}
-      on:selectMailbox={(event) => mailbox = event.detail.target}
+      on:selectMailbox={(event) => {
+        mailbox = event.detail.target;
+        if (drawerMode) {
+          showDrawer = false;
+        }
+      }}
     />
     <!-- Mobile/Tablet: Semi-transparent backdrop overlay to close drawer when clicking outside -->
-    {#if (mobile || tablet) && showDrawer}
+    {#if drawerMode && showDrawer}
       <button type="button" class="fixed inset-0 bg-black/30 z-[50]" aria-label="Close menu overlay"
               on:click={() => (showDrawer = false)}
               on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showDrawer = false; } }}>
