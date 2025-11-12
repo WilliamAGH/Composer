@@ -109,7 +109,7 @@
   }
 
   function buttonClasses() {
-    return 'inline-flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/80 px-3 py-2 text-sm font-medium text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur hover:bg-white';
+    return 'inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200/70 bg-white/80 px-3 text-sm font-medium text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur hover:bg-white';
   }
 </script>
 
@@ -122,23 +122,25 @@
     <div class="relative">
       <button
         type="button"
-        class="inline-flex items-center gap-2 rounded-2xl border border-emerald-100 bg-white/90 px-3 py-2 text-sm font-semibold text-slate-900 shadow-[0_15px_35px_rgba(16,185,129,0.25)] backdrop-blur hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+        class={`inline-flex items-center gap-2 rounded-full border border-white/40 bg-gradient-to-br from-slate-50/85 via-white/30 to-emerald-50/30 px-4 py-2 text-sm font-semibold text-slate-900 shadow-[0_25px_55px_-25px_rgba(16,185,129,0.7)] backdrop-blur-xl transition ${!actionOptionList.length ? 'opacity-60 cursor-not-allowed' : 'hover:border-emerald-200'}`}
         on:click={toggleActionMenu}
         aria-haspopup="menu"
         aria-expanded={actionMenuOpen}
         aria-label="AI Actions"
         bind:this={actionButtonEl}
         disabled={!actionOptionList.length}>
-        <ListTodo class="h-4 w-4 text-emerald-500" />
-        Actions
-        <ChevronDown class="h-4 w-4 text-slate-500" />
+        <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400/35 via-emerald-300/20 to-white/20 text-emerald-700 shadow-inner shadow-emerald-500/40">
+          <ListTodo class="h-4 w-4" />
+        </span>
+        <span class="tracking-wide">Actions</span>
+        <ChevronDown class={`h-4 w-4 transition ${actionMenuOpen ? 'text-emerald-600 rotate-180' : 'text-slate-500'}`} />
         {#if actionMenuLoading}
-          <span class="ml-1 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400"></span>
+          <span class="ml-1 inline-flex h-1.5 w-8 animate-pulse rounded-full bg-gradient-to-r from-emerald-400 via-emerald-200 to-transparent"></span>
         {/if}
       </button>
       {#if actionMenuOpen}
         <div
-          class="absolute z-30 mt-2 w-72 rounded-2xl border border-white/40 bg-white/90 p-4 shadow-[0_25px_50px_-12px_rgba(15,23,42,0.25)] backdrop-blur-md"
+          class="absolute z-[200] mt-2 w-72 rounded-2xl border border-white/40 bg-white/95 p-4 shadow-[0_35px_65px_-20px_rgba(15,23,42,0.55)] backdrop-blur-xl"
           bind:this={actionDropdownEl}>
           <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400 mb-3">Suggested Actions</div>
           <div class="space-y-2">
@@ -177,17 +179,17 @@
       <div class="relative">
         <button
           type="button"
-          class="inline-flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/80 px-3 py-2 text-sm font-medium text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur hover:bg-white"
-          on:click={toggleTranslateMenu}
-          aria-haspopup="menu"
-          aria-expanded={translateMenuOpen}
+        class={buttonClasses()}
+        on:click={toggleTranslateMenu}
+        aria-haspopup="menu"
+        aria-expanded={translateMenuOpen}
           bind:this={translateButtonEl}>
           <Languages class="h-4 w-4 text-slate-500" />
           Translate
           <ChevronDown class="h-4 w-4 text-slate-500" />
         </button>
         {#if translateMenuOpen}
-          <div class="absolute z-30 mt-2 w-64 rounded-2xl border border-white/40 bg-white/90 p-4 shadow-[0_25px_50px_-12px_rgba(15,23,42,0.25)] backdrop-blur-md" bind:this={translateDropdownEl}>
+          <div class="absolute z-[200] mt-2 w-64 rounded-2xl border border-white/40 bg-white/95 p-4 shadow-[0_35px_65px_-20px_rgba(15,23,42,0.55)] backdrop-blur-xl" bind:this={translateDropdownEl}>
             <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400 mb-3">Translate To</div>
             <div class="space-y-2">
               {#each orderedVariants as variant (variant.key)}

@@ -139,11 +139,12 @@
     flex-wrap: wrap;
   }
   .panel-eyebrow {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     text-transform: uppercase;
-    letter-spacing: 0.25em;
-    color: #94a3b8;
-    margin-bottom: 0.4rem;
+    letter-spacing: 0.35em;
+    color: rgba(99, 102, 241, 0.7);
+    margin-bottom: 0.35rem;
+    font-weight: 600;
   }
   .panel-title {
     font-size: 1.1rem;
