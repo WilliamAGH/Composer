@@ -1,18 +1,19 @@
 <script>
   import { onMount } from 'svelte';
   export let html = '';
-  let container;
+  let container = null;
   let fallback = '';
   let rendered = false;
 
-  function tryRender() {
+  function tryRender(content = html) {
     rendered = false;
     fallback = '';
 
     // Try iframe rendering first
-    if (container && html && window.EmailRenderer && typeof window.EmailRenderer.renderInIframe === 'function') {
+    const normalizedHtml = typeof content === 'string' ? content : String(content ?? '');
+    if (container && normalizedHtml && window.EmailRenderer && typeof window.EmailRenderer.renderInIframe === 'function') {
       try {
-        window.EmailRenderer.renderInIframe(container, String(html));
+        window.EmailRenderer.renderInIframe(container, normalizedHtml);
         rendered = true;
         return; // Success - no fallback needed
       } catch (e) {
@@ -22,7 +23,7 @@
     }
 
     // Generate sanitized fallback HTML (used when iframe unavailable or fails)
-    const raw = String(html || '');
+    const raw = normalizedHtml || '';
     if (!raw) {
       fallback = '';
       return;
@@ -38,7 +39,7 @@
     }
   }
 
-  $: html, tryRender();
+  $: tryRender(html);
   onMount(tryRender);
 </script>
 

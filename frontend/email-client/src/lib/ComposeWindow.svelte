@@ -9,17 +9,17 @@
    * Compose window leveraging the shared WindowFrame chrome. Keeps feature-specific controls here while
    * the generic frame handles positioning/minimize logic via the window store.
    */
-  export let windowConfig;
+  export let windowConfig = null;
   export let offsetIndex = 0;
   export let aiFunctions = [];
 
   const dispatch = createEventDispatcher();
   const windowManager = useWindowContext();
   $: mobile = $isMobile;
-  let inputTo;
-  let inputSubject;
-  let inputMessage;
-  let fileInput;
+  let inputTo = null;
+  let inputSubject = null;
+  let inputMessage = null;
+  let fileInput = null;
   let attachments = [];
   let initialized = false;
   let to = '';
