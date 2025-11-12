@@ -63,8 +63,7 @@
         subhead={journeyOverlay.subhead}
         show={journeyOverlay.visible}
         inline={true}
-        subdued={true}
-        className="border-slate-200" />
+        subdued={true} />
     {:else if error}
       <div class="panel-state panel-error">
         <p>{error}</p>
