@@ -65,6 +65,13 @@ public class ChatRequest {
     @Size(max = 500, message = "subject cannot exceed 500 characters")
     private String subject;
 
+    // Optional: Journey metadata for client-side loading overlays
+    @Size(max = 64, message = "journeyScope cannot exceed 64 characters")
+    private String journeyScope;
+
+    @Size(max = 128, message = "journeyScopeTarget cannot exceed 128 characters")
+    private String journeyScopeTarget;
+
     // Custom constructor for common test case: message, conversationId, maxResults
     public ChatRequest(String message, String conversationId, int maxResults) {
         this.message = message;
