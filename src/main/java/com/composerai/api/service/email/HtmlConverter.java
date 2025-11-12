@@ -365,6 +365,9 @@ public final class HtmlConverter {
         }
 
         private void normalizeWhitespace(Element element) {
+            if (hasStructuralParent(element)) {
+                return;
+            }
             element.textNodes().forEach(node -> node.text(node.text().replaceAll("\\s+", " ")));
         }
     }

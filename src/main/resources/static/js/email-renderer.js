@@ -285,7 +285,11 @@ const EmailRenderer = (() => {
             }
           }
         }
-      } catch (_) {
+      } catch (error) {
+        console.debug(
+          "EmailRenderer: element bounds measurement failed; falling back to basic sizing.",
+          error,
+        );
         // best-effort only
       }
 
