@@ -5,7 +5,7 @@ import { buildAiJourney } from '../aiJourney';
  * Encapsulates the AI journey overlay/timers so multiple components can coordinate without duplicating
  * state logic. Stored in JS for reuse outside App.svelte.
  */
-const JOURNEY_ORDER = ['ai:context-search', 'ai:llm-thinking', 'ai:writing-summary'];
+const JOURNEY_ORDER = ['ai:payload-prep', 'ai:context-search', 'ai:llm-thinking', 'ai:writing-summary'];
 
 export function createAiJourneyStore() {
   const overlay = writable(baseState());
