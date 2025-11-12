@@ -18,6 +18,8 @@ import com.openai.models.responses.ResponseCreateParams;
 import com.openai.models.responses.ResponseOutputItem;
 import com.openai.models.responses.ResponseOutputMessage;
 import com.openai.models.responses.ResponseOutputText;
+import com.openai.models.responses.Tool;
+import com.openai.models.responses.ToolChoiceOptions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -93,13 +95,21 @@ class OpenAiChatServiceTest {
 
     @Test
     void generateEmbedding_returnsValidEmbedding() {
-        // Mock embeddings API response
-        CreateEmbeddingResponse mockResponse = Mockito.mock(CreateEmbeddingResponse.class);
-        Embedding mockEmbedding = Mockito.mock(Embedding.class);
-        
-        when(openAIClient.embeddings().create(any(EmbeddingCreateParams.class))).thenReturn(mockResponse);
-        when(mockResponse.data()).thenReturn(List.of(mockEmbedding));
-        when(mockEmbedding.embedding()).thenReturn(List.of(0.1f, 0.2f, 0.3f));
+        Embedding embedding = Embedding.builder()
+            .index(0)
+            .embedding(List.of(0.1f, 0.2f, 0.3f))
+            .build();
+
+        CreateEmbeddingResponse response = CreateEmbeddingResponse.builder()
+            .model("text-embedding-3-small")
+            .data(List.of(embedding))
+            .usage(CreateEmbeddingResponse.Usage.builder()
+                .promptTokens(3)
+                .totalTokens(3)
+                .build())
+            .build();
+
+        when(openAIClient.embeddings().create(any(EmbeddingCreateParams.class))).thenReturn(response);
 
         float[] result = service.generateEmbedding("test text");
 
@@ -201,20 +211,35 @@ class OpenAiChatServiceTest {
     }
 
     private Response buildResponseWithText(String text) {
-        // Mock Response API object hierarchy
-        Response mockResponse = Mockito.mock(Response.class);
-        ResponseOutputItem mockOutputItem = Mockito.mock(ResponseOutputItem.class);
-        ResponseOutputMessage mockMessage = Mockito.mock(ResponseOutputMessage.class);
-        ResponseOutputMessage.Content mockContent = Mockito.mock(ResponseOutputMessage.Content.class);
-        ResponseOutputText mockOutputText = Mockito.mock(ResponseOutputText.class);
-        
-        Mockito.lenient().when(mockResponse.output()).thenReturn(List.of(mockOutputItem));
-        Mockito.lenient().when(mockOutputItem.message()).thenReturn(Optional.of(mockMessage));
-        Mockito.lenient().when(mockMessage.content()).thenReturn(List.of(mockContent));
-        Mockito.lenient().when(mockContent.outputText()).thenReturn(Optional.of(mockOutputText));
-        Mockito.lenient().when(mockOutputText.text()).thenReturn(text);
-        
-        return mockResponse;
+        ResponseOutputText outputText = ResponseOutputText.builder()
+            .text(text)
+            .annotations(List.of())
+            .build();
+
+        ResponseOutputMessage message = ResponseOutputMessage.builder()
+            .id("msg-" + Math.abs(text.hashCode()))
+            .content(List.of(ResponseOutputMessage.Content.ofOutputText(outputText)))
+            .status(ResponseOutputMessage.Status.COMPLETED)
+            .build();
+
+        ResponseOutputItem outputItem = ResponseOutputItem.ofMessage(message);
+
+        return Response.builder()
+            .id("resp-" + Math.abs(text.hashCode()))
+            .createdAt(System.currentTimeMillis() / 1000.0)
+            .model("gpt-4o-mini")
+            .error(Optional.empty())
+            .incompleteDetails(Optional.empty())
+            .instructions(Optional.empty())
+            .metadata(Optional.empty())
+            .output(List.of(outputItem))
+            .parallelToolCalls(false)
+            .temperature(Optional.of(0.7))
+            .topP(1.0)
+            .tools(List.<Tool>of())
+            // TODO: add a regression test that uses one of our real tool-call responses.
+            .toolChoice(ToolChoiceOptions.NONE)
+            .build();
     }
 }
 
