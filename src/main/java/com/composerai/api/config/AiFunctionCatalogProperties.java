@@ -103,6 +103,9 @@ public class AiFunctionCatalogProperties {
         translate.setSubjectMode(AiFunctionDefinition.SubjectMode.NONE);
         translate.setPrimary(true);
         translate.setScopes(List.of("panel"));
+        Map<String, String> translationDefaults = new LinkedHashMap<>();
+        translationDefaults.put("targetLanguage", "English");
+        translate.setDefaultArgs(translationDefaults);
         Map<String, VariantProperties> translationVariants = new LinkedHashMap<>();
         translationVariants.put("en", variant("English", "Translate the email into English.", Map.of("targetLanguage", "English")));
         translationVariants.put("es", variant("Spanish", "Translate the email into Spanish.", Map.of("targetLanguage", "Spanish")));
