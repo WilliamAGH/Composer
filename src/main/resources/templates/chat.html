@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org"
-    th:replace="~{layout :: layout(~{::body/content}, 'ComposerAI - Email Chat Interface', ~{::head/extraHead})}">
+    th:replace="~{layout :: layout(~{::body/content}, 'Composer - Email Chat Interface', ~{::head/extraHead})}">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ComposerAI - Email Chat Interface</title>
+    <title>Composer - Email Chat Interface</title>
     <th:block th:fragment="extraHead">
         <link rel="stylesheet" href="/css/chat.css">
     </th:block>
@@ -14,7 +14,7 @@
 <body>
     <div th:fragment="content" class="min-h-screen flex flex-col bg-slate-100/80">
         <nav class="app-nav px-4 py-3.5 sm:px-6">
-            <a href="/chat" class="group mx-auto flex max-w-5xl items-center gap-3.5" aria-label="Start a new ComposerAI chat">
+            <a href="/chat" class="group mx-auto flex max-w-5xl items-center gap-3.5" aria-label="Start a new Composer chat">
                 <div class="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 shadow-lg shadow-slate-900/25 ring-1 ring-slate-900/10 transition-transform group-hover:scale-[1.03]">
                     <svg class="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                         <path d="M3 8L10.89 13.26C11.2187 13.4793 11.6049 13.5963 12 13.5963C12.3951 13.5963 12.7813 13.4793 13.11 13.26L21 8M5 19H19C19.5304 19 20.0391 18.7893 20.4142 18.4142C20.7893 18.0391 21 17.5304 21 17V7C21 6.46957 20.7893 5.96086 20.4142 5.58579C20.0391 5.21071 19.5304 5 19 5H5C4.46957 5 3.96086 5.21071 3.58579 5.58579C3.21071 5.96086 3 6.46957 3 7V17C3 17.5304 3.21071 18.0391 3.58579 18.4142C3.96086 18.7893 4.46957 19 5 19Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
@@ -23,7 +23,7 @@
                     <div class="pointer-events-none absolute -inset-0.5 -z-10 rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 opacity-0 blur-sm transition group-hover:opacity-60"></div>
                 </div>
                 <div class="flex flex-col">
-                    <span class="text-sm font-bold tracking-tight text-slate-900">ComposerAI</span>
+                    <span class="text-sm font-bold tracking-tight text-slate-900">Composer</span>
                     <span class="text-[11px] font-medium tracking-wide text-slate-500">Email Intelligence Platform</span>
                 </div>
             </a>
@@ -37,7 +37,7 @@
                         <div class="message-block w-full">
                             <div class="assistant-surface">
                                 <div class="chat-markdown">
-                                    <p>Hello! I'm ComposerAI. Upload a file using the icon below and I'll help you analyze and discuss it.</p>
+                                    <p>Hello! I'm Composer. Upload a file using the icon below and I'll help you analyze and discuss it.</p>
                                 </div>
                             </div>
                         </div>
@@ -135,7 +135,7 @@
                 }
             }
 
-            class ComposerAIChat {
+            class ComposerChat {
                 constructor() {
                     this.messages = document.getElementById('messages');
                     this.messageInput = document.getElementById('messageInput');
@@ -173,8 +173,8 @@
                         }
                     });
 
-                    if (this.fileInput && window.ComposerAI?.FileUploadHandler) {
-                        new window.ComposerAI.FileUploadHandler({
+                    if (this.fileInput && window.Composer?.FileUploadHandler) {
+                        new window.Composer.FileUploadHandler({
                             dropArea: this.fileDropArea || document.getElementById('inlineUploadButton'),
                             fileInput: this.fileInput,
                             onFileSelected: (file) => this.handleFileUpload(file),
@@ -287,7 +287,7 @@
                     this.showUploadStatus('<div class="upload-status upload-status--info">Uploading and parsing file...</div>');
 
                     try {
-                        const result = await window.ComposerAI.parseEmailFile(file, UI_NONCE);
+                        const result = await window.Composer.parseEmailFile(file, UI_NONCE);
                         if (!result.contextId) {
                             throw new Error('Server did not provide a contextId for the uploaded file');
                         }
@@ -296,7 +296,7 @@
                         this.enableChat();
                         this.addEmailContextMessage(result);
                     } catch (error) {
-                        this.showUploadStatus('<div class="upload-status upload-status--error">Failed to upload file: ' + window.ComposerAI.escapeHtml(String(error?.message || 'Unknown error')) + '</div>');
+                        this.showUploadStatus('<div class="upload-status upload-status--error">Failed to upload file: ' + window.Composer.escapeHtml(String(error?.message || 'Unknown error')) + '</div>');
                     }
                     this.enableChat();
                 }
@@ -343,13 +343,13 @@
                 }
 
                 addEmailContextMessage(emailData) {
-                    const subject = window.ComposerAI.escapeHtml(emailData.subject || 'No subject');
-                    const from = window.ComposerAI.escapeHtml(emailData.from || 'Unknown sender');
-                    const dateLabel = window.ComposerAI.escapeHtml(emailData.date || 'Unknown date');
+                    const subject = window.Composer.escapeHtml(emailData.subject || 'No subject');
+                    const from = window.Composer.escapeHtml(emailData.from || 'Unknown sender');
+                    const dateLabel = window.Composer.escapeHtml(emailData.date || 'Unknown date');
                     const iso = (emailData.dateIso || '').trim();
                     const previewMd = (emailData.parsedMarkdown || emailData.parsedPlain || '').trim();
                     const previewId = 'email-preview-' + (++this.previewCounter);
-                    const previewHtml = previewMd.length > 0 ? window.ComposerAI.renderMarkdown(previewMd) : '<p class="text-xs italic text-slate-500">Email preview unavailable.</p>';
+                    const previewHtml = previewMd.length > 0 ? window.Composer.renderMarkdown(previewMd) : '<p class="text-xs italic text-slate-500">Email preview unavailable.</p>';
 
                     const toggleWrapper = document.createElement('div');
                     toggleWrapper.className = 'overflow-hidden rounded-2xl border border-blue-200/60 bg-blue-50/40';
@@ -361,7 +361,7 @@
                         '</span>' +
                         '<span class="flex-1 truncate text-sm font-semibold text-slate-800">' + subject + '</span>' +
                         '<span class="ml-auto flex flex-shrink-0 items-center gap-2">' +
-                        '<span class="rounded-md bg-white/70 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600" data-role="email-date" data-original-label="' + dateLabel + '" ' + (iso ? 'data-date-iso="' + window.ComposerAI.escapeHtml(iso) + '"' : '') + '>' + dateLabel + '</span>' +
+                        '<span class="rounded-md bg-white/70 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600" data-role="email-date" data-original-label="' + dateLabel + '" ' + (iso ? 'data-date-iso="' + window.Composer.escapeHtml(iso) + '"' : '') + '>' + dateLabel + '</span>' +
                         '<svg class="h-4 w-4 text-slate-500 transition-transform" data-role="preview-chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>' +
                         '</span>' +
                         '</button>' +
@@ -467,12 +467,12 @@
                         await this.streamResponse(payload, assistantDiv, this.activeStreamController.signal);
                     } catch (error) {
                         if (error.name === 'AbortError') {
-                            assistantDiv.innerHTML = window.ComposerAI.renderMarkdown('Request timed out. Please try again.');
+                            assistantDiv.innerHTML = window.Composer.renderMarkdown('Request timed out. Please try again.');
                         } else {
                             try {
                                 await this.sendChatRequest(payload, assistantDiv);
                             } catch (fallbackError) {
-                                assistantDiv.innerHTML = window.ComposerAI.renderMarkdown('Sorry, I encountered an error. Please try again.');
+                                assistantDiv.innerHTML = window.Composer.renderMarkdown('Sorry, I encountered an error. Please try again.');
                             }
                         }
                     } finally {
@@ -513,9 +513,9 @@
                         await this.streamInsightsResponse(payload, assistantDiv, this.activeStreamController.signal);
                     } catch (error) {
                         if (error.name === 'AbortError') {
-                            assistantDiv.innerHTML = window.ComposerAI.renderMarkdown('Request timed out. Please try again.');
+                            assistantDiv.innerHTML = window.Composer.renderMarkdown('Request timed out. Please try again.');
                         } else {
-                            assistantDiv.innerHTML = window.ComposerAI.renderMarkdown('Sorry, I encountered an error. Please try again.');
+                            assistantDiv.innerHTML = window.Composer.renderMarkdown('Sorry, I encountered an error. Please try again.');
                         }
                     } finally {
                         clearTimeout(timeoutId);
@@ -561,7 +561,7 @@
                             targetDiv.innerHTML = html;
                             this.applyMarkdownEnhancements(targetDiv);
                         } else {
-                            targetDiv.innerHTML = window.ComposerAI.renderMarkdown("I don't have a response to that.");
+                            targetDiv.innerHTML = window.Composer.renderMarkdown("I don't have a response to that.");
                             this.applyMarkdownEnhancements(targetDiv);
                         }
                         this.conversationId = conversationIdFromServer || payload.conversationId || this.conversationId;
@@ -576,7 +576,7 @@
                                 const metadata = JSON.parse(raw);
                                 if (metadata.conversationId) conversationIdFromServer = metadata.conversationId;
                             } catch (err) {
-                                console.warn('ComposerAI: Failed to parse metadata event', err);
+                                console.warn('Composer: Failed to parse metadata event', err);
                             }
                         })
                         .on(SSE_EVENTS.RENDERED_HTML, (chunk) => {
@@ -594,7 +594,7 @@
                             try {
                                 this.updateStreamState(JSON.parse(raw));
                             } catch (err) {
-                                console.warn('ComposerAI: Failed to parse reasoning payload', err);
+                                console.warn('Composer: Failed to parse reasoning payload', err);
                             }
                         })
                         .on(SSE_EVENTS.ERROR, (message) => {
@@ -689,7 +689,7 @@
                             targetDiv.innerHTML = html;
                             this.applyMarkdownEnhancements(targetDiv);
                         } else {
-                            targetDiv.innerHTML = window.ComposerAI.renderMarkdown(raw || 'I received your message about the email.');
+                            targetDiv.innerHTML = window.Composer.renderMarkdown(raw || 'I received your message about the email.');
                             this.applyMarkdownEnhancements(targetDiv);
                         }
                     }
@@ -745,14 +745,14 @@
                                 targetDiv.innerHTML = '';
                                 targetDiv.appendChild(pre);
                             } else {
-                                targetDiv.innerHTML = window.ComposerAI.renderMarkdown('No response received.');
+                                targetDiv.innerHTML = window.Composer.renderMarkdown('No response received.');
                             }
                         } else {
                             if (html) {
                                 targetDiv.innerHTML = html;
                                 this.applyMarkdownEnhancements(targetDiv);
                             } else {
-                            targetDiv.innerHTML = window.ComposerAI.renderMarkdown("I don't have a response to that.");
+                            targetDiv.innerHTML = window.Composer.renderMarkdown("I don't have a response to that.");
                             this.applyMarkdownEnhancements(targetDiv);
                             }
                         }
@@ -771,7 +771,7 @@
                                     isJsonMode = Boolean(metadata.jsonOutput);
                                 }
                             } catch (err) {
-                                console.warn('ComposerAI: Failed to parse metadata event', err);
+                                console.warn('Composer: Failed to parse metadata event', err);
                             }
                         })
                         .on(SSE_EVENTS.RENDERED_HTML, (chunk) => {
@@ -802,7 +802,7 @@
                             try {
                                 this.updateStreamState(JSON.parse(raw));
                             } catch (err) {
-                                console.warn('ComposerAI: Failed to parse reasoning payload', err);
+                                console.warn('Composer: Failed to parse reasoning payload', err);
                             }
                         })
                         .on(SSE_EVENTS.ERROR, (message) => {
@@ -910,7 +910,7 @@
                         const markdownContainer = document.createElement('div');
                         markdownContainer.className = 'chat-markdown';
                         if (content?.trim()) {
-                            markdownContainer.innerHTML = window.ComposerAI.renderMarkdown(content);
+                            markdownContainer.innerHTML = window.Composer.renderMarkdown(content);
                             this.applyMarkdownEnhancements(markdownContainer);
                         }
                         surface.appendChild(markdownContainer);
@@ -990,9 +990,9 @@
 
             document.addEventListener('DOMContentLoaded', function () {
                 try {
-                    new ComposerAIChat();
+                    new ComposerChat();
                 } catch (error) {
-                    console.error('ComposerAI: Failed to initialize chat interface:', error);
+                    console.error('Composer: Failed to initialize chat interface:', error);
                 }
             });
         </script>

@@ -4,7 +4,7 @@
   export let steps = [];
   export let activeStepId = null;
   export let headline = 'Working on your request';
-  export let subhead = 'ComposerAI assistant';
+  export let subhead = 'Composer assistant';
   export let show = true;
   export let inline = true;
   export let subdued = false;

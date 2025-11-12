@@ -79,8 +79,20 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   $: desktop = $isDesktop;
   $: wide = $isWide;
   $: viewportType = $viewport;
+  $: viewportTier = wide ? 'wide' : desktop ? 'desktop' : tablet ? 'tablet' : 'mobile';
+  $: inlineSidebar = viewportTier === 'desktop' || viewportTier === 'wide';
   let showDrawer = false;
   $: drawerMode = mobile || tablet;
+  $: sidebarVariant = (() => {
+    if (!inlineSidebar) {
+      return showDrawer ? 'drawer-visible' : 'drawer-hidden';
+    }
+    if (!sidebarOpen) {
+      return 'inline-collapsed';
+    }
+    return viewportTier === 'wide' ? 'inline-wide' : 'inline-desktop';
+  })();
+  $: drawerVisible = sidebarVariant === 'drawer-visible';
   let showEmailList = true; // For tablet view toggle
 
   let panelResponses = {};
@@ -449,8 +461,8 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
     }
   }
 
-  function escapeHtml(s) { return window.ComposerAI?.escapeHtml ? window.ComposerAI.escapeHtml(s) : (s || ''); }
-  function renderMarkdown(md) { return window.ComposerAI?.renderMarkdown ? window.ComposerAI.renderMarkdown(md || '') : (md || ''); }
+  function escapeHtml(s) { return window.Composer?.escapeHtml ? window.Composer.escapeHtml(s) : (s || ''); }
+  function renderMarkdown(md) { return window.Composer?.renderMarkdown ? window.Composer.renderMarkdown(md || '') : (md || ''); }
 
   // Date helpers: list shows relative time only; detail shows full date/time
   const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
@@ -483,7 +495,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   }
 
   const JOURNEY_SCOPE_META = {
-    global: { subhead: 'ComposerAI assistant' },
+    global: { subhead: 'Composer assistant' },
     panel: { subhead: 'Mailbox assistant' },
     compose: { subhead: 'Draft assistant' }
   };
@@ -984,12 +996,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
     <MailboxSidebar
       mailbox={mailbox}
       mailboxCounts={mailboxCounts}
-      sidebarOpen={sidebarOpen}
-      mobile={mobile}
-      tablet={tablet}
-      desktop={desktop}
-      wide={wide}
-      showDrawer={showDrawer}
+      variant={sidebarVariant}
       on:compose={openCompose}
       on:selectMailbox={(event) => {
         mailbox = event.detail.target;
@@ -999,7 +1006,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
       }}
     />
     <!-- Mobile/Tablet: Semi-transparent backdrop overlay to close drawer when clicking outside -->
-    {#if drawerMode && showDrawer}
+    {#if drawerVisible}
       <button type="button" class="fixed inset-0 bg-black/30 z-[50]" aria-label="Close menu overlay"
               on:click={() => (showDrawer = false)}
               on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showDrawer = false; } }}>
@@ -1333,7 +1340,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
         {comingSoonModal.sourceLabel || 'This feature'} is almost here
       </h3>
       <p class="mt-3 text-sm text-slate-200 leading-relaxed">
-        We&apos;re putting the finishing touches on this workflow. Follow along in ComposerAI updates for early access and let us know how you&apos;d like it to work.
+        We&apos;re putting the finishing touches on this workflow. Follow along in Composer updates for early access and let us know how you&apos;d like it to work.
       </p>
       <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <button type="button" class="w-full rounded-2xl bg-white px-4 py-2 text-center text-sm font-semibold text-slate-900 shadow-lg shadow-emerald-500/30 hover:bg-slate-100" on:click={closeComingSoonModal}>

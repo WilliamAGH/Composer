@@ -5,16 +5,60 @@
   /** Sidebar navigation for mailboxes and compose trigger. Keeps App.svelte focused on state orchestration. */
   export let mailbox = 'inbox';
   export let mailboxCounts = {};
-  export let sidebarOpen = true;
-  export let mobile = false;
-  export let tablet = false;
-  export let desktop = false;
-  export let wide = false;
-  export let showDrawer = false;
+  export let variant = 'inline-desktop';
 
   const dispatch = createEventDispatcher();
-  $: drawerMode = mobile || tablet;
-  $: collapsed = !drawerMode && !sidebarOpen;
+  const sidebarVariants = {
+    'inline-wide': {
+      widthClass: 'w-56',
+      hideBorder: false,
+      overflowHidden: false,
+      pointerNone: false,
+      fixed: false,
+      translateClass: '',
+      hidden: false
+    },
+    'inline-desktop': {
+      widthClass: 'w-52',
+      hideBorder: false,
+      overflowHidden: false,
+      pointerNone: false,
+      fixed: false,
+      translateClass: '',
+      hidden: false
+    },
+    'inline-collapsed': {
+      widthClass: 'w-0',
+      hideBorder: true,
+      overflowHidden: true,
+      pointerNone: true,
+      fixed: false,
+      translateClass: '',
+      hidden: true
+    },
+    'drawer-visible': {
+      widthClass: 'w-56',
+      hideBorder: false,
+      overflowHidden: false,
+      pointerNone: false,
+      fixed: true,
+      translateClass: '',
+      hidden: false
+    },
+    'drawer-hidden': {
+      widthClass: 'w-56',
+      hideBorder: false,
+      overflowHidden: false,
+      pointerNone: true,
+      fixed: true,
+      translateClass: '-translate-x-full',
+      hidden: true
+    }
+  };
+  const FALLBACK_VARIANT = 'inline-desktop';
+  $: variantConfig = sidebarVariants[variant] || sidebarVariants[FALLBACK_VARIANT];
+  $: collapsed = variant === 'inline-collapsed';
+  $: ariaHidden = (variantConfig.hidden || collapsed) ? 'true' : 'false';
 
   function select(target) {
     dispatch('selectMailbox', { target });
@@ -25,23 +69,21 @@
   }
 </script>
 
-<aside class="shrink-0 border-r border-slate-200 bg-white/80 backdrop-blur transition-all duration-200"
-       class:w-56={(wide && sidebarOpen && !drawerMode) || (drawerMode && showDrawer)}
-       class:w-52={desktop && sidebarOpen && !drawerMode}
-       class:w-16={collapsed}
-       class:w-0={drawerMode && !showDrawer}
-       class:overflow-hidden={collapsed}
-       class:border-r-0={collapsed}
-       class:fixed={drawerMode}
-       class:inset-y-0={drawerMode}
-       class:left-0={drawerMode}
-       class:z-[60]={drawerMode}
-       class:shadow-xl={drawerMode}
-       class:hidden={drawerMode && !showDrawer}>
+<aside class={`shrink-0 border-slate-200 bg-white/80 backdrop-blur transition-all duration-200 will-change-transform ${variantConfig.widthClass} ${variantConfig.translateClass || ''}`}
+       class:border-r={!variantConfig.hideBorder}
+       class:border-r-0={variantConfig.hideBorder}
+       class:overflow-hidden={variantConfig.overflowHidden}
+       class:pointer-events-none={variantConfig.pointerNone}
+       class:fixed={variantConfig.fixed}
+       class:inset-y-0={variantConfig.fixed}
+       class:left-0={variantConfig.fixed}
+       class:z-[60]={variantConfig.fixed}
+       class:shadow-xl={variantConfig.fixed}
+       aria-hidden={ariaHidden}>
   <div class="p-4 border-b border-slate-200">
     <div class="flex items-center gap-2 mb-4">
       <InboxIcon class="h-6 w-6 text-slate-900" />
-      <h1 class="text-xl font-bold text-slate-900">ComposerAI</h1>
+      <h1 class="text-xl font-bold text-slate-900">Composer</h1>
     </div>
     <button class="inline-flex items-center gap-2 w-full justify-center rounded-xl px-4 py-2 font-semibold text-white bg-gradient-to-br from-slate-900 to-slate-800 shadow ring-1 ring-slate-900/10" on:click={compose}>
       <Pencil class="h-4 w-4" /> Compose

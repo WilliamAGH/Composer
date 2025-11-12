@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Simple deployment script for ComposerAI
-echo "Building ComposerAI application..."
+# Simple deployment script for Composer
+echo "Building Composer application..."
 
 # Check if we have Maven
 if command -v mvn &> /dev/null; then

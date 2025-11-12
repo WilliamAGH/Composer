@@ -71,7 +71,7 @@ export async function handleAiCommand({
     commandVariant: variant?.key || null,
     commandArgs
   });
-  const html = (data?.response && window.ComposerAI?.renderMarkdown ? window.ComposerAI.renderMarkdown(data.response) : '')
+  const html = (data?.response && window.Composer?.renderMarkdown ? window.Composer.renderMarkdown(data.response) : '')
     || (data?.sanitizedHtml || data?.sanitizedHTML || '')
     || '<div class="text-sm text-slate-500">No response received.</div>';
   const contextId = selectedEmail.contextId || selectedEmail.id || null;

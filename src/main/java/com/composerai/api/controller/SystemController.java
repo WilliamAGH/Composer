@@ -16,7 +16,7 @@ public class SystemController {
     public ResponseEntity<Map<String, String>> health() {
         return ResponseEntity.ok(Map.of(
             "status", "ok",
-            "service", "ComposerAI API",
+            "service", "Composer API",
             "timestamp", LocalDateTime.now().toString()
         ));
     }

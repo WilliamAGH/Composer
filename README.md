@@ -1,6 +1,6 @@
-# ComposerAI API
+# Composer API
 
-Java 21 Spring Boot backend that powers the ComposerAI: a chat interface for reasoning over email mailbox data with LLM assistance and retrieval-augmented context.
+Java 21 Spring Boot backend that powers the Composer: a chat interface for reasoning over email mailbox data with LLM assistance and retrieval-augmented context.
 
 ## Developer Routes
 
@@ -48,6 +48,10 @@ Add new AI windows by creating a feature component that wraps `WindowFrame` and 
 - **Email Parsing Workspace (QA)** – Provides an interactive HTML workspace for uploading `.eml`/`.txt` files and returning cleaned text output via the `/api/qa/parse-email` endpoint.
 - **Diagnostics Control Panel** – Ships a rich, static diagnostics dashboard tailored for observing health checks, mock retrieval responses, and LLM outputs.
 - **CLI Utilities** – Includes `HtmlToText` tooling for converting raw email sources to Markdown or plain text, enabling batch processing workflows.
+
+### Responsive Sidebar Modes
+
+The email client sidebar now derives a single `sidebarVariant` in `App.svelte` (`inline-wide`, `inline-desktop`, `inline-collapsed`, `drawer-visible`, `drawer-hidden`) instead of juggling raw viewport booleans. `MailboxSidebar.svelte` consumes that variant to decide width, positioning, and pointer/aria visibility so desktop collapses actually remove the navigation rail while mobile/tablet builds rely on the drawer overlay. This simplification makes the hamburger toggle deterministic across breakpoints and prevents conflicting Tailwind class bindings.
 
 ## Email Rendering & Isolation
 
@@ -129,7 +133,7 @@ To use OpenRouter, Groq, LM Studio, or other providers, set `OPENAI_BASE_URL`, `
 
 ### OpenRouter Configuration
 
-ComposerAI supports [OpenRouter](https://openrouter.ai) for multi-provider LLM access.
+Composer supports [OpenRouter](https://openrouter.ai) for multi-provider LLM access.
 
 #### Basic Setup
 

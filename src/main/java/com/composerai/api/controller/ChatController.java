@@ -197,7 +197,7 @@ public class ChatController {
     public ResponseEntity<Map<String, String>> health() {
         return ResponseEntity.ok(Map.of(
             "status", "UP",
-            "service", "ComposerAI API",
+            "service", "Composer API",
             "timestamp", java.time.LocalDateTime.now().toString()
         ));
     }

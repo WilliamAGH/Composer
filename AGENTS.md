@@ -1,6 +1,6 @@
-# ComposerAI Agent Guide
+# Composer Agent Guide
 
-Operational guidance for autonomous contributors extending the ComposerAI, an email AI web application that makes it easy to search a mailbox via traditional queries and RAG all via one easy to use AI chat interface.
+Operational guidance for autonomous contributors extending the Composer, an email AI web application that makes it easy to search a mailbox via traditional queries and RAG all via one easy to use AI chat interface.
 
 Follow these standards to deliver clean, DRY implementations that slot into the existing Java 21 + Spring Boot 3 stack and polished front-end experience.
 
@@ -43,6 +43,68 @@ Refer to `README.md` (Technology Stack and Requirements) for current runtime ver
 - Place application-specific configuration in `AppProperties`-style classes scoped under the `app.` prefix.
 - Prefer `@Service` + `@Transactional` (where needed) for business logic; keep transactions tightly scoped.
 - Return `ResponseEntity` from controllers for explicit status codes and headers.
+
+## Repository structure (Spring Boot + Svelte)
+
+Canonical package layout for new code and any classes you touch:
+
+```text path=null start=null
+src/main/java/com/composerai/api
+├── boot/                 # Spring Boot entry, typed @ConfigurationProperties, main application class
+├── application/
+│   ├── usecase/          # One class per business action (e.g., CreateThreadUseCase)
+│   └── dto/              # Command/response records used by use cases
+├── domain/
+│   ├── model/            # Aggregates/value objects with invariants
+│   ├── service/          # Pure domain services (no framework deps)
+│   └── port/             # Interfaces for persistence and outbound services (OpenAI, Qdrant, etc.)
+├── adapters/
+│   ├── in/web/           # HTTP controllers + web DTOs
+│   └── out/persistence/  # Repository impls, vector stores, external adapters
+└── shared/               # Cross-cutting helpers (validation, error envelopes, utils)
+```
+
+Resources:
+
+```text path=null start=null
+src/main/resources
+├── application.properties            # plus application-*.properties
+├── templates/                        # Thymeleaf pages/fragments
+└── static/                           # Built Vite assets under app/email-client/
+```
+
+Frontend:
+
+```text path=null start=null
+frontend/email-client
+├── src/**          # Svelte + Vite source
+└── dist/**         # Build output (never committed)
+```
+
+### Layer boundaries
+
+- Controllers (adapters/in/web) translate HTTP ↔ web DTOs, delegate to a single use case (or existing service until migrated), and return `ResponseEntity` with DTOs. No repository access or business normalization in controllers.
+- Use cases (application/usecase) define the transactional boundary; accept a single command record; orchestrate domain services and ports.
+- Domain (domain/model, domain/service) enforces invariants and transformations; keep framework-free.
+- Outbound adapters (adapters/out/persistence) implement domain ports and persist validated models; no HTTP/web DTOs here.
+
+### File placement and movement
+
+- Canonical roots above are the only sanctioned locations for new Java files when creation is explicitly approved. Do not introduce new top-level packages.
+- Anything under current folders like `controller/`, `service/`, `dto/`, etc. is considered legacy layout; when you touch one of those classes, relocate it into the canonical directory that matches its role as part of the change.
+- Keep typed configuration and the Spring Boot entry point under `boot/` (move `AppProperties`-style classes there when you edit them).
+
+### Tests layout
+
+```text path=null start=null
+src/test/java/com/composerai/api
+├── application/**             # *UseCaseTest.java
+├── adapters/in/web/**         # *ControllerIT.java
+├── adapters/out/persistence/**# *RepositoryIT.java or adapter tests
+└── shared/**                  # Utility/mapper tests
+```
+
+Note: This structure governs placement only; it does not change existing error envelope behavior. Continue using `GlobalExceptionHandler` + `ErrorResponse` and `@Valid` for validation.
 
 ## Testing Expectations
 
@@ -141,4 +203,4 @@ Refer to `README.md` (Technology Stack and Requirements) for current runtime ver
 3. Ensure Docker builds with `make docker-build TAG=local` when dependencies change
 4. Verify new configuration parameters have sane defaults and are documented
 
-Adherence to these guidelines keeps ComposerAI cohesive, resilient, and approachable for future iterations.
+Adherence to these guidelines keeps Composer cohesive, resilient, and approachable for future iterations.
