@@ -135,7 +135,7 @@
         <span class="tracking-wide">Actions</span>
         <ChevronDown class={`h-4 w-4 transition ${actionMenuOpen ? 'text-emerald-600 rotate-180' : 'text-slate-500'}`} />
         {#if actionMenuLoading}
-          <span class="ml-1 inline-flex h-1.5 w-8 animate-pulse rounded-full bg-gradient-to-r from-emerald-400 via-emerald-200 to-transparent"></span>
+          <span class="ml-2 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400"></span>
         {/if}
       </button>
       {#if actionMenuOpen}
