@@ -1,23 +1,22 @@
 <script>
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import EmailIframe from './lib/EmailIframe.svelte';
-import ComposeWindow from './lib/ComposeWindow.svelte';
-import AiSummaryWindow from './lib/AiSummaryWindow.svelte';
-import WindowDock from './lib/window/WindowDock.svelte';
-import WindowProvider from './lib/window/WindowProvider.svelte';
-import EmailActionToolbar from './lib/EmailActionToolbar.svelte';
-import EmailDetailView from './lib/EmailDetailView.svelte';
-import MailboxSidebar from './lib/MailboxSidebar.svelte';
-import AiLoadingJourney from './lib/AiLoadingJourney.svelte';
-import { isMobile, isTablet, isDesktop, isWide, viewport } from './lib/viewport';
-import { createWindowManager } from './lib/window/windowStore'; // temp use
-import { createComposeWindow, createSummaryWindow, WindowKind } from './lib/window/windowTypes';
-import { catalogStore, hydrateCatalog, ensureCatalogLoaded as ensureCatalog, getFunctionMeta, mergeDefaultArgs, resolveDefaultInstruction } from './lib/services/aiCatalog';
-import { handleAiCommand } from './lib/services/aiCommandHandler';
-import { mapEmailMessage, computeMailboxCounts, parseSubjectAndBody } from './lib/services/emailUtils';
-import { createAiJourneyStore } from './lib/services/aiJourneyStore';
-import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, ArrowLeft, ChevronLeft, ChevronRight, Archive, Trash2, Sparkles, Loader2 } from 'lucide-svelte';
+  import ComposeWindow from './lib/ComposeWindow.svelte';
+  import AiSummaryWindow from './lib/AiSummaryWindow.svelte';
+  import WindowDock from './lib/window/WindowDock.svelte';
+  import WindowProvider from './lib/window/WindowProvider.svelte';
+  import EmailActionToolbar from './lib/EmailActionToolbar.svelte';
+  import EmailDetailView from './lib/EmailDetailView.svelte';
+  import MailboxSidebar from './lib/MailboxSidebar.svelte';
+  import AiLoadingJourney from './lib/AiLoadingJourney.svelte';
+  import { isMobile, isTablet, isDesktop, isWide, viewport } from './lib/viewport';
+  import { createWindowManager } from './lib/window/windowStore'; // temp use
+  import { createComposeWindow, WindowKind } from './lib/window/windowTypes';
+  import { catalogStore, hydrateCatalog, ensureCatalogLoaded as ensureCatalog, getFunctionMeta, mergeDefaultArgs, resolveDefaultInstruction } from './lib/services/aiCatalog';
+  import { handleAiCommand } from './lib/services/aiCommandHandler';
+  import { mapEmailMessage, computeMailboxCounts, parseSubjectAndBody } from './lib/services/emailUtils';
+  import { createAiJourneyStore } from './lib/services/aiJourneyStore';
+  import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, ArrowLeft, ChevronLeft, ChevronRight, Archive, Trash2, Sparkles, Loader2 } from 'lucide-svelte';
   export let bootstrap = {};
 
   hydrateCatalog(bootstrap.aiFunctions || null);
@@ -35,7 +34,6 @@ let conversationId = null;
 const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   const windowsStore = windowManager.windows;
   const floatingStore = windowManager.floating;
-  const dockedStore = windowManager.docked;
   const minimizedStore = windowManager.minimized;
   const windowErrorStore = windowManager.lastError;
   const aiJourney = createAiJourneyStore();
@@ -51,7 +49,6 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   let windowNoticeTimer = null;
   $: windows = $windowsStore;
   $: floatingWindows = $floatingStore;
-  $: dockedWindows = $dockedStore;
   $: minimizedWindows = $minimizedStore;
   $: windowAlert = $windowErrorStore ? $windowErrorStore.message : '';
   $: aiJourneyOverlay = $aiJourneyOverlayStore;
@@ -66,6 +63,12 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   $: viewportType = $viewport;
   let showDrawer = false;
   let showEmailList = true; // For tablet view toggle
+
+  let panelResponses = {};
+  let panelErrors = {};
+  $: selectedPanelKey = selected ? (selected.contextId || selected.id) : null;
+  $: activePanelState = selectedPanelKey ? panelResponses[selectedPanelKey] : null;
+  $: activePanelError = selectedPanelKey ? panelErrors[selectedPanelKey] : '';
 
   // UI state
   let sidebarOpen = true;
@@ -665,26 +668,55 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
     const command = typeof request === 'string' ? request : request?.key;
     const commandVariant = typeof request === 'object' ? request?.variantKey : null;
     if (!command) return;
+    const selectedContextKey = selected ? (selected.contextId || selected.id) : null;
+    const fnMeta = getFunctionMeta(catalogData, command);
+    const targetsCompose = Array.isArray(fnMeta?.scopes) && fnMeta.scopes.includes('compose');
+
+    if (!targetsCompose && selectedContextKey) {
+      panelErrors = { ...panelErrors, [selectedContextKey]: '' };
+    }
+
     try {
-      await handleAiCommand({
+      const result = await handleAiCommand({
         command,
         commandVariant,
         selectedEmail: selected,
         catalogStore: catalog,
         windowManager,
         callAiCommand,
-        ensureCatalogLoaded: ensureCatalogReady,
-        composeFunctions: composeAiFunctions
+        ensureCatalogLoaded: ensureCatalogReady
       });
+
+      if (result?.type === WindowKind.SUMMARY) {
+        const key = result.contextId || selectedContextKey;
+        if (key) {
+          panelResponses = {
+            ...panelResponses,
+            [key]: {
+              html: result.html,
+              title: result.title || fnMeta?.label || 'AI Summary',
+              commandKey: result.command || command,
+              commandLabel: result.commandLabel || fnMeta?.label || 'AI Summary',
+              updatedAt: Date.now()
+            }
+          };
+          panelErrors = { ...panelErrors, [key]: '' };
+        }
+      }
     } catch (error) {
       if (error?.message === 'Close or minimize an existing draft before opening another.') {
         showWindowLimitMessage();
         return;
       }
-      if (error?.message) {
-        alert(error.message);
-      } else {
-        alert('Unable to complete request.');
+      if (!targetsCompose && selectedContextKey) {
+        panelErrors = { ...panelErrors, [selectedContextKey]: error?.message || 'Unable to complete request.' };
+      }
+      if (targetsCompose) {
+        if (error?.message) {
+          alert(error.message);
+        } else {
+          alert('Unable to complete request.');
+        }
       }
     }
   }
@@ -921,28 +953,32 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
           on:reply={openReply}
           on:commandSelect={(event) => runMainAiCommand(event.detail)}
         />
-        {#if activePanelJourneyOverlay}
-          <div class="mt-4">
-            <AiLoadingJourney
-              steps={activePanelJourneyOverlay.steps}
-              activeStepId={activePanelJourneyOverlay.activeStepId}
-              headline={activePanelJourneyOverlay.headline}
-              subhead={activePanelJourneyOverlay.subhead}
-              show={activePanelJourneyOverlay.visible}
-              inline={true}
-              subdued={true}
-              className="border-slate-200" />
-          </div>
-        {/if}
       </div>
-      <EmailDetailView
-        email={selected}
-        mobile={mobile}
-        tablet={tablet}
-        desktop={desktop}
-        wide={wide}
-        renderMarkdownFn={renderMarkdown}
-      />
+      <div class="flex-1 flex flex-col min-h-0 gap-4"
+           class:px-4={mobile}
+           class:px-5={tablet}
+           class:px-6={desktop || wide}
+           class:pb-6>
+        <div class="flex-1 min-h-0">
+          <EmailDetailView
+            email={selected}
+            mobile={mobile}
+            tablet={tablet}
+            desktop={desktop}
+            wide={wide}
+            renderMarkdownFn={renderMarkdown}
+          />
+        </div>
+        <div class="ai-panel-wrapper">
+          <AiSummaryWindow
+            email={selected}
+            panelState={activePanelState}
+            journeyOverlay={activePanelJourneyOverlay}
+            error={activePanelError}
+            on:runCommand={(event) => runMainAiCommand(event.detail)}
+          />
+        </div>
+      </div>
 
       <!-- Window stack rendered outside main column -->
     {/if}
@@ -958,14 +994,6 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
         journeyOverlay={composeJourneyOverlay && composeJourneyOverlay.scopeTarget === win.id ? composeJourneyOverlay : null}
         on:send={handleComposeSend}
         on:requestAi={handleComposeRequestAi}
-      />
-    {/if}
-  {/each}
-
-  {#each dockedWindows as win (win.id)}
-    {#if win.kind === WindowKind.SUMMARY}
-      <AiSummaryWindow
-        windowConfig={win}
       />
     {/if}
   {/each}
@@ -1002,5 +1030,9 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
     font-size: 0.85rem;
     z-index: 120;
     box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
+  }
+  .ai-panel-wrapper {
+    position: relative;
+    z-index: 10;
   }
 </style>
