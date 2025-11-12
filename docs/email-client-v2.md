@@ -21,6 +21,12 @@ Email safety model
 - Fallback: If EmailRenderer is unavailable, Svelte uses DOMPurify to sanitize and render (dev-only path).
 - Remote images: default behavior relies on sanitizer + CSP; optional “display images” toggle can be added to widen img-src or hydrate lazy images.
 
+### Rendering compatibility guardrails
+- The iframe stylesheet is *compatibility-first*: it only enforces container sizing, image down-scaling, and reverts accidental `tbody`/`thead` display overrides. We intentionally avoid blanket resets such as `box-sizing: border-box` or `table-layout: fixed` so fragile newsletter markup retains its intended geometry.
+- The wrapper element (`.email-wrapper`) lets content dictate width/height and simply exposes a horizontal scrollbar if an email genuinely needs to exceed the viewport.
+- Never add global selectors that touch `table`, `td`, `tr`, etc. inside the iframe unless there is a documented client break. Prefer targeted fixes (e.g., `.email-wrapper table > tbody { display: table-row-group !important; }`) and record the reasoning here when changes are required.
+- Do not style the rendered HTML from Svelte/Tailwind—treat the iframe as an opaque boundary and only communicate via `EmailRenderer`.
+
 Local development
 - Spring only (serve built assets): `make build-java` (after a Vite build) and `make run` then open `/email-client-v2`.
 - Frontend dev (recommended): `make fe-dev` (Vite on :5173, proxies /api to Spring). Keep Spring running with `make run` for APIs.
@@ -41,7 +47,9 @@ File map
   - `src/lib/window/windowStore.js` – Svelte store managing open/minimized windows
   - `src/lib/window/WindowFrame.svelte` – shared chrome
   - `src/lib/window/WindowDock.svelte` – minimized dock UI
-  - Feature windows: `ComposeWindow.svelte`, `AiSummaryWindow.svelte`
+- Feature windows: `ComposeWindow.svelte`, `AiSummaryWindow.svelte`
+- Sidebar & message UI: `MailboxSidebar.svelte`, `EmailActionToolbar.svelte`, `EmailDetailView.svelte`
+- Message UI components: `EmailActionToolbar.svelte`, `EmailDetailView.svelte`
 
 Cutover
 - Validate `/email-client-v2` in staging (legacy path already redirects here).
