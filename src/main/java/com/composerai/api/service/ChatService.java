@@ -240,6 +240,12 @@ public class ChatService {
         logger.info("Processing chat: convId={}, msgLen={}", conversationId, msgLen);
         boolean jsonOutput = request.isJsonOutput();
         String originalMessage = request.getMessage();
+        String commandKey = request.getAiCommand();
+        boolean isActionMenuCommand = "actions_menu".equalsIgnoreCase(commandKey);
+        if (isActionMenuCommand) {
+            logger.info("Action menu request: convId={}, contextId={}, subject={}, journeyTarget={}",
+                conversationId, request.getContextId(), request.getSubject(), request.getJourneyScopeTarget());
+        }
         try {
             String intent = INSIGHTS_TRIGGER.equals(originalMessage)
                 ? "insights"
@@ -268,6 +274,10 @@ public class ChatService {
             OpenAiChatService.ChatCompletionResult aiResult = openAiChatService.generateResponse(
                 userMessageForModel, fullContext, history,
                 request.isThinkingEnabled(), request.getThinkingLevel(), jsonOutput);
+            if (isActionMenuCommand) {
+                int responseChars = aiResult.rawText() == null ? 0 : aiResult.rawText().length();
+                logger.info("Action menu response: convId={}, contextId={}, chars={}", conversationId, request.getContextId(), responseChars);
+            }
             logger.info("Successfully processed chat request for conversation: {}", conversationId);
             conversationRegistry.append(conversationId,
                 OpenAiChatService.ConversationTurn.userWithId(userMessageId, originalMessage),
@@ -275,6 +285,10 @@ public class ChatService {
             String sanitized = jsonOutput ? null : aiResult.sanitizedHtml();
             return new ChatResponse(aiResult.rawText(), conversationId, ctx.emailContext(), intent, sanitized, userMessageId, assistantMessageId);
         } catch (Exception e) {
+            if (isActionMenuCommand) {
+                logger.warn("Action menu request failed: convId={}, contextId={}, error={}",
+                    conversationId, request.getContextId(), e.getMessage());
+            }
             logger.error("Error processing chat request", e);
             String fallback = errorMessages.getChat().getProcessingError();
             conversationRegistry.append(conversationId,

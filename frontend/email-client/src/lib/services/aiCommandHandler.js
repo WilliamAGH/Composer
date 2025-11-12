@@ -10,6 +10,7 @@ import { parseSubjectAndBody } from './emailUtils';
 export async function handleAiCommand({
   command,
   commandVariant = null,
+  instructionOverride = null,
   selectedEmail,
   catalogStore,
   windowManager,
@@ -51,6 +52,7 @@ export async function handleAiCommand({
       selectedEmail,
       fn,
       variant,
+      instructionOverride,
       windowManager,
       callAiCommand,
       commandArgs
@@ -58,7 +60,7 @@ export async function handleAiCommand({
     return { type: WindowKind.COMPOSE, id: descriptor.id };
   }
 
-  const instruction = resolveDefaultInstruction(fn, variant);
+  const instruction = instructionOverride || resolveDefaultInstruction(fn, variant);
   const data = await callAiCommand(command, instruction, {
     contextId: selectedEmail.contextId,
     subject: selectedEmail.subject,
@@ -92,8 +94,8 @@ function findMatchingComposeWindow(windowManager, contextId) {
   ) || null;
 }
 
-async function draftWithAi({ descriptor, command, selectedEmail, fn, variant, windowManager, callAiCommand, commandArgs }) {
-  const instruction = resolveDefaultInstruction(fn, variant);
+async function draftWithAi({ descriptor, command, selectedEmail, fn, variant, instructionOverride = null, windowManager, callAiCommand, commandArgs }) {
+  const instruction = instructionOverride || resolveDefaultInstruction(fn, variant);
   const data = await callAiCommand(command, instruction, {
     contextId: selectedEmail.contextId,
     subject: descriptor.payload.subject,

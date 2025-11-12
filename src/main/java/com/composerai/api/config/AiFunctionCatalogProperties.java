@@ -113,6 +113,38 @@ public class AiFunctionCatalogProperties {
         translate.setVariants(translationVariants);
         defaults.put("translate", translate);
 
+        DefinitionProperties actionsMenu = new DefinitionProperties();
+        actionsMenu.setLabel("AI Action Ideas");
+        actionsMenu.setCategory(AiFunctionDefinition.Category.SUMMARY);
+        actionsMenu.setPromptTemplate("""
+Analyze the email context above and craft three short follow-up actions tailored to the message. Each action must have a 1-2 word label and map to one of these actionType values: "compose", "summary", or "comingSoon".
+
+Return ONLY valid JSON in this exact structure:
+{
+  "options": [
+    {
+      "label": "Call Back",
+      "actionType": "compose",
+      "commandKey": "compose",
+      "commandVariant": null,
+      "instruction": "Draft a concise reply proposing a call tomorrow."
+    }
+  ]
+}
+
+Rules:
+- labels must be unique, 1-2 words, and title case.
+- actionType "compose" or "summary" MUST include commandKey (e.g., "compose", "draft", "summarize", "translate") and an instruction describing what to generate.
+- actionType "comingSoon" MUST set commandKey and commandVariant to null and omit instructions.
+- Never include prose outside the JSON block.
+User guidance: {{instruction}}
+""");
+        actionsMenu.setDefaultInstruction("Suggest three concise action prompts for the user (1-2 word labels) that either draft a reply, summarize next steps, or note a coming soon capability. Tailor suggestions to the email subject and participants.");
+        actionsMenu.setOutputFormat(AiFunctionDefinition.OutputFormat.TEXT);
+        actionsMenu.setSubjectMode(AiFunctionDefinition.SubjectMode.NONE);
+        actionsMenu.setScopes(List.of("panel"));
+        defaults.put("actions_menu", actionsMenu);
+
         DefinitionProperties tone = new DefinitionProperties();
         tone.setLabel("AI Tone Adjustment");
         tone.setCategory(AiFunctionDefinition.Category.TONE);

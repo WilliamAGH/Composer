@@ -30,6 +30,7 @@
   let isReply = false;
   let lastBodyVersion = 0;
   $: journeyInlineActive = Boolean(journeyOverlay?.visible);
+  let maximized = false;
 
   $: if (!initialized && windowConfig) {
     to = windowConfig.payload?.to || '';
@@ -59,11 +60,17 @@
   }
 
   function closeWindow() {
+    maximized = false;
     windowManager.close(windowConfig.id);
   }
 
   function toggleMinimizeWindow() {
+    maximized = false;
     windowManager.toggleMinimize(windowConfig.id);
+  }
+
+  function toggleMaximizeWindow() {
+    maximized = !maximized;
   }
 
   function onFilesSelected(files) {
@@ -83,10 +90,13 @@
     mode="floating"
     minimized={windowConfig.minimized}
     allowMinimize={!mobile}
+    allowMaximize={true}
+    maximized={maximized}
     allowClose={true}
     offsetIndex={offsetIndex}
     on:close={closeWindow}
     on:toggleMinimize={toggleMinimizeWindow}
+    on:toggleMaximize={toggleMaximizeWindow}
   >
   <div class="compose-body">
     {#if !isReply}

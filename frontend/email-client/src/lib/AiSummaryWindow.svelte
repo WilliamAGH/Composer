@@ -1,15 +1,12 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import AiLoadingJourney from './AiLoadingJourney.svelte';
-  import { Sparkles, RotateCcw } from 'lucide-svelte';
+  import { Sparkles, RotateCcw, Minus, X, Maximize2, Minimize2 } from 'lucide-svelte';
 
-  /**
-   * Inline AI insight panel shared by summary + translate commands. Anchors to the email view and
-   * hosts loading/error/empty states tied to the current message context.
-   */
   export let panelState = null;
   export let journeyOverlay = null;
   export let error = '';
+  export let maximized = false;
 
   const dispatch = createEventDispatcher();
 
@@ -30,9 +27,21 @@
   function handlePrimaryAction() {
     emitRunCommand(lastCommand || 'summarize');
   }
+
+  function minimize() {
+    dispatch('minimize');
+  }
+
+  function toggleMaximize() {
+    dispatch('toggleMaximize');
+  }
+
+  function closePanel() {
+    dispatch('close');
+  }
 </script>
 
-<section class="ai-summary-panel" aria-live="polite">
+<section class={`ai-summary-panel ${maximized ? 'maximized' : ''}`} aria-live="polite">
   <header class="panel-header">
     <div>
       <p class="panel-eyebrow">AI Insights</p>
@@ -51,6 +60,21 @@
         <RotateCcw class="h-4 w-4" aria-hidden="true" />
         {hasContent ? 'Regenerate' : 'Generate summary'}
       </button>
+      <div class="panel-window-controls">
+        <button type="button" class="icon-btn" on:click={minimize} title="Minimize" aria-label="Minimize AI panel">
+          <Minus class="h-4 w-4" />
+        </button>
+        <button type="button" class="icon-btn" on:click={toggleMaximize} title={maximized ? 'Restore' : 'Maximize'} aria-label={maximized ? 'Restore panel size' : 'Maximize AI panel'}>
+          {#if maximized}
+            <Minimize2 class="h-4 w-4" />
+          {:else}
+            <Maximize2 class="h-4 w-4" />
+          {/if}
+        </button>
+        <button type="button" class="icon-btn" on:click={closePanel} title="Close" aria-label="Close AI panel">
+          <X class="h-4 w-4" />
+        </button>
+      </div>
     </div>
   </header>
   <div class="panel-body">
@@ -62,7 +86,8 @@
         subhead={journeyOverlay.subhead}
         show={journeyOverlay.visible}
         inline={true}
-        subdued={true} />
+        subdued={true}
+        className="border-slate-200" />
     {:else if error}
       <div class="panel-state panel-error">
         <p>{error}</p>
@@ -90,11 +115,21 @@
 <style>
   .ai-summary-panel {
     width: 100%;
-    background: rgba(255, 255, 255, 0.96);
+    background: rgba(255, 255, 255, 0.95);
     border: 1px solid rgba(15, 23, 42, 0.08);
     box-shadow: 0 25px 60px -20px rgba(15, 23, 42, 0.25);
-    border-radius: 24px 24px 0 0;
+    border-radius: 24px;
     padding: 1.25rem 1.5rem;
+    backdrop-filter: blur(18px);
+    display: flex;
+    flex-direction: column;
+  }
+  .ai-summary-panel.maximized {
+    background: #ffffff;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    box-shadow: 0 60px 120px -45px rgba(15, 23, 42, 0.45);
+    backdrop-filter: none;
+    height: 100%;
   }
   .panel-header {
     display: flex;
@@ -122,8 +157,27 @@
   }
   .panel-actions {
     display: flex;
-    gap: 0.5rem;
     align-items: center;
+    gap: 0.75rem;
+  }
+  .panel-window-controls {
+    display: inline-flex;
+    gap: 0.35rem;
+  }
+  .icon-btn {
+    height: 32px;
+    width: 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.7);
+    background: rgba(255, 255, 255, 0.92);
+    color: #475569;
+    transition: all 0.15s ease;
+  }
+  .icon-btn:hover {
+    border-color: rgba(15, 23, 42, 0.3);
+    color: #0f172a;
   }
   .panel-btn {
     display: inline-flex;
@@ -154,7 +208,8 @@
   }
   .panel-body {
     margin-top: 1.25rem;
-    min-height: 160px;
+    min-height: 200px;
+    flex: 1;
   }
   .panel-html {
     font-size: 0.95rem;
@@ -167,7 +222,6 @@
   .panel-state {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
     gap: 0.5rem;
     color: #475569;
   }

@@ -9,6 +9,8 @@
    */
   export let email = null;
   export let commands = [];
+  export let actionMenuOptions = [];
+  export let actionMenuLoading = false;
   export let mobile = false;
   export let escapeHtmlFn = (value) => value ?? '';
   export let formatFullDateFn = () => '';
@@ -51,5 +53,13 @@
       </button>
     </div>
   </div>
-  <AiCommandButtons commands={commands} on:select={(event) => emit('commandSelect', event.detail)} />
+  <AiCommandButtons
+    {commands}
+    actionOptions={actionMenuOptions}
+    actionMenuLoading={actionMenuLoading}
+    on:select={(event) => emit('commandSelect', event.detail)}
+    on:actionSelect={(event) => emit('actionSelect', event.detail)}
+    on:actionMenuToggle={(event) => emit('actionMenuToggle', event.detail)}
+    on:comingSoon={(event) => emit('comingSoon', event.detail)}
+  />
 {/if}

@@ -45,8 +45,26 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
       description: 'Auto-label Action, Read-Later, FYI, Receipts, Calendar, Tasks, Bulk. Merges duplicates and collapses promos.'
     }
   ];
+  const ACTION_MENU_COMMAND_KEY = 'actions_menu';
+  const ACTION_IDEAS_INSTRUCTION = 'List three creative but practical follow-up ideas for this email. Each idea must be one sentence and drive the thread toward a clear next step.';
+  const DEFAULT_ACTION_OPTIONS = [
+    { id: 'action-create-task', label: 'Create Task', actionType: 'comingSoon', commandKey: null, commandVariant: null, instruction: null },
+    { id: 'action-remind-me', label: 'Remind Me About This', actionType: 'comingSoon', commandKey: null, commandVariant: null, instruction: null },
+    { id: 'action-give-ideas', label: 'Give me Ideas', actionType: 'summary', commandKey: 'summarize', commandVariant: null, instruction: ACTION_IDEAS_INSTRUCTION }
+  ];
   let windowNotice = '';
   let windowNoticeTimer = null;
+  let actionMenuOptions = DEFAULT_ACTION_OPTIONS.map((option) => ({ ...option }));
+  let actionMenuLoading = false;
+  let actionMenuPendingOptions = null;
+  let actionMenuCache = {};
+  let actionMenuInFlight = {};
+  let actionMenuAppliedKey = null;
+  let actionMenuActiveSource = 'default';
+  let actionMenuPendingSource = 'ai';
+  let selectedActionKey = null;
+  let isActionMenuOpen = false;
+  let comingSoonModal = { open: false, sourceLabel: '' };
   $: windows = $windowsStore;
   $: floatingWindows = $floatingStore;
   $: minimizedWindows = $minimizedStore;
@@ -66,9 +84,20 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
 
   let panelResponses = {};
   let panelErrors = {};
+  let panelSessionActive = false;
+  let panelMinimized = false;
+  let panelMaximized = false;
+  let lastPanelContextKey = null;
   $: selectedPanelKey = selected ? (selected.contextId || selected.id) : null;
   $: activePanelState = selectedPanelKey ? panelResponses[selectedPanelKey] : null;
   $: activePanelError = selectedPanelKey ? panelErrors[selectedPanelKey] : '';
+  $: panelRenderReady = panelSessionActive && !panelMinimized && (activePanelState || activePanelJourneyOverlay);
+  $: if (selectedPanelKey !== lastPanelContextKey) {
+    lastPanelContextKey = selectedPanelKey;
+    panelSessionActive = false;
+    panelMinimized = false;
+    panelMaximized = false;
+  }
 
   // UI state
   let sidebarOpen = true;
@@ -118,6 +147,25 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
     .filter((fn) => Array.isArray(fn.scopes) && fn.scopes.includes('compose'));
   $: mailboxCommandEntries = deriveMailboxCommands();
   $: hasMailboxCommands = Array.isArray(mailboxCommandEntries) && mailboxCommandEntries.length > 0;
+  $: selectedActionKey = selected ? (selected.contextId || selected.id || selected.conversationId || null) : null;
+  $: {
+    if (!selectedActionKey) {
+      applyActionMenuOptions(getDefaultActionOptions(), null, 'default');
+    } else {
+      if (actionMenuAppliedKey !== selectedActionKey && !isActionMenuOpen) {
+        applyActionMenuOptions(getDefaultActionOptions(), selectedActionKey, 'default');
+      } else if (actionMenuAppliedKey !== selectedActionKey && isActionMenuOpen) {
+        actionMenuPendingOptions = getDefaultActionOptions();
+        actionMenuPendingSource = 'default';
+      }
+      const cached = actionMenuCache[selectedActionKey];
+      if (cached && (actionMenuAppliedKey !== selectedActionKey || actionMenuActiveSource !== 'ai')) {
+        queueActionMenuUpdate(cached, selectedActionKey);
+      } else if (!cached && !actionMenuInFlight[selectedActionKey]) {
+        loadActionMenuSuggestions(selected, selectedActionKey);
+      }
+    }
+  }
   $: activeMailboxActionLabel = (mailboxCommandEntries || []).find((entry) => entry.key === mailboxCommandPendingKey)?.label || '';
   $: if ((filtered.length === 0 || !hasMailboxCommands) && mailboxActionsOpen) {
     closeMailboxActions();
@@ -206,7 +254,13 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   }
 
   async function handleMailboxAction(entry) {
-    if (!entry || !entry.key || mailboxCommandPendingKey || filtered.length === 0) return;
+    if (!entry || !entry.key) return;
+    if (entry.key === 'smart-triage') {
+      closeMailboxActions();
+      openComingSoonModal(entry.label || 'Smart Triage & Cleanup');
+      return;
+    }
+    if (mailboxCommandPendingKey || filtered.length === 0) return;
     mailboxActionError = '';
     closeMailboxActions();
     const ready = await ensureCatalogReady();
@@ -663,15 +717,144 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
     return fallback;
   }
 
+  function getDefaultActionOptions() {
+    return DEFAULT_ACTION_OPTIONS.map((option) => ({ ...option }));
+  }
+
+  function applyActionMenuOptions(options, key = selectedActionKey, source = 'ai') {
+    actionMenuOptions = options;
+    actionMenuPendingOptions = null;
+    actionMenuAppliedKey = key;
+    actionMenuActiveSource = source;
+  }
+
+  function applyPendingActionOptions() {
+    if (!isActionMenuOpen && actionMenuPendingOptions) {
+      applyActionMenuOptions(actionMenuPendingOptions, selectedActionKey, actionMenuPendingSource || 'ai');
+      actionMenuPendingOptions = null;
+      actionMenuPendingSource = 'ai';
+    }
+  }
+
+  function queueActionMenuUpdate(options, cacheKey = selectedActionKey, source = 'ai') {
+    const next = Array.isArray(options) && options.length ? options : getDefaultActionOptions();
+    if (cacheKey && cacheKey !== selectedActionKey) {
+      return;
+    }
+    if (isActionMenuOpen) {
+      actionMenuPendingOptions = next;
+      actionMenuPendingSource = source;
+    } else {
+      applyActionMenuOptions(next, cacheKey, source);
+    }
+  }
+
+  function buildActionMenuInstruction(email) {
+    if (!email) return 'No email context available.';
+    const subject = (email.subject || 'No subject').trim();
+    const from = (email.from || 'Unknown sender').trim();
+    const preview = ((email.preview || email.contentText || '').replace(/\s+/g, ' ').trim()).slice(0, 240);
+    return `Subject: ${subject}\nFrom: ${from}\nPreview: ${preview || 'No preview provided.'}\nFocus on concise, high-value actions.`;
+  }
+
+  function extractJsonBlock(raw) {
+    if (!raw || typeof raw !== 'string') return null;
+    const trimmed = raw.trim();
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) return trimmed;
+    const first = trimmed.indexOf('{');
+    const last = trimmed.lastIndexOf('}');
+    if (first === -1 || last === -1 || last <= first) return null;
+    return trimmed.slice(first, last + 1);
+  }
+
+  function sanitizeActionOption(option) {
+    if (!option || typeof option !== 'object') return null;
+    const rawLabel = typeof option.label === 'string' ? option.label.trim() : '';
+    if (!rawLabel) return null;
+    const words = rawLabel.split(/\s+/).filter(Boolean);
+    if (words.length === 0 || words.length > 3) return null;
+    const normalizedType = (option.actionType || '').toLowerCase();
+    const actionType = normalizedType === 'comingsoon' ? 'comingSoon' : (normalizedType || 'summary');
+    const commandKey = option.commandKey || (actionType === 'summary' ? 'summarize' : actionType === 'compose' ? 'compose' : null);
+    const commandVariant = option.commandVariant || null;
+    const instruction = typeof option.instruction === 'string' ? option.instruction.trim() || null : null;
+    return {
+      id: option.id || `ai-action-${rawLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`,
+      label: rawLabel,
+      actionType,
+      commandKey,
+      commandVariant,
+      instruction
+    };
+  }
+
+  function parseActionMenuResponse(data) {
+    const raw = typeof data?.response === 'string' ? data.response : null;
+    const fallbackHtml = typeof data?.sanitizedHtml === 'string' ? data.sanitizedHtml : null;
+    const jsonBlock = extractJsonBlock(raw || fallbackHtml);
+    if (!jsonBlock) return [];
+    try {
+      const parsed = JSON.parse(jsonBlock);
+      const options = Array.isArray(parsed?.options) ? parsed.options : [];
+      return options
+        .map(sanitizeActionOption)
+        .filter(Boolean)
+        .slice(0, 3);
+    } catch (error) {
+      console.warn('Failed to parse action menu response', error);
+      return [];
+    }
+  }
+
+  async function loadActionMenuSuggestions(email, cacheKey) {
+    if (!email || !cacheKey || actionMenuInFlight[cacheKey]) return;
+    actionMenuInFlight = { ...actionMenuInFlight, [cacheKey]: true };
+    if (cacheKey === selectedActionKey) {
+      actionMenuLoading = true;
+    }
+    try {
+      const ready = await ensureCatalogReady();
+      if (!ready) return;
+      const instruction = buildActionMenuInstruction(email);
+      const data = await callAiCommand(ACTION_MENU_COMMAND_KEY, instruction, {
+        contextId: email.contextId,
+        subject: email.subject,
+        journeyScope: 'panel',
+        journeyScopeTarget: email.id || email.contextId || null,
+        journeyLabel: email.subject || email.from || 'Selected email',
+        journeyHeadline: 'Curating action ideas'
+      });
+      const parsed = parseActionMenuResponse(data);
+      const finalOptions = parsed.length ? parsed : getDefaultActionOptions();
+      actionMenuCache = { ...actionMenuCache, [cacheKey]: finalOptions };
+      if (cacheKey === selectedActionKey) {
+        queueActionMenuUpdate(finalOptions, cacheKey);
+      }
+    } catch (error) {
+      console.error('Unable to refresh action menu', error);
+    } finally {
+      const updatedInFlight = { ...actionMenuInFlight };
+      delete updatedInFlight[cacheKey];
+      actionMenuInFlight = updatedInFlight;
+      if (cacheKey === selectedActionKey) {
+        actionMenuLoading = false;
+      }
+    }
+  }
+
   /** Entry point for primary AI actions (summary, translation, compose helpers). */
   async function runMainAiCommand(request) {
     const command = typeof request === 'string' ? request : request?.key;
     const commandVariant = typeof request === 'object' ? request?.variantKey : null;
+    const instructionOverride = typeof request === 'object' ? request?.instructionOverride : null;
     if (!command) return;
     const selectedContextKey = selected ? (selected.contextId || selected.id) : null;
     const fnMeta = getFunctionMeta(catalogData, command);
     const targetsCompose = Array.isArray(fnMeta?.scopes) && fnMeta.scopes.includes('compose');
 
+    if (!targetsCompose) {
+      panelSessionActive = true;
+    }
     if (!targetsCompose && selectedContextKey) {
       panelErrors = { ...panelErrors, [selectedContextKey]: '' };
     }
@@ -680,6 +863,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
       const result = await handleAiCommand({
         command,
         commandVariant,
+        instructionOverride,
         selectedEmail: selected,
         catalogStore: catalog,
         windowManager,
@@ -720,6 +904,70 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
       }
     }
   }
+
+  function handlePanelMinimize() {
+    panelMinimized = true;
+    panelMaximized = false;
+  }
+
+  function handlePanelMaximizeToggle() {
+    panelMaximized = !panelMaximized;
+  }
+
+  function handlePanelClose() {
+    const key = selectedPanelKey;
+    panelSessionActive = false;
+    panelMinimized = false;
+    panelMaximized = false;
+    if (key) {
+      panelResponses = removePanelEntry(panelResponses, key);
+      panelErrors = removePanelEntry(panelErrors, key);
+    }
+  }
+
+  function restorePanelFromDock() {
+    panelMinimized = false;
+  }
+
+  function removePanelEntry(source, key) {
+    if (!key || !source || !source[key]) return source;
+    const next = { ...source };
+    delete next[key];
+    return next;
+  }
+
+  function handleActionMenuToggle(event) {
+    isActionMenuOpen = !!(event?.detail?.open);
+    if (!isActionMenuOpen) {
+      applyPendingActionOptions();
+    }
+  }
+
+  async function handleActionSelect(event) {
+    const option = event?.detail?.option;
+    if (!option) return;
+    if (option.actionType === 'comingSoon' || !option.commandKey) {
+      openComingSoonModal(option.label || 'This feature');
+      return;
+    }
+    await runMainAiCommand({
+      key: option.commandKey,
+      variantKey: option.commandVariant || null,
+      instructionOverride: option.instruction || null
+    });
+  }
+
+  function openComingSoonModal(sourceLabel = 'This feature') {
+    comingSoonModal = { open: true, sourceLabel };
+  }
+
+  function closeComingSoonModal() {
+    comingSoonModal = { open: false, sourceLabel: '' };
+  }
+
+  function handleComingSoon(detail) {
+    openComingSoonModal(detail?.label || 'This feature');
+  }
 </script>
 
 <WindowProvider {windowManager}>
@@ -746,9 +994,9 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
 
   <!-- List -->
   <section class="shrink-0 flex flex-col bg-white/90 border-r border-slate-200"
-           class:w-[24rem]={wide}
-           class:w-[22rem]={desktop}
-           class:w-[19rem]={tablet && showEmailList}
+           class:w-[26rem]={wide}
+           class:w-[23rem]={desktop && !wide}
+           class:w-[19.5rem]={tablet && showEmailList}
            class:w-0={tablet && !showEmailList}
            class:w-full={mobile}
            class:hidden={mobile && selected}
@@ -947,14 +1195,19 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
         <EmailActionToolbar
           email={selected}
           commands={primaryCommandEntries}
+          actionMenuOptions={actionMenuOptions}
+          actionMenuLoading={actionMenuLoading}
           mobile={mobile}
           escapeHtmlFn={escapeHtml}
           formatFullDateFn={formatFullDate}
           on:reply={openReply}
           on:commandSelect={(event) => runMainAiCommand(event.detail)}
+          on:actionSelect={handleActionSelect}
+          on:actionMenuToggle={handleActionMenuToggle}
+          on:comingSoon={(event) => handleComingSoon(event.detail)}
         />
       </div>
-      <div class="flex-1 flex flex-col min-h-0 gap-4"
+      <div class="flex-1 flex flex-col min-h-0 gap-4 panel-column"
            class:px-4={mobile}
            class:px-5={tablet}
            class:px-6={desktop || wide}>
@@ -968,14 +1221,20 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
             renderMarkdownFn={renderMarkdown}
           />
         </div>
-        <div class="ai-panel-wrapper">
-          <AiSummaryWindow
-            panelState={activePanelState}
-            journeyOverlay={activePanelJourneyOverlay}
-            error={activePanelError}
-            on:runCommand={(event) => runMainAiCommand(event.detail)}
-          />
-        </div>
+        {#if panelRenderReady}
+          <div class={`ai-panel-wrapper ${panelMaximized ? 'maximized' : ''}`}>
+            <AiSummaryWindow
+              panelState={activePanelState}
+              journeyOverlay={activePanelJourneyOverlay}
+              error={activePanelError}
+              maximized={panelMaximized}
+              on:runCommand={(event) => runMainAiCommand(event.detail)}
+              on:minimize={handlePanelMinimize}
+              on:toggleMaximize={handlePanelMaximizeToggle}
+              on:close={handlePanelClose}
+            />
+          </div>
+        {/if}
       </div>
 
       <!-- Window stack rendered outside main column -->
@@ -997,6 +1256,12 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   {/each}
 
   <WindowDock windows={minimizedWindows} />
+  {#if panelSessionActive && panelMinimized}
+    <button class="panel-dock-chip" type="button" on:click={restorePanelFromDock}>
+      <Sparkles class="h-4 w-4" aria-hidden="true" />
+      AI Panel
+    </button>
+  {/if}
 </WindowProvider>
 
 {#if windowNotice}
@@ -1016,6 +1281,39 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   </div>
 {/if}
 
+{#if comingSoonModal.open}
+  <div class="fixed inset-0 z-[180] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4"
+       role="dialog"
+       aria-modal="true"
+       aria-label="Coming soon"
+       on:click={closeComingSoonModal}>
+    <div class="relative w-full max-w-md rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-800 p-6 text-white shadow-[0_35px_80px_rgba(15,23,42,0.55)]"
+         on:click|stopPropagation>
+      <button type="button" class="absolute right-4 top-4 rounded-full border border-white/20 bg-white/10 p-1 text-white hover:bg-white/20" aria-label="Close" on:click={closeComingSoonModal}>
+        ✕
+      </button>
+      <div class="mb-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]">
+        <Sparkles class="h-4 w-4 text-emerald-300" />
+        Coming Soon
+      </div>
+      <h3 class="text-2xl font-semibold tracking-tight">
+        {comingSoonModal.sourceLabel || 'This feature'} is almost here
+      </h3>
+      <p class="mt-3 text-sm text-slate-200 leading-relaxed">
+        We&apos;re putting the finishing touches on this workflow. Follow along in ComposerAI updates for early access and let us know how you&apos;d like it to work.
+      </p>
+      <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <button type="button" class="w-full rounded-2xl bg-white px-4 py-2 text-center text-sm font-semibold text-slate-900 shadow-lg shadow-emerald-500/30 hover:bg-slate-100" on:click={closeComingSoonModal}>
+          Sounds good
+        </button>
+        <div class="text-xs text-slate-300 text-center sm:text-left">
+          Need it sooner? Drop us a note in the roadmap channel.
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
+
 <style>
   .window-notice {
     position: fixed;
@@ -1032,5 +1330,31 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   .ai-panel-wrapper {
     position: relative;
     z-index: 10;
+    height: min(35vh, 360px);
+    max-height: 40vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .ai-panel-wrapper.maximized {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    height: auto;
+  }
+  .panel-dock-chip {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 15px 30px -18px rgba(15, 23, 42, 0.35);
+    padding: 0.45rem 0.95rem;
+    font-size: 0.85rem;
+    color: #0f172a;
+    z-index: 150;
   }
 </style>

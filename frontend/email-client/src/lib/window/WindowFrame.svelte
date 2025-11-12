@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { Minus, X } from 'lucide-svelte';
+  import { Minus, X, Maximize2, Minimize2 } from 'lucide-svelte';
   import { isMobile, isTablet, viewport } from '../viewport';
 
   /**
@@ -14,13 +14,15 @@
   export let allowMinimize = true;
   export let allowClose = true;
   export let offsetIndex = 0;
+  export let allowMaximize = true;
+  export let maximized = false;
 
   const dispatch = createEventDispatcher();
   $: mobile = $isMobile;
   $: tablet = $isTablet;
   $: viewportType = $viewport;
 
-  $: frameStyle = mode === 'floating'
+  $: frameStyle = mode === 'floating' && !maximized
     ? `right: ${24 + offsetIndex * 16}px; bottom: ${24 + offsetIndex * 16}px;`
     : '';
 
@@ -34,14 +36,19 @@
     dispatch('close');
   }
 
+  function handleToggleMaximize() {
+    if (!allowMaximize) return;
+    dispatch('toggleMaximize');
+  }
+
 </script>
 
 {#if open && !minimized}
 <div
-  class={mode === 'floating' ? 'window-frame floating' : 'window-frame docked'}
+  class={`window-frame ${mode === 'floating' ? 'floating' : 'docked'} ${maximized ? 'maximized' : ''}`}
   role="dialog"
-  aria-modal={mode === 'floating'}
-  style={mode === 'floating' ? frameStyle : ''}
+  aria-modal={mode === 'floating' || maximized}
+  style={frameStyle}
 >
   <header class="window-header">
     <div class="window-title">{title}</div>
@@ -50,6 +57,15 @@
       {#if allowMinimize}
         <button type="button" class="icon-btn" on:click|stopPropagation={handleToggle} title="Minimize">
           <Minus class="h-4 w-4" />
+        </button>
+      {/if}
+      {#if allowMaximize}
+        <button type="button" class="icon-btn" on:click|stopPropagation={handleToggleMaximize} title={maximized ? 'Restore' : 'Maximize'}>
+          {#if maximized}
+            <Minimize2 class="h-4 w-4" />
+          {:else}
+            <Maximize2 class="h-4 w-4" />
+          {/if}
         </button>
       {/if}
       {#if allowClose}
@@ -86,6 +102,23 @@
     width: min(560px, 92vw);
     max-height: 80vh;
     z-index: 80;
+  }
+  .window-frame.maximized {
+    position: fixed;
+    inset: clamp(12px, 3vw, 32px);
+    width: auto;
+    height: auto;
+    max-height: none;
+    max-width: none;
+    z-index: 140;
+    border-radius: 28px;
+    background: #ffffff;
+    box-shadow: 0 40px 120px -32px rgba(15, 23, 42, 0.45);
+    backdrop-filter: none;
+  }
+  .window-frame.maximized .window-body {
+    flex: 1;
+    overflow-y: auto;
   }
   .window-frame.docked {
     position: fixed;
