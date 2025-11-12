@@ -20,6 +20,16 @@
   $: completedSet = completed instanceof Set ? completed : new Set(completed);
   $: activeIndex = steps.findIndex((step) => step.id === activeStepId);
 
+  $: sectionClasses = [
+    'relative rounded-3xl border px-4 py-4 sm:px-5 sm:py-5 transition-all duration-300',
+    inline
+      ? 'w-full'
+      : 'fixed bottom-6 left-1/2 z-[80] max-w-sm -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0',
+    subdued
+      ? 'border-slate-200 bg-white/80 backdrop-blur'
+      : 'border-white/30 bg-gradient-to-b from-white/70 via-white/40 to-white/10 backdrop-blur-xl shadow-[0_25px_60px_-20px_rgba(15,23,42,0.3)]'
+  ].join(' ');
+
   function resolveState(step, index) {
     if (completedSet.has(step.id) || (activeIndex > -1 && index < activeIndex)) {
       return 'complete';
@@ -30,6 +40,17 @@
     return 'pending';
   }
 
+  function getStepIconClasses(state) {
+    const base = 'flex h-11 w-11 items-center justify-center rounded-2xl border text-sm transition-all duration-300';
+    if (state === 'active') {
+      return `${base} bg-slate-900 text-white border-slate-900/80 shadow-lg shadow-slate-900/30`;
+    }
+    if (state === 'complete') {
+      return `${base} bg-white text-slate-900 border-slate-300 shadow shadow-slate-900/5`;
+    }
+    return `${base} bg-white/70 text-slate-500 border-slate-200`;
+  }
+
   function iconFor(step) {
     return ICONS[step.icon];
   }
@@ -37,7 +58,7 @@
 
 {#if show && steps.length}
 <section
-  class={`relative rounded-3xl border px-4 py-4 sm:px-5 sm:py-5 transition-all duration-300 ${inline ? 'w-full' : 'fixed bottom-6 left-1/2 z-[80] max-w-sm -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0'} ${subdued ? 'border-slate-200 bg-white/80 backdrop-blur' : 'border-white/30 bg-gradient-to-b from-white/70 via-white/40 to-white/10 backdrop-blur-xl shadow-[0_25px_60px_-20px_rgba(15,23,42,0.3)]'}`}
+  class={sectionClasses}
   role="status"
   aria-live="polite">
   <div class="flex items-center gap-3">
@@ -55,12 +76,7 @@
       {#if iconFor(step) != null}
         <li class="flex items-start gap-3">
           <div class="relative">
-            <div
-              class={`flex h-11 w-11 items-center justify-center rounded-2xl border text-sm transition-all duration-300 ${resolveState(step, index) === 'active'
-                ? 'bg-slate-900 text-white border-slate-900/80 shadow-lg shadow-slate-900/30'
-                : resolveState(step, index) === 'complete'
-                  ? 'bg-white text-slate-900 border-slate-300 shadow shadow-slate-900/5'
-                  : 'bg-white/70 text-slate-500 border-slate-200'}`}>
+            <div class={getStepIconClasses(resolveState(step, index))}>
               <svelte:component this={iconFor(step)} class="h-5 w-5" />
               {#if resolveState(step, index) === 'active'}
                 <Loader2 class="absolute -bottom-1 -right-1 h-4 w-4 animate-spin text-white" style="animation-duration:1.1s" />
