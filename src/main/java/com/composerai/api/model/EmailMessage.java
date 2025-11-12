@@ -14,6 +14,11 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class EmailMessage {
 
+    /**
+     * Sentinel values used to identify fallback recipients that should be suppressed from display.
+     * When parsing .eml files without valid recipient headers, the email parser may insert these
+     * placeholder values. They should not be shown to end users as they represent missing data.
+     */
     private static final String FALLBACK_RECIPIENT_EMAIL = "user@example.com";
     private static final String FALLBACK_RECIPIENT_NAME = "InboxAI User";
 
