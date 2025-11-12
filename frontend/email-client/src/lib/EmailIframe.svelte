@@ -7,18 +7,34 @@
 
   function tryRender() {
     rendered = false;
+    fallback = '';
+
+    // Try iframe rendering first
     if (container && html && window.EmailRenderer && typeof window.EmailRenderer.renderInIframe === 'function') {
-      try { window.EmailRenderer.renderInIframe(container, String(html)); rendered = true; } catch (e) { rendered = false; }
-    } else {
-      const raw = String(html || '');
-      if (window.DOMPurify) {
-        fallback = window.DOMPurify.sanitize(raw, {
-          ALLOWED_TAGS: ['p','br','strong','em','u','a','img','div','span','table','thead','tbody','tr','th','td','ul','ol','li','blockquote','pre','code'],
-          ALLOWED_ATTR: ['href','title','target','rel','class','src','alt','width','height','loading','decoding','style']
-        });
-      } else {
-        fallback = raw.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+      try {
+        window.EmailRenderer.renderInIframe(container, String(html));
+        rendered = true;
+        return; // Success - no fallback needed
+      } catch (e) {
+        // Iframe rendering failed - fall through to fallback
+        rendered = false;
       }
+    }
+
+    // Generate sanitized fallback HTML (used when iframe unavailable or fails)
+    const raw = String(html || '');
+    if (!raw) {
+      fallback = '';
+      return;
+    }
+
+    if (window.DOMPurify) {
+      fallback = window.DOMPurify.sanitize(raw, {
+        ALLOWED_TAGS: ['p','br','strong','em','u','a','img','div','span','table','thead','tbody','tr','th','td','ul','ol','li','blockquote','pre','code'],
+        ALLOWED_ATTR: ['href','title','target','rel','class','src','alt','width','height','loading','decoding','style']
+      });
+    } else {
+      fallback = raw.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
     }
   }
 
