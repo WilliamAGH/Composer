@@ -10,7 +10,8 @@
   export let tablet = false;
   export let desktop = false;
   export let wide = false;
-  export let renderMarkdownFn = (value) => value ?? '';
+  /** Required: must sanitize input before returning HTML for {@html} rendering */
+  export let renderMarkdownFn;
 </script>
 
 {#if email}
