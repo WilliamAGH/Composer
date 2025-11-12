@@ -4,7 +4,7 @@ PORT ?= 8080
 PROFILE ?= local
 MAVEN_TEST_FLAGS ?=
 
-.PHONY: help run build build-vite build-java test clean lint docker-build docker-run-local docker-run-prod fe-dev clean-frontend
+.PHONY: help run build build-vite build-java java-compile test clean lint docker-build docker-run-local docker-run-prod fe-dev clean-frontend
 
 help:
 	@echo "Targets:"
@@ -12,6 +12,7 @@ help:
 	@echo "  make build         - Build frontend (Vite) and backend (Maven)"
 	@echo "  make build-vite    - Build Svelte bundle into Spring static/"
 	@echo "  make build-java    - Build Spring Boot JAR (skip tests)"
+	@echo "  make java-compile  - Run mvn clean compile (ensures annotation processors fire)"
 	@echo "  make fe-dev        - Run Svelte dev server (Vite) with API proxy"
 	@echo "  make clean         - Clean Java build and remove built frontend assets"
 	@echo "  make test          - Run unit/integration tests (use MAVEN_TEST_FLAGS for overrides)"
@@ -35,6 +36,10 @@ build-vite:
 build-java:
 	@echo "Building Spring Boot JAR ..."
 	@mvn -DskipTests package
+
+java-compile:
+	@echo "Cleaning and compiling Spring Boot sources ..."
+	@mvn clean compile
 
 # Dev & hygiene
 FE_DIR := frontend/email-client
