@@ -85,9 +85,9 @@ Precedence: environment variables > `.env.local` > `.env` > `.env.local.properti
 ```properties
 server.port=${PORT:8080}
 openai.api.key=${OPENAI_API_KEY:your-openai-api-key}
-openai.api.base-url=${OPENAI_API_BASE_URL:https://api.openai.com/v1}
-# default OpenAI model; override with OPENAI_MODEL if needed
-openai.model.chat=${OPENAI_MODEL:gpt-4o-mini}
+openai.api.base-url=${OPENAI_BASE_URL:${OPENAI_API_BASE_URL:https://api.openai.com/v1}}
+# default OpenAI model; override with LLM_MODEL (preferred) or OPENAI_MODEL if needed
+openai.model.chat=${LLM_MODEL:${OPENAI_MODEL:gpt-4o-mini}}
 qdrant.enabled=${QDRANT_ENABLED:false}
 qdrant.host=${QDRANT_HOST:localhost}
 qdrant.port=${QDRANT_PORT:6333}
@@ -100,8 +100,8 @@ Example `.env` (or `.env.properties`) for local use (do not commit secrets):
 
 ```properties
 OPENAI_API_KEY=sk-...redacted...
-OPENAI_API_BASE_URL=https://api.openai.com/v1
-OPENAI_MODEL=gpt-4o-mini
+OPENAI_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-4o-mini
 QDRANT_ENABLED=true
 QDRANT_HOST=cluster-abc.us-east-1-0.aws.cloud.qdrant.io
 QDRANT_PORT=6334
@@ -109,6 +109,8 @@ QDRANT_USE_TLS=true
 QDRANT_COLLECTION_NAME=emails
 QDRANT_API_KEY=qdrant_cloud_api_key_here
 ```
+
+`OPENAI_API_BASE_URL` remains as a backward-compatible fallback if `OPENAI_BASE_URL` is not provided, but `LLM_API_KEY` and `LLM_BASE_URL` are intentionally ignored to avoid accidentally reusing non-OpenAI credentials in production. Use `LLM_MODEL` (or `OPENAI_MODEL`) to pick the chat model regardless of provider.
 
 If you rely on a raw `.env` file, the application will load the key during startup even when the property value falls back to the placeholder. For `make run`, ensure your shell exports the variables (e.g. `set -a; source .env; set +a`) or keep the `.env` file present at the project root so the configuration loader can read it. Retrieval can be turned off entirely by leaving `QDRANT_ENABLED` unset or set to `false`.
 
@@ -132,10 +134,12 @@ ComposerAI supports [OpenRouter](https://openrouter.ai) for multi-provider LLM a
 #### Basic Setup
 
 ```bash
-export LLM_API_KEY="your-openrouter-api-key"
-export LLM_BASE_URL="https://openrouter.ai/api/v1"
+export OPENAI_API_KEY="your-openrouter-api-key"
+export OPENAI_BASE_URL="https://openrouter.ai/api/v1"
 export LLM_MODEL="anthropic/claude-3.7-sonnet"
 ```
+
+`LLM_API_KEY` and `LLM_BASE_URL` are no longer read so that deployments cannot inadvertently inherit stale multi-provider credentials.
 
 #### Provider Routing
 
@@ -172,9 +176,11 @@ export LLM_REASONING="medium"
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `LLM_API_KEY` | - | API key (OpenRouter, Groq, etc.) |
-| `LLM_BASE_URL` | `https://api.openai.com/v1` | API base URL |
-| `LLM_MODEL` | `gpt-4o-mini` | Model identifier |
+| `OPENAI_API_KEY` | - | API key for all providers (required) |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Preferred base URL for OpenAI-compatible providers |
+| `OPENAI_API_BASE_URL` | `https://api.openai.com/v1` | Legacy fallback when `OPENAI_BASE_URL` is unset |
+| `LLM_MODEL` | `gpt-4o-mini` | Preferred model identifier (fallbacks to `OPENAI_MODEL`) |
+| `OPENAI_MODEL` | `gpt-4o-mini` | Legacy chat model variable |
 | `LLM_TEMPERATURE` | `0.5` | Sampling temperature (0-2) |
 | `LLM_MAX_OUTPUT_TOKENS` | - | Max output tokens (model default if unset) |
 | `LLM_TOP_P` | - | Nucleus sampling parameter (model default if unset) |

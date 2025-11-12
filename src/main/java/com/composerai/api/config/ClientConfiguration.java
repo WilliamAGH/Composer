@@ -21,17 +21,13 @@ public class ClientConfiguration {
 
     @Bean
     public OpenAIClient openAIClient(OpenAiProperties openAiProperties) {
-        // Support both OPENAI_API_KEY and LLM_API_KEY (for alternative providers)
         String apiKey = openAiProperties.getApi().getKey();
-        if (StringUtils.isMissing(apiKey)) {
-            apiKey = System.getenv("LLM_API_KEY");
-        }
         if (StringUtils.isMissing(apiKey)) {
             apiKey = System.getenv("OPENAI_API_KEY");
         }
 
         if (StringUtils.isMissing(apiKey)) {
-            log.warn("API key not configured via openai.api.key, LLM_API_KEY, or OPENAI_API_KEY. Service will operate in degraded mode.");
+            log.warn("API key not configured via openai.api.key or OPENAI_API_KEY. Service will operate in degraded mode.");
             return null;
         }
 
@@ -81,9 +77,6 @@ public class ClientConfiguration {
     @Bean
     public org.springframework.web.client.RestClient openRouterRestClient(OpenAiProperties openAiProperties) {
         String apiKey = openAiProperties.getApi().getKey();
-        if (StringUtils.isMissing(apiKey)) {
-            apiKey = System.getenv("LLM_API_KEY");
-        }
         if (StringUtils.isMissing(apiKey)) {
             apiKey = System.getenv("OPENAI_API_KEY");
         }
