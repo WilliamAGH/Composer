@@ -314,6 +314,10 @@ public class ChatService {
             : null;
         long startNanos = System.nanoTime();
         StringBuilder assistantBuffer = new StringBuilder();
+        logger.info("Dispatching LLM stream: convId={}, contextChars={}, historySize={}, jsonOutput={}, thinkingEnabled={}",
+            conversationId, contextString == null ? 0 : contextString.length(),
+            conversationHistory == null ? 0 : conversationHistory.size(),
+            jsonOutput, thinkingEnabled);
         try {
             openAiChatService.streamResponse(messageForModel, contextString, conversationHistory,
                 thinkingEnabled, thinkingLevel, jsonOutput,
@@ -396,6 +400,11 @@ public class ChatService {
     /** Public API: Stream chat with SseEmitter (for SSE endpoints). */
     public void streamChat(ChatRequest request, SseEmitter emitter) {
         String conversationId = StringUtils.ensureConversationId(request.getConversationId());
+        logger.info("Received SSE chat request: convId={}, msgLen={}, jsonOutput={}, thinkingEnabled={}",
+            conversationId,
+            request.getMessage() == null ? 0 : request.getMessage().length(),
+            request.isJsonOutput(),
+            request.isThinkingEnabled());
         emitter.onCompletion(() -> logger.info("SSE completed: {}", conversationId));
         emitter.onTimeout(() -> logger.warn("SSE timeout: {}", conversationId));
         emitter.onError(e -> logger.error("SSE error: {}", conversationId, e));
