@@ -1235,7 +1235,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
            class:px-4={mobile}
            class:px-5={tablet}
            class:px-6={desktop || wide}>
-        <div class="flex-1 min-h-0">
+        <div class="flex-1 min-h-0 overflow-hidden">
           <EmailDetailView
             email={selected}
             mobile={mobile}

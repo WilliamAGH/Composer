@@ -15,7 +15,7 @@
 </script>
 
 {#if email}
-  <div class="overflow-y-auto flex-1">
+  <div class="overflow-y-auto h-full">
     <div class="w-full max-w-full overflow-x-hidden"
          class:p-4={!email.contentHtml && (mobile || tablet)}
          class:p-5={!email.contentHtml && desktop}
