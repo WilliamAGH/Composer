@@ -9,6 +9,7 @@
   export let mobile = false;
   export let tablet = false;
   export let desktop = false;
+  export let wide = false;
   export let showDrawer = false;
 
   const dispatch = createEventDispatcher();
@@ -27,7 +28,8 @@
 </script>
 
 <aside class="shrink-0 border-r border-slate-200 bg-white/80 backdrop-blur transition-all duration-200"
-       class:w-64={((desktop && sidebarOpen))}
+       class:w-[22rem]={wide && sidebarOpen}
+       class:w-72={!wide && desktop && sidebarOpen}
        class:w-16={desktop && !sidebarOpen}
        class:w-0={tablet && !sidebarOpen}
        class:overflow-hidden={!sidebarOpen && (tablet || (desktop && !sidebarOpen))}

@@ -979,6 +979,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
       mobile={mobile}
       tablet={tablet}
       desktop={desktop}
+      wide={wide}
       showDrawer={showDrawer}
       on:compose={openCompose}
       on:toggleSidebar={toggleSidebar}
@@ -994,9 +995,9 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
 
   <!-- List -->
   <section class="shrink-0 flex flex-col bg-white/90 border-r border-slate-200"
-           class:w-[26rem]={wide}
-           class:w-[23rem]={desktop && !wide}
-           class:w-[19.5rem]={tablet && showEmailList}
+           class:w-[28rem]={wide}
+           class:w-[25rem]={desktop && !wide}
+           class:w-[20rem]={tablet && showEmailList}
            class:w-0={tablet && !showEmailList}
            class:w-full={mobile}
            class:hidden={mobile && selected}
@@ -1339,7 +1340,12 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
     position: absolute;
     inset: 0;
     z-index: 30;
-    height: auto;
+    height: 100%;
+    max-height: 100%;
+  }
+  .panel-column {
+    position: relative;
+    min-height: 0;
   }
   .panel-dock-chip {
     position: fixed;

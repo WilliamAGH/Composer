@@ -115,7 +115,8 @@
 <style>
   .ai-summary-panel {
     width: 100%;
-    background: rgba(255, 255, 255, 0.95);
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
     border: 1px solid rgba(15, 23, 42, 0.08);
     box-shadow: 0 25px 60px -20px rgba(15, 23, 42, 0.25);
     border-radius: 24px;
@@ -129,7 +130,6 @@
     border: 1px solid rgba(15, 23, 42, 0.12);
     box-shadow: 0 60px 120px -45px rgba(15, 23, 42, 0.45);
     backdrop-filter: none;
-    height: 100%;
   }
   .panel-header {
     display: flex;
@@ -208,8 +208,9 @@
   }
   .panel-body {
     margin-top: 1.25rem;
-    min-height: 200px;
+    min-height: 160px;
     flex: 1;
+    overflow-y: auto;
   }
   .panel-html {
     font-size: 0.95rem;
