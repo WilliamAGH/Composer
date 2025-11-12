@@ -85,9 +85,9 @@ Precedence: environment variables > `.env.local` > `.env` > `.env.local.properti
 ```properties
 server.port=${PORT:8080}
 openai.api.key=${OPENAI_API_KEY:your-openai-api-key}
-openai.api.base-url=${OPENAI_BASE_URL:${OPENAI_API_BASE_URL:https://api.openai.com/v1}}
-# default OpenAI model; override with LLM_MODEL (preferred) or OPENAI_MODEL if needed
-openai.model.chat=${LLM_MODEL:${OPENAI_MODEL:gpt-4o-mini}}
+openai.api.base-url=${OPENAI_BASE_URL:https://api.openai.com/v1}
+# default OpenAI model; override with LLM_MODEL when deploying alternate providers
+openai.model.chat=${LLM_MODEL:gpt-4o-mini}
 qdrant.enabled=${QDRANT_ENABLED:false}
 qdrant.host=${QDRANT_HOST:localhost}
 qdrant.port=${QDRANT_PORT:6333}
@@ -110,7 +110,7 @@ QDRANT_COLLECTION_NAME=emails
 QDRANT_API_KEY=qdrant_cloud_api_key_here
 ```
 
-`OPENAI_API_BASE_URL` remains as a backward-compatible fallback if `OPENAI_BASE_URL` is not provided, but `LLM_API_KEY` and `LLM_BASE_URL` are intentionally ignored to avoid accidentally reusing non-OpenAI credentials in production. Use `LLM_MODEL` (or `OPENAI_MODEL`) to pick the chat model regardless of provider.
+Only `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `LLM_MODEL` are read at runtime for the LLM connection; legacy `OPENAI_API_BASE_URL`, `OPENAI_MODEL`, `LLM_API_KEY`, and `LLM_BASE_URL` variables are intentionally ignored to avoid drift between environments.
 
 If you rely on a raw `.env` file, the application will load the key during startup even when the property value falls back to the placeholder. For `make run`, ensure your shell exports the variables (e.g. `set -a; source .env; set +a`) or keep the `.env` file present at the project root so the configuration loader can read it. Retrieval can be turned off entirely by leaving `QDRANT_ENABLED` unset or set to `false`.
 
@@ -125,7 +125,7 @@ The app attaches the API key to gRPC requests when supported by the Qdrant Java 
 
 ### Using alternative OpenAI-compatible providers
 
-To use OpenRouter, Groq, LM Studio, or other providers, set `OPENAI_API_BASE_URL`, `OPENAI_API_KEY`, and `OPENAI_MODEL`. Provider capabilities are auto-detected from the base URL.
+To use OpenRouter, Groq, LM Studio, or other providers, set `OPENAI_BASE_URL`, `OPENAI_API_KEY`, and `LLM_MODEL`. Provider capabilities are auto-detected from the base URL.
 
 ### OpenRouter Configuration
 
@@ -177,10 +177,8 @@ export LLM_REASONING="medium"
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `OPENAI_API_KEY` | - | API key for all providers (required) |
-| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Preferred base URL for OpenAI-compatible providers |
-| `OPENAI_API_BASE_URL` | `https://api.openai.com/v1` | Legacy fallback when `OPENAI_BASE_URL` is unset |
-| `LLM_MODEL` | `gpt-4o-mini` | Preferred model identifier (fallbacks to `OPENAI_MODEL`) |
-| `OPENAI_MODEL` | `gpt-4o-mini` | Legacy chat model variable |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Base URL for OpenAI-compatible providers |
+| `LLM_MODEL` | `gpt-4o-mini` | Chat model identifier consumed by the service |
 | `LLM_TEMPERATURE` | `0.5` | Sampling temperature (0-2) |
 | `LLM_MAX_OUTPUT_TOKENS` | - | Max output tokens (model default if unset) |
 | `LLM_TOP_P` | - | Nucleus sampling parameter (model default if unset) |

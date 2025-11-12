@@ -11,7 +11,7 @@ import java.util.List;
  * OpenAI Configuration Properties - Single Source of Truth
  *
  * All default values are defined here. Override via application.properties or environment variables.
- * Example: OPENAI_MODEL=gpt-4 or openai.model.chat=gpt-4
+ * Example: LLM_MODEL=gpt-4o or openai.model.chat=gpt-4o
  *
  * Configuration structure:
  *   openai:
