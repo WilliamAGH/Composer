@@ -1,7 +1,6 @@
 package com.composerai.api.config;
 
 import com.composerai.api.ai.AiFunctionCatalogHelper;
-import com.composerai.api.config.AiFunctionCatalogProperties;
 import com.composerai.api.dto.AiFunctionCatalogDto;
 import com.composerai.api.dto.SseEventType;
 import com.composerai.api.service.ReasoningStreamAdapter;
