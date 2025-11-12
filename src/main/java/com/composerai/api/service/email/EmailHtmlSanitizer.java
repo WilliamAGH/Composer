@@ -48,7 +48,7 @@ public final class EmailHtmlSanitizer {
             Document doc = Jsoup.parse(html);
 
             // Remove dangerous elements that could execute scripts or embed external content
-            doc.select("script, noscript, iframe, object, embed, applet").remove();
+            doc.select("script, noscript, iframe, object, embed, applet, form").remove();
 
             // Remove all JavaScript event handlers and javascript: URLs
             removeJavaScriptHandlers(doc);
