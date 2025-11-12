@@ -3,8 +3,10 @@ package com.composerai.api.ai;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Canonical definition of an AI helper flow. Backed by configuration so the UI and backend share a
@@ -37,7 +39,17 @@ public record AiFunctionDefinition(
         contextStrategy = contextStrategy == null ? ContextStrategy.EMAIL_AND_UPLOADS : contextStrategy;
         scopes = scopes == null ? List.of() : List.copyOf(scopes);
         defaultArgs = defaultArgs == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(defaultArgs));
-        variants = variants == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(variants));
+        variants = variants == null
+            ? Map.of()
+            : Collections.unmodifiableMap(
+                variants.entrySet().stream()
+                    .collect(Collectors.toMap(
+                        entry -> entry.getKey() == null ? "" : entry.getKey().toLowerCase(Locale.ROOT),
+                        Map.Entry::getValue,
+                        (existing, replacement) -> replacement,
+                        LinkedHashMap::new
+                    ))
+            );
     }
 
     public Optional<AiFunctionVariant> variant(String variantKey) {
