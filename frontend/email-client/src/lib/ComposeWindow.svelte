@@ -65,8 +65,9 @@
 
   function onFilesSelected(files) {
     if (!files || files.length === 0) return;
+    // Retain the actual File objects for upload, not just metadata
     for (const file of files) {
-      attachments = [...attachments, { name: file.name, size: file.size }];
+      attachments = [...attachments, { file, name: file.name, size: file.size }];
     }
     if (fileInput) fileInput.value = '';
   }
