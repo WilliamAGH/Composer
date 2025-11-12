@@ -28,16 +28,23 @@ export async function handleAiCommand({
   const targetsCompose = Array.isArray(fn.scopes) && fn.scopes.includes('compose');
 
   if (targetsCompose) {
-    const descriptor = createComposeWindow(selectedEmail, {
+    const existingCompose = findMatchingComposeWindow(windowManager, selectedEmail?.id || null);
+    const descriptor = existingCompose || createComposeWindow(selectedEmail, {
       to: selectedEmail.fromEmail || '',
       subject: `Re: ${selectedEmail.subject || ''}`,
       isReply: true,
       title: selectedEmail.subject ? `Reply: ${selectedEmail.subject}` : fn.label || 'AI Compose'
     });
-    const result = windowManager.open(descriptor);
-    if (!result.ok) {
-      throw new Error('Close or minimize an existing draft before opening another.');
+
+    if (existingCompose) {
+      windowManager.focus(descriptor.id);
+    } else {
+      const result = windowManager.open(descriptor);
+      if (!result.ok) {
+        throw new Error('Close or minimize an existing draft before opening another.');
+      }
     }
+
     await draftWithAi({
       descriptor,
       command,
@@ -75,6 +82,14 @@ export async function handleAiCommand({
     commandLabel: title,
     raw: data
   };
+}
+
+function findMatchingComposeWindow(windowManager, contextId) {
+  const openWindows = get(windowManager.windows);
+  if (!Array.isArray(openWindows) || openWindows.length === 0) return null;
+  return openWindows.find((win) =>
+    win.kind === WindowKind.COMPOSE && (contextId ? win.contextId === contextId : true)
+  ) || null;
 }
 
 async function draftWithAi({ descriptor, command, selectedEmail, fn, variant, windowManager, callAiCommand, commandArgs }) {

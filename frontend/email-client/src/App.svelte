@@ -954,7 +954,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
           on:commandSelect={(event) => runMainAiCommand(event.detail)}
         />
       </div>
-      <div class="flex-1 flex flex-col min-h-0 gap-4 pb-6"
+      <div class="flex-1 flex flex-col min-h-0 gap-4"
            class:px-4={mobile}
            class:px-5={tablet}
            class:px-6={desktop || wide}>
@@ -968,16 +968,14 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
             renderMarkdownFn={renderMarkdown}
           />
         </div>
-        {#if activePanelState || activePanelJourneyOverlay}
-          <div class="ai-panel-wrapper">
-            <AiSummaryWindow
-              panelState={activePanelState}
-              journeyOverlay={activePanelJourneyOverlay}
-              error={activePanelError}
-              on:runCommand={(event) => runMainAiCommand(event.detail)}
-            />
-          </div>
-        {/if}
+        <div class="ai-panel-wrapper">
+          <AiSummaryWindow
+            panelState={activePanelState}
+            journeyOverlay={activePanelJourneyOverlay}
+            error={activePanelError}
+            on:runCommand={(event) => runMainAiCommand(event.detail)}
+          />
+        </div>
       </div>
 
       <!-- Window stack rendered outside main column -->

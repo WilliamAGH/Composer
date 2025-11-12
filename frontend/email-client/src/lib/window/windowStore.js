@@ -95,6 +95,17 @@ export function createWindowManager({ maxFloating = 4, maxDocked = 3 } = {}) {
     }));
   }
 
+  function focus(id) {
+    if (!id) return;
+    windows.update((list) => {
+      const idx = list.findIndex((win) => win.id === id);
+      if (idx === -1) return list;
+      const updated = [...list];
+      const [target] = updated.splice(idx, 1);
+      return [...updated, { ...target, minimized: false }];
+    });
+  }
+
   function updateSummaryHtml(contextId, html) {
     if (!contextId) return;
     windows.update((list) => list.map((win) => {
@@ -134,6 +145,7 @@ export function createWindowManager({ maxFloating = 4, maxDocked = 3 } = {}) {
     open,
     close,
     toggleMinimize,
+    focus,
     clearError,
     updateSummaryHtml,
     updateComposeDraft

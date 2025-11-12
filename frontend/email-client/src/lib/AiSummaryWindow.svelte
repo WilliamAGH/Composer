@@ -4,10 +4,9 @@
   import { Sparkles, RotateCcw } from 'lucide-svelte';
 
   /**
-   * Inline AI insight panel that anchors to the current email view. Displays summary/translate outputs
-   * and hosts related loading/error/empty states tied to the selected message context.
+   * Inline AI insight panel shared by summary + translate commands. Anchors to the email view and
+   * hosts loading/error/empty states tied to the current message context.
    */
-  export let email = null;
   export let panelState = null;
   export let journeyOverlay = null;
   export let error = '';
@@ -90,6 +89,7 @@
 
 <style>
   .ai-summary-panel {
+    width: 100%;
     background: rgba(255, 255, 255, 0.96);
     border: 1px solid rgba(15, 23, 42, 0.08);
     box-shadow: 0 25px 60px -20px rgba(15, 23, 42, 0.25);
