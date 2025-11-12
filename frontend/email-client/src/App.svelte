@@ -14,9 +14,10 @@ import { isMobile, isTablet, isDesktop, isWide, viewport } from './lib/viewport'
 import { createWindowManager } from './lib/window/windowStore'; // temp use
 import { createComposeWindow, createSummaryWindow, WindowKind } from './lib/window/windowTypes';
 import { catalogStore, hydrateCatalog, ensureCatalogLoaded as ensureCatalog, getFunctionMeta, mergeDefaultArgs, resolveDefaultInstruction } from './lib/services/aiCatalog';
+import { handleAiCommand } from './lib/services/aiCommandHandler';
 import { mapEmailMessage, computeMailboxCounts, parseSubjectAndBody } from './lib/services/emailUtils';
 import { createAiJourneyStore } from './lib/services/aiJourneyStore';
-import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, ArrowLeft, ChevronLeft, ChevronRight, Archive, Trash2 } from 'lucide-svelte';
+import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, ArrowLeft, ChevronLeft, ChevronRight, Archive, Trash2, Sparkles, Loader2 } from 'lucide-svelte';
   export let bootstrap = {};
 
   hydrateCatalog(bootstrap.aiFunctions || null);
@@ -39,6 +40,13 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   const windowErrorStore = windowManager.lastError;
   const aiJourney = createAiJourneyStore();
   const aiJourneyOverlayStore = aiJourney.overlay;
+  const MAILBOX_ACTION_FALLBACKS = [
+    {
+      key: 'smart-triage',
+      label: 'Smart triage & cleanup',
+      description: 'Auto-label Action, Read-Later, FYI, Receipts, Calendar, Tasks, Bulk. Merges duplicates and collapses promos.'
+    }
+  ];
   let windowNotice = '';
   let windowNoticeTimer = null;
   $: windows = $windowsStore;
@@ -47,6 +55,9 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   $: minimizedWindows = $minimizedStore;
   $: windowAlert = $windowErrorStore ? $windowErrorStore.message : '';
   $: aiJourneyOverlay = $aiJourneyOverlayStore;
+  $: composeJourneyOverlay = aiJourneyOverlay.scope === 'compose' ? aiJourneyOverlay : null;
+  $: panelJourneyOverlay = aiJourneyOverlay.scope === 'panel' ? aiJourneyOverlay : null;
+  $: activePanelJourneyOverlay = panelJourneyOverlay && selected && (panelJourneyOverlay.scopeTarget === selected.id || panelJourneyOverlay.scopeTarget === selected.contextId) ? panelJourneyOverlay : null;
   // Viewport responsive
   $: mobile = $isMobile;
   $: tablet = $isTablet;
@@ -59,6 +70,12 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   // UI state
   let sidebarOpen = true;
   let mailbox = 'inbox'; // inbox, starred, snoozed, sent, drafts, archive, trash
+  let mailboxActionsOpen = false;
+  let mailboxActionsHost = null;
+  let mailboxCommandPendingKey = null;
+  let mailboxActionError = '';
+  let mailboxMenuListRef;
+  let mailboxMenuMobileRef;
 
   // Derived
   $: mailboxCounts = computeMailboxCounts(emails);
@@ -66,11 +83,42 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   $: filtered = !search
     ? baseEmails
     : baseEmails.filter(e => [e.subject, e.from, e.preview].join(' ').toLowerCase().includes(search.toLowerCase()));
-  $: primaryCommandEntries = (aiPrimaryCommandKeys.length ? aiPrimaryCommandKeys : Object.keys(aiFunctionsByKey || {}))
-    .map((key) => ({ key, meta: aiFunctionsByKey[key] }))
-    .filter((entry) => !!entry.meta);
+  const PRIMARY_TOOLBAR_PREFERENCE = ['draft', 'translate'];
+  $: primaryCommandEntries = (() => {
+    const sourceKeys = aiPrimaryCommandKeys.length ? aiPrimaryCommandKeys : Object.keys(aiFunctionsByKey || {});
+    if (!sourceKeys || sourceKeys.length === 0) return [];
+
+    const entries = sourceKeys
+      .map((key) => ({ key, meta: aiFunctionsByKey[key] }))
+      .filter((entry) => !!entry.meta && entry.key !== 'compose' && entry.key !== 'tone');
+
+    const prioritized = [];
+    const consumed = new Set();
+
+    for (const preferredKey of PRIMARY_TOOLBAR_PREFERENCE) {
+      const match = entries.find((entry) => entry.key === preferredKey);
+      if (match) {
+        prioritized.push(match);
+        consumed.add(match.key);
+      }
+    }
+
+    for (const entry of entries) {
+      if (!consumed.has(entry.key)) {
+        prioritized.push(entry);
+      }
+    }
+
+    return prioritized;
+  })();
   $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
     .filter((fn) => Array.isArray(fn.scopes) && fn.scopes.includes('compose'));
+  $: mailboxCommandEntries = deriveMailboxCommands();
+  $: hasMailboxCommands = Array.isArray(mailboxCommandEntries) && mailboxCommandEntries.length > 0;
+  $: activeMailboxActionLabel = (mailboxCommandEntries || []).find((entry) => entry.key === mailboxCommandPendingKey)?.label || '';
+  $: if ((filtered.length === 0 || !hasMailboxCommands) && mailboxActionsOpen) {
+    closeMailboxActions();
+  }
 
   /** Looks up a variant (e.g., translation language) within a given function definition. */
   function getVariant(meta, variantKey) {
@@ -78,8 +126,141 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
     return meta.variants.find((variant) => variant.key === variantKey) || null;
   }
 
+  function deriveMailboxCommands() {
+    if (!catalogData || !aiFunctionsByKey) {
+      return MAILBOX_ACTION_FALLBACKS;
+    }
+    const scoped = Object.entries(aiFunctionsByKey)
+      .map(([key, meta]) => ({ key, meta }))
+      .filter((entry) => Array.isArray(entry.meta?.scopes) && entry.meta.scopes.includes('mailbox'))
+      .map((entry) => ({
+        key: entry.key,
+        label: entry.meta?.label || entry.key,
+        description: entry.meta?.description || entry.meta?.summary || '',
+        meta: entry.meta
+      }));
+    if (scoped.length === 0) {
+      return MAILBOX_ACTION_FALLBACKS.map((entry) => ({ ...entry }));
+    }
+    return scoped;
+  }
+
+  function buildMailboxContextSummary(list) {
+    if (!Array.isArray(list) || list.length === 0) {
+      return `Mailbox ${mailbox} is empty for the current filter.`;
+    }
+    const lines = [];
+    lines.push(`Mailbox: ${mailbox}`);
+    if (search && search.trim()) {
+      lines.push(`Search filter: ${search.trim()}`);
+    }
+    lines.push(`Visible messages: ${list.length}`);
+    lines.push('--- Messages Preview ---');
+    list.slice(0, 25).forEach((email, index) => {
+      lines.push(`${index + 1}. Subject: ${email.subject || 'No subject'}`);
+      lines.push(`   From: ${email.from || 'Unknown sender'}`);
+      if (email.timestamp) {
+        lines.push(`   Sent: ${email.timestamp}`);
+      }
+      lines.push(`   Labels: ${(email.labels || []).join(', ') || 'None'}`);
+    });
+    if (list.length > 25) {
+      lines.push(`(+${list.length - 25} more messages omitted for brevity)`);
+    }
+    return lines.join('\n');
+  }
+
+  function buildMailboxInstruction(entry, meta) {
+    const description = entry?.description || meta?.description || meta?.summary || '';
+    const fallback = meta?.defaultInstruction || 'Perform the requested action using the provided mailbox context.';
+    const detailLine = description ? `Focus on: ${description}` : '';
+    return [`Run the "${entry?.label || meta?.label || entry?.key}" action across the mailbox context.`, detailLine, fallback]
+      .filter(Boolean)
+      .join('\n\n');
+  }
+
+  function toggleMailboxActions(host) {
+    if (mailboxActionsOpen && mailboxActionsHost === host) {
+      mailboxActionsOpen = false;
+      mailboxActionsHost = null;
+    } else {
+      mailboxActionsHost = host;
+      mailboxActionsOpen = true;
+    }
+    mailboxActionError = '';
+  }
+
+  function closeMailboxActions() {
+    mailboxActionsOpen = false;
+    mailboxActionsHost = null;
+  }
+
+  function isMailboxMenuTarget(node) {
+    if (!node) return false;
+    if (mailboxMenuListRef && mailboxMenuListRef.contains(node)) return true;
+    if (mailboxMenuMobileRef && mailboxMenuMobileRef.contains(node)) return true;
+    return false;
+  }
+
+  async function handleMailboxAction(entry) {
+    if (!entry || !entry.key || mailboxCommandPendingKey || filtered.length === 0) return;
+    mailboxActionError = '';
+    closeMailboxActions();
+    const ready = await ensureCatalogReady();
+    if (!ready) {
+      mailboxActionError = 'AI helpers unavailable';
+      alert('AI helpers are unavailable. Please try again.');
+      return;
+    }
+    const meta = entry.meta || getFunctionMeta(catalogData, entry.key) || null;
+    const instruction = buildMailboxInstruction(entry, meta);
+    const commandArgs = mergeDefaultArgs(meta, null, {
+      mailbox,
+      search: search && search.trim() ? search.trim() : undefined,
+      messageIds: filtered.slice(0, 50).map((mail) => mail.contextId || mail.id || mail.conversationId).filter(Boolean),
+      totalMessages: filtered.length
+    });
+    mailboxCommandPendingKey = entry.key;
+    try {
+      await callAiCommand(entry.key, instruction, {
+        subject: `${entry.label || 'Mailbox action'} (${mailbox})`,
+        journeyScope: 'panel',
+        journeyScopeTarget: 'mailbox-actions',
+        journeyLabel: `${filtered.length} message${filtered.length === 1 ? '' : 's'}`,
+        journeyHeadline: entry.label || 'Mailbox action',
+        commandArgs,
+        emailContext: buildMailboxContextSummary(filtered)
+      });
+    } catch (error) {
+      mailboxActionError = error?.message || 'Unable to run mailbox action.';
+      alert(mailboxActionError);
+    } finally {
+      mailboxCommandPendingKey = null;
+    }
+  }
+
   onMount(() => {
     ensureCatalog().catch(() => {});
+  });
+
+  onMount(() => {
+    function handlePointerDown(event) {
+      if (!mailboxActionsOpen) return;
+      if (!isMailboxMenuTarget(event.target)) {
+        closeMailboxActions();
+      }
+    }
+    function handleKey(event) {
+      if (event.key === 'Escape' && mailboxActionsOpen) {
+        closeMailboxActions();
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKey);
+    };
   });
 
   async function ensureCatalogReady() {
@@ -161,6 +342,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
         contextId: relatedEmail?.contextId || relatedEmail?.id,
         subject: draftSubject || relatedEmail?.subject,
         journeyScope: 'compose',
+        journeyScopeTarget: id,
         journeyLabel: draftSubject || relatedEmail?.subject || 'draft',
         journeyHeadline: deriveJourneyHeadline(command, fn.label || 'AI Assistant'),
         commandArgs
@@ -255,10 +437,10 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
     }
   }
 
-  function beginAiJourney({ scope = 'global', targetLabel = 'message', commandKey, headline } = {}) {
+  function beginAiJourney({ scope = 'global', targetLabel = 'message', commandKey, headline, scopeTarget } = {}) {
     const defaultHeadline = getFunctionMeta(catalogData, commandKey)?.label || 'Working on your request';
     const subhead = JOURNEY_SCOPE_META[scope]?.subhead || JOURNEY_SCOPE_META.global.subhead;
-    return aiJourney.begin({ scope, targetLabel, commandKey, headline: headline || deriveJourneyHeadline(commandKey, defaultHeadline), subhead });
+    return aiJourney.begin({ scope, targetLabel, commandKey, scopeTarget, headline: headline || deriveJourneyHeadline(commandKey, defaultHeadline), subhead });
   }
 
   function advanceAiJourney(token, eventId) {
@@ -380,7 +562,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
    * Sends chat payloads with consistent metadata so the backend sees the same structure regardless
    * of which UI surface initiated the helper.
    */
-  async function callAiCommand(command, instruction, { contextId, subject, journeyScope = 'global', journeyLabel, journeyHeadline, commandVariant, commandArgs } = {}) {
+  async function callAiCommand(command, instruction, { contextId, subject, journeyScope = 'global', journeyScopeTarget = null, journeyLabel, journeyHeadline, commandVariant, commandArgs, emailContext } = {}) {
     const payload = {
       message: instruction,
       conversationId,
@@ -390,7 +572,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
     };
 
     const targetLabel = journeyLabel || subject || selected?.subject || 'message';
-    const journeyToken = beginAiJourney({ scope: journeyScope, targetLabel, commandKey: command, headline: journeyHeadline });
+    const journeyToken = beginAiJourney({ scope: journeyScope, scopeTarget: journeyScopeTarget, targetLabel, commandKey: command, headline: journeyHeadline });
 
     // Prefer contextId when available (backend has pre-processed context)
     if (contextId) {
@@ -415,9 +597,13 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
 
     // Only send emailContext if no contextId is available
     // This ensures we use the backend's pre-processed context when possible
-    if (selected && !contextId) {
-      const ctx = buildEmailContextString(selected);
-      if (ctx) payload.emailContext = ctx;
+    if (!contextId) {
+      if (emailContext && emailContext.trim()) {
+        payload.emailContext = emailContext.trim();
+      } else if (selected) {
+        const ctx = buildEmailContextString(selected);
+        if (ctx) payload.emailContext = ctx;
+      }
     }
 
     advanceAiJourney(journeyToken, 'ai:context-search');
@@ -475,61 +661,32 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   }
 
   /** Entry point for primary AI actions (summary, translation, compose helpers). */
-  async function runMainAiCommand(command) {
-    if (!selected) return alert('Select an email first.');
-    const ready = await ensureCatalogReady();
-    if (!ready) {
-      alert('AI helpers are unavailable. Please refresh and try again.');
-      return;
-    }
-    const fn = getFunctionMeta(catalogData, command);
-    if (!fn) return alert('Command unavailable.');
-    const title = fn.label || 'AI Assistant';
-    const commandArgs = mergeDefaultArgs(fn, null);
-
-    const targetsCompose = Array.isArray(fn.scopes) && fn.scopes.includes('compose');
-    if (targetsCompose) {
-      const descriptor = createComposeWindow(selected, {
-        to: selected.fromEmail || '',
-        subject: `Re: ${selected.subject || ''}`,
-        isReply: true,
-        title: selected.subject ? `Reply: ${selected.subject}` : fn.label || 'AI Compose'
+  async function runMainAiCommand(request) {
+    const command = typeof request === 'string' ? request : request?.key;
+    const commandVariant = typeof request === 'object' ? request?.variantKey : null;
+    if (!command) return;
+    try {
+      await handleAiCommand({
+        command,
+        commandVariant,
+        selectedEmail: selected,
+        catalogStore: catalog,
+        windowManager,
+        callAiCommand,
+        ensureCatalogLoaded: ensureCatalogReady,
+        composeFunctions: composeAiFunctions
       });
-      const result = windowManager.open(descriptor);
-      if (!result.ok) {
+    } catch (error) {
+      if (error?.message === 'Close or minimize an existing draft before opening another.') {
         showWindowLimitMessage();
         return;
       }
-      try {
-        await triggerComposeAi({
-          id: descriptor.id,
-          command,
-          draft: '',
-          subject: descriptor.payload.subject,
-          isReply: descriptor.payload.isReply
-        });
-      } catch (error) {
-        console.error('AI compose failed', error);
+      if (error?.message) {
+        alert(error.message);
+      } else {
+        alert('Unable to complete request.');
       }
-      return;
     }
-
-    try {
-      const instruction = resolveDefaultInstruction(fn, null);
-      const data = await callAiCommand(command, instruction, {
-        contextId: selected.contextId,
-        subject: selected.subject,
-        journeyScope: 'panel',
-        journeyLabel: selected.subject,
-        journeyHeadline: deriveJourneyHeadline(command, title),
-        commandArgs
-      });
-      const html = (data?.response && window.ComposerAI?.renderMarkdown ? window.ComposerAI.renderMarkdown(data.response) : '')
-                || (data?.sanitizedHtml || data?.sanitizedHTML || '')
-                || '<div class="text-sm text-slate-500">No response received.</div>';
-      const descriptor = createSummaryWindow(selected, html, title);
-      windowManager.open(descriptor);
-    } catch (e) { alert(e?.message || 'Unable to complete request.'); }
   }
 </script>
 
@@ -557,22 +714,78 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
 
   <!-- List -->
   <section class="shrink-0 flex flex-col bg-white/90 border-r border-slate-200"
-           class:w-[22rem]={wide}
-           class:w-[20rem]={desktop}
-           class:w-[18rem]={tablet && showEmailList}
+           class:w-[24rem]={wide}
+           class:w-[22rem]={desktop}
+           class:w-[19rem]={tablet && showEmailList}
            class:w-0={tablet && !showEmailList}
            class:w-full={mobile}
            class:hidden={mobile && selected}
            class:overflow-hidden={tablet && !showEmailList}
   >
     <div class="px-4 py-3 border-b border-slate-200">
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-3">
         <button type="button" title="Toggle menu" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={handleMenuClick}>
           <Menu class="h-4 w-4" />
         </button>
-        <div class="relative flex-1">
-          <input placeholder="Search emails..." bind:value={search}
-                 class="w-full pl-3 pr-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-200" />
+        <div class="flex-1 min-w-0 flex flex-col gap-1">
+          <div class="relative" bind:this={mailboxMenuListRef}>
+            <input
+              placeholder="Search emails..."
+              bind:value={search}
+              class="w-full rounded-2xl border border-slate-200 bg-white/90 pl-4 pr-32 py-2 text-sm text-slate-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-slate-200"
+            />
+            <button
+              type="button"
+              class="absolute top-1 bottom-1 right-1 inline-flex items-center gap-2 rounded-2xl border border-white/60 bg-slate-900/80 px-3 text-sm font-medium text-white shadow-lg backdrop-blur focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 hover:bg-slate-900"
+              aria-haspopup="menu"
+              aria-expanded={mailboxActionsOpen && mailboxActionsHost === 'list'}
+              on:click={() => toggleMailboxActions('list')}
+              disabled={!hasMailboxCommands || filtered.length === 0 || !!mailboxCommandPendingKey}
+            >
+              {#if mailboxCommandPendingKey}
+                <Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
+                <span>{activeMailboxActionLabel ? `${activeMailboxActionLabel}…` : 'Running…'}</span>
+              {:else}
+                <Sparkles class="h-4 w-4" aria-hidden="true" />
+                <span>AI Actions</span>
+              {/if}
+            </button>
+            {#if mailboxActionsOpen && mailboxActionsHost === 'list'}
+              <div class="absolute right-0 top-[calc(100%+0.5rem)] w-80 rounded-2xl border border-slate-200/70 bg-white/95 shadow-2xl backdrop-blur-xl z-30" role="menu" tabindex="-1" on:click|stopPropagation>
+                <div class="p-3 space-y-2">
+                  {#each mailboxCommandEntries as entry (entry.key)}
+                    <button
+                      type="button"
+                      class="w-full rounded-xl border border-transparent px-3 py-2 text-left transition hover:border-slate-200 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
+                      on:click={() => handleMailboxAction(entry)}
+                      disabled={filtered.length === 0}
+                    >
+                      <div class="flex items-start gap-3">
+                        <div class="mt-0.5 h-8 w-8 rounded-full bg-slate-900/5 text-slate-700 grid place-items-center">
+                          <Sparkles class="h-4 w-4" aria-hidden="true" />
+                        </div>
+                        <div class="min-w-0">
+                          <p class="text-sm font-medium text-slate-900 tracking-wide">{entry.label || entry.key}</p>
+                          {#if entry.description}
+                            <p class="text-xs text-slate-500 leading-snug">{entry.description}</p>
+                          {/if}
+                        </div>
+                      </div>
+                    </button>
+                  {/each}
+                </div>
+                <div class="border-t border-slate-200/70 px-3 py-2 text-xs text-slate-500">
+                  Mailbox AI actions apply to the {filtered.length} message{filtered.length === 1 ? '' : 's'} currently listed.
+                </div>
+              </div>
+            {/if}
+          </div>
+          {#if mailboxCommandPendingKey && activeMailboxActionLabel}
+            <p class="text-xs text-slate-500">{activeMailboxActionLabel} in progress…</p>
+          {/if}
+          {#if mailboxActionError}
+            <p class="text-xs text-rose-600">{mailboxActionError}</p>
+          {/if}
         </div>
       </div>
     </div>
@@ -603,27 +816,85 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   <section class="flex-1 flex flex-col bg-white/95 relative"
            class:hidden={mobile && !selected}>
     {#if mobile || tablet}
-      <div class="px-4 py-3 border-b border-slate-200 flex items-center gap-2">
-        {#if mobile}
-          <button type="button" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={() => { selected = null; showDrawer = false; }} aria-label="Back to list">
-            <ArrowLeft class="h-4 w-4" />
+      <div class="px-4 py-3 border-b border-slate-200 flex flex-col gap-2">
+        <div class="flex items-center gap-2">
+          {#if mobile}
+            <button type="button" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={() => { selected = null; showDrawer = false; }} aria-label="Back to list">
+              <ArrowLeft class="h-4 w-4" />
+            </button>
+          {/if}
+          {#if tablet}
+            <button type="button" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={() => showEmailList = !showEmailList} aria-label="Toggle email list">
+              {#if showEmailList}
+                <ChevronLeft class="h-4 w-4" />
+              {:else}
+                <ChevronRight class="h-4 w-4" />
+              {/if}
+            </button>
+          {/if}
+          <button type="button" title="Toggle menu" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={handleMenuClick} aria-label="Open folders">
+            <Menu class="h-4 w-4" />
           </button>
-        {/if}
-        {#if tablet}
-          <button type="button" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={() => showEmailList = !showEmailList} aria-label="Toggle email list">
-            {#if showEmailList}
-              <ChevronLeft class="h-4 w-4" />
-            {:else}
-              <ChevronRight class="h-4 w-4" />
+          <div class="flex-1 min-w-0 flex flex-col gap-1">
+            <div class="relative" bind:this={mailboxMenuMobileRef}>
+              <input
+                placeholder="Search emails..."
+                bind:value={search}
+                class="w-full rounded-2xl border border-slate-200 bg-white/90 pl-4 pr-32 py-2 text-sm text-slate-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-slate-200"
+              />
+              <button
+                type="button"
+                class="absolute top-1 bottom-1 right-1 inline-flex items-center gap-2 rounded-2xl border border-white/60 bg-slate-900/85 px-3 text-sm font-medium text-white shadow-lg backdrop-blur focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                aria-haspopup="menu"
+                aria-expanded={mailboxActionsOpen && mailboxActionsHost === 'mobile'}
+                on:click={() => toggleMailboxActions('mobile')}
+                disabled={!hasMailboxCommands || filtered.length === 0 || !!mailboxCommandPendingKey}
+              >
+                {#if mailboxCommandPendingKey}
+                  <Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
+                  <span>{activeMailboxActionLabel ? `${activeMailboxActionLabel}…` : 'Running…'}</span>
+                {:else}
+                  <Sparkles class="h-4 w-4" aria-hidden="true" />
+                  <span>AI Actions</span>
+                {/if}
+              </button>
+              {#if mailboxActionsOpen && mailboxActionsHost === 'mobile'}
+                <div class="absolute right-0 top-[calc(100%+0.5rem)] w-72 rounded-2xl border border-slate-200/70 bg-white/95 shadow-2xl backdrop-blur-xl z-30" role="menu" tabindex="-1" on:click|stopPropagation>
+                  <div class="p-3 space-y-2">
+                    {#each mailboxCommandEntries as entry (entry.key)}
+                      <button
+                        type="button"
+                        class="w-full rounded-xl border border-transparent px-3 py-2 text-left transition hover:border-slate-200 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
+                        on:click={() => handleMailboxAction(entry)}
+                        disabled={filtered.length === 0}
+                      >
+                        <div class="flex items-start gap-3">
+                          <div class="mt-0.5 h-8 w-8 rounded-full bg-slate-900/5 text-slate-700 grid place-items-center">
+                            <Sparkles class="h-4 w-4" aria-hidden="true" />
+                          </div>
+                          <div class="min-w-0">
+                            <p class="text-sm font-medium text-slate-900 tracking-wide">{entry.label || entry.key}</p>
+                            {#if entry.description}
+                              <p class="text-xs text-slate-500 leading-snug">{entry.description}</p>
+                            {/if}
+                          </div>
+                        </div>
+                      </button>
+                    {/each}
+                  </div>
+                  <div class="border-t border-slate-200/70 px-3 py-2 text-xs text-slate-500">
+                    Mailbox AI actions apply to the {filtered.length} message{filtered.length === 1 ? '' : 's'} currently listed.
+                  </div>
+                </div>
+              {/if}
+            </div>
+            {#if mailboxCommandPendingKey && activeMailboxActionLabel}
+              <p class="text-xs text-slate-500">{activeMailboxActionLabel} in progress…</p>
             {/if}
-          </button>
-        {/if}
-        <button type="button" title="Toggle menu" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={handleMenuClick} aria-label="Open folders">
-          <Menu class="h-4 w-4" />
-        </button>
-        <div class="relative flex-1">
-          <input placeholder="Search emails..." bind:value={search}
-                 class="w-full pl-3 pr-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-200" />
+            {#if mailboxActionError}
+              <p class="text-xs text-rose-600">{mailboxActionError}</p>
+            {/if}
+          </div>
         </div>
       </div>
     {/if}
@@ -648,8 +919,21 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
           escapeHtmlFn={escapeHtml}
           formatFullDateFn={formatFullDate}
           on:reply={openReply}
-          on:commandSelect={(event) => runMainAiCommand(event.detail.key)}
+          on:commandSelect={(event) => runMainAiCommand(event.detail)}
         />
+        {#if activePanelJourneyOverlay}
+          <div class="mt-4">
+            <AiLoadingJourney
+              steps={activePanelJourneyOverlay.steps}
+              activeStepId={activePanelJourneyOverlay.activeStepId}
+              headline={activePanelJourneyOverlay.headline}
+              subhead={activePanelJourneyOverlay.subhead}
+              show={activePanelJourneyOverlay.visible}
+              inline={true}
+              subdued={true}
+              className="border-slate-200" />
+          </div>
+        {/if}
       </div>
       <EmailDetailView
         email={selected}
@@ -671,6 +955,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
         windowConfig={win}
         offsetIndex={index}
         aiFunctions={composeAiFunctions}
+        journeyOverlay={composeJourneyOverlay && composeJourneyOverlay.scopeTarget === win.id ? composeJourneyOverlay : null}
         on:send={handleComposeSend}
         on:requestAi={handleComposeRequestAi}
       />
@@ -692,14 +977,18 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   <div class="window-notice">{windowNotice}</div>
 {/if}
 
-<AiLoadingJourney
-  steps={aiJourneyOverlay.steps}
-  activeStepId={aiJourneyOverlay.activeStepId}
-  completed={aiJourneyOverlay.completed}
-  headline={aiJourneyOverlay.headline}
-  subhead={aiJourneyOverlay.subhead}
-  show={aiJourneyOverlay.visible}
-  subdued={aiJourneyOverlay.scope !== 'global'} />
+{#if aiJourneyOverlay.visible && aiJourneyOverlay.scope === 'global'}
+  <div class="fixed bottom-6 left-1/2 z-[80] -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0">
+    <AiLoadingJourney
+      steps={aiJourneyOverlay.steps}
+      activeStepId={aiJourneyOverlay.activeStepId}
+      headline={aiJourneyOverlay.headline}
+      subhead={aiJourneyOverlay.subhead}
+      show={true}
+      inline={false}
+      subdued={false} />
+  </div>
+{/if}
 
 <style>
   .window-notice {

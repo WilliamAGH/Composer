@@ -4,6 +4,7 @@
   import { isMobile } from './viewport';
   import WindowFrame from './window/WindowFrame.svelte';
   import { useWindowContext } from './window/windowContext';
+  import AiLoadingJourney from './AiLoadingJourney.svelte';
 
   /**
    * Compose window leveraging the shared WindowFrame chrome. Keeps feature-specific controls here while
@@ -12,6 +13,7 @@
   export let windowConfig = null;
   export let offsetIndex = 0;
   export let aiFunctions = [];
+  export let journeyOverlay = null;
 
   const dispatch = createEventDispatcher();
   const windowManager = useWindowContext();
@@ -27,6 +29,7 @@
   let body = '';
   let isReply = false;
   let lastBodyVersion = 0;
+  $: journeyInlineActive = Boolean(journeyOverlay?.visible);
 
   $: if (!initialized && windowConfig) {
     to = windowConfig.payload?.to || '';
@@ -121,12 +124,26 @@
       {/if}
     </div>
 
+    {#if journeyOverlay?.visible}
+      <AiLoadingJourney
+        steps={journeyOverlay.steps || []}
+        activeStepId={journeyOverlay.activeStepId}
+        headline={journeyOverlay.headline}
+        subhead={journeyOverlay.subhead}
+        show={journeyOverlay.visible}
+        inline={true}
+        subdued={true}
+        className="border-slate-200" />
+    {/if}
+
     <textarea
       bind:this={inputMessage}
       bind:value={body}
       rows={isReply ? 6 : 8}
       placeholder={isReply ? 'Type your reply...' : 'Type your message...'}
-      class="field textarea"></textarea>
+      class="field textarea"
+      disabled={journeyInlineActive}
+      aria-busy={journeyInlineActive}></textarea>
 
     {#if attachments.length}
       <div class="attachments">
