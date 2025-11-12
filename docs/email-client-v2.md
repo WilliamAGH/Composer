@@ -23,7 +23,7 @@ Email safety model
 
 ### Rendering compatibility guardrails
 - The iframe stylesheet is *compatibility-first*: it only enforces container sizing, image down-scaling, and reverts accidental `tbody`/`thead` display overrides. We intentionally avoid blanket resets such as `box-sizing: border-box` or `table-layout: fixed` so fragile newsletter markup retains its intended geometry.
-- The wrapper element (`.email-wrapper`) lets content dictate width/height and simply exposes a horizontal scrollbar if an email genuinely needs to exceed the viewport.
+- The wrapper element (`.email-wrapper`) adds only a light 16px padding buffer so messages never touch the frame edge, while letting content dictate width/height and simply exposing a horizontal scrollbar if an email genuinely needs to exceed the viewport.
 - Never add global selectors that touch `table`, `td`, `tr`, etc. inside the iframe unless there is a documented client break. Prefer targeted fixes (e.g., `.email-wrapper table > tbody { display: table-row-group !important; }`) and record the reasoning here when changes are required.
 - Do not style the rendered HTML from Svelte/Tailwind—treat the iframe as an opaque boundary and only communicate via `EmailRenderer`.
 

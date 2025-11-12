@@ -138,7 +138,10 @@ const EmailRenderer = (() => {
         iframe.addEventListener("load", handleReady, { once: true });
       }
     } catch (e) {
-      console.debug("Unable to attach DOMContentLoaded listener to iframe, falling back to load event", e);
+      console.debug(
+        "Unable to attach DOMContentLoaded listener to iframe, falling back to load event",
+        e,
+      );
       iframe.addEventListener("load", handleReady, { once: true });
     }
   }
@@ -180,7 +183,7 @@ const EmailRenderer = (() => {
                         overflow-x: auto;
                         overflow-y: visible;
                         box-sizing: border-box;
-                        padding: 0;
+                        padding: 16px;
                         background: transparent;
                     }
                     .email-wrapper img,
@@ -223,7 +226,7 @@ const EmailRenderer = (() => {
                 </style>
             </head>
             <body>
-                <div class="email-wrapper">
+                <div class="email-wrapper" style="box-sizing: border-box; padding: 16px !important;">
                     ${bodyContent}
                 </div>
             </body>
