@@ -3,6 +3,7 @@
   import { Paperclip, Send, Wand2, Highlighter } from 'lucide-svelte';
   import { isMobile } from './viewport';
   import WindowFrame from './window/WindowFrame.svelte';
+  import { useWindowContext } from './window/windowContext';
 
   /**
    * Compose window leveraging the shared WindowFrame chrome. Keeps feature-specific controls here while
@@ -13,6 +14,7 @@
   export let aiFunctions = [];
 
   const dispatch = createEventDispatcher();
+  const windowManager = useWindowContext();
   $: mobile = $isMobile;
   let inputTo;
   let inputSubject;
@@ -53,6 +55,14 @@
     dispatch('requestAi', { id: windowConfig.id, command, draft: body, subject, isReply });
   }
 
+  function closeWindow() {
+    windowManager.close(windowConfig.id);
+  }
+
+  function toggleMinimizeWindow() {
+    windowManager.toggleMinimize(windowConfig.id);
+  }
+
   function onFilesSelected(files) {
     if (!files || files.length === 0) return;
     for (const file of files) {
@@ -63,17 +73,17 @@
 </script>
 
 {#if windowConfig}
-<WindowFrame
-  open={true}
-  title={windowConfig.title || (isReply ? 'Reply' : 'New Message')}
-  mode="floating"
-  minimized={windowConfig.minimized}
-  allowMinimize={!mobile}
-  allowClose={true}
-  offsetIndex={offsetIndex}
-  on:close={() => dispatch('close', { id: windowConfig.id })}
-  on:toggleMinimize={() => dispatch('toggleMinimize', { id: windowConfig.id })}
->
+  <WindowFrame
+    open={true}
+    title={windowConfig.title || (isReply ? 'Reply' : 'New Message')}
+    mode="floating"
+    minimized={windowConfig.minimized}
+    allowMinimize={!mobile}
+    allowClose={true}
+    offsetIndex={offsetIndex}
+    on:close={closeWindow}
+    on:toggleMinimize={toggleMinimizeWindow}
+  >
   <div class="compose-body">
     {#if !isReply}
       <input

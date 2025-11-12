@@ -1,5 +1,6 @@
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { useWindowContext } from './windowContext';
 
   /**
    * Dock for minimized windows. Lives as a Svelte component because it renders UI, while its backing
@@ -8,13 +9,16 @@
   export let windows = [];
 
   const dispatch = createEventDispatcher();
+  const windowManager = useWindowContext();
 
   function restore(id) {
+    windowManager.toggleMinimize(id);
     dispatch('restore', { id });
   }
 
   function close(id, event) {
     event?.stopPropagation();
+    windowManager.close(id);
     dispatch('close', { id });
   }
 </script>

@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import WindowFrame from './window/WindowFrame.svelte';
+  import { useWindowContext } from './window/windowContext';
 
   /**
    * AI summary content rendered inside the shared window shell. Dedicated component keeps HTML parsing
@@ -8,21 +9,22 @@
    */
   export let windowConfig;
   const dispatch = createEventDispatcher();
+  const windowManager = useWindowContext();
 
   $: html = windowConfig?.payload?.html || '<div class="text-sm text-slate-500">No summary yet.</div>';
 </script>
 
 {#if windowConfig}
-<WindowFrame
-  open={true}
-  title={windowConfig.title}
-  mode="docked"
-  minimized={windowConfig.minimized}
-  allowMinimize={true}
-  allowClose={true}
-  on:close={() => dispatch('close', { id: windowConfig.id })}
-  on:toggleMinimize={() => dispatch('toggleMinimize', { id: windowConfig.id })}
->
+  <WindowFrame
+    open={true}
+    title={windowConfig.title}
+    mode="docked"
+    minimized={windowConfig.minimized}
+    allowMinimize={true}
+    allowClose={true}
+    on:close={() => windowManager.close(windowConfig.id)}
+    on:toggleMinimize={() => windowManager.toggleMinimize(windowConfig.id)}
+  >
   <div class="summary-body">
     {@html html}
   </div>
