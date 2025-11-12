@@ -13,9 +13,8 @@
  * @since 2025-11-02
  * @version 0.0.1
  */
-const EmailRenderer = (() => {
-  "use strict";
 
+const EmailRenderer = (() => {
   /**
    * Renders email HTML content in a fully isolated sandboxed iframe.
    *
@@ -139,6 +138,7 @@ const EmailRenderer = (() => {
         iframe.addEventListener("load", handleReady, { once: true });
       }
     } catch (e) {
+      console.debug("Unable to attach DOMContentLoaded listener to iframe, falling back to load event", e);
       iframe.addEventListener("load", handleReady, { once: true });
     }
   }
@@ -238,7 +238,9 @@ const EmailRenderer = (() => {
     adjust();
     if (typeof requestAnimationFrame === "function")
       requestAnimationFrame(adjust);
-    [100, 300, 800, 1500].forEach((delay) => setTimeout(adjust, delay));
+    [100, 300, 800, 1500].forEach((delay) => {
+      setTimeout(adjust, delay);
+    });
     bindIframeMutationObserver(iframe, adjust);
   }
 
@@ -260,7 +262,7 @@ const EmailRenderer = (() => {
       // Fallback measurement for absolutely-positioned content: compute max element bottom
       let maxBottom = 0;
       try {
-        if (body && body.getElementsByTagName) {
+        if (body?.getElementsByTagName) {
           const els = body.getElementsByTagName("*");
           const limit = Math.min(els.length, 5000);
           for (let i = 0; i < limit; i++) {
