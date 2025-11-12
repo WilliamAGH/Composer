@@ -89,7 +89,14 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   // Auto-select first email on larger screens when none selected
   $: if ((tablet || desktop || wide) && !selected && filtered.length) selected = filtered[0];
 
-  function selectEmail(e) { selected = e; selected.read = true; }
+  function selectEmail(e) {
+    // Update emails array to mark as read (triggers reactivity)
+    emails = emails.map((mail) =>
+      mail.id === e.id ? { ...mail, read: true } : mail
+    );
+    // Update selected reference
+    selected = emails.find((mail) => mail.id === e.id) ?? e;
+  }
   function toggleSidebar() { sidebarOpen = !sidebarOpen; }
   function handleMenuClick() { mobile ? (showDrawer = !showDrawer) : toggleSidebar(); }
 
