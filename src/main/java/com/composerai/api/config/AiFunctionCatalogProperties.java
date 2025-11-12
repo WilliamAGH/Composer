@@ -98,18 +98,18 @@ public class AiFunctionCatalogProperties {
         translate.setLabel("AI Translation");
         translate.setCategory(AiFunctionDefinition.Category.TRANSLATION);
         translate.setPromptTemplate("Translate the email context into {{targetLanguage}}. Preserve formatting and keep proper nouns unchanged. If no target language is specified, default to English. User guidance: {{instruction}}");
-        translate.setDefaultInstruction("Translate the selected email into English.");
+        translate.setDefaultInstruction("Translate the selected email into the requested language.");
         translate.setOutputFormat(AiFunctionDefinition.OutputFormat.TEXT);
         translate.setSubjectMode(AiFunctionDefinition.SubjectMode.NONE);
         translate.setPrimary(true);
         translate.setScopes(List.of("panel"));
         Map<String, String> translationDefaults = new LinkedHashMap<>();
-        translationDefaults.put("targetLanguage", "English");
+        translationDefaults.put("targetLanguage", "Spanish");
         translate.setDefaultArgs(translationDefaults);
         Map<String, VariantProperties> translationVariants = new LinkedHashMap<>();
-        translationVariants.put("en", variant("English", "Translate the email into English.", Map.of("targetLanguage", "English")));
         translationVariants.put("es", variant("Spanish", "Translate the email into Spanish.", Map.of("targetLanguage", "Spanish")));
-        translationVariants.put("fr", variant("French", "Translate the email into French.", Map.of("targetLanguage", "French")));
+        translationVariants.put("pt", variant("Portuguese", "Translate the email into Portuguese.", Map.of("targetLanguage", "Portuguese")));
+        translationVariants.put("nl", variant("Dutch", "Translate the email into Dutch.", Map.of("targetLanguage", "Dutch")));
         translate.setVariants(translationVariants);
         defaults.put("translate", translate);
 

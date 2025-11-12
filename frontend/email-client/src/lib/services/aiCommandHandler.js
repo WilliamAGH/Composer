@@ -1,5 +1,5 @@
 import { get } from 'svelte/store';
-import { createComposeWindow, createSummaryWindow, WindowKind } from '../window/windowTypes.js';
+import { createComposeWindow, WindowKind } from '../window/windowTypes.js';
 import { mergeDefaultArgs, resolveDefaultInstruction, getFunctionMeta } from './aiCatalog';
 import { parseSubjectAndBody } from './emailUtils';
 
@@ -9,12 +9,12 @@ import { parseSubjectAndBody } from './emailUtils';
  */
 export async function handleAiCommand({
   command,
+  commandVariant = null,
   selectedEmail,
   catalogStore,
   windowManager,
   callAiCommand,
-  ensureCatalogLoaded,
-  composeFunctions
+  ensureCatalogLoaded
 }) {
   if (!selectedEmail) throw new Error('Select an email first.');
   const ready = await ensureCatalogLoaded();
@@ -22,7 +22,8 @@ export async function handleAiCommand({
   const catalog = get(catalogStore);
   const fn = getFunctionMeta(catalog, command);
   if (!fn) throw new Error('Command unavailable.');
-  const commandArgs = mergeDefaultArgs(fn, null);
+  const variant = resolveVariant(fn, commandVariant);
+  const commandArgs = mergeDefaultArgs(fn, variant);
   const title = fn.label || 'AI Assistant';
   const targetsCompose = Array.isArray(fn.scopes) && fn.scopes.includes('compose');
 
@@ -42,6 +43,7 @@ export async function handleAiCommand({
       command,
       selectedEmail,
       fn,
+      variant,
       windowManager,
       callAiCommand,
       commandArgs
@@ -49,31 +51,42 @@ export async function handleAiCommand({
     return { type: WindowKind.COMPOSE, id: descriptor.id };
   }
 
-  const instruction = resolveDefaultInstruction(fn, null);
+  const instruction = resolveDefaultInstruction(fn, variant);
   const data = await callAiCommand(command, instruction, {
     contextId: selectedEmail.contextId,
     subject: selectedEmail.subject,
     journeyScope: 'panel',
+    journeyScopeTarget: selectedEmail.id || selectedEmail.contextId || null,
     journeyLabel: selectedEmail.subject,
     journeyHeadline: deriveHeadline(command, title),
+    commandVariant: variant?.key || null,
     commandArgs
   });
   const html = (data?.response && window.ComposerAI?.renderMarkdown ? window.ComposerAI.renderMarkdown(data.response) : '')
     || (data?.sanitizedHtml || data?.sanitizedHTML || '')
     || '<div class="text-sm text-slate-500">No response received.</div>';
-  const descriptor = createSummaryWindow(selectedEmail, html, title);
-  windowManager.open(descriptor);
-  return { type: WindowKind.SUMMARY, id: descriptor.id };
+  const contextId = selectedEmail.contextId || selectedEmail.id || null;
+  return {
+    type: WindowKind.SUMMARY,
+    contextId,
+    html,
+    title,
+    command,
+    commandLabel: title,
+    raw: data
+  };
 }
 
-async function draftWithAi({ descriptor, command, selectedEmail, fn, windowManager, callAiCommand, commandArgs }) {
-  const instruction = resolveDefaultInstruction(fn, null);
+async function draftWithAi({ descriptor, command, selectedEmail, fn, variant, windowManager, callAiCommand, commandArgs }) {
+  const instruction = resolveDefaultInstruction(fn, variant);
   const data = await callAiCommand(command, instruction, {
     contextId: selectedEmail.contextId,
     subject: descriptor.payload.subject,
     journeyScope: 'compose',
+    journeyScopeTarget: descriptor.id,
     journeyLabel: descriptor.payload.subject || selectedEmail.subject || 'reply',
     journeyHeadline: deriveHeadline(command, fn.label || 'AI Assistant'),
+    commandVariant: variant?.key || null,
     commandArgs
   });
   let draftText = (data?.response && data.response.trim()) || '';
@@ -105,4 +118,9 @@ function deriveHeadline(command, fallback) {
     default:
       return fallback || 'Working on your request';
   }
+}
+
+function resolveVariant(meta, variantKey) {
+  if (!variantKey || !meta || !Array.isArray(meta.variants)) return null;
+  return meta.variants.find((variant) => variant.key === variantKey) || null;
 }

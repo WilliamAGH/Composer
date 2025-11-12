@@ -20,11 +20,12 @@ export function createAiJourneyStore() {
       completed: new Set(),
       headline: 'Working on your request',
       subhead: 'ComposerAI assistant',
-      scope: 'global'
+      scope: 'global',
+      scopeTarget: null
     };
   }
 
-  function begin({ scope = 'global', targetLabel = 'message', commandKey, headline, subhead }) {
+  function begin({ scope = 'global', targetLabel = 'message', commandKey, headline, subhead, scopeTarget = null }) {
     clear();
     const steps = buildAiJourney({ targetLabel, command: commandKey });
     const token = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
@@ -33,12 +34,12 @@ export function createAiJourneyStore() {
       visible: true,
       steps,
       scope,
+      scopeTarget,
       completed: new Set(),
       activeStepId: steps[0]?.id || null,
       headline: headline || 'Working on your request',
       subhead: subhead || (scope === 'global' ? 'ComposerAI assistant' : 'Mailbox assistant')
     });
-    timer = setTimeout(() => advance(token, 'ai:llm-thinking'), 1100);
     return token;
   }
 
