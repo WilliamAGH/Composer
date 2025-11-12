@@ -439,10 +439,11 @@ public class EmailParsingService {
             case PLAINTEXT -> "PLAINTEXT";
         };
 
-        if (rendered == null) {
+        // Only log error if rendering unexpectedly failed (not PLAINTEXT mode where null is expected)
+        if (rendered == null && mode != AppProperties.EmailRenderMode.PLAINTEXT) {
             log.error("Email rendering failed; mode={}, sanitizedOriginalPresent={}, sanitizedMarkdownPresent={}",
                 mode, sanitizedOriginal != null, sanitizedMarkdown != null);
-        } else {
+        } else if (rendered != null) {
             log.info("Email rendered using mode={} (source={})", mode, renderSource);
         }
 
