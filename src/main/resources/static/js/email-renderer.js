@@ -42,7 +42,7 @@ const EmailRenderer = (() => {
 
     // Client-side sanitization (defense in depth - server already sanitizes)
     const sanitizedHtml =
-      typeof htmlContent === "string" ? htmlContent : String(htmlContent || "");
+      typeof htmlContent === "string" ? htmlContent : String(htmlContent);
     if (!sanitizedHtml || sanitizedHtml.trim().length === 0) {
       throw new Error("EmailRenderer received empty sanitized HTML.");
     }
