@@ -8,6 +8,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -32,10 +33,16 @@ class WebViewControllerTest {
     @MockBean
     private com.composerai.api.service.email.EmailMessageProvider emailMessageProvider;
 
+    @MockBean
+    private com.composerai.api.domain.service.MailboxFolderTransitionService mailboxFolderTransitionService;
+
     @BeforeEach
     void setup() {
         when(uiNonceService.getOrCreateSessionNonce(any())).thenReturn("nonce");
         when(emailMessageProvider.loadEmails()).thenReturn(List.of());
+        when(mailboxFolderTransitionService.computeFolderCounts(any())).thenReturn(Map.of());
+        when(mailboxFolderTransitionService.deriveBaselineFolder(any())).thenReturn(
+            com.composerai.api.domain.model.MailFolderIdentifier.of("inbox"));
     }
 
     @Test
