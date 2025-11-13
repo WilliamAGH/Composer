@@ -19,6 +19,16 @@
     : null;
   $: isLoading = Boolean(journeyOverlay && journeyOverlay.visible);
   $: hasContent = Boolean(html && !isLoading);
+  $: activeCommandKey = (panelState?.commandKey || lastCommand || '').toLowerCase();
+  $: badgeLabel = activeCommandKey === 'translate' ? 'Translation' : 'Summary';
+  $: emptyTitle = badgeLabel === 'Translation' ? 'No translation yet' : 'No summary yet';
+  $: emptyCopy = badgeLabel === 'Translation'
+    ? 'Run an AI translation to pin results to this thread.'
+    : 'Run an AI summary to pin results to this thread.';
+  $: emptyActionLabel = badgeLabel === 'Translation' ? 'Translate email' : 'Generate summary';
+  $: primaryActionAria = hasContent
+    ? `Regenerate ${badgeLabel.toLowerCase()}`
+    : `Generate ${badgeLabel.toLowerCase()}`;
 
   function emitRunCommand(key = 'summarize') {
     dispatch('runCommand', { key });
@@ -43,295 +53,317 @@
 
 <section class={`ai-summary-panel ${maximized ? 'maximized' : ''}`} aria-live="polite">
   <header class="panel-header">
-    <div>
-      <p class="panel-eyebrow">AI Insights</p>
+    <div class="panel-title-group">
+      <div class="panel-heading">
+        <span class="panel-chip">{badgeLabel}</span>
+        {#if updatedLabel}
+          <span class="panel-meta">Updated at {updatedLabel}</span>
+        {/if}
+      </div>
       <h3 class="panel-title">{commandLabel}</h3>
-      {#if updatedLabel}
-        <p class="panel-meta">Updated at {updatedLabel}</p>
-      {/if}
     </div>
     <div class="panel-actions">
       <button
         type="button"
-        class="btn btn--secondary btn--icon"
+        class="btn btn--secondary btn--icon btn--icon-chrome"
         on:click={handlePrimaryAction}
         disabled={isLoading}
-        aria-label={hasContent ? 'Regenerate AI summary' : 'Generate AI summary'}
+        aria-label={primaryActionAria}
       >
         <RotateCcw class="h-4 w-4" aria-hidden="true" />
       </button>
       <div class="panel-window-controls">
-        <button type="button" class="btn btn--icon btn--inset" on:click={minimize} title="Minimize" aria-label="Minimize AI panel">
+        <button type="button" class="btn btn--icon btn--icon-chrome btn--inset" on:click={minimize} title="Minimize" aria-label="Minimize AI panel">
           <Minus class="h-4 w-4" />
         </button>
-        <button type="button" class="btn btn--icon btn--inset" on:click={toggleMaximize} title={maximized ? 'Restore' : 'Maximize'} aria-label={maximized ? 'Restore panel size' : 'Maximize AI panel'}>
+        <button type="button" class="btn btn--icon btn--icon-chrome btn--inset" on:click={toggleMaximize} title={maximized ? 'Restore' : 'Maximize'} aria-label={maximized ? 'Restore panel size' : 'Maximize AI panel'}>
           {#if maximized}
             <Minimize2 class="h-4 w-4" />
           {:else}
             <Maximize2 class="h-4 w-4" />
           {/if}
         </button>
-        <button type="button" class="btn btn--icon btn--inset" on:click={closePanel} title="Close" aria-label="Close AI panel">
+        <button type="button" class="btn btn--icon btn--icon-chrome btn--inset" on:click={closePanel} title="Close" aria-label="Close AI panel">
           <X class="h-4 w-4" />
         </button>
       </div>
     </div>
   </header>
   <div class="panel-body">
-    {#if isLoading}
-      <AiLoadingJourney
-        steps={journeyOverlay.steps}
-        activeStepId={journeyOverlay.activeStepId}
-        headline={journeyOverlay.headline}
-        subhead={journeyOverlay.subhead}
-        show={journeyOverlay.visible}
-        inline={true}
-        subdued={true}
-        className="border-slate-200" />
-    {:else if error}
-      <div class="panel-state panel-error">
-        <p>{error}</p>
-        <button type="button" class="btn btn--ghost btn--labelled" on:click={() => emitRunCommand(lastCommand)}>
-          Try again
-        </button>
-      </div>
-    {:else if hasContent}
-      <div class="panel-html">
-        {@html html}
-      </div>
-    {:else}
-      <div class="panel-state">
-        <Sparkles class="h-6 w-6 text-slate-400" aria-hidden="true" />
-        <p class="panel-empty-title">No AI insights yet</p>
-        <p class="panel-empty-copy">Run an AI summary or translation to pin results to this thread.</p>
-        <button type="button" class="btn btn--secondary btn--labelled" on:click={() => emitRunCommand('summarize')}>
-          Generate summary
-        </button>
-      </div>
-    {/if}
+    <div class="panel-scroll">
+      {#if isLoading}
+        <AiLoadingJourney
+          steps={journeyOverlay.steps}
+          activeStepId={journeyOverlay.activeStepId}
+          headline={journeyOverlay.headline}
+          subhead={journeyOverlay.subhead}
+          show={journeyOverlay.visible}
+          inline={true}
+          subdued={true}
+          className="border-slate-200" />
+      {:else if error}
+        <div class="panel-state panel-error">
+          <p>{error}</p>
+          <button type="button" class="btn btn--ghost btn--labelled" on:click={() => emitRunCommand(lastCommand)}>
+            Try again
+          </button>
+        </div>
+      {:else if hasContent}
+        <div class="panel-html">
+          {@html html}
+        </div>
+      {:else}
+        <div class="panel-state">
+          <Sparkles class="h-6 w-6 text-slate-400" aria-hidden="true" />
+          <p class="panel-empty-title">{emptyTitle}</p>
+          <p class="panel-empty-copy">{emptyCopy}</p>
+          <button type="button" class="btn btn--secondary btn--labelled" on:click={() => emitRunCommand(lastCommand || 'summarize')}>
+            {emptyActionLabel}
+          </button>
+        </div>
+      {/if}
+    </div>
   </div>
 </section>
 
 <style>
   /**
-   * AI summary panel styling keeps the glass layers while allowing the layout
-   * to stretch vertically on phones so controls remain tappable.
+   * Frosted surface for summary/translation output with layered navy shadows.
+   * @usage - <section class="ai-summary-panel"> inside AiSummaryWindow
    */
   .ai-summary-panel {
     width: 100%;
     height: 100%;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    box-shadow: 0 25px 60px -20px rgba(15, 23, 42, 0.25);
-    border-radius: clamp(18px, 2vw, 24px);
-    padding: clamp(1rem, 0.75rem + 1vw, 1.5rem);
-    backdrop-filter: blur(18px);
     display: flex;
     flex-direction: column;
+    background: linear-gradient(145deg, rgba(248, 250, 252, 0.95), rgba(255, 255, 255, 0.88));
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: clamp(20px, 2vw, 26px);
+    box-shadow: 0 30px 70px -35px rgba(15, 23, 42, 0.45);
+    padding: clamp(1rem, 0.8rem + 1vw, 1.7rem);
+    backdrop-filter: blur(18px);
   }
+
+  /**
+   * Maximized state trades blur for crisp edges to match docked windows.
+   * @usage - .ai-summary-panel.maximized when the panel is expanded
+   */
   .ai-summary-panel.maximized {
     background: #ffffff;
-    border: 1px solid rgba(15, 23, 42, 0.12);
-    box-shadow: 0 60px 120px -45px rgba(15, 23, 42, 0.45);
+    border-color: rgba(15, 23, 42, 0.15);
+    box-shadow: 0 60px 140px -55px rgba(15, 23, 42, 0.5);
     backdrop-filter: none;
   }
+
   /**
-   * Header alignment ensures title + action sets coexist cleanly.
+   * Header layout keeps the command title on the left and chrome to the right.
+   * @usage - <header class="panel-header">
    */
   .panel-header {
     display: flex;
     justify-content: space-between;
-    gap: 1rem;
-    align-items: center;
+    align-items: flex-start;
+    gap: 1.25rem;
     flex-wrap: wrap;
   }
+
   /**
-   * Eyebrow label styling for the AI section tag.
+   * Vertical stacking for badge, timestamp, and title copy.
+   * @usage - <div class="panel-title-group">
    */
-  .panel-eyebrow {
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.35em;
-    color: rgba(99, 102, 241, 0.7);
-    margin-bottom: 0.35rem;
-    font-weight: 600;
+  .panel-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
   }
+
   /**
-   * Main AI panel title typography.
+   * Badge + timestamp row stays compact with generous tracking.
+   * @usage - <div class="panel-heading">
+   */
+  .panel-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  /**
+   * Pill badge helps distinguish summary vs translation modes.
+   * @usage - <span class="panel-chip">
+   */
+  .panel-chip {
+    display: inline-flex;
+    align-items: center;
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 0.25rem 0.9rem;
+    border-radius: 999px;
+    color: #0f172a;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(226, 232, 240, 0.6));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+
+  /**
+   * Timestamp adopts muted slate color for low-contrast metadata.
+   * @usage - <span class="panel-meta">
+   */
+  .panel-meta {
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #94a3b8;
+  }
+
+  /**
+   * Main command title typography.
+   * @usage - <h3 class="panel-title">
    */
   .panel-title {
-    font-size: 1.1rem;
+    font-size: clamp(1.1rem, 1rem + 0.4vw, 1.35rem);
     font-weight: 600;
     color: #0f172a;
   }
+
   /**
-   * Timestamp detail line.
-   */
-  .panel-meta {
-    font-size: 0.8rem;
-    color: #94a3b8;
-    margin-top: 0.2rem;
-  }
-  /**
-   * Wrapper for regen button + window controls.
+   * Action cluster for regen + window chrome.
+   * @usage - <div class="panel-actions">
    */
   .panel-actions {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 0.75rem;
-    flex-wrap: wrap;
+    gap: 0.85rem;
     flex: 1;
+    flex-wrap: wrap;
   }
+
   /**
-   * Inline control group for minimize/max/close.
+   * Inline grouping for minimize/max/close buttons.
+   * @usage - <div class="panel-window-controls">
    */
   .panel-window-controls {
     display: inline-flex;
-    gap: 0.35rem;
-  }
-  /**
-   * Icon buttons mirror the main button system but scoped locally.
-   */
-  .icon-btn {
-    height: 32px;
-    width: 32px;
-    display: grid;
-    place-items: center;
-    border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.7);
-    background: rgba(255, 255, 255, 0.92);
-    color: #475569;
-    transition: all 0.15s ease;
-  }
-  /**
-   * Hover accent for icon buttons.
-   */
-  .icon-btn:hover {
-    border-color: rgba(15, 23, 42, 0.3);
-    color: #0f172a;
-  }
-  /**
-   * Pill CTA styling for panel actions.
-   */
-  .panel-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
     gap: 0.4rem;
-    border-radius: 999px;
-    border: 1px solid rgba(15, 23, 42, 0.12);
-    background: white;
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: #0f172a;
-    box-shadow: 0 10px 30px -12px rgba(15, 23, 42, 0.2);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-    min-height: 44px;
   }
+
   /**
-   * Disabled CTA fades while retaining layout.
-   */
-  .panel-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-  /**
-   * Hover animation for panel CTA.
-   */
-  .panel-btn:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 20px 40px -18px rgba(15, 23, 42, 0.25);
-  }
-  /**
-   * Ghost variant used for retry links.
-   */
-  .panel-btn.ghost {
-    background: transparent;
-    border-color: rgba(148, 163, 184, 0.4);
-    box-shadow: none;
-  }
-  /**
-   * Scrollable body area for HTML content.
+   * Inner body surface adds depth and scrolling for long summaries.
+   * @usage - <div class="panel-body">
    */
   .panel-body {
     margin-top: 1.25rem;
-    min-height: 200px;
     flex: 1;
+    border-radius: clamp(16px, 1.5vw, 22px);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.9));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 35px 65px -45px rgba(15, 23, 42, 0.35);
+    padding: clamp(1rem, 0.65rem + 0.9vw, 1.45rem);
+    display: flex;
+    overflow: hidden;
+  }
+
+  /**
+   * Scroll wrapper maintains padding while allowing long HTML to overflow.
+   * @usage - <div class="panel-scroll">
+   */
+  .panel-scroll {
+    flex: 1;
+    min-height: 220px;
     overflow-y: auto;
   }
+
   /**
-   * Typography baseline for AI HTML output.
+   * Markdown-rendered summary typography.
+   * @usage - <div class="panel-html">
    */
   .panel-html {
     font-size: 0.95rem;
-    line-height: 1.6;
-    color: #1e1b4b;
+    line-height: 1.65;
+    color: #111827;
   }
-  /**
-   * Paragraph spacing within AI output.
-   */
+
   .panel-html :global(p) {
     margin-bottom: 0.85rem;
   }
+
+  .panel-html :global(ul),
+  .panel-html :global(ol) {
+    margin-left: 1.25rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .panel-html :global(li) {
+    margin-bottom: 0.4rem;
+  }
+
   /**
-   * Empty/error state wrapper.
+   * Empty + error states share columnar layout.
+   * @usage - <div class="panel-state">
    */
   .panel-state {
+    min-height: 180px;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    align-items: flex-start;
+    gap: 0.6rem;
     color: #475569;
   }
+
   /**
-   * Error coloration.
+   * Error text color cues retry state.
+   * @usage - <div class="panel-state panel-error">
    */
   .panel-error {
-    color: #be123c;
+    color: #b91c1c;
   }
+
   /**
-   * Empty-state heading.
+   * Empty-state heading matches primary text color.
+   * @usage - <p class="panel-empty-title">
    */
   .panel-empty-title {
     font-weight: 600;
     color: #0f172a;
   }
+
   /**
-   * Empty-state helper copy.
+   * Empty copy uses calmer slate tone.
+   * @usage - <p class="panel-empty-copy">
    */
   .panel-empty-copy {
     font-size: 0.9rem;
     color: #64748b;
   }
+
   /**
-   * Mobile overrides for stack/wrap behavior.
+   * Mobile tweaks keep controls tappable and maintain breathing room.
+   * @usage - Media query for <=640px
    */
   @media (max-width: 640px) {
     .panel-header {
       flex-direction: column;
       align-items: flex-start;
     }
+
     .panel-actions {
       width: 100%;
       justify-content: flex-start;
-      gap: 0.5rem;
-    }
-    .panel-window-controls {
-      width: 100%;
-      justify-content: center;
       gap: 0.6rem;
     }
-    .panel-btn {
+
+    .panel-window-controls {
       width: 100%;
+      justify-content: flex-start;
     }
-    .panel-window-controls button {
-      width: 48px;
-      height: 48px;
-    }
+
     .panel-body {
       margin-top: 1rem;
       min-height: min(55vh, 360px);
     }
   }
 </style>
+

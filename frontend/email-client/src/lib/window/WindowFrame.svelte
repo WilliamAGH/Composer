@@ -63,12 +63,12 @@
     <div class="window-actions">
       <slot name="headerActions"></slot>
       {#if allowMinimize}
-        <button type="button" class="btn btn--icon btn--inset" on:click|stopPropagation={handleToggle} title="Minimize">
+        <button type="button" class="btn btn--icon btn--icon-chrome btn--inset" on:click|stopPropagation={handleToggle} title="Minimize">
           <Minus class="h-4 w-4" />
         </button>
       {/if}
       {#if allowMaximize}
-        <button type="button" class="btn btn--icon btn--inset" on:click|stopPropagation={handleToggleMaximize} title={maximized ? 'Restore' : 'Maximize'}>
+        <button type="button" class="btn btn--icon btn--icon-chrome btn--inset" on:click|stopPropagation={handleToggleMaximize} title={maximized ? 'Restore' : 'Maximize'}>
           {#if maximized}
             <Minimize2 class="h-4 w-4" />
           {:else}
@@ -77,7 +77,7 @@
         </button>
       {/if}
       {#if allowClose}
-        <button type="button" class="btn btn--icon btn--inset" on:click|stopPropagation={handleClose} title="Close">
+        <button type="button" class="btn btn--icon btn--icon-chrome btn--inset" on:click|stopPropagation={handleClose} title="Close">
           <X class="h-4 w-4" />
         </button>
       {/if}
