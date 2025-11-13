@@ -258,14 +258,35 @@
   }
 
   /**
-   * Mobile and touch device overrides are handled by global .btn--icon-chrome class
-   * in app-shared.css, which increases button size from 36px to 42px on coarse pointers.
+   * Component-scoped button sizing for window chrome controls.
    *
-   * We intentionally DO NOT add mobile-specific overrides here that would change
-   * flex-wrap or width properties, as those were the root cause of the wrapping bug.
+   * Overrides the base .btn--icon size (42px) with smaller chrome-specific sizing.
+   * The compound selector .btn.btn--icon-chrome has higher specificity (0,2,0) than
+   * the global .btn--icon (0,1,0), ensuring these styles win the cascade.
    *
-   * @note - Button sizing: 36px desktop, 42px mobile (from app-shared.css)
-   * @note - NO width: 100% or flex-wrap: wrap overrides on mobile
-   * @related - app-shared.css .btn--icon-chrome @media (hover: none) and (pointer: coarse)
+   * @usage - Applied to all buttons in this component
+   * @sizing - 32px desktop, 42px mobile for touch-friendly targets
+   * @related - .btn--icon from app-shared.css
    */
+  .btn.btn--icon-chrome {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 12px;
+    border-color: rgba(148, 163, 184, 0.65);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.82));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 18px 35px -22px rgba(15, 23, 42, 0.35);
+  }
+
+  /**
+   * Touch device override increases button size for easier tapping.
+   * @media - Applies on devices with coarse pointers (touchscreens)
+   */
+  @media (hover: none) and (pointer: coarse) {
+    .btn.btn--icon-chrome {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+    }
+  }
 </style>
