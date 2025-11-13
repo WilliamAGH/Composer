@@ -1,21 +1,32 @@
 /**
  * Escapes HTML using the server-provided helper when available.
+ * Falls back to local escaping to prevent XSS when the helper is unavailable.
  */
 export function escapeHtmlContent(value) {
+  const safeValue = value == null ? '' : String(value);
   if (window.Composer?.escapeHtml) {
-    return window.Composer.escapeHtml(value || '');
+    return window.Composer.escapeHtml(safeValue);
   }
-  return value || '';
+  // Fallback escaping to prevent XSS
+  return safeValue
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /**
  * Renders markdown content into HTML using the bootstrap helper.
+ * Falls back to safe HTML escaping to prevent XSS when the helper is unavailable.
  */
 export function renderMarkdownContent(markdown) {
+  const safeMarkdown = markdown == null ? '' : String(markdown);
   if (window.Composer?.renderMarkdown) {
-    return window.Composer.renderMarkdown(markdown || '');
+    return window.Composer.renderMarkdown(safeMarkdown);
   }
-  return markdown || '';
+  // Fallback: escape HTML to prevent XSS when {@html} is used with this output
+  return escapeHtmlContent(safeMarkdown);
 }
 
 const relativeTimeFormatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
