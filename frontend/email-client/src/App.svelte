@@ -930,6 +930,7 @@ const panelErrorsStore = panelStores.errors;
       bind:mailboxMenuListRef={mailboxMenuListRef}
       resolveFolderFn={resolveFolderForMessage}
       pendingMoveIds={pendingMoves}
+      compactActions={compactActions}
       on:toggleMenu={handleMenuClick}
       on:searchChange={(event) => mailboxLayout.setSearch(event.detail.value)}
       on:toggleMailboxActions={(event) => toggleMailboxActions(event.detail.host)}
@@ -975,18 +976,26 @@ const panelErrorsStore = panelStores.errors;
               <button
                 type="button"
                 class="absolute inset-y-0 right-0 btn btn--primary btn--compact mailbox-ai-trigger"
+                class:mailbox-ai-trigger--compact={compactActions}
                 aria-haspopup="menu"
                 aria-expanded={mailboxActionsOpen && mailboxActionsHost === 'mobile'}
                 on:click={() => toggleMailboxActions('mobile')}
                 disabled={!hasMailboxCommands || filtered.length === 0 || !!mailboxCommandPendingKey}
               >
-                {#if mailboxCommandPendingKey}
-                  <Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
-                  <span>{activeMailboxActionLabel ? `${activeMailboxActionLabel}…` : 'Running…'}</span>
-                {:else}
-                  <Sparkles class="h-4 w-4" aria-hidden="true" />
-                  <span>AI Actions</span>
-                {/if}
+                <span class="flex items-center gap-1">
+                  {#if mailboxCommandPendingKey}
+                    <Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
+                  {:else}
+                    <Sparkles class="h-4 w-4" aria-hidden="true" />
+                  {/if}
+                </span>
+                <span class="mailbox-ai-trigger__label">
+                  {#if mailboxCommandPendingKey}
+                    {activeMailboxActionLabel ? `${activeMailboxActionLabel}…` : 'Running…'}
+                  {:else}
+                    AI Actions
+                  {/if}
+                </span>
               </button>
               {#if mailboxActionsOpen && mailboxActionsHost === 'mobile'}
                 <div
@@ -1140,3 +1149,76 @@ const panelErrorsStore = panelStores.errors;
 {/if}
 
 <ComingSoonModal open={comingSoonModal.open} sourceLabel={comingSoonModal.sourceLabel} on:close={closeComingSoonModal} />
+
+<style>
+  /**
+   * AI summary panel wrapper constrains height relative to email detail column.
+   * @usage - Div wrapping <AiSummaryWindow /> instances within App.svelte
+   * @related - .ai-panel-wrapper.maximized, .panel-column
+   */
+  .ai-panel-wrapper {
+    position: relative;
+    z-index: var(--z-panel-overlay, 10);
+    height: clamp(280px, 35vh, 520px);
+    max-height: 45vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /**
+   * Maximized mode allows the AI panel to overlay the column or viewport when expanded.
+   * @usage - Conditional class when $panelMaximizedStore is true
+   * @related - .ai-panel-wrapper
+   */
+  .ai-panel-wrapper.maximized {
+    position: absolute;
+    inset: 0;
+    z-index: var(--z-panel-maximized, 30);
+    height: 100%;
+    max-height: 100%;
+  }
+
+  /**
+   * Panel column anchor preserves positioning context for overlays rendered within detail pane.
+   * @usage - Applied to flex column container for email detail + AI panel
+   * @related - .ai-panel-wrapper inside this column
+   */
+  .panel-column {
+    position: relative;
+    min-height: 0;
+  }
+
+  /**
+   * Mobile breakpoint relaxes panel height constraints and pads maximized overlays.
+   * @usage - Applies automatically when viewport <=768px
+   * @related - .ai-panel-wrapper, .ai-panel-wrapper.maximized
+   */
+  @media (max-width: 768px) {
+    .ai-panel-wrapper {
+      height: auto;
+      max-height: none;
+    }
+
+    .ai-panel-wrapper.maximized {
+      position: fixed;
+      inset: 0;
+      padding: 0.75rem;
+    }
+  }
+
+  /**
+   * Safe-area padding ensures maximized AI panel respects device notches on mobile Safari.
+   * @usage - Applies within the mobile breakpoint when env(safe-area-*) is supported
+   * @related - .ai-panel-wrapper.maximized mobile treatment
+   */
+  @supports (padding: env(safe-area-inset-top)) {
+    @media (max-width: 768px) {
+      .ai-panel-wrapper.maximized {
+        padding-top: env(safe-area-inset-top);
+        padding-right: env(safe-area-inset-right);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+      }
+    }
+  }
+</style>

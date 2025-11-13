@@ -231,7 +231,8 @@ input[type='email'] {
   align-items: center;
   justify-content: flex-end;
   gap: 0.5rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  flex: 0 0 auto;
 }
 
 /**
@@ -243,6 +244,21 @@ input[type='email'] {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 640px) {
+  :global(.window-actions) {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  :global(.window-action-controls) {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 
 /**
@@ -386,32 +402,6 @@ input[type='email'] {
 }
 
 /**
- * Email HTML containers ensure iframe + fallback rendering never overflow the viewport on mobile widths.
- * @usage - EmailIframe.svelte wrapper + fallback divs
- * @related - src/main/resources/static/js/email-renderer.js `.email-wrapper`
- */
-:global(.email-html-container) {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
-  position: relative;
-}
-
-/**
- * Fallback rendering mirrors iframe padding so legacy emails stay responsive even without EmailRenderer.
- * @usage - EmailIframe.svelte fallback div
- * @related - .email-html-container
- */
-:global(.email-html-fallback) {
-  width: 100%;
-  max-width: 100%;
-  padding: 1rem;
-  overflow-x: auto;
-  background: transparent;
-  overflow-wrap: anywhere;
-}
-
-/**
  * Uppercase menu label that names the dropdown context (e.g., "Suggested Actions").
  * @usage - First child of .menu-surface before .menu-list in AI and compose menus
  * @related - .menu-list
@@ -443,136 +433,6 @@ input[type='email'] {
 }
 
 /**
- * Baseline mailbox list row with frosted hover states and rounded geometry.
- * @usage - Applied to each folder row rendered in MailboxSidebar
- * @related - .nav-pill--active, .nav-pill-badge
- */
-.nav-pill {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  border-radius: 18px;
-  padding: 0.55rem 0.85rem;
-  color: #475569;
-  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-  border: 1px solid transparent;
-}
-
-.nav-pill:hover {
-  background: rgba(15, 23, 42, 0.05);
-  color: #0f172a;
-}
-
-/**
- * Highlights the currently selected folder with inset border and darker background.
- * @usage - Conditional class on the active nav pill item
- * @related - .nav-pill
- */
-.nav-pill--active {
-  background: rgba(15, 23, 42, 0.08);
-  border-color: rgba(15, 23, 42, 0.12);
-  color: #0f172a;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
-}
-
-/**
- * Tiny badge for unread counts displayed at the end of each nav pill.
- * @usage - Span wrapping counts within MailboxSidebar rows
- * @related - .nav-pill
- */
-.nav-pill-badge {
-  margin-left: auto;
-  padding: 0.1rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  background: rgba(226, 232, 240, 0.8);
-  color: #475569;
-}
-
-/**
- * Global toast surface displayed near the bottom-right for window/AI notices.
- * @usage - Rendered by WindowNotice.svelte when showGlobalNotice() emits a message
- * @z-index-warning - Uses var(--z-window-notice) to stay above panels but below modals
- * @related - WindowNotice.svelte
- */
-.window-notice {
-  position: fixed;
-  bottom: 90px;
-  right: 24px;
-  background: rgba(15, 23, 42, 0.9);
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  font-size: 0.85rem;
-  z-index: 120;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
-}
-
-/**
- * Constrains the AI summary panel height and layering relative to the email body column.
- * @usage - Wrapper div surrounding <AiSummaryWindow /> inside App.svelte
- * @z-index-warning - Uses var(--z-panel-overlay); maximized state elevates it further
- * @related - .ai-panel-wrapper.maximized, .panel-column
- */
-.ai-panel-wrapper {
-  position: relative;
-  z-index: 10;
-  height: clamp(280px, 35vh, 520px);
-  max-height: 45vh;
-  display: flex;
-  flex-direction: column;
-}
-
-/**
- * Full takeover mode when the AI summary window is maximized.
- * @usage - Toggled via panelMaximizedStore to span the entire panel column or viewport on mobile
- * @z-index-warning - Aligns with var(--z-panel-maximized) layering; ensure DrawerBackdrop (z-50) stays beneath
- * @related - .ai-panel-wrapper
- */
-.ai-panel-wrapper.maximized {
-  position: absolute;
-  inset: 0;
-  z-index: 30;
-  height: 100%;
-  max-height: 100%;
-}
-
-/**
- * Maintains relative positioning so AI overlays anchor correctly within the detail pane.
- * @usage - Applied to the flex column containing the email detail + AI panel in App/Compose
- * @related - .ai-panel-wrapper
- */
-.panel-column {
-  position: relative;
-  min-height: 0;
-}
-
-/**
- * Floating dock chip that restores the AI summary panel when minimized.
- * @usage - Button in AiPanelDockChip.svelte shown when the AI panel is docked
- * @z-index-warning - Shares toolbar z-index (var(--z-toolbar-surface)) so it stays above drawers
- * @related - .ai-panel-wrapper, AiPanelDockChip.svelte
- */
-.panel-dock-chip {
-  position: fixed;
-  bottom: 24px;
-  left: 24px;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.5);
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 15px 30px -18px rgba(15, 23, 42, 0.35);
-  padding: 0.45rem 0.95rem;
-  font-size: 0.85rem;
-  color: #0f172a;
-  z-index: 150;
-}
-
-/**
  * AI Actions trigger pill embeds inside the mailbox search bar on desktop/mobile.
  * @usage - Buttons with class mailbox-ai-trigger rendered next to mailbox search input
  * @z-index-warning - Relies on the parent container to manage stacking; ensure container overflow is visible when used over lists
@@ -589,32 +449,22 @@ input[type='email'] {
   padding-right: 1.15rem;
 }
 
-@media (max-width: 768px) {
-  .ai-panel-wrapper {
-    height: auto;
-    max-height: none;
-  }
-
-  .ai-panel-wrapper.maximized {
-    position: fixed;
-    inset: 0;
-    padding: 0.75rem;
-  }
-
-  .panel-dock-chip {
-    left: 16px;
-    right: 16px;
-    justify-content: center;
-  }
+/**
+ * Compact variant hides the label to conserve space when viewport widths shrink below desktop tiers.
+ * @usage - Applied alongside .mailbox-ai-trigger when App.svelte passes compactActions=true
+ * @related - .mailbox-ai-trigger__label
+ */
+:global(.mailbox-ai-trigger--compact) {
+  min-width: auto;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
 }
 
-@supports (padding: env(safe-area-inset-top)) {
-  @media (max-width: 768px) {
-    .ai-panel-wrapper.maximized {
-      padding-top: env(safe-area-inset-top);
-      padding-right: env(safe-area-inset-right);
-      padding-bottom: env(safe-area-inset-bottom);
-      padding-left: env(safe-area-inset-left);
-    }
-  }
+/**
+ * Label helper class so compact variants can toggle visibility without affecting icons/spinners.
+ * @usage - Wrap the text portion of mailbox AI trigger buttons
+ * @related - .mailbox-ai-trigger--compact
+ */
+:global(.mailbox-ai-trigger--compact .mailbox-ai-trigger__label) {
+  display: none;
 }

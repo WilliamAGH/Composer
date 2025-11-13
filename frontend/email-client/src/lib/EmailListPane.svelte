@@ -31,6 +31,7 @@
   export let mailboxMenuListRef = null;
   export let resolveFolderFn = () => 'inbox';
   export let pendingMoveIds = new Set();
+  export let compactActions = false;
 
   const dispatch = createEventDispatcher();
   let rowMoveMenuFor = null;
@@ -125,18 +126,26 @@
           <button
             type="button"
             class="absolute inset-y-0 right-0 btn btn--primary btn--compact mailbox-ai-trigger"
+            class:mailbox-ai-trigger--compact={compactActions}
             aria-haspopup="menu"
             aria-expanded={mailboxActionsOpen && mailboxActionsHost === 'list'}
             on:click={() => handleToggleActions('list')}
             disabled={!hasMailboxCommands || filtered.length === 0 || !!mailboxCommandPendingKey}
           >
-            {#if mailboxCommandPendingKey}
-              <Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
-              <span>{activeMailboxActionLabel ? `${activeMailboxActionLabel}…` : 'Working…'}</span>
-            {:else}
-              <Sparkles class="h-4 w-4" aria-hidden="true" />
-              <span>AI Actions</span>
-            {/if}
+            <span class="flex items-center gap-1">
+              {#if mailboxCommandPendingKey}
+                <Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
+              {:else}
+                <Sparkles class="h-4 w-4" aria-hidden="true" />
+              {/if}
+            </span>
+            <span class="mailbox-ai-trigger__label">
+              {#if mailboxCommandPendingKey}
+                {activeMailboxActionLabel ? `${activeMailboxActionLabel}…` : 'Working…'}
+              {:else}
+                AI Actions
+              {/if}
+            </span>
           </button>
           {#if mailboxActionsOpen && mailboxActionsHost === 'list'}
             <div
