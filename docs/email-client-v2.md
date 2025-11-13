@@ -1,6 +1,6 @@
 # Email Client v2 (Svelte) — Architecture and Flow
 
-Status: Canonical client served at /email-client-v2 (legacy route /email-client redirects here)
+Status: Canonical client served at /email-client-v2 (legacy route /email-client redirects here; home URLs `/` and `/index` forward internally to this route so it's always the default landing page).
 
 Overview
 - Host: Thymeleaf template `templates/email-client-v2.html` injects bootstrap data and CSP/nonce.
@@ -54,4 +54,5 @@ File map
 
 Cutover
 - Validate `/email-client-v2` in staging (legacy path already redirects here).
+- Verify `/` (and `/index`) forward server-side to `/email-client-v2` so every environment loads the same bootstrap template by default.
 - `/email-client` remains as a redirect only; there is no separate fallback template.

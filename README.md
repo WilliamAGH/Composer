@@ -76,6 +76,7 @@ The email client sidebar now derives a single `sidebarVariant` in `App.svelte` (
 
 - All `EmailMessage.emailBodyHtml` values are sanitized server-side via `EmailHtmlSanitizer`.
 - The Svelte client at `/email-client-v2` renders sanitized HTML inside a sandboxed iframe (scripts disabled, same-origin enabled for sizing, inner scrollbars suppressed). If no HTML remains, it falls back to Markdown text.
+- `/` and `/index` now forward internally to `/email-client-v2`, so the default home route loads the same Thymeleaf host regardless of environment.
 - `/email-client` now redirects to `/email-client-v2` so bookmarks continue working while the legacy view is removed.
 
 ## Technology Stack

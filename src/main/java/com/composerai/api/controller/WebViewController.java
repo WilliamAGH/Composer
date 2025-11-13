@@ -28,8 +28,8 @@ public class WebViewController {
 
     @GetMapping({"/", "/index"})
     public String index() {
-        // Make email client v2 the root landing page
-        return "redirect:/email-client-v2";
+        // Forward internally so / and /index share the same controller/model pipeline as /email-client-v2
+        return "forward:/email-client-v2";
     }
 
     @GetMapping("/chat")
