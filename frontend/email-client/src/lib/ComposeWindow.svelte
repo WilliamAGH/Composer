@@ -1,5 +1,5 @@
 <script>
-  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
   import { Paperclip, Send, Wand2, Highlighter, Trash2, ChevronDown } from 'lucide-svelte';
   import { isMobile } from './viewportState';
   import WindowFrame from './window/WindowFrame.svelte';
@@ -89,7 +89,7 @@
   }
 
   const fallbackDraftOptions = [
-    { key: 'draft', label: 'AI Draft Reply' },
+    { key: 'draft', label: 'Draft Reply' },
     { key: 'compose', label: 'AI Compose' }
   ];
 
@@ -113,6 +113,10 @@
   let anchorElement = null;
   let anchorObserver = null;
   let maximizedAnchorBounds = null;
+  let draftMenuPosition = { top: 0, right: 0 };
+  let toneMenuPosition = { top: 0, right: 0 };
+  const MENU_OFFSET = 8;
+  const MENU_VIEWPORT_GUTTER = 12;
 
   function deriveDraftOptions(list) {
     if (!Array.isArray(list) || list.length === 0) return fallbackDraftOptions;
@@ -121,7 +125,7 @@
     for (const fn of list) {
       if (!fn?.key || fn.key === 'tone' || seen.has(fn.key)) continue;
       seen.add(fn.key);
-      entries.push({ key: fn.key, label: fn.label || (fn.key === 'draft' ? 'AI Draft Reply' : fn.key === 'compose' ? 'AI Compose' : fn.key) });
+      entries.push({ key: fn.key, label: fn.label || (fn.key === 'draft' ? 'Draft Reply' : fn.key === 'compose' ? 'AI Compose' : fn.key) });
     }
     return entries.length ? entries : fallbackDraftOptions;
   }
@@ -131,14 +135,22 @@
     requestAi(target);
   }
 
-  function toggleDraftMenu() {
+  async function toggleDraftMenu() {
     draftMenuOpen = !draftMenuOpen;
-    if (draftMenuOpen) toneMenuOpen = false;
+    if (draftMenuOpen) {
+      toneMenuOpen = false;
+      await tick();
+      syncMenuPosition('draft');
+    }
   }
 
-  function toggleToneMenu() {
+  async function toggleToneMenu() {
     toneMenuOpen = !toneMenuOpen;
-    if (toneMenuOpen) draftMenuOpen = false;
+    if (toneMenuOpen) {
+      draftMenuOpen = false;
+      await tick();
+      syncMenuPosition('tone');
+    }
   }
 
   function invokeDraftOption(option) {
@@ -217,8 +229,33 @@
     };
   }
 
+  function syncMenuPosition(kind = 'draft') {
+    if (typeof window === 'undefined') return;
+    const trigger = kind === 'tone' ? toneToggleButton : draftToggleButton;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const panel = kind === 'tone' ? toneMenuRef : draftMenuRef;
+    const menuHeight = panel?.offsetHeight || 0;
+    const viewportPadding = MENU_VIEWPORT_GUTTER;
+    const offset = MENU_OFFSET;
+    const desiredTop = rect.bottom + offset;
+    const viewportBottom = window.innerHeight - viewportPadding;
+    const fitsBelow = !menuHeight || desiredTop + menuHeight <= viewportBottom;
+    let top = fitsBelow ? desiredTop : Math.max(viewportPadding, rect.top - offset - menuHeight);
+    top = Math.min(Math.max(viewportPadding, top), viewportBottom);
+    const right = Math.max(viewportPadding, window.innerWidth - rect.right);
+    const next = { top, right };
+    if (kind === 'tone') {
+      toneMenuPosition = next;
+    } else {
+      draftMenuPosition = next;
+    }
+  }
+
   function handleViewportChange() {
     syncComposeAnchorBounds();
+    if (draftMenuOpen) syncMenuPosition('draft');
+    if (toneMenuOpen) syncMenuPosition('tone');
   }
 
   $: if (maximized && !mobile) {
@@ -237,8 +274,13 @@
     windowManager.toggleMinimize(windowConfig.id);
   }
 
-  function toggleMaximizeWindow() {
+  async function toggleMaximizeWindow() {
     maximized = !maximized;
+    if (draftMenuOpen || toneMenuOpen) {
+      await tick();
+      if (draftMenuOpen) syncMenuPosition('draft');
+      if (toneMenuOpen) syncMenuPosition('tone');
+    }
   }
 
   function onFilesSelected(files) {
@@ -378,7 +420,7 @@
   <div slot="footer" class="compose-footer">
     <div class="compose-footer-main">
       <button type="button" class="btn btn--primary btn--labelled" on:click={send}>
-        <Send class="h-4 w-4" /> Send
+        <Send class="h-4 w-4" /> <span class="compose-btn-label">Send</span>
       </button>
       <button
         type="button"
@@ -390,7 +432,7 @@
             fileInput?.click();
           }
         }}>
-        <Paperclip class="h-4 w-4" /> Attach
+        <Paperclip class="h-4 w-4" /> <span class="compose-btn-label">Attach</span>
       </button>
       <button type="button" class="btn btn--ghost btn--icon" aria-label="Delete draft" title="Delete draft" on:click={deleteDraft}>
         <Trash2 class="h-4 w-4" />
@@ -400,7 +442,7 @@
       <div class="compose-ai-cluster">
         <div class="compose-ai-split">
           <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill compose-ai-pill--main" on:click={runPrimaryDraft}>
-            <Wand2 class="h-4 w-4" /> {primaryDraftOption?.label || 'Draft'}
+            <Wand2 class="h-4 w-4" /> <span class="compose-ai-label">{primaryDraftOption?.label || 'Draft'}</span>
           </button>
           <button
             type="button"
@@ -414,7 +456,10 @@
           </button>
         </div>
         {#if draftMenuOpen && draftOptions.length}
-          <div class="menu-surface compose-menu compose-menu--footer" bind:this={draftMenuRef}>
+          <div
+            class="menu-surface compose-menu compose-menu--footer"
+            bind:this={draftMenuRef}
+            style={`top: ${draftMenuPosition.top}px; right: ${draftMenuPosition.right}px;`}>
             <span class="menu-eyebrow">Drafting Options</span>
             <div class="menu-list">
               {#each draftOptions as option (option.key)}
@@ -437,11 +482,14 @@
           aria-expanded={toneMenuOpen}
           bind:this={toneToggleButton}
           on:click={toggleToneMenu}>
-          <Highlighter class="h-4 w-4" /> Tone
+          <Highlighter class="h-4 w-4" /> <span class="compose-ai-label">Tone</span>
           <ChevronDown class={`h-4 w-4 text-slate-500 transition ${toneMenuOpen ? 'rotate-180' : ''}`} />
         </button>
         {#if toneMenuOpen}
-          <div class="menu-surface compose-menu compose-menu--footer" bind:this={toneMenuRef}>
+          <div
+            class="menu-surface compose-menu compose-menu--footer"
+            bind:this={toneMenuRef}
+            style={`top: ${toneMenuPosition.top}px; right: ${toneMenuPosition.right}px;`}>
             <span class="menu-eyebrow">Rewrite Tone</span>
             <div class="menu-list">
               {#each tonePresets as preset (preset.id)}
@@ -498,13 +546,13 @@
     min-height: 200px;
   }
   /**
-   * Compose AI action pills match other toolbar chips but run noticeably slimmer per desktop feedback.
+   * Compose AI action pills match the design standard compact button height.
    * @usage - ComposeWindow.svelte Draft + Tone controls (desktop/tablet)
    */
   .compose-ai-pill {
-    min-height: 28px;
-    padding-top: 0.1rem;
-    padding-bottom: 0.1rem;
+    min-height: 40px;
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
     padding-left: 0.75rem;
     padding-right: 0.75rem;
   }
@@ -524,9 +572,7 @@
     height: 28px;
   }
   .compose-menu {
-    position: absolute;
-    left: 0;
-    margin-top: 0.35rem;
+    position: fixed;
     min-width: 15rem;
     z-index: var(--z-dropdown, 200);
   }
@@ -572,7 +618,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
   /**
    * Primary CTA cluster (Send/Attach/Delete).
@@ -628,9 +674,35 @@
     padding: 0;
   }
   .compose-menu--footer {
-    left: auto;
-    right: 0;
-    margin-top: 0.4rem;
+    margin-top: 0;
+  }
+  /**
+   * Label wrappers for responsive hiding when footer runs out of horizontal space.
+   * @usage - ComposeWindow.svelte footer button labels
+   */
+  .compose-btn-label,
+  .compose-ai-label {
+    display: inline;
+  }
+  /**
+   * When viewport is constrained, hide labels and show only icons to prevent wrapping.
+   * Buttons automatically become icon-only while maintaining tap target size.
+   * @usage - Automatically applied when window width drops below 600px
+   */
+  @media (max-width: 600px) {
+    .compose-btn-label,
+    .compose-ai-label {
+      display: none;
+    }
+    .compose-footer-main .btn--labelled {
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+      min-width: 42px;
+    }
+    .compose-ai-pill {
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
   }
   /* Mobile compose experience handled by ComposeMobileSheet.svelte */
 </style>
