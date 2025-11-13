@@ -62,6 +62,7 @@ Client integrations should send the best-known recipient metadata alongside AI c
 - **Chat Orchestration** – Routes chat requests through OpenAI-compatible models, classifies user intent, and stitches email snippets into responses.
 - **AI Request Journey Loader** – `frontend/email-client/src/lib/AiLoadingJourney.svelte` renders the deterministic lifecycle defined in `aiJourney.ts`, mirroring `ChatService.prepareChatContext` → `VectorSearchService.searchSimilarEmails` → `OpenAiChatService.generateResponse` so UI copy stays in sync with backend stages.
 - **Mailbox AI Actions** – The email list header now exposes an "AI Actions" dropdown that targets mailbox-wide workflows (e.g., Smart triage & cleanup). The control appears next to the search bar on desktop/tablet and in the mobile toolbar so users can trigger scoped batch actions against the currently filtered messages, reusing the existing AI journey overlay and catalog metadata.
+- **Folder controls & drafts** – Every list row now surfaces Archive / Move / Delete hover actions, all wired to the new `/api/messages/{id}/move` endpoint. Compose windows auto-save to the Drafts folder and moving to Sent/Trash simply reuses the same API contract, keeping UI + API behavior identical even before SMTP wiring lands.
 - **Vector Retrieval Stub** – Integrates with Qdrant for similarity search; ships with placeholder extraction logic so teams can map real payloads incrementally.
 - **Email Parsing Workspace (QA)** – Provides an interactive HTML workspace for uploading `.eml`/`.txt` files and returning cleaned text output via the `/api/qa/parse-email` endpoint.
 - **Diagnostics Control Panel** – Ships a rich, static diagnostics dashboard tailored for observing health checks, mock retrieval responses, and LLM outputs.
@@ -214,6 +215,17 @@ export LLM_REASONING="medium"
 
 \* `minimal` only supported by OpenAI. Automatically converts to `low` for other providers.
 
+### Mailbox state & move endpoints
+
+All mailbox interactions are scoped to an ephemeral `X-Mailbox-Session` header so each browser tab maintains its own local folder overrides until refresh.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/mailboxes/{mailboxId}/state` | Returns the resolved message list, folder counts, and placement map for the caller's session. Accepts optional `session` query parameter when the header is unavailable. |
+| `POST` | `/api/mailboxes/{mailboxId}/messages/{messageId}/move` | Moves a single message into `targetFolderId` (`inbox`, `archive`, `trash`) and returns updated counts + placements. Body: `{ mailboxId, targetFolderId, sessionId? }`. |
+
+These endpoints power `mailboxLayoutStore` in the Svelte client today and will be reused when we swap the file-system adapter for a real mailbox provider (IMAP/Graph).
+
 ## Local Development
 
 ```bash
@@ -235,6 +247,7 @@ Helpful Makefile targets:
 - `make build-java` – Build only the Spring Boot JAR
 - `make fe-dev` – Start Vite dev server with API proxy
 - `make test` – Run the full Maven test suite (override with `MAVEN_TEST_FLAGS="-DskipITs"` etc.)
+- `make lint` – Run all linters: SpotBugs (Java bugs), Oxlint (JS/Svelte scripts), Stylelint (CSS duplicates), Maven Enforcer (dependencies)
 - `make docker-build` – Build `composerai-api:local`
 - `make docker-run-local` – Run container with local profile variables
 
