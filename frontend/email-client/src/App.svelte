@@ -14,7 +14,7 @@
   import AiPanelDockChip from './lib/AiPanelDockChip.svelte';
   import ComingSoonModal from './lib/ComingSoonModal.svelte';
   import WindowNotice from './lib/WindowNotice.svelte';
-  import { isMobile, isTablet, isDesktop, isWide, viewport } from './lib/viewport';
+import { isMobile, isTablet, isDesktop, isWide, viewport, viewportSize } from './lib/viewportState';
   import { createWindowManager } from './lib/window/windowStore'; // temp use
   import { createComposeWindow, WindowKind } from './lib/window/windowTypes';
   import { catalogStore, hydrateCatalog, ensureCatalogLoaded as ensureCatalog, getFunctionMeta, mergeDefaultArgs, resolveDefaultInstruction } from './lib/services/aiCatalog';
@@ -51,6 +51,7 @@ import { createAiPanelStore } from './lib/stores/aiPanelStore';
   const initialEffectiveFolders = bootstrap.effectiveFolders && typeof bootstrap.effectiveFolders === 'object' ? bootstrap.effectiveFolders : null;
 const mailboxLayout = createMailboxLayoutStore(initialEmails, initialFolderCounts, initialEffectiveFolders);
 const ACTIVE_MAILBOX_ID = 'primary';
+const ACTION_TOOLBAR_COMPACT_BREAKPOINT = 960;
   const mailboxStores = mailboxLayout.stores;
   const mailboxStore = mailboxStores.mailbox;
   const searchStore = mailboxStores.search;
@@ -162,6 +163,14 @@ const panelErrorsStore = panelStores.errors;
   $: wide = $isWide;
   $: viewportType = $viewport;
   $: viewportTier = wide ? 'wide' : desktop ? 'desktop' : tablet ? 'tablet' : 'mobile';
+  $: viewportDimensions = $viewportSize;
+  $: compactActions = (() => {
+    const width = viewportDimensions?.width ?? 0;
+    if (mobile) {
+      return false;
+    }
+    return width > 0 && width < ACTION_TOOLBAR_COMPACT_BREAKPOINT;
+  })();
   $: inlineSidebar = viewportTier === 'desktop' || viewportTier === 'wide';
   $: mailboxLayout.setDrawerMode(mobile || tablet);
   $: sidebarVariant = (() => {
@@ -1050,6 +1059,7 @@ const panelErrorsStore = panelStores.errors;
           actionMenuOptions={actionMenuOptions}
           actionMenuLoading={actionMenuLoading}
           mobile={mobile}
+          compactActions={compactActions}
           currentFolderId={resolveFolderForMessage(selected)}
           pendingMove={pendingMoves.has(selected?.id)}
           escapeHtmlFn={escapeHtml}

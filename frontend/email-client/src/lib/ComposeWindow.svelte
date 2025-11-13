@@ -1,7 +1,7 @@
 <script>
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { Paperclip, Send, Wand2, Highlighter, Trash2, ChevronDown } from 'lucide-svelte';
-  import { isMobile } from './viewport';
+  import { isMobile } from './viewportState';
   import WindowFrame from './window/WindowFrame.svelte';
   import { useWindowContext } from './window/windowContext';
   import AiLoadingJourney from './AiLoadingJourney.svelte';

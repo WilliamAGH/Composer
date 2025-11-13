@@ -1,7 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { X } from 'lucide-svelte';
-  import { isMobile, isTablet, viewport } from './viewport';
+  import { isMobile, isTablet, viewport } from './viewportState';
  
   /**
    * @deprecated Replaced by the WindowFrame-based AI Summary window. Remove once callers migrate.

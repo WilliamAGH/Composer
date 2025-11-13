@@ -30,7 +30,28 @@
   --z-dropdown: 200;
   --z-dropdown-nested: 220;
 }
-/** Primary rounded button baseline reused across every CTA. */
+
+/**
+ * Accessibility helper that visually hides content while keeping it accessible to assistive tech.
+ * @usage - Apply to <span> or <input> elements that should remain readable by screen readers only
+ * @related - .btn for focusable controls
+ */
+:global(.sr-only) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border: 0;
+  white-space: nowrap;
+}
+/**
+ * Glassmorphic pill baseline that equalizes CTA sizing across compose, sidebars, and toolbars.
+ * @usage - Base class for every actionable button; pair with modifiers (primary/secondary/ghost/icon)
+ * @related - .btn--primary, .btn--secondary, .btn--ghost, .btn--icon, .btn--compact
+ */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -59,6 +80,11 @@
   box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.4), 0 12px 30px -18px rgba(15, 23, 42, 0.45);
 }
 
+/**
+ * Gradient hero button for the main affirmative action (send, Compose, AI mailbox triggers).
+ * @usage - Combine with .btn on buttons representing the highest priority CTA
+ * @related - .btn--secondary, .btn--ghost for supporting actions
+ */
 .btn--primary {
   color: white;
   background: linear-gradient(135deg, #0f172a, #1e293b 60%, #1a365d);
@@ -71,6 +97,11 @@
   box-shadow: 0 35px 70px -30px rgba(15, 23, 42, 0.75);
 }
 
+/**
+ * Frosted secondary pill for supportive actions (AI helper chips, neutral confirmations).
+ * @usage - Compose AI helper buttons, modal confirm buttons, EmailActionToolbar AI pills
+ * @related - .btn--primary, .btn--ghost
+ */
 .btn--secondary {
   color: #0f172a;
   background: rgba(255, 255, 255, 0.92);
@@ -83,6 +114,11 @@
   background: rgba(255, 255, 255, 0.98);
 }
 
+/**
+ * Border-forward tertiary pill gives dropdown triggers and tertiary actions a lighter footprint.
+ * @usage - AI Actions dropdown trigger, compose toolbar toggles, secondary chips in panels
+ * @related - .btn--secondary, .btn--icon
+ */
 .btn--ghost {
   color: #475569;
   background: rgba(248, 250, 252, 0.85);
@@ -95,6 +131,11 @@
   background: white;
 }
 
+/**
+ * Circular icon-only button sized for toolbars but still finger-friendly.
+ * @usage - Reply/Forward/Delete buttons, hamburger toggles, window chrome controls
+ * @related - .btn--icon-chrome, .btn--icon.btn--inset
+ */
 .btn--icon {
   width: 42px;
   height: 42px;
@@ -147,6 +188,11 @@ input[type='email'] {
   }
 }
 
+/**
+ * Adds an inner bevel to icon buttons so floating chrome stands out against translucent panes.
+ * @usage - Pair with .btn--icon or .btn--icon-chrome inside AI panels and window frames
+ * @related - .btn--icon, .btn--icon-chrome
+ */
 .btn--icon.btn--inset {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6), 0 12px 30px -18px rgba(15, 23, 42, 0.35);
 }
@@ -175,18 +221,33 @@ input[type='email'] {
   }
 }
 
+/**
+ * Guarantees labelled CTAs meet touch targets with wider padding (especially on mobile sheets).
+ * @usage - Send/save buttons in Compose, mobile compose sheet pills, full-width mailbox actions
+ * @related - .btn--compact, .btn
+ */
 .btn--labelled {
   padding-left: 1.05rem;
   padding-right: 1.05rem;
   min-height: 42px;
 }
 
+/**
+ * Slim vertical padding for toolbar pills while keeping ≥40px height for accessibility.
+ * @usage - AI action pills, mailbox toolbar buttons, Mailbox AI trigger
+ * @related - .btn--labelled, .btn
+ */
 .btn--compact {
   min-height: 40px;
   padding-top: 0.35rem;
   padding-bottom: 0.35rem;
 }
 
+/**
+ * Small circular glyph container nested inside pills for AI icons and compose automation badges.
+ * @usage - Inside AiCommandButtons, compose AI helper pill buttons
+ * @related - .btn--compact, .btn
+ */
 .btn-icon-chip {
   display: inline-flex;
   align-items: center;
@@ -224,9 +285,9 @@ input[type='email'] {
 }
 
 /**
- * Column layout for dropdown choices with compact spacing.
- * @usage - Direct child of .menu-surface for action lists
- * @related - .menu-item
+ * Flex column for dropdown content so AI/translate menus share consistent spacing.
+ * @usage - Direct child within .menu-surface in App, Compose, EmailActionToolbar
+ * @related - .menu-item, .menu-eyebrow
  */
 .menu-list {
   display: flex;
@@ -235,9 +296,9 @@ input[type='email'] {
 }
 
 /**
- * Shared menu row styling across all dropdowns.
- * @usage - Buttons inside .menu-surface (AI Actions, Translate variants)
- * @related - .menu-item-icon, .menu-eyebrow
+ * Interactive dropdown row baseline controlling padding/hover/disabled states.
+ * @usage - Buttons rendered by AI Actions, Translate variants, mailbox move menus
+ * @related - .menu-list, .menu-item-icon
  */
 .menu-item {
   display: flex;
@@ -259,8 +320,8 @@ input[type='email'] {
 }
 
 /**
- * Circular glyph backdrop for icons inside dropdown items.
- * @usage - Place before labels within .menu-item
+ * Circular icon badge ensuring glyph alignment inside dropdown options.
+ * @usage - Inline span inserted before labels within .menu-item
  * @related - .menu-item
  */
 .menu-item-icon {
@@ -301,8 +362,34 @@ input[type='email'] {
 }
 
 /**
- * Eyebrow label describing the dropdown context.
- * @usage - Appears at top of .menu-surface
+ * Email HTML containers ensure iframe + fallback rendering never overflow the viewport on mobile widths.
+ * @usage - EmailIframe.svelte wrapper + fallback divs
+ * @related - src/main/resources/static/js/email-renderer.js `.email-wrapper`
+ */
+:global(.email-html-container) {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/**
+ * Fallback rendering mirrors iframe padding so legacy emails stay responsive even without EmailRenderer.
+ * @usage - EmailIframe.svelte fallback div
+ * @related - .email-html-container
+ */
+:global(.email-html-fallback) {
+  width: 100%;
+  max-width: 100%;
+  padding: 1rem;
+  overflow-x: auto;
+  background: transparent;
+  overflow-wrap: anywhere;
+}
+
+/**
+ * Uppercase menu label that names the dropdown context (e.g., "Suggested Actions").
+ * @usage - First child of .menu-surface before .menu-list in AI and compose menus
  * @related - .menu-list
  */
 .menu-eyebrow {
@@ -314,6 +401,11 @@ input[type='email'] {
   display: block;
 }
 
+/**
+ * Petite capsule button used inside AI panels/menus for secondary inline actions.
+ * @usage - AiSummaryWindow controls (Customize, retry) and nested translate menu footer buttons
+ * @related - .btn--compact
+ */
 .panel-chip {
   display: inline-flex;
   align-items: center;
@@ -326,6 +418,11 @@ input[type='email'] {
   font-size: 0.8rem;
 }
 
+/**
+ * Baseline mailbox list row with frosted hover states and rounded geometry.
+ * @usage - Applied to each folder row rendered in MailboxSidebar
+ * @related - .nav-pill--active, .nav-pill-badge
+ */
 .nav-pill {
   display: flex;
   align-items: center;
@@ -343,6 +440,11 @@ input[type='email'] {
   color: #0f172a;
 }
 
+/**
+ * Highlights the currently selected folder with inset border and darker background.
+ * @usage - Conditional class on the active nav pill item
+ * @related - .nav-pill
+ */
 .nav-pill--active {
   background: rgba(15, 23, 42, 0.08);
   border-color: rgba(15, 23, 42, 0.12);
@@ -350,6 +452,11 @@ input[type='email'] {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
+/**
+ * Tiny badge for unread counts displayed at the end of each nav pill.
+ * @usage - Span wrapping counts within MailboxSidebar rows
+ * @related - .nav-pill
+ */
 .nav-pill-badge {
   margin-left: auto;
   padding: 0.1rem 0.5rem;
@@ -360,6 +467,12 @@ input[type='email'] {
   color: #475569;
 }
 
+/**
+ * Global toast surface displayed near the bottom-right for window/AI notices.
+ * @usage - Rendered by WindowNotice.svelte when showGlobalNotice() emits a message
+ * @z-index-warning - Uses var(--z-window-notice) to stay above panels but below modals
+ * @related - WindowNotice.svelte
+ */
 .window-notice {
   position: fixed;
   bottom: 90px;
@@ -373,6 +486,12 @@ input[type='email'] {
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
 }
 
+/**
+ * Constrains the AI summary panel height and layering relative to the email body column.
+ * @usage - Wrapper div surrounding <AiSummaryWindow /> inside App.svelte
+ * @z-index-warning - Uses var(--z-panel-overlay); maximized state elevates it further
+ * @related - .ai-panel-wrapper.maximized, .panel-column
+ */
 .ai-panel-wrapper {
   position: relative;
   z-index: 10;
@@ -382,6 +501,12 @@ input[type='email'] {
   flex-direction: column;
 }
 
+/**
+ * Full takeover mode when the AI summary window is maximized.
+ * @usage - Toggled via panelMaximizedStore to span the entire panel column or viewport on mobile
+ * @z-index-warning - Aligns with var(--z-panel-maximized) layering; ensure DrawerBackdrop (z-50) stays beneath
+ * @related - .ai-panel-wrapper
+ */
 .ai-panel-wrapper.maximized {
   position: absolute;
   inset: 0;
@@ -390,11 +515,22 @@ input[type='email'] {
   max-height: 100%;
 }
 
+/**
+ * Maintains relative positioning so AI overlays anchor correctly within the detail pane.
+ * @usage - Applied to the flex column containing the email detail + AI panel in App/Compose
+ * @related - .ai-panel-wrapper
+ */
 .panel-column {
   position: relative;
   min-height: 0;
 }
 
+/**
+ * Floating dock chip that restores the AI summary panel when minimized.
+ * @usage - Button in AiPanelDockChip.svelte shown when the AI panel is docked
+ * @z-index-warning - Shares toolbar z-index (var(--z-toolbar-surface)) so it stays above drawers
+ * @related - .ai-panel-wrapper, AiPanelDockChip.svelte
+ */
 .panel-dock-chip {
   position: fixed;
   bottom: 24px;

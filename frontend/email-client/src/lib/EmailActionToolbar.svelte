@@ -13,6 +13,7 @@
   export let actionMenuOptions = [];
   export let actionMenuLoading = false;
   export let mobile = false;
+  export let compactActions = false;
   export let currentFolderId = 'inbox';
   export let pendingMove = false;
   export let escapeHtmlFn = (value) => value ?? '';
@@ -165,6 +166,7 @@
               actionOptions={actionMenuOptions}
               actionMenuLoading={actionMenuLoading}
               {mobile}
+              compact={compactActions}
               on:select={(event) => emit('commandSelect', event.detail)}
               on:actionSelect={(event) => emit('actionSelect', event.detail)}
               on:actionMenuToggle={(event) => emit('actionMenuToggle', event.detail)}
@@ -253,6 +255,7 @@
       actionOptions={actionMenuOptions}
       actionMenuLoading={actionMenuLoading}
       {mobile}
+      compact={compactActions}
       on:select={(event) => emit('commandSelect', event.detail)}
       on:actionSelect={(event) => emit('actionSelect', event.detail)}
       on:actionMenuToggle={(event) => emit('actionMenuToggle', event.detail)}

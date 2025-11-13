@@ -13,7 +13,6 @@
   $: title = panelState?.title || 'AI Summary';
   $: html = panelState?.html || '';
   $: lastCommand = panelState?.commandKey || 'summarize';
-  $: commandLabel = panelState?.commandLabel || title;
   $: updatedLabel = panelState?.updatedAt
     ? new Date(panelState.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : null;
@@ -60,7 +59,6 @@
           <span class="panel-meta">Updated at {updatedLabel}</span>
         {/if}
       </div>
-      <h3 class="panel-title">{commandLabel}</h3>
     </div>
     <div class="panel-actions">
       <button
@@ -224,16 +222,6 @@
     letter-spacing: 0.05em;
     text-transform: uppercase;
     color: #94a3b8;
-  }
-
-  /**
-   * Main command title typography.
-   * @usage - <h3 class="panel-title">
-   */
-  .panel-title {
-    font-size: clamp(1.1rem, 1rem + 0.4vw, 1.35rem);
-    font-weight: 600;
-    color: #0f172a;
   }
 
   /**

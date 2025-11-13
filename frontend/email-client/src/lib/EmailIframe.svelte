@@ -43,8 +43,8 @@
   onMount(tryRender);
 </script>
 
-<div class="email-html-container w-full max-w-full overflow-x-hidden" bind:this={container}>
+<div class="email-html-container" bind:this={container}>
   {#if !rendered && fallback}
-    <div class="email-text-panel prose prose-sm max-w-full text-slate-700 break-words">{@html fallback}</div>
+    <div class="email-html-fallback prose prose-sm text-slate-700 break-words">{@html fallback}</div>
   {/if}
 </div>

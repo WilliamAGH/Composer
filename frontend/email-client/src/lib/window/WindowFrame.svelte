@@ -1,7 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { Minus, X, Maximize2, Minimize2 } from 'lucide-svelte';
-  import { isMobile, isTablet, viewport } from '../viewport';
+  import { isMobile, isTablet, viewport } from '../viewportState';
 
   /**
    * Shared frame for floating/docked windows. Lives in JS-backed Svelte to provide markup, while

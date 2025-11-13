@@ -10,6 +10,7 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   export let actionMenuLoading = false;
   export let mobile = false;
   export let layout = 'stacked';
+  export let compact = false;
   const dispatch = createEventDispatcher();
   const preferredVariantOrder = ['es', 'pt', 'nl'];
   const FALLBACK_ACTION_OPTIONS = [
@@ -141,13 +142,18 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   }
 </script>
 
-<div class={`ai-action-toolbar ${mobile ? 'mobile' : ''} ${trayMode ? 'tray-mode' : ''}`}>
+<div class={`ai-action-toolbar ${mobile ? 'mobile' : ''} ${trayMode ? 'tray-mode' : ''} ${compact ? 'compact' : ''}`}>
   {#if !commandsList.length}
     <button
       type="button"
       class="btn btn--secondary btn--compact action-pill"
+      aria-label="Run AI Assistant"
+      title="Run AI Assistant"
       on:click={() => handleClick('summarize')}>
-      Run AI Assistant
+      <span class="action-pill__icon">
+        <Sparkles class="h-4 w-4 text-slate-500" aria-hidden="true" />
+      </span>
+      <span class="action-pill__label">Run AI Assistant</span>
     </button>
   {:else}
       <div class={`relative ${mobile ? 'span-2' : ''}`}>
@@ -158,15 +164,18 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
           on:click={toggleActionMenu}
           aria-haspopup="menu"
           aria-expanded={actionMenuOpen}
-        aria-label="AI Actions"
-        aria-busy={actionMenuLoading}
-        bind:this={actionButtonEl}>
-        <span class="btn-icon-chip">
-          <Sparkles class="h-4 w-4" />
-        </span>
-        <span class="tracking-wide">Actions</span>
-        <ChevronDown class={`h-4 w-4 transition ${actionMenuOpen ? 'text-slate-700 rotate-180' : 'text-slate-500'}`} />
-      </button>
+          aria-label="AI Actions"
+          title="AI Actions"
+          aria-busy={actionMenuLoading}
+          bind:this={actionButtonEl}>
+          <span class="action-pill__icon btn-icon-chip">
+            <Sparkles class="h-4 w-4" aria-hidden="true" />
+          </span>
+          <span class="action-pill__label tracking-wide">Actions</span>
+          <ChevronDown
+            class={`action-pill__chevron h-4 w-4 transition ${actionMenuOpen ? 'text-slate-700 rotate-180' : 'text-slate-500'}`}
+            aria-hidden="true" />
+        </button>
       {#if actionMenuOpen}
         <div
           class="absolute mt-2 menu-surface"
@@ -199,9 +208,13 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
         type="button"
         class="btn btn--secondary btn--compact action-pill"
         class:action-pill--tray={trayMode}
+        aria-label={labelForEntry(summarizeEntry)}
+        title={labelForEntry(summarizeEntry)}
         on:click={() => handleClick(summarizeEntry.key)}>
-        <svelte:component this={resolveIconComponent(summarizeEntry.key)} class="h-4 w-4 text-slate-500" />
-        {labelForEntry(summarizeEntry)}
+        <span class="action-pill__icon">
+          <svelte:component this={resolveIconComponent(summarizeEntry.key)} class="h-4 w-4 text-slate-500" aria-hidden="true" />
+        </span>
+        <span class="action-pill__label">{labelForEntry(summarizeEntry)}</span>
       </button>
     {/if}
 
@@ -210,9 +223,13 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
         type="button"
         class="btn btn--secondary btn--compact action-pill"
         class:action-pill--tray={trayMode}
+        aria-label={labelForEntry(draftEntry)}
+        title={labelForEntry(draftEntry)}
         on:click={() => handleClick(draftEntry.key)}>
-        <svelte:component this={resolveIconComponent(draftEntry.key)} class="h-4 w-4 text-slate-500" />
-        {labelForEntry(draftEntry)}
+        <span class="action-pill__icon">
+          <svelte:component this={resolveIconComponent(draftEntry.key)} class="h-4 w-4 text-slate-500" aria-hidden="true" />
+        </span>
+        <span class="action-pill__label">{labelForEntry(draftEntry)}</span>
       </button>
     {/if}
 
@@ -225,12 +242,18 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
           on:click={toggleTranslateMenu}
           aria-haspopup="menu"
           aria-expanded={translateMenuOpen}
+          aria-label="Translate"
+          title="Translate"
           bind:this={translateButtonEl}>
           <div class="flex items-center gap-2">
-            <Languages class="h-4 w-4 text-slate-500" />
-            <span>Translate</span>
+            <span class="action-pill__icon">
+              <Languages class="h-4 w-4 text-slate-500" aria-hidden="true" />
+            </span>
+            <span class="action-pill__label">Translate</span>
           </div>
-          <ChevronDown class={`h-4 w-4 text-slate-500 transition ${translateMenuOpen ? 'rotate-180' : ''}`} />
+          <ChevronDown
+            class={`action-pill__chevron h-4 w-4 text-slate-500 transition ${translateMenuOpen ? 'rotate-180' : ''}`}
+            aria-hidden="true" />
         </button>
         {#if translateMenuOpen}
           <div class="absolute mt-2 menu-surface" data-layer="nested" bind:this={translateDropdownEl}>
@@ -256,7 +279,7 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
               class="mt-4 panel-chip justify-center w-full"
               on:click={() => { triggerComingSoon('Translate customization'); translateMenuOpen = false; }}>
               <Sparkles class="h-4 w-4" />
-              Customize (coming soon)
+              Customize
             </button>
           </div>
         {/if}
@@ -268,9 +291,13 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
         type="button"
         class="btn btn--secondary btn--compact action-pill"
         class:action-pill--tray={trayMode}
+        aria-label={labelForEntry(entry)}
+        title={labelForEntry(entry)}
         on:click={() => handleClick(entry.key)}>
-        <svelte:component this={resolveIconComponent(entry.key)} class="h-4 w-4 text-slate-500" />
-        {labelForEntry(entry)}
+        <span class="action-pill__icon">
+          <svelte:component this={resolveIconComponent(entry.key)} class="h-4 w-4 text-slate-500" aria-hidden="true" />
+        </span>
+        <span class="action-pill__label">{labelForEntry(entry)}</span>
       </button>
     {/each}
   {/if}
@@ -298,6 +325,49 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.65rem;
+  }
+
+  /**
+   * Icon + label pairing for AI action pills.
+   * @usage - Wrap icon components and text spans in AiCommandButtons markup
+   * @related - .ai-action-toolbar.compact for responsive collapsing
+   */
+  .action-pill__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0.4rem;
+  }
+
+  .action-pill__label {
+    white-space: nowrap;
+  }
+
+  .action-pill__chevron {
+    margin-left: 0.35rem;
+  }
+
+  /**
+   * Compact tier (≤960px desktop width) collapses AI button labels to icons so the toolbar
+   * fits alongside the desktop action row without clipping.
+   * @usage - Applied when App.svelte passes compact={true}
+   * @related - .action-pill__label, .action-pill__icon
+   */
+  .ai-action-toolbar.compact {
+    gap: 0.35rem;
+  }
+
+  .ai-action-toolbar.compact :global(.btn.btn--compact) {
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
+  }
+
+  .ai-action-toolbar.compact .action-pill__label {
+    display: none;
+  }
+
+  .ai-action-toolbar.compact .action-pill__icon {
+    margin-right: 0;
   }
 
   .ai-action-toolbar.mobile:not(.tray-mode) :global(.btn.btn--compact) {

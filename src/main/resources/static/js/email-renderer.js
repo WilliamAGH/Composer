@@ -193,6 +193,17 @@ const EmailRenderer = (() => {
                         padding: 16px;
                         background: transparent;
                     }
+                    .email-wrapper *,
+                    .email-wrapper *::before,
+                    .email-wrapper *::after {
+                        box-sizing: border-box;
+                    }
+                    .email-wrapper > * {
+                        max-width: 100% !important;
+                    }
+                    .email-wrapper [style*="width"] {
+                        max-width: 100% !important;
+                    }
                     .email-wrapper img,
                     .email-wrapper svg,
                     .email-wrapper video,
@@ -203,6 +214,7 @@ const EmailRenderer = (() => {
                     }
                     .email-wrapper table {
                         max-width: 100%;
+                        width: 100% !important;
                     }
                     /* Restore default table semantics even if inline CSS tries to override them */
                     .email-wrapper table > tbody {
