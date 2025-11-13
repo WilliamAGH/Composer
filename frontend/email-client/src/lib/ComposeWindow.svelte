@@ -339,67 +339,6 @@
           placeholder="Subject"
           class="field" />
 
-        <div class="ai-actions">
-          <div class="ai-action-group">
-            <button
-              type="button"
-              class="btn btn--ghost btn--icon compose-ai-pill dropdown-toggle"
-              aria-haspopup="menu"
-              aria-expanded={draftMenuOpen}
-              bind:this={draftToggleButton}
-              on:click={toggleDraftMenu}
-              aria-label="More drafting options">
-              <ChevronDown class={`h-4 w-4 transition ${draftMenuOpen ? 'rotate-180' : ''}`} />
-            </button>
-            <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill" on:click={runPrimaryDraft}>
-              <Wand2 class="h-4 w-4" /> {primaryDraftOption?.label || 'Draft'}
-            </button>
-            {#if draftMenuOpen && draftOptions.length}
-              <div class="menu-surface compose-menu" bind:this={draftMenuRef}>
-                <span class="menu-eyebrow">Drafting Options</span>
-                <div class="menu-list">
-                  {#each draftOptions as option (option.key)}
-                    <button type="button" class="menu-item" on:click={() => invokeDraftOption(option)}>
-                      <div class="flex items-center gap-2 min-w-0">
-                        <Wand2 class="h-4 w-4 text-slate-500" />
-                        <span class="truncate">{option.label}</span>
-                      </div>
-                    </button>
-                  {/each}
-                </div>
-              </div>
-            {/if}
-          </div>
-
-          <div class="ai-action-group">
-            <button
-              type="button"
-              class="btn btn--ghost btn--labelled btn--compact compose-ai-pill tone-trigger"
-              aria-haspopup="menu"
-              aria-expanded={toneMenuOpen}
-              bind:this={toneToggleButton}
-              on:click={toggleToneMenu}>
-              <Highlighter class="h-4 w-4" /> Tone
-              <ChevronDown class={`h-4 w-4 text-slate-500 transition ${toneMenuOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {#if toneMenuOpen}
-              <div class="menu-surface compose-menu" bind:this={toneMenuRef}>
-                <span class="menu-eyebrow">Rewrite Tone</span>
-                <div class="menu-list">
-                  {#each tonePresets as preset (preset.id)}
-                    <button type="button" class="menu-item" on:click={() => invokeTonePreset(preset)}>
-                      <div class="flex flex-col text-left">
-                        <span class="font-medium text-slate-900">{preset.label}</span>
-                        <span class="text-xs text-slate-500">Rewrite using the {preset.label.toLowerCase()} voice.</span>
-                      </div>
-                    </button>
-                  {/each}
-                </div>
-              </div>
-            {/if}
-          </div>
-        </div>
-
         {#if journeyOverlay?.visible}
           <AiLoadingJourney
             steps={journeyOverlay.steps || []}
@@ -436,26 +375,89 @@
         {/if}
       </div>
 
-      <div slot="footer" class="compose-footer">
-        <button type="button" class="btn btn--primary btn--labelled" on:click={send}>
-          <Send class="h-4 w-4" /> Send
-        </button>
+  <div slot="footer" class="compose-footer">
+    <div class="compose-footer-main">
+      <button type="button" class="btn btn--primary btn--labelled" on:click={send}>
+        <Send class="h-4 w-4" /> Send
+      </button>
+      <button
+        type="button"
+        class="btn btn--secondary btn--labelled"
+        on:click={() => fileInput?.click()}
+        on:keydown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            fileInput?.click();
+          }
+        }}>
+        <Paperclip class="h-4 w-4" /> Attach
+      </button>
+      <button type="button" class="btn btn--ghost btn--icon" aria-label="Delete draft" title="Delete draft" on:click={deleteDraft}>
+        <Trash2 class="h-4 w-4" />
+      </button>
+    </div>
+    <div class="compose-footer-ai">
+      <div class="compose-ai-cluster">
+        <div class="compose-ai-split">
+          <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill compose-ai-pill--main" on:click={runPrimaryDraft}>
+            <Wand2 class="h-4 w-4" /> {primaryDraftOption?.label || 'Draft'}
+          </button>
+          <button
+            type="button"
+            class="btn btn--ghost btn--icon compose-ai-pill compose-ai-pill--toggle"
+            aria-haspopup="menu"
+            aria-expanded={draftMenuOpen}
+            bind:this={draftToggleButton}
+            on:click={toggleDraftMenu}
+            aria-label="More drafting options">
+            <ChevronDown class={`h-4 w-4 transition ${draftMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+        {#if draftMenuOpen && draftOptions.length}
+          <div class="menu-surface compose-menu compose-menu--footer" bind:this={draftMenuRef}>
+            <span class="menu-eyebrow">Drafting Options</span>
+            <div class="menu-list">
+              {#each draftOptions as option (option.key)}
+                <button type="button" class="menu-item" on:click={() => invokeDraftOption(option)}>
+                  <div class="flex items-center gap-2 min-w-0">
+                    <Wand2 class="h-4 w-4 text-slate-500" />
+                    <span class="truncate">{option.label}</span>
+                  </div>
+                </button>
+              {/each}
+            </div>
+          </div>
+        {/if}
+      </div>
+      <div class="compose-ai-cluster">
         <button
           type="button"
-          class="btn btn--secondary btn--labelled"
-          on:click={() => fileInput?.click()}
-          on:keydown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              fileInput?.click();
-            }
-          }}>
-          <Paperclip class="h-4 w-4" /> Attach
+          class="btn btn--ghost btn--labelled btn--compact compose-ai-pill tone-trigger"
+          aria-haspopup="menu"
+          aria-expanded={toneMenuOpen}
+          bind:this={toneToggleButton}
+          on:click={toggleToneMenu}>
+          <Highlighter class="h-4 w-4" /> Tone
+          <ChevronDown class={`h-4 w-4 text-slate-500 transition ${toneMenuOpen ? 'rotate-180' : ''}`} />
         </button>
-        <button type="button" class="btn btn--ghost btn--icon" aria-label="Delete draft" title="Delete draft" on:click={deleteDraft}>
-          <Trash2 class="h-4 w-4" />
-        </button>
+        {#if toneMenuOpen}
+          <div class="menu-surface compose-menu compose-menu--footer" bind:this={toneMenuRef}>
+            <span class="menu-eyebrow">Rewrite Tone</span>
+            <div class="menu-list">
+              {#each tonePresets as preset (preset.id)}
+                <button type="button" class="menu-item" on:click={() => invokeTonePreset(preset)}>
+                  <div class="flex flex-col text-left">
+                    <span class="font-medium text-slate-900">{preset.label}</span>
+                    <span class="text-xs text-slate-500">Rewrite using the {preset.label.toLowerCase()} voice.</span>
+                  </div>
+                </button>
+              {/each}
+            </div>
+          </div>
+        {/if}
       </div>
+    </div>
+  </div>
     </WindowFrame>
   {/if}
   <input bind:this={fileInput} type="file" class="sr-only" on:change={(e) => onFilesSelected(e.currentTarget.files)} multiple />
@@ -496,24 +498,6 @@
     min-height: 200px;
   }
   /**
-   * Wrap AI quick actions so they flex on small screens.
-   * @usage - ComposeWindow.svelte quick action row
-   */
-  .ai-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-  /**
-   * Group buttons so dropdown menus can anchor to their trigger cluster.
-   * @usage - ComposeWindow.svelte AI quick action clusters
-   */
-  .ai-action-group {
-    display: flex;
-    gap: 0.35rem;
-    position: relative;
-  }
-  /**
    * Compose AI action pills match other toolbar chips but run noticeably slimmer per desktop feedback.
    * @usage - ComposeWindow.svelte Draft + Tone controls (desktop/tablet)
    */
@@ -523,15 +507,6 @@
     padding-bottom: 0.1rem;
     padding-left: 0.75rem;
     padding-right: 0.75rem;
-  }
-  /**
-   * Dropdown toggle keeps icon-only footprint compact when placed before the Draft button.
-   * @usage - ComposeWindow.svelte Draft menu chevron
-   */
-  .compose-ai-pill.dropdown-toggle {
-    width: 34px;
-    justify-content: center;
-    padding: 0;
   }
   /**
    * Tone trigger spacing syncs with slimmer paddings so label + chevron stay tight.
@@ -589,12 +564,73 @@
     color: #334155;
   }
   /**
-   * Footer houses send + attach CTAs.
+   * Footer houses send + attach CTAs while AI controls pin to the trailing edge.
+   * @usage - ComposeWindow.svelte footer slot
    */
   .compose-footer {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  /**
+   * Primary CTA cluster (Send/Attach/Delete).
+   * @usage - ComposeWindow.svelte footer main actions
+   */
+  .compose-footer-main {
+    display: flex;
+    align-items: center;
     gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  /**
+   * AI control rail hugs the bottom-right corner.
+   * @usage - ComposeWindow.svelte footer AI controls
+   */
+  .compose-footer-ai {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+  /**
+   * Anchors dropdown menus to their trigger buttons.
+   * @usage - ComposeWindow.svelte footer AI controls
+   */
+  .compose-ai-cluster {
+    position: relative;
+  }
+  /**
+   * Split button wrapper keeps primary draft action + toggle visually merged.
+   * @usage - ComposeWindow.svelte footer draft controls
+   */
+  .compose-ai-split {
+    display: flex;
+  }
+  /**
+   * Main split button half keeps its right corners squared so it melds with the toggle.
+   * @usage - ComposeWindow.svelte footer draft controls
+   */
+  .compose-ai-pill--main {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  /**
+   * Toggle half keeps width tight and shares borders with the main half.
+   * @usage - ComposeWindow.svelte footer draft controls
+   */
+  .compose-ai-pill--toggle {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    margin-left: -1px;
+    width: 34px;
+    justify-content: center;
+    padding: 0;
+  }
+  .compose-menu--footer {
+    left: auto;
+    right: 0;
+    margin-top: 0.4rem;
   }
   /* Mobile compose experience handled by ComposeMobileSheet.svelte */
 </style>
