@@ -64,7 +64,21 @@ public class AiFunctionCatalogProperties {
         DefinitionProperties compose = new DefinitionProperties();
         compose.setLabel("AI Compose");
         compose.setCategory(AiFunctionDefinition.Category.COMPOSE);
-        compose.setPromptTemplate("Compose a professional reply using the email context above. Respect prior conversation tone and incorporate these instructions: {{instruction}}\n\nProvide your response in this exact format:\nSubject: [your subject line]\n\n[email body]");
+        compose.setPromptTemplate("""
+Compose a professional reply using the email context above. Respect prior conversation tone and incorporate these instructions: {{instruction}}
+
+Recipient details:
+- Name: {{recipientName}}
+- Email: {{recipientEmail}}
+
+Greeting rule:
+{{recipientGreetingDirective}}
+
+Provide your response in this exact format:
+Subject: [your subject line]
+
+[email body]
+""");
         compose.setDefaultInstruction("Compose a helpful email response based on the selected email.");
         compose.setOutputFormat(AiFunctionDefinition.OutputFormat.EMAIL);
         compose.setSubjectMode(AiFunctionDefinition.SubjectMode.OPTIONAL);
@@ -75,7 +89,21 @@ public class AiFunctionCatalogProperties {
         DefinitionProperties draft = new DefinitionProperties();
         draft.setLabel("AI Draft Reply");
         draft.setCategory(AiFunctionDefinition.Category.COMPOSE);
-        draft.setPromptTemplate("Draft an email response based on the email context above. Apply the following direction: {{instruction}}\n\nProvide your response in this exact format:\nSubject: [your subject line]\n\n[email body]");
+        draft.setPromptTemplate("""
+Draft an email response based on the email context above. Apply the following direction: {{instruction}}
+
+Recipient details:
+- Name: {{recipientName}}
+- Email: {{recipientEmail}}
+
+Greeting rule:
+{{recipientGreetingDirective}}
+
+Provide your response in this exact format:
+Subject: [your subject line]
+
+[email body]
+""");
         draft.setDefaultInstruction("Draft a courteous reply to the selected email outlining next steps.");
         draft.setOutputFormat(AiFunctionDefinition.OutputFormat.EMAIL);
         draft.setSubjectMode(AiFunctionDefinition.SubjectMode.OPTIONAL);
@@ -148,7 +176,21 @@ User guidance: {{instruction}}
         DefinitionProperties tone = new DefinitionProperties();
         tone.setLabel("AI Tone Adjustment");
         tone.setCategory(AiFunctionDefinition.Category.TONE);
-        tone.setPromptTemplate("Rewrite the draft in the email context to match this tone guidance: {{instruction}}. Provide your response in this exact format:\nSubject: [your subject line]\n\n[email body]");
+        tone.setPromptTemplate("""
+Rewrite the draft in the email context to match this tone guidance: {{instruction}}.
+
+Recipient details:
+- Name: {{recipientName}}
+- Email: {{recipientEmail}}
+
+Greeting rule:
+{{recipientGreetingDirective}}
+
+Provide your response in this exact format:
+Subject: [your subject line]
+
+[email body]
+""");
         tone.setDefaultInstruction("Adjust the email to a friendly but professional tone.");
         tone.setOutputFormat(AiFunctionDefinition.OutputFormat.EMAIL);
         tone.setSubjectMode(AiFunctionDefinition.SubjectMode.OPTIONAL);

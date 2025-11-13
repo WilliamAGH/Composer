@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -117,7 +118,7 @@ public class ChatService {
                 String template = resolveTemplate(definition, variant);
                 String instruction = resolveInstruction(originalMessage, definition, variant);
                 String rendered = renderFunctionTemplate(template, instruction, request.getSubject(), definition,
-                    mergeFunctionArgs(definition, variant, request.getCommandArgs()));
+                    mergeFunctionArgs(definition, variant, request.getCommandArgs(), request));
                 if (!StringUtils.isBlank(rendered)) {
                     return rendered;
                 }
@@ -206,7 +207,8 @@ public class ChatService {
      */
     private Map<String, String> mergeFunctionArgs(AiFunctionDefinition definition,
                                                   AiFunctionDefinition.AiFunctionVariant variant,
-                                                  Map<String, String> requestArgs) {
+                                                  Map<String, String> requestArgs,
+                                                  ChatRequest request) {
         Map<String, String> merged = new LinkedHashMap<>();
         if (definition.defaultArgs() != null) {
             merged.putAll(definition.defaultArgs());
@@ -221,7 +223,103 @@ public class ChatService {
                 }
             });
         }
+        applyRecipientArguments(merged, definition, request);
         return merged;
+    }
+
+    /**
+     * Enriches compose/tone commands with recipient metadata so prompt templates can produce
+     * consistent greetings and closings regardless of where the request originated.
+     */
+    private void applyRecipientArguments(Map<String, String> target,
+                                         AiFunctionDefinition definition,
+                                         ChatRequest request) {
+        if (target == null || definition == null || request == null) {
+            return;
+        }
+        if (!isComposeLike(definition.category())) {
+            return;
+        }
+
+        String providedName = StringUtils.sanitize(request.getRecipientName());
+        String providedEmail = StringUtils.sanitize(request.getRecipientEmail());
+        String resolvedName = providedName;
+        boolean inferredFromEmail = false;
+
+        if (StringUtils.isBlank(resolvedName) && !StringUtils.isBlank(providedEmail)) {
+            resolvedName = inferNameFromEmail(providedEmail);
+            inferredFromEmail = !StringUtils.isBlank(resolvedName);
+        }
+
+        if (StringUtils.isBlank(resolvedName)) {
+            resolvedName = "Unknown recipient";
+        }
+
+        target.put("recipientName", resolvedName);
+        if (!StringUtils.isBlank(providedEmail)) {
+            target.put("recipientEmail", providedEmail);
+        }
+        target.put("recipientGreetingDirective",
+            buildGreetingDirective(providedName, providedEmail, resolvedName, inferredFromEmail && StringUtils.isBlank(providedName)));
+    }
+
+    private boolean isComposeLike(AiFunctionDefinition.Category category) {
+        return category == AiFunctionDefinition.Category.COMPOSE || category == AiFunctionDefinition.Category.TONE;
+    }
+
+    private String inferNameFromEmail(String email) {
+        if (StringUtils.isBlank(email)) {
+            return null;
+        }
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 0) {
+            return null;
+        }
+        String localPart = email.substring(0, atIndex)
+            .replace('.', ' ')
+            .replace('_', ' ')
+            .replace('-', ' ')
+            .trim();
+        if (localPart.isBlank() || localPart.length() < 2) {
+            return null;
+        }
+        String[] tokens = localPart.split("\\s+");
+        StringBuilder builder = new StringBuilder();
+        for (String token : tokens) {
+            if (token == null || token.isBlank()) {
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append(' ');
+            }
+            builder.append(Character.toUpperCase(token.charAt(0)));
+            if (token.length() > 1) {
+                builder.append(token.substring(1).toLowerCase(Locale.ROOT));
+            }
+        }
+        String result = builder.toString().trim();
+        return result.length() < 2 ? null : result;
+    }
+
+    /**
+     * Produces inline instructions consumed by prompt templates to keep greetings deterministic.
+     * The directive explains whether a name is trustworthy, inferred, or unavailable so the model
+     * knows when to fall back to generic pleasantries.
+     */
+    private String buildGreetingDirective(String providedName,
+                                          String providedEmail,
+                                          String resolvedName,
+                                          boolean inferred) {
+        if (!StringUtils.isBlank(providedName)) {
+            return "Open with a warm, professional greeting that addresses \"" + providedName + "\" by name.";
+        }
+        if (inferred && !StringUtils.isBlank(resolvedName)) {
+            return "Recipient name was inferred as \"" + resolvedName + "\" from the email address. Use it for the salutation if it feels natural; otherwise keep the greeting neutral.";
+        }
+        if (!StringUtils.isBlank(providedEmail)) {
+            return "Recipient name is unknown and could not be inferred from " + providedEmail + "; begin with a friendly generic greeting such as \"Hello there\" or \"Hi team\".";
+        }
+        return "Recipient identity is unavailable; start with a polite generic greeting (e.g., \"Hello there\").";
     }
 
     /**

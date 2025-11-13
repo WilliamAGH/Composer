@@ -23,14 +23,12 @@ public final class EmailMessageContextFormatter {
             context.append(" <").append(emailMessage.senderEmail()).append('>');
         }
         context.append('\n');
-        if (isNotBlank(emailMessage.recipientName()) || isNotBlank(emailMessage.recipientEmail())) {
-            context.append("To: ")
-                .append(valueOrFallback(emailMessage.recipientName(), "Unknown recipient"));
-            if (isNotBlank(emailMessage.recipientEmail())) {
-                context.append(" <").append(emailMessage.recipientEmail()).append('>');
-            }
-            context.append('\n');
+        context.append("To: ")
+            .append(valueOrFallback(emailMessage.recipientName(), "Unknown recipient"));
+        if (isNotBlank(emailMessage.recipientEmail())) {
+            context.append(" <").append(emailMessage.recipientEmail()).append('>');
         }
+        context.append('\n');
 
         String displayTimestamp = emailMessage.receivedTimestampDisplay();
         context.append("Email sent on: ")

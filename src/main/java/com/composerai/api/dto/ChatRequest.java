@@ -72,6 +72,12 @@ public class ChatRequest {
     @Size(max = 128, message = "journeyScopeTarget cannot exceed 128 characters")
     private String journeyScopeTarget;
 
+    @Size(max = 320, message = "recipientName cannot exceed 320 characters")
+    private String recipientName;
+
+    @Size(max = 320, message = "recipientEmail cannot exceed 320 characters")
+    private String recipientEmail;
+
     // Custom constructor for common test case: message, conversationId, maxResults
     public ChatRequest(String message, String conversationId, int maxResults) {
         this.message = message;

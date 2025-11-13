@@ -14,7 +14,9 @@
   import { createComposeWindow, WindowKind } from './lib/window/windowTypes';
   import { catalogStore, hydrateCatalog, ensureCatalogLoaded as ensureCatalog, getFunctionMeta, mergeDefaultArgs, resolveDefaultInstruction } from './lib/services/aiCatalog';
   import { handleAiCommand } from './lib/services/aiCommandHandler';
-  import { mapEmailMessage, computeMailboxCounts, parseSubjectAndBody } from './lib/services/emailUtils';
+import { mapEmailMessage, computeMailboxCounts, parseSubjectAndBody } from './lib/services/emailUtils';
+import { buildEmailContextString, parseRecipientInput, recipientFromEmail } from './lib/services/emailContextConstructor';
+import { buildReplyPrefill, buildForwardPrefill } from './lib/services/composePrefill.js';
   import { createAiJourneyStore } from './lib/services/aiJourneyStore';
   import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, ArrowLeft, ChevronLeft, ChevronRight, Archive, Trash2, Sparkles, Loader2 } from 'lucide-svelte';
   export let bootstrap = {};
@@ -386,18 +388,66 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
     }
   }
 
-  function openReply() {
+  function openReply(withAi = true) {
     if (!selected) return alert('Select an email first.');
+    const prefills = buildReplyPrefill(selected);
     const descriptor = createComposeWindow(selected, {
-      to: selected.fromEmail || '',
-      subject: `Re: ${selected.subject || ''}`,
+      subject: prefills.subject,
+      body: prefills.body,
+      hasQuotedContext: prefills.hasQuotedContext,
+      quotedContext: prefills.quotedContext,
       isReply: true,
       title: selected.subject ? `Reply: ${selected.subject}` : 'Reply'
     });
     const result = windowManager.open(descriptor);
     if (!result.ok) {
       showWindowLimitMessage();
+      return;
     }
+    if (withAi) {
+      queueReplyPrefillAi(descriptor.id, descriptor.payload.subject, selected);
+    }
+  }
+
+  function openForward() {
+    if (!selected) return alert('Select an email first.');
+    const prefills = buildForwardPrefill(selected);
+    const descriptor = createComposeWindow(selected, {
+      subject: prefills.subject,
+      body: prefills.body,
+      hasQuotedContext: prefills.hasQuotedContext,
+      quotedContext: prefills.quotedContext,
+      isReply: false,
+      isForward: true,
+      title: selected.subject ? `Forward: ${selected.subject}` : 'Forward'
+    });
+    const result = windowManager.open(descriptor);
+    if (!result.ok) {
+      showWindowLimitMessage();
+    }
+  }
+
+  function queueReplyPrefillAi(windowId, subject, relatedEmail) {
+    const instruction = buildReplyGreetingInstruction(relatedEmail);
+    triggerComposeAi({
+      id: windowId,
+      command: 'draft',
+      draft: '',
+      subject,
+      isReply: true,
+      instructionOverride: instruction || undefined
+    }).catch((error) => console.warn('Reply AI prefill failed', error));
+  }
+
+  function buildReplyGreetingInstruction(email) {
+    const recipient = deriveRecipientContext({ fallbackEmail: email });
+    if (recipient.name) {
+      return `Draft only the opening greeting and closing paragraph for a reply to ${recipient.name}. Use their name in the greeting, reference the context politely, and end with a professional closing that leaves space for the user to add details. Preserve any existing user signature block from the context if one exists; otherwise end with "Thanks,\n[Your Name]".`;
+    }
+    if (recipient.email) {
+      return 'Draft the opening greeting and closing paragraph for this reply. Use a neutral greeting (e.g., "Hello there") because the exact name is unknown, and end with a professional closing that keeps the user signature placeholder intact. Leave the middle blank for the user to fill in.';
+    }
+    return 'Draft the opening greeting and closing paragraph for this reply using a friendly but generic salutation and sign-off. Leave the body area blank for the user to fill in.';
   }
 
   function handleComposeSend(event) {
@@ -406,15 +456,20 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   }
 
   async function triggerComposeAi(detail) {
-    const { id, command, draft, subject: draftSubject, isReply } = detail;
+    const { id, command, draft, subject: draftSubject, isReply, to: toInput, instructionOverride } = detail;
     const ready = await ensureCatalogReady();
     if (!ready) return alert('AI helpers are unavailable. Please try again.');
     const fn = getFunctionMeta(catalogData, command);
     if (!fn) return alert('Command unavailable.');
-    const instruction = buildComposeInstruction(command, draft || '', isReply, fn);
+    const instruction = instructionOverride || buildComposeInstruction(command, draft || '', isReply, fn);
     const win = get(windowsStore).find((w) => w.id === id);
     const relatedEmail = win?.contextId ? emails.find((e) => e.id === win.contextId) : selected;
     const commandArgs = mergeDefaultArgs(fn, null);
+    const recipientContext = deriveRecipientContext({
+      toInput,
+      composePayload: win?.payload,
+      fallbackEmail: relatedEmail
+    });
     try {
       const data = await callAiCommand(command, instruction, {
         contextId: relatedEmail?.contextId || relatedEmail?.id,
@@ -423,7 +478,8 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
         journeyScopeTarget: id,
         journeyLabel: draftSubject || relatedEmail?.subject || 'draft',
         journeyHeadline: deriveJourneyHeadline(command, fn.label || 'AI Assistant'),
-        commandArgs
+        commandArgs,
+        recipientContext
       });
       let draftText = (data?.response && data.response.trim()) || '';
       if (!draftText && data?.sanitizedHtml) {
@@ -433,9 +489,14 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
       }
       if (draftText) {
         const parsed = parseSubjectAndBody(draftText);
+        let updatedBody = parsed.body || draftText;
+        const quote = win?.payload?.quotedContext;
+        if (quote && !updatedBody.includes(quote.trim())) {
+          updatedBody = `${updatedBody.trimEnd()}\n\n${quote}`;
+        }
         windowManager.updateComposeDraft(id, {
           subject: parsed.subject || draftSubject,
-          body: parsed.body || draftText
+          body: updatedBody
         });
       }
     } catch (error) {
@@ -534,42 +595,43 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   }
 
   // ---------- AI integration (parity with v1) ----------
-  /**
-   * Build email context string for AI commands.
-   *
-   * CONTEXT FLOW:
-   * 1. Backend HtmlConverter processes email HTML → cleansed markdown (emailBodyTransformedMarkdown)
-   * 2. Frontend receives as contentMarkdown field
-   * 3. This function returns the pre-processed markdown directly
-   * 4. Backend uses this without re-processing when emailContext is provided
-   *
-   * This maintains the integrity of the Java backend's context processing chain.
-   */
-  function buildEmailContextString(email) {
-    if (!email) return '';
 
-    // Prefer the pre-processed markdown from backend (already cleansed by HtmlConverter)
-    // This maintains the chain of context from Java's HtmlConverter processing
-    if (email.contentMarkdown && email.contentMarkdown.trim()) {
-      // Return the cleansed markdown directly without wrapping in metadata
-      // The backend already has this metadata when contextId is used.
-      // If emailContext is sent directly, the frontend must build and include metadata below.
-      return email.contentMarkdown.trim();
+  function normalizeRecipient(recipient = {}) {
+    const name = typeof recipient.name === 'string' ? recipient.name.trim() : '';
+    const email = typeof recipient.email === 'string' ? recipient.email.trim() : '';
+    return { name, email };
+  }
+
+  function deriveRecipientContext({ toInput, composePayload, fallbackEmail } = {}) {
+    const fromInput = normalizeRecipient(parseRecipientInput(toInput));
+    if (fromInput.name || fromInput.email) {
+      return fromInput;
     }
 
-    // Fallback to building context with metadata if no markdown available
-    const lines = [];
-    lines.push('=== Email Metadata ===');
-    lines.push(`Subject: ${email.subject || 'No subject'}`);
-    lines.push(`From: ${email.from}${email.fromEmail ? ` <${email.fromEmail}>` : ''}`);
-    if (email.to || email.toEmail) lines.push(`To: ${(email.to || 'Unknown recipient')}${email.toEmail ? ` <${email.toEmail}>` : ''}`);
-    if (email.timestamp) lines.push(`Email sent on: ${email.timestamp}`);
-    if (email.timestampIso) lines.push(`Email sent (ISO): ${email.timestampIso}`);
-    lines.push('');
-    lines.push('=== Email Body ===');
-    const body = (email.contentText || '').trim();
-    lines.push(body.length > 0 ? body : '(Email body is empty)');
-    return lines.join('\n');
+    if (composePayload) {
+      const directPayload = normalizeRecipient({
+        name: composePayload.recipientName,
+        email: composePayload.recipientEmail || composePayload.toEmail
+      });
+      if (directPayload.name || directPayload.email) {
+        return directPayload;
+      }
+      if (composePayload.to) {
+        const parsedTo = normalizeRecipient(parseRecipientInput(composePayload.to));
+        if (parsedTo.name || parsedTo.email) {
+          return parsedTo;
+        }
+      }
+    }
+
+    if (fallbackEmail) {
+      const fallbackRecipient = normalizeRecipient(recipientFromEmail(fallbackEmail));
+      if (fallbackRecipient.name || fallbackRecipient.email) {
+        return fallbackRecipient;
+      }
+    }
+
+    return { name: '', email: '' };
   }
 
   /**
@@ -640,7 +702,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
    * Sends chat payloads with consistent metadata so the backend sees the same structure regardless
    * of which UI surface initiated the helper.
    */
-  async function callAiCommand(command, instruction, { contextId, subject, journeyScope = 'global', journeyScopeTarget = null, journeyLabel, journeyHeadline, commandVariant, commandArgs, emailContext } = {}) {
+  async function callAiCommand(command, instruction, { contextId, subject, journeyScope = 'global', journeyScopeTarget = null, journeyLabel, journeyHeadline, commandVariant, commandArgs, emailContext, recipientContext } = {}) {
     const payload = {
       message: instruction,
       conversationId,
@@ -671,6 +733,16 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
 
     if (subject && subject.trim()) {
       payload.subject = subject.trim();
+    }
+
+    if (recipientContext) {
+      const normalizedRecipient = normalizeRecipient(recipientContext);
+      if (normalizedRecipient.name) {
+        payload.recipientName = normalizedRecipient.name;
+      }
+      if (normalizedRecipient.email) {
+        payload.recipientEmail = normalizedRecipient.email;
+      }
     }
 
     // Only send emailContext if no contextId is available
@@ -1025,7 +1097,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   >
     <div class="px-4 py-3 border-b border-slate-200">
       <div class="flex items-center gap-3">
-        <button type="button" title="Toggle menu" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={handleMenuClick}>
+        <button type="button" title="Toggle menu" class="btn btn--icon" on:click={handleMenuClick}>
           <Menu class="h-4 w-4" />
         </button>
         <div class="flex-1 min-w-0 flex flex-col gap-1">
@@ -1033,11 +1105,11 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
             <input
               placeholder="Search emails..."
               bind:value={search}
-              class="w-full rounded-2xl border border-slate-200 bg-white/90 pl-4 pr-32 py-2 text-sm text-slate-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-slate-200"
+              class="mailbox-search-input w-full rounded-2xl border border-slate-200 bg-white/90 pl-4 pr-32 py-2 text-base text-slate-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-slate-200"
             />
             <button
               type="button"
-              class="absolute top-1 bottom-1 right-1 inline-flex items-center gap-2 rounded-2xl border border-white/60 bg-slate-900/80 px-3 text-sm font-medium text-white shadow-lg backdrop-blur focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 hover:bg-slate-900"
+              class="absolute inset-y-1 right-1 btn btn--secondary btn--compact shadow-none"
               aria-haspopup="menu"
               aria-expanded={mailboxActionsOpen && mailboxActionsHost === 'list'}
               on:click={() => toggleMailboxActions('list')}
@@ -1045,42 +1117,44 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
             >
               {#if mailboxCommandPendingKey}
                 <Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
-                <span>{activeMailboxActionLabel ? `${activeMailboxActionLabel}…` : 'Running…'}</span>
+                <span>{activeMailboxActionLabel ? `${activeMailboxActionLabel}…` : 'Working…'}</span>
               {:else}
                 <Sparkles class="h-4 w-4" aria-hidden="true" />
-                <span>AI Actions</span>
+                <span>Actions</span>
               {/if}
             </button>
             {#if mailboxActionsOpen && mailboxActionsHost === 'list'}
               <div
-                class="absolute right-0 top-[calc(100%+0.5rem)] w-80 rounded-2xl border border-slate-200/70 bg-white/95 shadow-2xl backdrop-blur-xl z-30"
+                class="absolute right-0 top-[calc(100%+0.5rem)] menu-surface z-30"
                 role="menu"
                 tabindex="0"
                 on:click|stopPropagation
                 on:keydown|stopPropagation>
-                <div class="p-3 space-y-2">
+                <span class="menu-eyebrow">Mailbox Actions</span>
+                <div class="menu-list">
                   {#each mailboxCommandEntries as entry (entry.key)}
                     <button
                       type="button"
-                      class="w-full rounded-xl border border-transparent px-3 py-2 text-left transition hover:border-slate-200 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
+                      class="menu-item text-left"
                       on:click={() => handleMailboxAction(entry)}
                       disabled={filtered.length === 0}
                     >
-                      <div class="flex items-start gap-3">
-                        <div class="mt-0.5 h-8 w-8 rounded-full bg-slate-900/5 text-slate-700 grid place-items-center">
+                      <div class="flex items-start gap-3 min-w-0">
+                        <span class="menu-item-icon">
                           <Sparkles class="h-4 w-4" aria-hidden="true" />
-                        </div>
+                        </span>
                         <div class="min-w-0">
-                          <p class="text-sm font-medium text-slate-900 tracking-wide">{entry.label || entry.key}</p>
+                          <p class="text-sm font-semibold text-slate-900">{entry.label || entry.key}</p>
                           {#if entry.description}
                             <p class="text-xs text-slate-500 leading-snug">{entry.description}</p>
                           {/if}
                         </div>
                       </div>
+                      <span class="text-xs text-slate-400">AI</span>
                     </button>
                   {/each}
                 </div>
-                <div class="border-t border-slate-200/70 px-3 py-2 text-xs text-slate-500">
+                <div class="border-t border-slate-200/70 px-3 py-2 text-xs text-slate-500 mt-3">
                   Mailbox AI actions apply to the {filtered.length} message{filtered.length === 1 ? '' : 's'} currently listed.
                 </div>
               </div>
@@ -1125,12 +1199,12 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
       <div class="px-4 py-3 border-b border-slate-200 flex flex-col gap-2">
         <div class="flex items-center gap-2">
           {#if mobile}
-            <button type="button" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={() => { selected = null; showDrawer = false; }} aria-label="Back to list">
+            <button type="button" class="btn btn--icon" on:click={() => { selected = null; showDrawer = false; }} aria-label="Back to list">
               <ArrowLeft class="h-4 w-4" />
             </button>
           {/if}
           {#if tablet}
-            <button type="button" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={() => showEmailList = !showEmailList} aria-label="Toggle email list">
+            <button type="button" class="btn btn--icon" on:click={() => showEmailList = !showEmailList} aria-label="Toggle email list">
               {#if showEmailList}
                 <ChevronLeft class="h-4 w-4" />
               {:else}
@@ -1138,7 +1212,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
               {/if}
             </button>
           {/if}
-          <button type="button" title="Toggle menu" class="rounded-xl border border-slate-200 bg-white h-9 w-9 grid place-items-center text-slate-600 hover:bg-slate-50" on:click={handleMenuClick} aria-label="Open folders">
+          <button type="button" title="Toggle menu" class="btn btn--icon" on:click={handleMenuClick} aria-label="Open folders">
             <Menu class="h-4 w-4" />
           </button>
           <div class="flex-1 min-w-0 flex flex-col gap-1">
@@ -1146,11 +1220,11 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
               <input
                 placeholder="Search emails..."
                 bind:value={search}
-                class="w-full rounded-2xl border border-slate-200 bg-white/90 pl-4 pr-32 py-2 text-sm text-slate-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-slate-200"
+                class="mailbox-search-input w-full rounded-2xl border border-slate-200 bg-white/90 pl-4 pr-32 py-2 text-base text-slate-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-slate-200"
               />
               <button
                 type="button"
-                class="absolute top-1 bottom-1 right-1 inline-flex items-center gap-2 rounded-2xl border border-white/60 bg-slate-900/85 px-3 text-sm font-medium text-white shadow-lg backdrop-blur focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                class="absolute top-1 bottom-1 right-1 inline-flex items-center gap-2 rounded-2xl border border-white/60 bg-slate-900/85 px-3 text-base font-medium text-white shadow-lg backdrop-blur focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
                 aria-haspopup="menu"
                 aria-expanded={mailboxActionsOpen && mailboxActionsHost === 'mobile'}
                 on:click={() => toggleMailboxActions('mobile')}
@@ -1166,7 +1240,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
               </button>
               {#if mailboxActionsOpen && mailboxActionsHost === 'mobile'}
                 <div
-                  class="absolute right-0 top-[calc(100%+0.5rem)] w-72 rounded-2xl border border-slate-200/70 bg-white/95 shadow-2xl backdrop-blur-xl z-30"
+                  class="absolute right-0 top-[calc(100%+0.5rem)] menu-surface z-30"
                   role="menu"
                   tabindex="0"
                   on:click|stopPropagation
@@ -1232,6 +1306,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
           escapeHtmlFn={escapeHtml}
           formatFullDateFn={formatFullDate}
           on:reply={openReply}
+          on:forward={openForward}
           on:commandSelect={(event) => runMainAiCommand(event.detail)}
           on:actionSelect={handleActionSelect}
           on:actionMenuToggle={handleActionMenuToggle}
@@ -1329,7 +1404,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
       class="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-800 p-6 text-white shadow-[0_35px_80px_rgba(15,23,42,0.55)]"
       role="document"
       tabindex="-1">
-      <button type="button" class="absolute right-4 top-4 rounded-full border border-white/20 bg-white/10 p-1 text-white hover:bg-white/20" aria-label="Close" on:click={closeComingSoonModal}>
+      <button type="button" class="absolute right-4 top-4 btn btn--icon text-white bg-white/10 border-white/30 hover:bg-white/20" aria-label="Close" on:click={closeComingSoonModal}>
         ✕
       </button>
       <div class="mb-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]">
@@ -1343,7 +1418,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
         We&apos;re putting the finishing touches on this workflow. Follow along in Composer updates for early access and let us know how you&apos;d like it to work.
       </p>
       <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <button type="button" class="w-full rounded-2xl bg-white px-4 py-2 text-center text-sm font-semibold text-slate-900 shadow-lg shadow-emerald-500/30 hover:bg-slate-100" on:click={closeComingSoonModal}>
+        <button type="button" class="btn btn--secondary w-full justify-center" on:click={closeComingSoonModal}>
           Sounds good
         </button>
         <div class="text-xs text-slate-300 text-center sm:text-left">
@@ -1355,6 +1430,282 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
 {/if}
 
 <style>
+  /**
+   * Responsive styling guardrails keep interactive inputs legible (≥16px),
+   * constrain floating surfaces to the viewport, and preserve the glassy
+   * layering language on both desktop and mobile breakpoints.
+   */
+  /**
+   * Primary rounded button baseline reused across every CTA.
+   */
+  :global(.btn) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 0.45rem 1rem;
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 12px 30px -18px rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(12px);
+  }
+  /**
+   * Disabled state keeps elevation consistent without motion.
+   */
+  :global(.btn:disabled) {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 12px 30px -18px rgba(15, 23, 42, 0.25);
+  }
+  /**
+   * Accessible outline styling harmonized with glass shadows.
+   */
+  :global(.btn:focus-visible) {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.4), 0 12px 30px -18px rgba(15, 23, 42, 0.45);
+  }
+  /**
+   * Dark gradient primary button for destructive/confirm actions.
+   */
+  :global(.btn--primary) {
+    color: white;
+    background: linear-gradient(135deg, #0f172a, #1e293b 60%, #1a365d);
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 30px 60px -30px rgba(15, 23, 42, 0.7);
+  }
+  :global(.btn--primary:hover) {
+    transform: translateY(-1px);
+    box-shadow: 0 35px 70px -30px rgba(15, 23, 42, 0.75);
+  }
+  /**
+   * Secondary translucent button for neutral actions.
+   */
+  :global(.btn--secondary) {
+    color: #0f172a;
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(148, 163, 184, 0.6);
+    box-shadow: 0 25px 50px -25px rgba(15, 23, 42, 0.35);
+  }
+  :global(.btn--secondary:hover) {
+    border-color: rgba(99, 102, 241, 0.35);
+    background: rgba(255, 255, 255, 0.98);
+  }
+  /**
+   * Ghost buttons used for tertiary actions inside cards.
+   */
+  :global(.btn--ghost) {
+    color: #475569;
+    background: rgba(248, 250, 252, 0.85);
+    border-color: rgba(148, 163, 184, 0.5);
+    box-shadow: none;
+  }
+  :global(.btn--ghost:hover) {
+    border-color: rgba(148, 163, 184, 0.8);
+    background: white;
+  }
+  /**
+   * Icon-only circular button for toolbars and window controls.
+   */
+  :global(.btn--icon) {
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border-radius: 999px;
+    border-color: rgba(148, 163, 184, 0.5);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.8));
+    color: #475569;
+    box-shadow: 0 12px 30px -18px rgba(15, 23, 42, 0.35);
+  }
+  :global(.btn--icon:hover) {
+    color: #0f172a;
+    border-color: rgba(99, 102, 241, 0.35);
+  }
+  /**
+   * Dedicated search input style keeping ≥16px text for iOS stability.
+   */
+  :global(.mailbox-search-input) {
+    font-size: clamp(1rem, 0.95rem + 0.2vw, 1.075rem);
+    line-height: 1.45;
+  }
+  /**
+   * Global input baseline that enforces the minimum font-size rule.
+   */
+  :global(input[type='text']),
+  :global(input[type='search']),
+  :global(textarea),
+  :global(input[type='email']) {
+    font-size: clamp(1rem, 0.95rem + 0.15vw, 1.1rem);
+  }
+  /**
+   * Inset variant used for window chrome controls.
+   */
+  :global(.btn--icon.btn--inset) {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6), 0 12px 30px -18px rgba(15, 23, 42, 0.35);
+  }
+  /**
+   * Shared padding + min-height for labelled pill buttons.
+   */
+  :global(.btn--labelled) {
+    padding-left: 1.05rem;
+    padding-right: 1.05rem;
+    min-height: 42px;
+  }
+  :global(.btn--compact) {
+    min-height: 40px;
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+  }
+  /**
+   * Icon chip that prefixes AI actions and menu items.
+   */
+  :global(.btn-icon-chip) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.08);
+    color: #0f172a;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  /**
+   * Menu surface shell reused by AI and mailbox dropdowns.
+   */
+  :global(.menu-surface) {
+    border-radius: 22px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 45px 75px -35px rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(20px);
+    padding: 1rem;
+    width: min(20rem, calc(100vw - 2.5rem));
+    max-height: min(420px, 70vh);
+    overflow-y: auto;
+  }
+  /**
+   * Column layout for menu buttons.
+   */
+  :global(.menu-list) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  /**
+   * Individual menu rows styled as soft pills.
+   */
+  :global(.menu-item) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.6rem 0.85rem 0.6rem 0.75rem;
+    border-radius: 16px;
+    border: 1px solid transparent;
+    background: rgba(248, 250, 252, 0.9);
+    font-size: 0.9rem;
+    color: #0f172a;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+  /**
+   * Hover state brightens border/background subtly.
+   */
+  :global(.menu-item:hover) {
+    border-color: rgba(148, 163, 184, 0.5);
+    background: white;
+  }
+  /**
+   * Leading icon container for menu items.
+   */
+  :global(.menu-item-icon) {
+    margin-right: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.05);
+    color: #475569;
+  }
+  /**
+   * Eyebrow labels used on dropdown headers.
+   */
+  :global(.menu-eyebrow) {
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-bottom: 0.75rem;
+    display: block;
+  }
+  /* Secondary status chip used inside dropdown footers + inline callouts */
+  /**
+   * Chip styling shared by AI info banners.
+   */
+  :global(.panel-chip) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.35rem 0.85rem;
+    border: 1px solid rgba(148, 163, 184, 0.45);
+    background: rgba(248, 250, 252, 0.85);
+    color: #475569;
+    font-size: 0.8rem;
+  }
+  /* Sidebar mailbox entries mimic compose capsules for consistent geometry */
+  /**
+   * Sidebar navigation pill baseline.
+   */
+  :global(.nav-pill) {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    border-radius: 18px;
+    padding: 0.55rem 0.85rem;
+    color: #475569;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    border: 1px solid transparent;
+  }
+  /**
+   * Hover state for nav pills.
+   */
+  :global(.nav-pill:hover) {
+    background: rgba(15, 23, 42, 0.05);
+    color: #0f172a;
+  }
+  /**
+   * Active nav pill matches darker slate tokens.
+   */
+  :global(.nav-pill--active) {
+    background: rgba(15, 23, 42, 0.08);
+    border-color: rgba(15, 23, 42, 0.12);
+    color: #0f172a;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  /**
+   * Badge bubble for counts inside nav pills.
+   */
+  :global(.nav-pill-badge) {
+    margin-left: auto;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: rgba(226, 232, 240, 0.8);
+    color: #475569;
+  }
+  /**
+   * Toast bubble for transient window notices.
+   */
   .window-notice {
     position: fixed;
     bottom: 90px;
@@ -1367,14 +1718,20 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
     z-index: 120;
     box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
   }
+  /**
+   * Container governing AI summary stack height.
+   */
   .ai-panel-wrapper {
     position: relative;
     z-index: 10;
-    height: min(35vh, 360px);
-    max-height: 40vh;
+    height: clamp(280px, 35vh, 520px);
+    max-height: 45vh;
     display: flex;
     flex-direction: column;
   }
+  /**
+   * Maximized AI panel fills its column.
+   */
   .ai-panel-wrapper.maximized {
     position: absolute;
     inset: 0;
@@ -1382,10 +1739,16 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
     height: 100%;
     max-height: 100%;
   }
+  /**
+   * Column wrapper keeps panel stacking context.
+   */
   .panel-column {
     position: relative;
     min-height: 0;
   }
+  /**
+   * Floating chip that restores minimized AI panel.
+   */
   .panel-dock-chip {
     position: fixed;
     bottom: 24px;
@@ -1401,5 +1764,37 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
     font-size: 0.85rem;
     color: #0f172a;
     z-index: 150;
+  }
+  /**
+   * Mobile overrides for panel height and dock chip behavior.
+   */
+  @media (max-width: 768px) {
+    .ai-panel-wrapper {
+      height: auto;
+      max-height: none;
+    }
+    .ai-panel-wrapper.maximized {
+      position: fixed;
+      inset: 0;
+      padding: 0.75rem;
+    }
+    .panel-dock-chip {
+      left: 16px;
+      right: 16px;
+      justify-content: center;
+    }
+  }
+  /**
+   * Safe-area padding for notched devices.
+   */
+  @supports (padding: env(safe-area-inset-top)) {
+    @media (max-width: 768px) {
+      .ai-panel-wrapper.maximized {
+        padding-top: env(safe-area-inset-top);
+        padding-right: env(safe-area-inset-right);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+      }
+    }
   }
 </style>
