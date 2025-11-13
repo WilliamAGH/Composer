@@ -31,7 +31,7 @@ export function matchesMailbox(mailbox, email, folderResolver) {
  */
 export function filterEmailsByMailbox(emails, mailbox, searchQuery, folderResolver) {
   const base = emails.filter((email) => matchesMailbox(mailbox, email, folderResolver));
-  if (!searchQuery.trim()) {
+  if (!searchQuery || !searchQuery.trim()) {
     return base;
   }
   const needle = searchQuery.toLowerCase();
