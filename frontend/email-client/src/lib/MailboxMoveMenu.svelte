@@ -54,9 +54,6 @@
 </div>
 
 <style>
-  .move-menu {
-    min-width: 12rem;
-  }
   /* Base menu container */
   .move-menu {
     min-width: 12rem;
@@ -92,13 +89,15 @@
     color: #0f172a;
     transition: background 0.15s ease, color 0.15s ease;
   }
-  .move-menu__item:hover:not(:disabled),
-  .move-menu__item:focus-visible {
-    background: rgba(148, 163, 184, 0.15);
-  }
   .move-menu__item:disabled {
     opacity: 0.6;
     cursor: default;
+  }
+  .move-menu__item:focus-visible {
+    background: rgba(148, 163, 184, 0.15);
+  }
+  .move-menu__item:hover:not(:disabled) {
+    background: rgba(148, 163, 184, 0.15);
   }
   /* Highlight destructive options */
   .move-menu__item--destructive {
