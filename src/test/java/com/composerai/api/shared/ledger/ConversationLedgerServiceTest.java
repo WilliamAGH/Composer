@@ -26,7 +26,11 @@ class ConversationLedgerServiceTest {
             Files.walk(tempDir)
                 .sorted(java.util.Comparator.reverseOrder())
                 .forEach(path -> {
-                    try { Files.deleteIfExists(path); } catch (IOException ignored) { }
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        System.err.println("Failed to delete test file: " + path);
+                    }
                 });
         }
     }
