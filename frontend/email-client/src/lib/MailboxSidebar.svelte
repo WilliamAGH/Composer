@@ -134,3 +134,59 @@
     </button>
   </nav>
 </aside>
+
+<style>
+  /**
+   * Baseline mailbox row pill renders each folder entry with frosted hover affordances.
+   * @usage - Buttons wrapping mailbox options inside this sidebar component
+   * @related - .nav-pill--active, .nav-pill-badge
+   */
+  .nav-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    border-radius: 18px;
+    padding: 0.55rem 0.85rem;
+    color: #475569;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    border: 1px solid transparent;
+  }
+
+  /**
+   * Hover emphasis deepens the pill background to reinforce interactive affordance.
+   * @usage - Implicit pseudo-class on .nav-pill buttons when pointer hovers
+   * @related - .nav-pill
+   */
+  .nav-pill:hover {
+    background: rgba(15, 23, 42, 0.05);
+    color: #0f172a;
+  }
+
+  /**
+   * Active mailbox pill uses inset border to highlight the currently selected folder.
+   * @usage - Conditionals add this class for whichever mailbox prop matches
+   * @related - .nav-pill
+   */
+  .nav-pill--active {
+    background: rgba(15, 23, 42, 0.08);
+    border-color: rgba(15, 23, 42, 0.12);
+    color: #0f172a;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+
+  /**
+   * Badge styles the unread count indicator at the end of each pill.
+   * @usage - Span containing mailboxCounts values inside each nav button
+   * @related - .nav-pill
+   */
+  .nav-pill-badge {
+    margin-left: auto;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: rgba(226, 232, 240, 0.8);
+    color: #475569;
+  }
+</style>
