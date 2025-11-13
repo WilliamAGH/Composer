@@ -21,6 +21,8 @@ public class AppProperties {
     private Cors cors = new Cors();
     @NestedConfigurationProperty
     private EmailRendering emailRendering = new EmailRendering();
+    @NestedConfigurationProperty
+    private Ledger ledger = new Ledger();
 
     @PostConstruct
     void hydrateFromEnvironment() {
@@ -83,5 +85,14 @@ public class AppProperties {
                 default -> HTML;
             };
         }
+    }
+
+    @Getter
+    @Setter
+    public static class Ledger {
+        /** Whether the conversation ledger should be persisted. */
+        private boolean enabled = false;
+        /** Directory where JSON envelopes are written when enabled. */
+        private String directory = "data/ledger";
     }
 }
