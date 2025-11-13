@@ -91,7 +91,8 @@ export function createActionMenuSuggestionsStore({ ensureCatalogReady, callCatal
       actionType,
       commandKey,
       commandVariant,
-      instruction
+      instruction,
+      aiGenerated: true
     };
   }
 
@@ -106,7 +107,7 @@ export function createActionMenuSuggestionsStore({ ensureCatalogReady, callCatal
   }
 
   function cloneDefaults() {
-    return DEFAULT_ACTION_OPTIONS.map((option) => ({ ...option }));
+    return DEFAULT_ACTION_OPTIONS.map((option) => ({ ...option, aiGenerated: false }));
   }
 
   return {

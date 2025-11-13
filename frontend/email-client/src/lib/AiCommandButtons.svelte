@@ -12,9 +12,9 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   const dispatch = createEventDispatcher();
   const preferredVariantOrder = ['es', 'pt', 'nl'];
   const FALLBACK_ACTION_OPTIONS = [
-    { id: 'summarize-thread', label: 'Summarize thread', actionType: 'default', defaultPlaceholder: true },
-    { id: 'suggest-reply', label: 'Suggest reply ideas', actionType: 'default', defaultPlaceholder: true },
-    { id: 'cleanup', label: 'Cleanup + tone pass', actionType: 'default', defaultPlaceholder: true }
+    { id: 'summarize-thread', label: 'Summarize thread', actionType: 'default', defaultPlaceholder: true, aiGenerated: false },
+    { id: 'suggest-reply', label: 'Suggest reply ideas', actionType: 'default', defaultPlaceholder: true, aiGenerated: false },
+    { id: 'cleanup', label: 'Cleanup + tone pass', actionType: 'default', defaultPlaceholder: true, aiGenerated: false }
   ];
 
   let translateMenuOpen = false;
@@ -180,18 +180,16 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
                 type="button"
                 class="menu-item"
                 on:click={() => handleActionSelect(option)}>
-                <div class="flex items-center min-w-0">
-                  <span class="menu-item-icon">
-                    <Sparkles class="h-4 w-4" />
-                  </span>
+                <div class="flex items-center min-w-0 gap-2">
+                  {#if option.aiGenerated}
+                    <span class="menu-item-icon" aria-hidden="true">
+                      <Sparkles class="h-4 w-4" />
+                    </span>
+                  {/if}
                   <span class="truncate">{option.label}</span>
                 </div>
-                <span class="text-xs text-slate-400">AI</span>
               </button>
             {/each}
-          </div>
-          <div class="mt-4 panel-chip justify-center w-full">
-            AI refreshes these suggestions automatically.
           </div>
         </div>
       {/if}
