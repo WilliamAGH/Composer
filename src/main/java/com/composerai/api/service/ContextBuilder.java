@@ -62,8 +62,19 @@ public class ContextBuilder {
                (StringUtils.isBlank(base) ? "" : "\n\n" + base);
     }
 
+    public interface EmailContextCache {
+        void store(String contextId, String contextForAI);
+        Optional<String> contextForAi(String contextId);
+        boolean hasContext(String contextId);
+    }
+
+    /**
+     * Legacy stop-gap cache for uploading email context. Prefer the ledger-based flow for new
+     * functionality; this registry will be removed once callers migrate.
+     */
+    @Deprecated
     @Component
-    public static class EmailContextRegistry {
+    public static class EmailContextRegistry implements EmailContextCache {
 
         private static final Logger logger = LoggerFactory.getLogger(EmailContextRegistry.class);
         private static final int MAX_ENTRIES = 512;
@@ -71,6 +82,7 @@ public class ContextBuilder {
 
         private final ConcurrentMap<String, StoredContext> contexts = new ConcurrentHashMap<>();
 
+        @Override
         public void store(String contextId, String contextForAI) {
             if (StringUtils.isBlank(contextId)) {
                 logger.warn("Attempted to store context with blank contextId");
@@ -86,6 +98,7 @@ public class ContextBuilder {
             prune();
         }
 
+        @Override
         public Optional<String> contextForAi(String contextId) {
             if (StringUtils.isBlank(contextId)) {
                 logger.debug("Context lookup with blank contextId");
@@ -111,6 +124,7 @@ public class ContextBuilder {
             return Optional.empty();
         }
 
+        @Override
         public boolean hasContext(String contextId) {
             if (StringUtils.isBlank(contextId)) {
                 return false;
@@ -153,4 +167,7 @@ public class ContextBuilder {
             }
         }
     }
+
+    /** Non-deprecated shim for tests and legacy flows that still need the in-memory cache. */
+    public static class InMemoryEmailContextCache extends EmailContextRegistry {}
 }

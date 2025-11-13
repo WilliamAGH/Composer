@@ -2,6 +2,7 @@ package com.composerai.api.service;
 
 import com.composerai.api.ai.AiFunctionCatalogHelper;
 import com.composerai.api.ai.AiFunctionDefinition;
+import org.springframework.beans.factory.annotation.Autowired;
 import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
 import com.composerai.api.config.MagicEmailProperties;
@@ -10,6 +11,9 @@ import com.composerai.api.dto.ChatResponse;
 import com.composerai.api.dto.ChatResponse.EmailContext;
 import com.composerai.api.dto.SseEventType;
 import com.composerai.api.service.email.HtmlConverter;
+import com.composerai.api.shared.ledger.ChatLedgerRecorder;
+import com.composerai.api.shared.ledger.UsageMetrics;
+import com.openai.models.responses.ResponseCreateParams;
 import com.composerai.api.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,23 +48,26 @@ public class ChatService {
     private final OpenAiProperties openAiProperties;
     private final ErrorMessagesProperties errorMessages;
     private final ContextBuilder contextBuilder;
-    private final ContextBuilder.EmailContextRegistry emailContextRegistry;
+    private final ContextBuilder.EmailContextCache emailContextRegistry;
     private final ConversationRegistry conversationRegistry;
     private final ExecutorService streamingExecutor;
     private final MagicEmailProperties magicEmailProperties;
     private final AiFunctionCatalogHelper aiFunctionCatalogHelper;
+    private final ChatLedgerRecorder chatLedgerRecorder;
 
     private static final String INSIGHTS_TRIGGER = "__INSIGHTS_TRIGGER__";
     private static final Pattern MARKDOWN_LINK_PATTERN = Pattern.compile("\\[([^\\]]+)\\]\\(([^\\)]*)\\)");
     private static final Pattern BARE_URL_PATTERN = Pattern.compile("(?i)(?:https?://|www\\.)\\S+");
 
+    @Autowired
     public ChatService(VectorSearchService vectorSearchService, OpenAiChatService openAiChatService,
                        OpenAiProperties openAiProperties, ErrorMessagesProperties errorMessages,
-                       ContextBuilder contextBuilder, ContextBuilder.EmailContextRegistry emailContextRegistry,
+                       ContextBuilder contextBuilder, ContextBuilder.EmailContextCache emailContextRegistry,
                        ConversationRegistry conversationRegistry,
                        MagicEmailProperties magicEmailProperties,
                        AiFunctionCatalogHelper aiFunctionCatalogHelper,
-                       @Qualifier("chatStreamExecutor") ExecutorService streamingExecutor) {
+                       @Qualifier("chatStreamExecutor") ExecutorService streamingExecutor,
+                       ChatLedgerRecorder chatLedgerRecorder) {
         this.vectorSearchService = vectorSearchService;
         this.openAiChatService = openAiChatService;
         this.openAiProperties = openAiProperties;
@@ -71,6 +78,7 @@ public class ChatService {
         this.streamingExecutor = streamingExecutor;
         this.magicEmailProperties = magicEmailProperties;
         this.aiFunctionCatalogHelper = aiFunctionCatalogHelper;
+        this.chatLedgerRecorder = chatLedgerRecorder;
     }
 
     private record ChatContext(float[] embedding, List<EmailContext> emailContext, String contextString) {}
@@ -369,9 +377,10 @@ public class ChatService {
                 }
             }
             
-            OpenAiChatService.ChatCompletionResult aiResult = openAiChatService.generateResponse(
+            OpenAiChatService.Invocation invocation = openAiChatService.invokeChatResponse(
                 userMessageForModel, fullContext, history,
                 request.isThinkingEnabled(), request.getThinkingLevel(), jsonOutput);
+            OpenAiChatService.ChatCompletionResult aiResult = invocation.result();
             if (isActionMenuCommand) {
                 int responseChars = aiResult.rawText() == null ? 0 : aiResult.rawText().length();
                 logger.info("Action menu response: convId={}, contextId={}, chars={}", conversationId, request.getContextId(), responseChars);
@@ -380,6 +389,7 @@ public class ChatService {
             conversationRegistry.append(conversationId,
                 OpenAiChatService.ConversationTurn.userWithId(userMessageId, originalMessage),
                 OpenAiChatService.ConversationTurn.assistantWithId(assistantMessageId, aiResult.rawText()));
+            chatLedgerRecorder.recordChatCompletion(request, conversationId, invocation, aiResult.rawText());
             String sanitized = jsonOutput ? null : aiResult.sanitizedHtml();
             return new ChatResponse(aiResult.rawText(), conversationId, ctx.emailContext(), intent, sanitized, userMessageId, assistantMessageId);
         } catch (Exception e) {
@@ -398,7 +408,7 @@ public class ChatService {
 
 
     /** Internal helper for streaming chat with consolidated timing and error handling. */
-    private void doStreamChat(String messageForModel, String persistedMessage,
+    private void doStreamChat(ChatRequest request, String messageForModel, String persistedMessage,
                               String conversationId, String contextString,
                               List<OpenAiChatService.ConversationTurn> conversationHistory,
                               boolean thinkingEnabled, String thinkingLevel, boolean jsonOutput,
@@ -411,13 +421,15 @@ public class ChatService {
             ? ReasoningStreamAdapter.normalizeThinkingLabel(thinkingLevel)
             : null;
         long startNanos = System.nanoTime();
+        long startMillis = System.currentTimeMillis();
         StringBuilder assistantBuffer = new StringBuilder();
+        final ResponseCreateParams[] requestParamsHolder = new ResponseCreateParams[1];
         logger.info("Dispatching LLM stream: convId={}, contextChars={}, historySize={}, jsonOutput={}, thinkingEnabled={}",
             conversationId, contextString == null ? 0 : contextString.length(),
             conversationHistory == null ? 0 : conversationHistory.size(),
             jsonOutput, thinkingEnabled);
         try {
-            openAiChatService.streamResponse(messageForModel, contextString, conversationHistory,
+            ResponseCreateParams params = openAiChatService.streamResponse(messageForModel, contextString, conversationHistory,
                 thinkingEnabled, thinkingLevel, jsonOutput,
                 event -> {
                     if (event instanceof OpenAiChatService.StreamEvent.RawText rawText) {
@@ -435,8 +447,19 @@ public class ChatService {
                         OpenAiChatService.ConversationTurn.assistantWithId(assistantMessageId, assistantBuffer.toString()));
                     logger.info("Stream completed: {}ms", (System.nanoTime() - startNanos) / 1_000_000L);
                     if (onComplete != null) onComplete.run();
+                    UsageMetrics usage = new UsageMetrics(0, 0, 0, System.currentTimeMillis() - startMillis);
+                    OpenAiChatService.Invocation invocation = new OpenAiChatService.Invocation(
+                        OpenAiChatService.ChatCompletionResult.fromRaw(assistantBuffer.toString(), jsonOutput),
+                        requestParamsHolder[0],
+                        null,
+                        usage
+                    );
+                    chatLedgerRecorder.recordChatCompletion(request, conversationId, invocation, assistantBuffer.toString());
                 },
                 err -> { logger.warn("Stream failed: {}ms", (System.nanoTime() - startNanos) / 1_000_000L, err); safeOnError.accept(err); });
+            if (params != null) {
+                requestParamsHolder[0] = params;
+            }
         } catch (Exception e) {
             logger.error("Error initiating stream", e);
             safeOnError.accept(e);
@@ -464,7 +487,7 @@ public class ChatService {
         List<OpenAiChatService.ConversationTurn> history = conversationRegistry.history(conversationId);
         String userMessageId = com.composerai.api.util.IdGenerator.uuidV7();
         String assistantMessageId = com.composerai.api.util.IdGenerator.uuidV7();
-        doStreamChat(userMessageForModel, originalMessage, conversationId, fullContext, history,
+        doStreamChat(request, userMessageForModel, originalMessage, conversationId, fullContext, history,
             request.isThinkingEnabled(), request.getThinkingLevel(), jsonOutput,
             userMessageId, assistantMessageId,
             htmlConsumer, jsonConsumer, onReasoning, onComplete, onError);
@@ -489,7 +512,7 @@ public class ChatService {
         Consumer<String> htmlConsumer = jsonOutput ? null : onToken;
         Consumer<String> jsonConsumer = jsonOutput ? onToken : null;
         List<OpenAiChatService.ConversationTurn> history = conversationRegistry.history(conversationId);
-        doStreamChat(userMessageForModel, originalMessage, conversationId, fullContext, history,
+        doStreamChat(request, userMessageForModel, originalMessage, conversationId, fullContext, history,
             request.isThinkingEnabled(), request.getThinkingLevel(), jsonOutput,
             userMessageId, assistantMessageId,
             htmlConsumer, jsonConsumer, onReasoning, onComplete, onError);
@@ -529,7 +552,7 @@ public class ChatService {
                         emitter.completeWithError(e); 
                     } 
                 };
-                doStreamChat(userMessageForModel, originalMessage, conversationId, fullContext, history,
+                doStreamChat(request, userMessageForModel, originalMessage, conversationId, fullContext, history,
                     request.isThinkingEnabled(), request.getThinkingLevel(), jsonOutput,
                     userMessageId, assistantMessageId,
                     chunkSender, chunkSender,

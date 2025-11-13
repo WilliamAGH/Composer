@@ -3,7 +3,6 @@ package com.composerai.api.dto;
 import com.composerai.api.util.StringUtils;
 import com.composerai.api.validation.AiCommandValid;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -18,13 +17,13 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@AiCommandValid
-@JsonIgnoreProperties(ignoreUnknown = true)
 /**
  * Canonical chat payload shared by both free-form chat and catalog-driven AI commands.
  * Unknown JSON properties are tolerated so the frontend can attach telemetry fields
  * without breaking server-side validation on older builds.
  */
+@AiCommandValid
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ChatRequest {
 
     @NotBlank(message = "Message cannot be blank")
@@ -89,14 +88,6 @@ public class ChatRequest {
         this.conversationId = conversationId;
         this.maxResults = maxResults;
         this.commandArgs = new LinkedHashMap<>();
-    }
-
-    @AssertTrue(message = "contextId is required when emailContext is provided")
-    public boolean isContextSubmissionValid() {
-        if (StringUtils.isBlank(emailContext)) {
-            return true;
-        }
-        return !StringUtils.isBlank(contextId);
     }
 
     public void setCommandArgs(Map<String, String> commandArgs) {

@@ -3,7 +3,7 @@ package com.composerai.api.service;
 import com.composerai.api.config.AppProperties;
 import com.composerai.api.model.EmailMessage;
 import com.composerai.api.model.EmailMessageContextFormatter;
-import com.composerai.api.service.ContextBuilder.EmailContextRegistry;
+import com.composerai.api.service.ContextBuilder.EmailContextCache;
 import com.composerai.api.service.email.EmailHtmlSanitizer;
 import com.composerai.api.service.email.HtmlConverter;
 import com.composerai.api.util.IdGenerator;
@@ -38,7 +38,7 @@ public class EmailParsingService {
     private static final DateTimeFormatter DATE_WITH_OFFSET_FORMATTER =
         DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' h:mm a xxx", Locale.US);
 
-    private final EmailContextRegistry emailContextRegistry;
+    private final EmailContextCache emailContextRegistry;
     private final ObjectMapper objectMapper;
     private final CompanyLogoProvider companyLogoProvider;
     private final AppProperties appProperties;
