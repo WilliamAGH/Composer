@@ -5,6 +5,7 @@
   import WindowFrame from './window/WindowFrame.svelte';
   import { useWindowContext } from './window/windowContext';
   import AiLoadingJourney from './AiLoadingJourney.svelte';
+  import ComposeMobileSheet from './ComposeMobileSheet.svelte';
 
   /**
    * Compose window leveraging the shared WindowFrame chrome. Keeps feature-specific controls here while
@@ -55,11 +56,20 @@
     setTimeout(() => (isReply ? inputSubject?.focus() : (inputTo || inputSubject)?.focus()), 50);
     scheduleDraftSave(true);
     document.addEventListener('pointerdown', handleGlobalPointer);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleViewportChange, { passive: true });
+      window.addEventListener('scroll', handleViewportChange, { passive: true });
+    }
   });
 
   onDestroy(() => {
     clearTimeout(saveTimeout);
     document.removeEventListener('pointerdown', handleGlobalPointer);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('scroll', handleViewportChange);
+    }
+    anchorObserver?.disconnect();
   });
 
   function send() {
@@ -100,6 +110,9 @@
   let toneMenuRef = null;
   let draftToggleButton = null;
   let toneToggleButton = null;
+  let anchorElement = null;
+  let anchorObserver = null;
+  let maximizedAnchorBounds = null;
 
   function deriveDraftOptions(list) {
     if (!Array.isArray(list) || list.length === 0) return fallbackDraftOptions;
@@ -157,6 +170,61 @@
     if (panelEl && panelEl.contains(target)) return true;
     if (triggerEl && triggerEl.contains(target)) return true;
     return false;
+  }
+
+  function registerInputRefs(refs = {}) {
+    if (refs.to !== undefined) {
+      inputTo = refs.to;
+    }
+    if (refs.subject !== undefined) {
+      inputSubject = refs.subject;
+    }
+    if (refs.message !== undefined) {
+      inputMessage = refs.message;
+    }
+  }
+
+  function ensureAnchorElement() {
+    if (anchorElement && document.contains(anchorElement)) {
+      return anchorElement;
+    }
+    anchorObserver?.disconnect();
+    anchorObserver = null;
+    anchorElement = document.querySelector('.panel-column');
+    if (anchorElement && typeof ResizeObserver !== 'undefined') {
+      anchorObserver = new ResizeObserver(() => syncComposeAnchorBounds());
+      anchorObserver.observe(anchorElement);
+    }
+    return anchorElement;
+  }
+
+  function syncComposeAnchorBounds() {
+    if (typeof window === 'undefined' || mobile || !maximized) {
+      maximizedAnchorBounds = null;
+      return;
+    }
+    const candidate = ensureAnchorElement();
+    if (!candidate) {
+      maximizedAnchorBounds = null;
+      return;
+    }
+    const rect = candidate.getBoundingClientRect();
+    maximizedAnchorBounds = {
+      top: Math.max(rect.top, 12),
+      right: Math.max(window.innerWidth - rect.right, 12),
+      bottom: Math.max(window.innerHeight - rect.bottom, 12),
+      left: Math.max(rect.left, 12)
+    };
+  }
+
+  function handleViewportChange() {
+    syncComposeAnchorBounds();
+  }
+
+  $: if (maximized && !mobile) {
+    syncComposeAnchorBounds();
+  } else {
+    maximizedAnchorBounds = null;
   }
 
   function closeWindow() {
@@ -249,9 +317,6 @@
 
     <div class="ai-actions">
       <div class="ai-action-group">
-        <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill" on:click={runPrimaryDraft}>
-          <Wand2 class="h-4 w-4" /> Draft
-        </button>
         <button
           type="button"
           class="btn btn--ghost btn--icon compose-ai-pill dropdown-toggle"
@@ -261,6 +326,9 @@
           on:click={toggleDraftMenu}
           aria-label="More drafting options">
           <ChevronDown class={`h-4 w-4 transition ${draftMenuOpen ? 'rotate-180' : ''}`} />
+        </button>
+        <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill" on:click={runPrimaryDraft}>
+          <Wand2 class="h-4 w-4" /> Draft
         </button>
         {#if draftMenuOpen && draftOptions.length}
           <div class="menu-surface compose-menu" bind:this={draftMenuRef}>
@@ -382,16 +450,17 @@
     gap: 0.75rem;
   }
   /**
-   * Shared input look with ergonomic padding + font sizing.
+   * Shared input look keeps iOS 16px minimum font while trimming desktop padding for a lighter feel.
+   * @usage - ComposeWindow.svelte `To`, `Subject`, and message textarea controls
    */
   .field {
     width: 100%;
     border: 1px solid rgba(148, 163, 184, 0.7);
     border-radius: 14px;
-    padding: 0.75rem 1rem;
-    font-size: clamp(1rem, 0.95rem + 0.2vw, 1.1rem);
+    padding: 0.65rem 0.9rem;
+    font-size: clamp(1rem, 0.88rem + 0.15vw, 1.03rem);
     line-height: 1.5;
-    min-height: 46px;
+    min-height: 42px;
     background: rgba(255, 255, 255, 0.9);
   }
   /**
@@ -403,29 +472,48 @@
   }
   /**
    * Wrap AI quick actions so they flex on small screens.
+   * @usage - ComposeWindow.svelte quick action row
    */
   .ai-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
   }
+  /**
+   * Group buttons so dropdown menus can anchor to their trigger cluster.
+   * @usage - ComposeWindow.svelte AI quick action clusters
+   */
   .ai-action-group {
     display: flex;
     gap: 0.35rem;
     position: relative;
   }
+  /**
+   * Compose AI action pills match other toolbar chips but run slightly tighter on desktop/tablet.
+   * @usage - ComposeWindow.svelte Draft + Tone controls
+   */
   .compose-ai-pill {
-    min-height: 34px;
-    padding-top: 0.25rem;
-    padding-bottom: 0.25rem;
+    min-height: 30px;
+    padding-top: 0.15rem;
+    padding-bottom: 0.15rem;
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
   }
+  /**
+   * Dropdown toggle keeps icon-only footprint compact when placed before the Draft button.
+   * @usage - ComposeWindow.svelte Draft menu chevron
+   */
   .compose-ai-pill.dropdown-toggle {
-    width: 42px;
+    width: 36px;
     justify-content: center;
     padding: 0;
   }
+  /**
+   * Tone trigger spacing syncs with slimmer paddings so label + chevron stay tight.
+   * @usage - ComposeWindow.svelte Tone button
+   */
   .tone-trigger {
-    gap: 0.35rem;
+    gap: 0.25rem;
   }
   .compose-ai-pill :global(svg) {
     width: 15px;
@@ -493,6 +581,15 @@
     .ai-actions {
       flex-direction: column;
     }
+    /**
+     * Restore generous padding on phones so text inputs stay at the iOS minimum size.
+     * @usage - ComposeWindow.svelte `To`, `Subject`, and textarea controls on small screens
+     */
+    .field {
+      padding: 0.75rem 1rem;
+      min-height: 46px;
+      font-size: 1rem;
+    }
     .compose-footer {
       position: sticky;
       bottom: 0;
@@ -509,6 +606,24 @@
     .compose-footer .btn {
       width: 100%;
       justify-content: center;
+    }
+    /**
+     * Re-establish taller action pills so thumb taps remain reliable on iPhone.
+     * @usage - ComposeWindow.svelte quick action buttons intra mobile breakpoint
+     */
+    .compose-ai-pill {
+      min-height: 34px;
+      padding-top: 0.25rem;
+      padding-bottom: 0.25rem;
+      padding-left: 1.05rem;
+      padding-right: 1.05rem;
+    }
+    /**
+     * Icon-only toggle regains the 42px touch target when space is constrained on phones.
+     * @usage - ComposeWindow.svelte Draft menu chevron within mobile breakpoint
+     */
+    .compose-ai-pill.dropdown-toggle {
+      width: 42px;
     }
     .textarea {
       min-height: min(45vh, 360px);

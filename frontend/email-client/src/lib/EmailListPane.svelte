@@ -257,7 +257,7 @@
                   </div>
                 </div>
               <p class="text-sm truncate" class:font-medium={!email.read} class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.subject)}</p>
-              <p class="text-xs text-slate-500 truncate">{escapeHtmlFn(email.preview)}</p>
+              <p class="text-sm text-slate-500 truncate">{escapeHtmlFn(email.preview)}</p>
             </div>
           </div>
           </button>

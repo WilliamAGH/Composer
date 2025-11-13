@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck } from 'lucide-svelte';
+import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck, Wand2 } from 'lucide-svelte';
 
   /**
    * Renders the AI command buttons (summary/translate/etc.) so App.svelte only passes metadata.
@@ -112,6 +112,7 @@
       case 'summarize':
         return BookOpenCheck;
       case 'draft':
+        return Wand2;
       case 'compose':
         return MailPlus;
       case 'tone':
