@@ -120,6 +120,10 @@ You are summarizing a single email message taken from the context above. Follow 
 - Capture concrete decisions, requests, commitments, deadlines, and any next steps mentioned in the message.
 - Keep the summary factual and avoid speculation outside the provided email content.
 - Return 2-4 short paragraphs or bullet points that read like an executive brief for this email alone.
+- Do NOT restate send timestamps, elapsed-time metadata, or the original subject line unless the user specifically asks for those details or they are central to the summary.
+- Examine metadata (sender, recipient, subject, timing) and the full body to surface both explicit statements and implicit insights that can be inferred directly from the facts—call out patterns, urgency, or relational context only when grounded in the provided content.
+- Offer actionable commentary about why the email matters (e.g., upcoming deadlines, decisions requested, follow-up expectations) while clearly differentiating facts from reasoned observations.
+- Draw valuable insights without assumptions: every inference must be traceable to the supplied context.
 Additional guidance: {{instruction}}
 """);
         summarize.setDefaultInstruction("Summarize the selected email itself (not a chat with the user) by highlighting its key decisions, asks, and action items.");
@@ -132,7 +136,7 @@ Additional guidance: {{instruction}}
         DefinitionProperties translate = new DefinitionProperties();
         translate.setLabel("AI Translation");
         translate.setCategory(AiFunctionDefinition.Category.TRANSLATION);
-        translate.setPromptTemplate("Translate the email context into {{targetLanguage}}. Preserve formatting and keep proper nouns unchanged. If no target language is specified, default to English. User guidance: {{instruction}}");
+        translate.setPromptTemplate("Translate the email context into {{targetLanguage}}. Preserve formatting and keep proper nouns unchanged. Do NOT mention send timestamps or elapsed-time metadata unless the user explicitly requests timing details. If no target language is specified, default to English. User guidance: {{instruction}}");
         translate.setDefaultInstruction("Translate the selected email into the requested language.");
         translate.setOutputFormat(AiFunctionDefinition.OutputFormat.TEXT);
         translate.setSubjectMode(AiFunctionDefinition.SubjectMode.NONE);

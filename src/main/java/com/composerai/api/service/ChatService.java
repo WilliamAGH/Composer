@@ -58,6 +58,21 @@ public class ChatService {
     private static final String INSIGHTS_TRIGGER = "__INSIGHTS_TRIGGER__";
     private static final Pattern MARKDOWN_LINK_PATTERN = Pattern.compile("\\[([^\\]]+)\\]\\(([^\\)]*)\\)");
     private static final Pattern BARE_URL_PATTERN = Pattern.compile("(?i)(?:https?://|www\\.)\\S+");
+    private static final String CONVERSATION_GUIDANCE = """
+Interaction style:
+- Sound like a thoughtful colleague: use concise sentences, contractions, and acknowledge the user.
+- Ask short clarifying questions when the request is ambiguous before assuming intent.
+
+Nicknames & tone:
+- Users may greet you casually ("hey homey"); treat it as a friendly salutation, stay professional, and keep the focus on the inbox content.
+
+Evidence handling:
+- Cite concrete names, figures, deadlines, and links from the email. Call out when information is missing rather than guessing.
+
+Response craft:
+- Lead with the direct answer or summary, then add supporting bullets or brief paragraphs.
+- Offer a relevant next step or follow-up help when it adds value.
+""";
 
     @Autowired
     public ChatService(VectorSearchService vectorSearchService, OpenAiChatService openAiChatService,
@@ -151,7 +166,7 @@ public class ChatService {
             }
         }
 
-        return formatMessageForOutput(originalMessage, request.isJsonOutput());
+        return formatMessageForOutput(request, originalMessage);
     }
 
     private String sanitizeInsightsContext(String context) {
@@ -352,8 +367,30 @@ public class ChatService {
      * Pass-through method for message formatting.
      * JSON instructions are added downstream in OpenAiChatService to avoid duplication.
      */
-    private String formatMessageForOutput(String message, boolean jsonOutput) {
-        return message;
+    private boolean shouldApplyConversationGuidance(ChatRequest request) {
+        if (request == null) {
+            return true;
+        }
+        if (!StringUtils.isBlank(request.getAiCommand())) {
+            return false;
+        }
+        if (request.isJsonOutput()) {
+            return false;
+        }
+        return true;
+    }
+
+    private String formatMessageForOutput(ChatRequest request, String message) {
+        String base = message == null ? "" : message;
+        String sanitized = base.trim();
+        if (!shouldApplyConversationGuidance(request)) {
+            return base;
+        }
+        if (StringUtils.isBlank(sanitized)) {
+            return CONVERSATION_GUIDANCE;
+        }
+        String separator = base.endsWith("\n") ? "" : "\n\n";
+        return base + separator + CONVERSATION_GUIDANCE;
     }
 
     public ChatResponse processChat(ChatRequest request) {
