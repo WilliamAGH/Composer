@@ -130,6 +130,8 @@
 
   .coming-soon-modal__sparkle {
     display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 16px;
     height: 16px;
     color: #a7f3d0;
