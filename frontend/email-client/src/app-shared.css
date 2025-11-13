@@ -83,16 +83,40 @@
   border-color: rgba(99, 102, 241, 0.35);
 }
 
+/**
+ * Mailbox search pill keeps parity with input ergonomics and scales gently with viewport width.
+ * @usage - Primary composer search field at the top of the mailbox view
+ * @related - Shared input typography rules directly below
+ */
 .mailbox-search-input {
   font-size: clamp(1rem, 0.95rem + 0.2vw, 1.075rem);
   line-height: 1.45;
 }
 
+/**
+ * Baseline input typography ensures ≥16px font sizing on touch devices to prevent iOS zoom jumps.
+ * @usage - All single/multi-line text fields rendered via native inputs/textareas
+ * @related - Pointer-aware desktop override in the fine-pointer media query
+ */
 input[type='text'],
 input[type='search'],
 textarea,
 input[type='email'] {
   font-size: clamp(1rem, 0.95rem + 0.15vw, 1.1rem);
+}
+
+/**
+ * Fine-pointer override restores denser desktop/tablet typography while keeping touch devices at 16px.
+ * @usage - Applies automatically on hover-capable, mouse/trackpad-first environments (desktop/tablet)
+ * @related - Touch-safe baseline input rule above
+ */
+@media (hover: hover) and (pointer: fine) {
+  input[type='text'],
+  input[type='search'],
+  textarea,
+  input[type='email'] {
+    font-size: clamp(0.9rem, 0.85rem + 0.15vw, 1rem);
+  }
 }
 
 .btn--icon.btn--inset {
