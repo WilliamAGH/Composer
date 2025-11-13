@@ -8,6 +8,7 @@
   export let commands = [];
   export let actionOptions = [];
   export let actionMenuLoading = false;
+  export let mobile = false;
   const dispatch = createEventDispatcher();
   const preferredVariantOrder = ['es', 'pt', 'nl'];
   const FALLBACK_ACTION_OPTIONS = [
@@ -17,11 +18,11 @@
   ];
 
   let translateMenuOpen = false;
-  let translateDropdownEl;
-  let translateButtonEl;
+  let translateDropdownEl = null;
+  let translateButtonEl = null;
   let actionMenuOpen = false;
-  let actionDropdownEl;
-  let actionButtonEl;
+  let actionDropdownEl = null;
+  let actionButtonEl = null;
 
   $: commandsList = Array.isArray(commands) ? commands : [];
   $: summarizeEntry = commandsList.find((entry) => entry?.key === 'summarize');
@@ -141,16 +142,19 @@
   }
 </script>
 
-<div class="mt-4 flex flex-wrap gap-2">
+<div class={`ai-action-toolbar ${mobile ? 'mobile' : ''}`}>
   {#if !commandsList.length}
-    <button class={buttonClasses()} on:click={() => handleClick('summarize')}>
+    <button
+      type="button"
+      class="btn btn--secondary btn--compact action-pill"
+      on:click={() => handleClick('summarize')}>
       Run AI Assistant
     </button>
   {:else}
-    <div class="relative">
+    <div class={`relative ${mobile ? 'span-2' : ''}`}>
       <button
         type="button"
-        class="btn btn--secondary btn--labelled btn--compact"
+        class={`btn btn--ghost btn--compact action-pill ${mobile ? 'w-full justify-center' : ''}`}
         on:click={toggleActionMenu}
         aria-haspopup="menu"
         aria-expanded={actionMenuOpen}
@@ -165,7 +169,8 @@
       </button>
       {#if actionMenuOpen}
         <div
-          class="absolute z-[200] mt-2 menu-surface"
+          class="absolute mt-2 menu-surface"
+          data-layer="nested"
           bind:this={actionDropdownEl}>
           <span class="menu-eyebrow">Suggested Actions</span>
           <div class="menu-list">
@@ -194,7 +199,7 @@
     {#if summarizeEntry}
       <button
         type="button"
-        class={buttonClasses()}
+        class="btn btn--secondary btn--compact action-pill"
         on:click={() => handleClick(summarizeEntry.key)}>
         <svelte:component this={resolveIconComponent(summarizeEntry.key)} class="h-4 w-4 text-slate-500" />
         {labelForEntry(summarizeEntry)}
@@ -204,7 +209,7 @@
     {#if draftEntry}
       <button
         type="button"
-        class={buttonClasses()}
+        class="btn btn--secondary btn--compact action-pill"
         on:click={() => handleClick(draftEntry.key)}>
         <svelte:component this={resolveIconComponent(draftEntry.key)} class="h-4 w-4 text-slate-500" />
         {labelForEntry(draftEntry)}
@@ -212,10 +217,10 @@
     {/if}
 
     {#if translateEntry && orderedVariants.length}
-      <div class="relative">
+      <div class={`relative ${mobile ? 'span-2' : ''}`}>
         <button
           type="button"
-          class={`${buttonClasses()} justify-between`}
+          class={`btn btn--ghost btn--compact action-pill justify-between ${mobile ? 'w-full' : ''}`}
           on:click={toggleTranslateMenu}
           aria-haspopup="menu"
           aria-expanded={translateMenuOpen}
@@ -227,7 +232,7 @@
           <ChevronDown class={`h-4 w-4 text-slate-500 transition ${translateMenuOpen ? 'rotate-180' : ''}`} />
         </button>
         {#if translateMenuOpen}
-          <div class="absolute z-[200] mt-2 menu-surface" bind:this={translateDropdownEl}>
+          <div class="absolute mt-2 menu-surface" data-layer="nested" bind:this={translateDropdownEl}>
             <span class="menu-eyebrow">Translate To</span>
             <div class="menu-list">
               {#each orderedVariants as variant (variant.key)}
@@ -258,10 +263,62 @@
     {/if}
 
     {#each otherEntries as entry (entry.key)}
-      <button class={buttonClasses()} on:click={() => handleClick(entry.key)}>
+      <button
+        type="button"
+        class="btn btn--secondary btn--compact action-pill"
+        on:click={() => handleClick(entry.key)}>
         <svelte:component this={resolveIconComponent(entry.key)} class="h-4 w-4 text-slate-500" />
         {labelForEntry(entry)}
       </button>
     {/each}
   {/if}
 </div>
+
+<style>
+  /* Toolbar stays above the summary card to keep dropdown triggers clickable. */
+  .ai-action-toolbar {
+    margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    position: relative;
+    z-index: 150; /* Keep action pills above summary overlay */
+    overflow: visible;
+  }
+  .ai-action-toolbar.mobile {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+  .ai-action-toolbar.mobile :global(.btn.btn--compact) {
+    width: 100%;
+  }
+  .ai-action-toolbar.mobile .span-2 {
+    grid-column: 1 / -1;
+  }
+  .ai-action-toolbar.mobile :global(.btn-icon-chip) {
+    width: 30px;
+    height: 30px;
+  }
+  .ai-action-toolbar.mobile :global(.btn svg) {
+    width: 16px;
+    height: 16px;
+  }
+  .ai-action-toolbar.mobile .relative {
+    width: 100%;
+  }
+  .action-pill {
+    min-height: 36px;
+    padding-top: 0.3rem;
+    padding-bottom: 0.3rem;
+  }
+  .action-pill :global(svg) {
+    width: 15px;
+    height: 15px;
+  }
+  .action-pill :global(.btn-icon-chip) {
+    width: 28px;
+    height: 28px;
+  }
+</style>

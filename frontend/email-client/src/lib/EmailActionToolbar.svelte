@@ -1,7 +1,8 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
-  import { Reply, Forward, Archive, Trash2 } from 'lucide-svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
+  import { Reply, Forward, Archive, Trash2, FolderSymlink, Loader2 } from 'lucide-svelte';
   import AiCommandButtons from './AiCommandButtons.svelte';
+  import MailboxMoveMenu from './MailboxMoveMenu.svelte';
 
   /**
    * Header for the selected email: shows sender info, quick actions, and AI command buttons.
@@ -12,14 +13,55 @@
   export let actionMenuOptions = [];
   export let actionMenuLoading = false;
   export let mobile = false;
+  export let currentFolderId = 'inbox';
+  export let pendingMove = false;
   export let escapeHtmlFn = (value) => value ?? '';
   export let formatFullDateFn = () => '';
 
   const dispatch = createEventDispatcher();
+  let moveMenuOpen = false;
+  let moveMenuButton = null;
+  let moveMenuRef = null;
 
   function emit(type, detail) {
     dispatch(type, detail);
   }
+
+  /**
+   * Toggles the toolbar move dropdown visibility.
+   */
+  function toggleMoveMenu() {
+    moveMenuOpen = !moveMenuOpen;
+  }
+
+  function closeMoveMenu() {
+    moveMenuOpen = false;
+  }
+
+  /**
+   * Emits the selected folder target to the parent component.
+   */
+  function handleMoveSelect(event) {
+    closeMoveMenu();
+    emit('move', { targetFolderId: event.detail.targetId });
+  }
+
+  /**
+   * Closes the dropdown when clicking outside the control.
+   */
+  function handleGlobalPointer(event) {
+    if (!moveMenuOpen) return;
+    const target = event.target;
+    if (moveMenuButton?.contains(target) || moveMenuRef?.contains(target)) {
+      return;
+    }
+    moveMenuOpen = false;
+  }
+
+  onMount(() => {
+    document.addEventListener('pointerdown', handleGlobalPointer);
+    return () => document.removeEventListener('pointerdown', handleGlobalPointer);
+  });
 </script>
 
 {#if email}
@@ -55,14 +97,37 @@
         on:click={() => emit('forward')}>
         <Forward class="h-4 w-4" />
       </button>
-      <button
-        type="button"
-        class="btn btn--icon"
-        aria-label="Archive"
-        title="Archive"
-        on:click={() => emit('archive')}>
-        <Archive class="h-4 w-4" />
-      </button>
+      {#if currentFolderId !== 'archive'}
+        <button
+          type="button"
+          class="btn btn--icon"
+          aria-label="Archive"
+          title="Archive"
+          on:click={() => emit('archive')}>
+          <Archive class="h-4 w-4" />
+        </button>
+      {/if}
+      <div class="relative">
+        <button
+          bind:this={moveMenuButton}
+          type="button"
+          class="btn btn--icon"
+          aria-label="Move"
+          title="Move"
+          aria-expanded={moveMenuOpen}
+          on:click={toggleMoveMenu}>
+          {#if pendingMove}
+            <Loader2 class="h-4 w-4 animate-spin" />
+          {:else}
+            <FolderSymlink class="h-4 w-4" />
+          {/if}
+        </button>
+        {#if moveMenuOpen}
+          <div class="move-menu-surface" bind:this={moveMenuRef}>
+            <MailboxMoveMenu currentFolderId={currentFolderId} pending={pendingMove} on:select={handleMoveSelect} />
+          </div>
+        {/if}
+      </div>
       <button
         type="button"
         class="btn btn--icon"
@@ -77,9 +142,26 @@
     {commands}
     actionOptions={actionMenuOptions}
     actionMenuLoading={actionMenuLoading}
+    {mobile}
     on:select={(event) => emit('commandSelect', event.detail)}
     on:actionSelect={(event) => emit('actionSelect', event.detail)}
     on:actionMenuToggle={(event) => emit('actionMenuToggle', event.detail)}
     on:comingSoon={(event) => emit('comingSoon', event.detail)}
   />
 {/if}
+
+<style>
+  /* Floating move dropdown anchored to toolbar button */
+  .move-menu-surface {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.5rem);
+    z-index: 30;
+    background: white;
+    border-radius: 0.65rem;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.18);
+    padding: 0.35rem;
+    min-width: 13rem;
+  }
+</style>

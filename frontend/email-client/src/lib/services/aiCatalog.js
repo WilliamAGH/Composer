@@ -4,6 +4,7 @@
  * helper handles fetching/merging in the browser.
  */
 import { writable, get } from 'svelte/store';
+import { dispatchClientWarning } from './sessionNonceClient';
 
 const catalog = writable(null);
 let fetchPromise = null;
@@ -24,11 +25,11 @@ export function getFunctionMeta(data, key) {
 }
 
 export function mergeDefaultArgs(meta, variant, overrides = {}) {
-  const merged = { ...(meta?.defaultArgs || {}) };
+  const merged = { ...meta?.defaultArgs };
   if (variant?.defaultArgs) {
     Object.assign(merged, variant.defaultArgs);
   }
-  Object.entries(overrides || {}).forEach(([k, v]) => {
+  Object.entries(overrides ?? {}).forEach(([k, v]) => {
     if (k && v) merged[k] = v;
   });
   return merged;
@@ -63,7 +64,7 @@ export async function ensureCatalogLoaded(initialValue) {
     await fetchPromise;
     return true;
   } catch (error) {
-    console.error('Catalog load failed', error);
+    dispatchClientWarning({ message: 'Unable to load AI function catalog.', error });
     return false;
   }
 }

@@ -1,6 +1,6 @@
 <script>
-  import { createEventDispatcher, onMount } from 'svelte';
-  import { Paperclip, Send, Wand2, Highlighter } from 'lucide-svelte';
+  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { Paperclip, Send, Wand2, Highlighter, Trash2, ChevronDown } from 'lucide-svelte';
   import { isMobile } from './viewport';
   import WindowFrame from './window/WindowFrame.svelte';
   import { useWindowContext } from './window/windowContext';
@@ -31,6 +31,8 @@
   let body = '';
   let isReply = false;
   let lastBodyVersion = 0;
+  let saveTimeout = null;
+  let lastSavedSignature = null;
   $: journeyInlineActive = Boolean(journeyOverlay?.visible);
   let maximized = false;
 
@@ -51,14 +53,110 @@
 
   onMount(() => {
     setTimeout(() => (isReply ? inputSubject?.focus() : (inputTo || inputSubject)?.focus()), 50);
+    scheduleDraftSave(true);
+    document.addEventListener('pointerdown', handleGlobalPointer);
+  });
+
+  onDestroy(() => {
+    clearTimeout(saveTimeout);
+    document.removeEventListener('pointerdown', handleGlobalPointer);
   });
 
   function send() {
     dispatch('send', { id: windowConfig.id, to, subject, body, attachments });
   }
 
-  function requestAi(command) {
-    dispatch('requestAi', { id: windowConfig.id, command, draft: body, subject, isReply, to });
+  /**
+   * Deletes the in-progress draft from the mailbox store.
+   */
+  function deleteDraft() {
+    dispatch('deleteDraft', { id: windowConfig.id });
+    closeWindow();
+  }
+
+  function requestAi(command, instructionOverride = null) {
+    dispatch('requestAi', { id: windowConfig.id, command, draft: body, subject, isReply, to, instructionOverride });
+  }
+
+  const fallbackDraftOptions = [
+    { key: 'draft', label: 'AI Draft Reply' },
+    { key: 'compose', label: 'AI Compose' }
+  ];
+
+  const tonePresets = [
+    { id: 'tone-professional', label: 'Professional', guidance: 'Rewrite this email in a professional, confident tone. Keep it concise, precise, and free of slang while preserving the intent.' },
+    { id: 'tone-casual', label: 'Casual', guidance: 'Rewrite this email so it sounds casual, friendly, and approachable. Keep the original meaning but loosen the language slightly.' },
+    { id: 'tone-legal', label: 'Legal', guidance: 'Rewrite this email in a formal, legal-friendly tone. Be explicit, cite facts, and avoid emotional language while preserving intent.' },
+    { id: 'tone-bestie', label: 'Bestie', guidance: 'Rewrite this email as if texting a close friend ("bestie"). Keep it upbeat, encouraging, and informal while preserving the main points.' },
+    { id: 'tone-bro', label: 'Bro', guidance: 'Rewrite this email with relaxed “bro” energy—supportive, informal, and direct. Keep key facts intact.' }
+  ];
+
+  $: draftOptions = deriveDraftOptions(aiFunctions);
+  $: primaryDraftOption = draftOptions.find((option) => option.key === 'draft') || draftOptions[0] || fallbackDraftOptions[0];
+
+  let draftMenuOpen = false;
+  let toneMenuOpen = false;
+  let draftMenuRef = null;
+  let toneMenuRef = null;
+  let draftToggleButton = null;
+  let toneToggleButton = null;
+
+  function deriveDraftOptions(list) {
+    if (!Array.isArray(list) || list.length === 0) return fallbackDraftOptions;
+    const entries = [];
+    const seen = new Set();
+    for (const fn of list) {
+      if (!fn?.key || fn.key === 'tone' || seen.has(fn.key)) continue;
+      seen.add(fn.key);
+      entries.push({ key: fn.key, label: fn.label || (fn.key === 'draft' ? 'AI Draft Reply' : fn.key === 'compose' ? 'AI Compose' : fn.key) });
+    }
+    return entries.length ? entries : fallbackDraftOptions;
+  }
+
+  function runPrimaryDraft() {
+    const target = primaryDraftOption?.key || 'draft';
+    requestAi(target);
+  }
+
+  function toggleDraftMenu() {
+    draftMenuOpen = !draftMenuOpen;
+    if (draftMenuOpen) toneMenuOpen = false;
+  }
+
+  function toggleToneMenu() {
+    toneMenuOpen = !toneMenuOpen;
+    if (toneMenuOpen) draftMenuOpen = false;
+  }
+
+  function invokeDraftOption(option) {
+    requestAi(option.key);
+    draftMenuOpen = false;
+  }
+
+  function invokeTonePreset(preset) {
+    const trimmedBody = body?.trim();
+    const instruction = trimmedBody && trimmedBody.length
+      ? `${preset.guidance}\n\n${trimmedBody}`
+      : preset.guidance;
+    requestAi('tone', instruction);
+    toneMenuOpen = false;
+  }
+
+  function handleGlobalPointer(event) {
+    const target = event.target;
+    if (draftMenuOpen && !isWithin(target, draftMenuRef, draftToggleButton)) {
+      draftMenuOpen = false;
+    }
+    if (toneMenuOpen && !isWithin(target, toneMenuRef, toneToggleButton)) {
+      toneMenuOpen = false;
+    }
+  }
+
+  function isWithin(target, panelEl, triggerEl) {
+    if (!target) return false;
+    if (panelEl && panelEl.contains(target)) return true;
+    if (triggerEl && triggerEl.contains(target)) return true;
+    return false;
   }
 
   function closeWindow() {
@@ -82,6 +180,43 @@
       attachments = [...attachments, { file, name: file.name, size: file.size }];
     }
     if (fileInput) fileInput.value = '';
+  }
+
+  /**
+   * Derives the minimal payload needed to persist the current draft state.
+   */
+  function snapshotDraftPayload() {
+    return {
+      id: windowConfig?.id,
+      to,
+      subject,
+      body
+    };
+  }
+
+  /**
+   * Throttles draft persistence so autosave happens without spamming dispatch events.
+   */
+  function scheduleDraftSave(immediate = false) {
+    if (!windowConfig?.id) return;
+    const signature = `${to}||${subject}||${body}`;
+    if (!immediate && signature === lastSavedSignature) {
+      return;
+    }
+    const persist = () => {
+      lastSavedSignature = `${to}||${subject}||${body}`;
+      dispatch('saveDraft', snapshotDraftPayload());
+    };
+    if (immediate) {
+      persist();
+      return;
+    }
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(persist, 400);
+  }
+
+  $: if (initialized && windowConfig) {
+    scheduleDraftSave();
   }
 </script>
 
@@ -113,25 +248,64 @@
       class="field" />
 
     <div class="ai-actions">
-      {#if !aiFunctions || aiFunctions.length === 0}
-        <button type="button" class="btn btn--ghost btn--labelled" on:click={() => requestAi('draft')}>
-          <Wand2 class="h-4 w-4" /> AI Compose
+      <div class="ai-action-group">
+        <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill" on:click={runPrimaryDraft}>
+          <Wand2 class="h-4 w-4" /> Draft
         </button>
-        <button type="button" class="btn btn--ghost btn--labelled" on:click={() => requestAi('tone')}>
-          <Highlighter class="h-4 w-4" /> Adjust Tone
+        <button
+          type="button"
+          class="btn btn--ghost btn--icon compose-ai-pill dropdown-toggle"
+          aria-haspopup="menu"
+          aria-expanded={draftMenuOpen}
+          bind:this={draftToggleButton}
+          on:click={toggleDraftMenu}
+          aria-label="More drafting options">
+          <ChevronDown class={`h-4 w-4 transition ${draftMenuOpen ? 'rotate-180' : ''}`} />
         </button>
-      {:else}
-        {#each aiFunctions as fn (fn.key)}
-          <button type="button" class="btn btn--ghost btn--labelled" on:click={() => requestAi(fn.key)}>
-            {#if fn.key === 'tone'}
-              <Highlighter class="h-4 w-4" />
-            {:else}
-              <Wand2 class="h-4 w-4" />
-            {/if}
-            {fn.label || 'AI Assist'}
-          </button>
-        {/each}
-      {/if}
+        {#if draftMenuOpen && draftOptions.length}
+          <div class="menu-surface compose-menu" bind:this={draftMenuRef}>
+            <span class="menu-eyebrow">Drafting Options</span>
+            <div class="menu-list">
+              {#each draftOptions as option (option.key)}
+                <button type="button" class="menu-item" on:click={() => invokeDraftOption(option)}>
+                  <div class="flex items-center gap-2 min-w-0">
+                    <Wand2 class="h-4 w-4 text-slate-500" />
+                    <span class="truncate">{option.label}</span>
+                  </div>
+                </button>
+              {/each}
+            </div>
+          </div>
+        {/if}
+      </div>
+
+      <div class="ai-action-group">
+        <button
+          type="button"
+          class="btn btn--ghost btn--labelled btn--compact compose-ai-pill tone-trigger"
+          aria-haspopup="menu"
+          aria-expanded={toneMenuOpen}
+          bind:this={toneToggleButton}
+          on:click={toggleToneMenu}>
+          <Highlighter class="h-4 w-4" /> Tone
+          <ChevronDown class={`h-4 w-4 text-slate-500 transition ${toneMenuOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {#if toneMenuOpen}
+          <div class="menu-surface compose-menu" bind:this={toneMenuRef}>
+            <span class="menu-eyebrow">Rewrite Tone</span>
+            <div class="menu-list">
+              {#each tonePresets as preset (preset.id)}
+                <button type="button" class="menu-item" on:click={() => invokeTonePreset(preset)}>
+                  <div class="flex flex-col text-left">
+                    <span class="font-medium text-slate-900">{preset.label}</span>
+                    <span class="text-xs text-slate-500">Rewrite using the {preset.label.toLowerCase()} voice.</span>
+                  </div>
+                </button>
+              {/each}
+            </div>
+          </div>
+        {/if}
+      </div>
     </div>
 
     {#if journeyOverlay?.visible}
@@ -186,6 +360,9 @@
       }}>
       <Paperclip class="h-4 w-4" /> Attach
     </button>
+    <button type="button" class="btn btn--ghost btn--icon" aria-label="Delete draft" title="Delete draft" on:click={deleteDraft}>
+      <Trash2 class="h-4 w-4" />
+    </button>
     <input bind:this={fileInput} type="file" class="sr-only" on:change={(e) => onFilesSelected(e.currentTarget.files)} multiple />
   </div>
 </WindowFrame>
@@ -231,6 +408,39 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+  }
+  .ai-action-group {
+    display: flex;
+    gap: 0.35rem;
+    position: relative;
+  }
+  .compose-ai-pill {
+    min-height: 34px;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+  }
+  .compose-ai-pill.dropdown-toggle {
+    width: 42px;
+    justify-content: center;
+    padding: 0;
+  }
+  .tone-trigger {
+    gap: 0.35rem;
+  }
+  .compose-ai-pill :global(svg) {
+    width: 15px;
+    height: 15px;
+  }
+  .compose-ai-pill :global(.btn-icon-chip) {
+    width: 28px;
+    height: 28px;
+  }
+  .compose-menu {
+    position: absolute;
+    left: 0;
+    margin-top: 0.35rem;
+    min-width: 15rem;
+    z-index: var(--z-dropdown, 200);
   }
   /**
    * Attachment list uses bordered card styling.

@@ -140,6 +140,14 @@
     backdrop-filter: none;
   }
   /**
+   * Content area padding.
+   */
+  .window-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+  }
+  /**
    * Allow maximized frames to scroll their body region.
    */
   .window-frame.maximized .window-body {
@@ -182,14 +190,6 @@
     display: flex;
     align-items: center;
     gap: 0.25rem;
-  }
-  /**
-   * Content area padding.
-   */
-  .window-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 1rem;
   }
   /**
    * Footer shares the frosted background.

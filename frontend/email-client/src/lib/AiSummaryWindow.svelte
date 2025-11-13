@@ -231,18 +231,18 @@
     min-height: 44px;
   }
   /**
-   * Hover animation for panel CTA.
-   */
-  .panel-btn:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 20px 40px -18px rgba(15, 23, 42, 0.25);
-  }
-  /**
    * Disabled CTA fades while retaining layout.
    */
   .panel-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+  /**
+   * Hover animation for panel CTA.
+   */
+  .panel-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 20px 40px -18px rgba(15, 23, 42, 0.25);
   }
   /**
    * Ghost variant used for retry links.
