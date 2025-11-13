@@ -9,6 +9,7 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   export let actionOptions = [];
   export let actionMenuLoading = false;
   export let mobile = false;
+  export let layout = 'stacked';
   const dispatch = createEventDispatcher();
   const preferredVariantOrder = ['es', 'pt', 'nl'];
   const FALLBACK_ACTION_OPTIONS = [
@@ -32,6 +33,7 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   $: otherEntries = commandsList.filter((entry) => !['draft', 'translate', 'summarize'].includes(entry?.key));
   $: actionOptionList = Array.isArray(actionOptions) && actionOptions.length ? actionOptions : [];
   $: actionMenuEntries = actionOptionList.length ? actionOptionList : FALLBACK_ACTION_OPTIONS;
+  $: trayMode = layout === 'tray';
 
   function handleClick(key) {
     dispatch('select', { key });
@@ -122,10 +124,6 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
     }
   }
 
-  function buttonClasses() {
-    return 'btn btn--secondary btn--labelled btn--compact';
-  }
-
   function labelForEntry(entry) {
     const key = (entry?.key || '').toLowerCase();
     switch (key) {
@@ -143,7 +141,7 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   }
 </script>
 
-<div class={`ai-action-toolbar ${mobile ? 'mobile' : ''}`}>
+<div class={`ai-action-toolbar ${mobile ? 'mobile' : ''} ${trayMode ? 'tray-mode' : ''}`}>
   {#if !commandsList.length}
     <button
       type="button"
@@ -152,13 +150,14 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
       Run AI Assistant
     </button>
   {:else}
-    <div class={`relative ${mobile ? 'span-2' : ''}`}>
-      <button
-        type="button"
-        class={`btn btn--ghost btn--compact action-pill ${mobile ? 'w-full justify-center' : ''}`}
-        on:click={toggleActionMenu}
-        aria-haspopup="menu"
-        aria-expanded={actionMenuOpen}
+      <div class={`relative ${mobile ? 'span-2' : ''}`}>
+        <button
+          type="button"
+          class={`btn btn--ghost btn--compact action-pill ${mobile ? 'w-full justify-center' : ''}`}
+          class:action-pill--tray={trayMode}
+          on:click={toggleActionMenu}
+          aria-haspopup="menu"
+          aria-expanded={actionMenuOpen}
         aria-label="AI Actions"
         aria-busy={actionMenuLoading}
         bind:this={actionButtonEl}>
@@ -199,6 +198,7 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
       <button
         type="button"
         class="btn btn--secondary btn--compact action-pill"
+        class:action-pill--tray={trayMode}
         on:click={() => handleClick(summarizeEntry.key)}>
         <svelte:component this={resolveIconComponent(summarizeEntry.key)} class="h-4 w-4 text-slate-500" />
         {labelForEntry(summarizeEntry)}
@@ -209,6 +209,7 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
       <button
         type="button"
         class="btn btn--secondary btn--compact action-pill"
+        class:action-pill--tray={trayMode}
         on:click={() => handleClick(draftEntry.key)}>
         <svelte:component this={resolveIconComponent(draftEntry.key)} class="h-4 w-4 text-slate-500" />
         {labelForEntry(draftEntry)}
@@ -220,6 +221,7 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
         <button
           type="button"
           class={`btn btn--ghost btn--compact action-pill justify-between ${mobile ? 'w-full' : ''}`}
+          class:action-pill--tray={trayMode}
           on:click={toggleTranslateMenu}
           aria-haspopup="menu"
           aria-expanded={translateMenuOpen}
@@ -265,6 +267,7 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
       <button
         type="button"
         class="btn btn--secondary btn--compact action-pill"
+        class:action-pill--tray={trayMode}
         on:click={() => handleClick(entry.key)}>
         <svelte:component this={resolveIconComponent(entry.key)} class="h-4 w-4 text-slate-500" />
         {labelForEntry(entry)}
@@ -274,50 +277,112 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
 </div>
 
 <style>
-  /* Toolbar stays above the summary card to keep dropdown triggers clickable. */
+  /**
+   * AI toolbar wrapper keeps dropdowns clickable above the AI summary card while enabling responsive layouts.
+   * @usage - Surrounds AI action buttons in EmailActionToolbar contexts
+   * @z-index-warning - Maintains z-index 150 to float over DrawerBackdrop (z-50) and content iframe
+   * @related - .ai-action-toolbar.mobile, .ai-action-toolbar.mobile.tray-mode
+   */
   .ai-action-toolbar {
     margin-top: 1rem;
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
     position: relative;
-    z-index: 150; /* Keep action pills above summary overlay */
+    z-index: 150;
     overflow: visible;
   }
+
   .ai-action-toolbar.mobile {
     width: 100%;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.65rem;
   }
-  .ai-action-toolbar.mobile :global(.btn.btn--compact) {
+
+  .ai-action-toolbar.mobile:not(.tray-mode) :global(.btn.btn--compact) {
     width: 100%;
   }
-  .ai-action-toolbar.mobile .span-2 {
+
+  .ai-action-toolbar.mobile:not(.tray-mode) .span-2 {
     grid-column: 1 / -1;
   }
+
   .ai-action-toolbar.mobile :global(.btn-icon-chip) {
     width: 30px;
     height: 30px;
   }
+
   .ai-action-toolbar.mobile :global(.btn svg) {
     width: 16px;
     height: 16px;
   }
+
   .ai-action-toolbar.mobile .relative {
     width: 100%;
   }
+
+  /**
+   * Tray variant renders inside the horizontal action lane on mobile.
+   * @usage - Activated when layout="tray" and mobile flag is true
+   * @related - .action-tray__ai wrapper in EmailActionToolbar.svelte
+   */
+  .ai-action-toolbar.mobile.tray-mode {
+    margin-top: 0;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 0.5rem;
+    overflow: visible;
+  }
+
+  .ai-action-toolbar.mobile.tray-mode > * {
+    flex: 0 0 auto;
+    min-width: auto;
+  }
+
+  .ai-action-toolbar.mobile.tray-mode .relative {
+    width: auto;
+  }
+
+  .ai-action-toolbar.mobile.tray-mode :global(.btn.btn--compact) {
+    width: auto;
+  }
+
+  .ai-action-toolbar.mobile.tray-mode .span-2 {
+    grid-column: auto;
+  }
+
+  /**
+   * Action pills normalize icon sizing between AI actions and native controls.
+   * @usage - Base class for AI action buttons regardless of viewport
+   * @related - .action-pill--tray for compact variant
+   */
   .action-pill {
     min-height: 36px;
     padding-top: 0.3rem;
     padding-bottom: 0.3rem;
   }
+
   .action-pill :global(svg) {
     width: 15px;
     height: 15px;
   }
+
   .action-pill :global(.btn-icon-chip) {
     width: 28px;
     height: 28px;
+  }
+
+  /**
+   * Tray modifier tightens width + padding so AI pills blend with the mobile action chips.
+   * @usage - Applied via class:action-pill--tray when layout="tray"
+   * @related - .action-tray__ai in EmailActionToolbar.svelte
+   */
+  .action-pill--tray {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    min-height: 34px;
+    font-size: 0.8rem;
   }
 </style>
