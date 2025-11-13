@@ -54,7 +54,7 @@
 
   onMount(() => {
     setTimeout(() => (isReply ? inputSubject?.focus() : (inputTo || inputSubject)?.focus()), 50);
-    scheduleDraftSave(true);
+    scheduleDraftSave(`${to}||${subject}||${body}`, true);
     document.addEventListener('pointerdown', handleGlobalPointer);
     if (typeof window !== 'undefined') {
       window.addEventListener('resize', handleViewportChange, { passive: true });
@@ -265,14 +265,13 @@
   /**
    * Throttles draft persistence so autosave happens without spamming dispatch events.
    */
-  function scheduleDraftSave(immediate = false) {
+  function scheduleDraftSave(signature, immediate = false) {
     if (!windowConfig?.id) return;
-    const signature = `${to}||${subject}||${body}`;
     if (!immediate && signature === lastSavedSignature) {
       return;
     }
     const persist = () => {
-      lastSavedSignature = `${to}||${subject}||${body}`;
+      lastSavedSignature = signature;
       dispatch('saveDraft', snapshotDraftPayload());
     };
     if (immediate) {
@@ -283,157 +282,183 @@
     saveTimeout = setTimeout(persist, 400);
   }
 
+  $: draftSignature = `${to}||${subject}||${body}`;
+
   $: if (initialized && windowConfig) {
-    scheduleDraftSave();
+    scheduleDraftSave(draftSignature);
   }
 </script>
 
 {#if windowConfig}
-  <WindowFrame
-    open={true}
-    title={windowConfig.title || (isReply ? 'Reply' : 'New Message')}
-    mode="floating"
-    minimized={windowConfig.minimized}
-    allowMinimize={!mobile}
-    allowMaximize={true}
-    maximized={maximized}
-    allowClose={true}
-    offsetIndex={offsetIndex}
-    on:close={closeWindow}
-    on:toggleMinimize={toggleMinimizeWindow}
-    on:toggleMaximize={toggleMaximizeWindow}
-  >
-  <div class="compose-body">
-    <input
-      bind:this={inputTo}
-      bind:value={to}
-      placeholder="To"
-      class="field" />
-    <input
-      bind:this={inputSubject}
-      bind:value={subject}
-      placeholder="Subject"
-      class="field" />
+  {#if mobile}
+    <ComposeMobileSheet
+      title={windowConfig.title || (isReply ? 'Reply' : 'New Message')}
+      bind:to
+      bind:subject
+      bind:body
+      {attachments}
+      {draftOptions}
+      {primaryDraftOption}
+      {tonePresets}
+      journeyOverlay={journeyOverlay}
+      journeyInlineActive={journeyInlineActive}
+      onSend={send}
+      onDeleteDraft={deleteDraft}
+      onRunPrimaryDraft={runPrimaryDraft}
+      onInvokeDraftOption={invokeDraftOption}
+      onInvokeTonePreset={invokeTonePreset}
+      onAttach={() => fileInput?.click()}
+      onClose={closeWindow}
+      registerInputRefs={registerInputRefs}
+    />
+  {:else}
+    <WindowFrame
+      open={true}
+      title={windowConfig.title || (isReply ? 'Reply' : 'New Message')}
+      mode="floating"
+      minimized={windowConfig.minimized}
+      allowMinimize={!mobile}
+      allowMaximize={true}
+      maximized={maximized}
+      maximizedAnchorBounds={maximizedAnchorBounds}
+      allowClose={true}
+      offsetIndex={offsetIndex}
+      on:close={closeWindow}
+      on:toggleMinimize={toggleMinimizeWindow}
+      on:toggleMaximize={toggleMaximizeWindow}
+    >
+      <div class="compose-body">
+        <input
+          bind:this={inputTo}
+          bind:value={to}
+          placeholder="To"
+          class="field" />
+        <input
+          bind:this={inputSubject}
+          bind:value={subject}
+          placeholder="Subject"
+          class="field" />
 
-    <div class="ai-actions">
-      <div class="ai-action-group">
-        <button
-          type="button"
-          class="btn btn--ghost btn--icon compose-ai-pill dropdown-toggle"
-          aria-haspopup="menu"
-          aria-expanded={draftMenuOpen}
-          bind:this={draftToggleButton}
-          on:click={toggleDraftMenu}
-          aria-label="More drafting options">
-          <ChevronDown class={`h-4 w-4 transition ${draftMenuOpen ? 'rotate-180' : ''}`} />
-        </button>
-        <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill" on:click={runPrimaryDraft}>
-          <Wand2 class="h-4 w-4" /> Draft
-        </button>
-        {#if draftMenuOpen && draftOptions.length}
-          <div class="menu-surface compose-menu" bind:this={draftMenuRef}>
-            <span class="menu-eyebrow">Drafting Options</span>
-            <div class="menu-list">
-              {#each draftOptions as option (option.key)}
-                <button type="button" class="menu-item" on:click={() => invokeDraftOption(option)}>
-                  <div class="flex items-center gap-2 min-w-0">
-                    <Wand2 class="h-4 w-4 text-slate-500" />
-                    <span class="truncate">{option.label}</span>
-                  </div>
-                </button>
-              {/each}
-            </div>
+        <div class="ai-actions">
+          <div class="ai-action-group">
+            <button
+              type="button"
+              class="btn btn--ghost btn--icon compose-ai-pill dropdown-toggle"
+              aria-haspopup="menu"
+              aria-expanded={draftMenuOpen}
+              bind:this={draftToggleButton}
+              on:click={toggleDraftMenu}
+              aria-label="More drafting options">
+              <ChevronDown class={`h-4 w-4 transition ${draftMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill" on:click={runPrimaryDraft}>
+              <Wand2 class="h-4 w-4" /> {primaryDraftOption?.label || 'Draft'}
+            </button>
+            {#if draftMenuOpen && draftOptions.length}
+              <div class="menu-surface compose-menu" bind:this={draftMenuRef}>
+                <span class="menu-eyebrow">Drafting Options</span>
+                <div class="menu-list">
+                  {#each draftOptions as option (option.key)}
+                    <button type="button" class="menu-item" on:click={() => invokeDraftOption(option)}>
+                      <div class="flex items-center gap-2 min-w-0">
+                        <Wand2 class="h-4 w-4 text-slate-500" />
+                        <span class="truncate">{option.label}</span>
+                      </div>
+                    </button>
+                  {/each}
+                </div>
+              </div>
+            {/if}
           </div>
-        {/if}
-      </div>
 
-      <div class="ai-action-group">
-        <button
-          type="button"
-          class="btn btn--ghost btn--labelled btn--compact compose-ai-pill tone-trigger"
-          aria-haspopup="menu"
-          aria-expanded={toneMenuOpen}
-          bind:this={toneToggleButton}
-          on:click={toggleToneMenu}>
-          <Highlighter class="h-4 w-4" /> Tone
-          <ChevronDown class={`h-4 w-4 text-slate-500 transition ${toneMenuOpen ? 'rotate-180' : ''}`} />
-        </button>
-        {#if toneMenuOpen}
-          <div class="menu-surface compose-menu" bind:this={toneMenuRef}>
-            <span class="menu-eyebrow">Rewrite Tone</span>
-            <div class="menu-list">
-              {#each tonePresets as preset (preset.id)}
-                <button type="button" class="menu-item" on:click={() => invokeTonePreset(preset)}>
-                  <div class="flex flex-col text-left">
-                    <span class="font-medium text-slate-900">{preset.label}</span>
-                    <span class="text-xs text-slate-500">Rewrite using the {preset.label.toLowerCase()} voice.</span>
-                  </div>
-                </button>
-              {/each}
-            </div>
+          <div class="ai-action-group">
+            <button
+              type="button"
+              class="btn btn--ghost btn--labelled btn--compact compose-ai-pill tone-trigger"
+              aria-haspopup="menu"
+              aria-expanded={toneMenuOpen}
+              bind:this={toneToggleButton}
+              on:click={toggleToneMenu}>
+              <Highlighter class="h-4 w-4" /> Tone
+              <ChevronDown class={`h-4 w-4 text-slate-500 transition ${toneMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {#if toneMenuOpen}
+              <div class="menu-surface compose-menu" bind:this={toneMenuRef}>
+                <span class="menu-eyebrow">Rewrite Tone</span>
+                <div class="menu-list">
+                  {#each tonePresets as preset (preset.id)}
+                    <button type="button" class="menu-item" on:click={() => invokeTonePreset(preset)}>
+                      <div class="flex flex-col text-left">
+                        <span class="font-medium text-slate-900">{preset.label}</span>
+                        <span class="text-xs text-slate-500">Rewrite using the {preset.label.toLowerCase()} voice.</span>
+                      </div>
+                    </button>
+                  {/each}
+                </div>
+              </div>
+            {/if}
           </div>
-        {/if}
-      </div>
-    </div>
-
-    {#if journeyOverlay?.visible}
-      <AiLoadingJourney
-        steps={journeyOverlay.steps || []}
-        activeStepId={journeyOverlay.activeStepId}
-        headline={journeyOverlay.headline}
-        subhead={journeyOverlay.subhead}
-        show={journeyOverlay.visible}
-        inline={true}
-        subdued={true}
-        className="border-slate-200" />
-    {/if}
-
-    <textarea
-      bind:this={inputMessage}
-      bind:value={body}
-      rows={isReply ? 6 : 8}
-      placeholder={isReply ? 'Type your reply...' : 'Type your message...'}
-      class="field textarea"
-      disabled={journeyInlineActive}
-      aria-busy={journeyInlineActive}></textarea>
-
-    {#if attachments.length}
-      <div class="attachments">
-        <div class="attachments-header">
-          <span>Attachments</span>
-          <span>{attachments.length}</span>
         </div>
-        <ul>
-          {#each attachments as item}
-            <li>{item.name}</li>
-          {/each}
-        </ul>
-      </div>
-    {/if}
-  </div>
 
-  <div slot="footer" class="compose-footer">
-    <button type="button" class="btn btn--primary btn--labelled" on:click={send}>
-      <Send class="h-4 w-4" /> Send
-    </button>
-    <button
-      type="button"
-      class="btn btn--secondary btn--labelled"
-      on:click={() => fileInput?.click()}
-      on:keydown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          fileInput?.click();
-        }
-      }}>
-      <Paperclip class="h-4 w-4" /> Attach
-    </button>
-    <button type="button" class="btn btn--ghost btn--icon" aria-label="Delete draft" title="Delete draft" on:click={deleteDraft}>
-      <Trash2 class="h-4 w-4" />
-    </button>
-    <input bind:this={fileInput} type="file" class="sr-only" on:change={(e) => onFilesSelected(e.currentTarget.files)} multiple />
-  </div>
-</WindowFrame>
+        {#if journeyOverlay?.visible}
+          <AiLoadingJourney
+            steps={journeyOverlay.steps || []}
+            activeStepId={journeyOverlay.activeStepId}
+            headline={journeyOverlay.headline}
+            subhead={journeyOverlay.subhead}
+            show={journeyOverlay.visible}
+            inline={true}
+            subdued={true}
+            className="border-slate-200" />
+        {/if}
+
+        <textarea
+          bind:this={inputMessage}
+          bind:value={body}
+          rows={isReply ? 6 : 8}
+          placeholder={isReply ? 'Type your reply...' : 'Type your message...'}
+          class="field textarea"
+          disabled={journeyInlineActive}
+          aria-busy={journeyInlineActive}></textarea>
+
+        {#if attachments.length}
+          <div class="attachments">
+            <div class="attachments-header">
+              <span>Attachments</span>
+              <span>{attachments.length}</span>
+            </div>
+            <ul>
+              {#each attachments as item}
+                <li>{item.name}</li>
+              {/each}
+            </ul>
+          </div>
+        {/if}
+      </div>
+
+      <div slot="footer" class="compose-footer">
+        <button type="button" class="btn btn--primary btn--labelled" on:click={send}>
+          <Send class="h-4 w-4" /> Send
+        </button>
+        <button
+          type="button"
+          class="btn btn--secondary btn--labelled"
+          on:click={() => fileInput?.click()}
+          on:keydown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              fileInput?.click();
+            }
+          }}>
+          <Paperclip class="h-4 w-4" /> Attach
+        </button>
+        <button type="button" class="btn btn--ghost btn--icon" aria-label="Delete draft" title="Delete draft" on:click={deleteDraft}>
+          <Trash2 class="h-4 w-4" />
+        </button>
+      </div>
+    </WindowFrame>
+  {/if}
+  <input bind:this={fileInput} type="file" class="sr-only" on:change={(e) => onFilesSelected(e.currentTarget.files)} multiple />
 {/if}
 
 <style>
@@ -489,22 +514,22 @@
     position: relative;
   }
   /**
-   * Compose AI action pills match other toolbar chips but run slightly tighter on desktop/tablet.
-   * @usage - ComposeWindow.svelte Draft + Tone controls
+   * Compose AI action pills match other toolbar chips but run noticeably slimmer per desktop feedback.
+   * @usage - ComposeWindow.svelte Draft + Tone controls (desktop/tablet)
    */
   .compose-ai-pill {
-    min-height: 30px;
-    padding-top: 0.15rem;
-    padding-bottom: 0.15rem;
-    padding-left: 0.85rem;
-    padding-right: 0.85rem;
+    min-height: 28px;
+    padding-top: 0.1rem;
+    padding-bottom: 0.1rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
   }
   /**
    * Dropdown toggle keeps icon-only footprint compact when placed before the Draft button.
    * @usage - ComposeWindow.svelte Draft menu chevron
    */
   .compose-ai-pill.dropdown-toggle {
-    width: 36px;
+    width: 34px;
     justify-content: center;
     padding: 0;
   }
@@ -513,11 +538,11 @@
    * @usage - ComposeWindow.svelte Tone button
    */
   .tone-trigger {
-    gap: 0.25rem;
+    gap: 0.2rem;
   }
   .compose-ai-pill :global(svg) {
-    width: 15px;
-    height: 15px;
+    width: 13px;
+    height: 13px;
   }
   .compose-ai-pill :global(.btn-icon-chip) {
     width: 28px;
@@ -571,62 +596,5 @@
     align-items: center;
     gap: 0.5rem;
   }
-  /**
-   * Mobile overrides keep everything thumb-friendly.
-   */
-  @media (max-width: 640px) {
-    .compose-body {
-      gap: 0.5rem;
-    }
-    .ai-actions {
-      flex-direction: column;
-    }
-    /**
-     * Restore generous padding on phones so text inputs stay at the iOS minimum size.
-     * @usage - ComposeWindow.svelte `To`, `Subject`, and textarea controls on small screens
-     */
-    .field {
-      padding: 0.75rem 1rem;
-      min-height: 46px;
-      font-size: 1rem;
-    }
-    .compose-footer {
-      position: sticky;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      padding-top: 0.75rem;
-      padding-bottom: 0.5rem;
-      flex-direction: column;
-      align-items: stretch;
-      background: linear-gradient(180deg, rgba(248, 250, 252, 0.9), rgba(255, 255, 255, 0.95));
-      backdrop-filter: blur(20px);
-    }
-    .compose-footer button,
-    .compose-footer .btn {
-      width: 100%;
-      justify-content: center;
-    }
-    /**
-     * Re-establish taller action pills so thumb taps remain reliable on iPhone.
-     * @usage - ComposeWindow.svelte quick action buttons intra mobile breakpoint
-     */
-    .compose-ai-pill {
-      min-height: 34px;
-      padding-top: 0.25rem;
-      padding-bottom: 0.25rem;
-      padding-left: 1.05rem;
-      padding-right: 1.05rem;
-    }
-    /**
-     * Icon-only toggle regains the 42px touch target when space is constrained on phones.
-     * @usage - ComposeWindow.svelte Draft menu chevron within mobile breakpoint
-     */
-    .compose-ai-pill.dropdown-toggle {
-      width: 42px;
-    }
-    .textarea {
-      min-height: min(45vh, 360px);
-    }
-  }
+  /* Mobile compose experience handled by ComposeMobileSheet.svelte */
 </style>
