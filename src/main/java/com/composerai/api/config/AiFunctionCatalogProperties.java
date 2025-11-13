@@ -114,8 +114,15 @@ Subject: [your subject line]
         DefinitionProperties summarize = new DefinitionProperties();
         summarize.setLabel("AI Summary");
         summarize.setCategory(AiFunctionDefinition.Category.SUMMARY);
-        summarize.setPromptTemplate("Summarize the email content in the provided context. Highlight key points, decisions, and follow-up needs. Additional guidance: {{instruction}}");
-        summarize.setDefaultInstruction("Summarize the selected email in a few concise paragraphs, highlighting key actions.");
+        summarize.setPromptTemplate("""
+You are summarizing a single email message taken from the context above. Follow these rules:
+- Describe only what the sender wrote in that message. Do not reference conversations between you and the user.
+- Capture concrete decisions, requests, commitments, deadlines, and any next steps mentioned in the message.
+- Keep the summary factual and avoid speculation outside the provided email content.
+- Return 2-4 short paragraphs or bullet points that read like an executive brief for this email alone.
+Additional guidance: {{instruction}}
+""");
+        summarize.setDefaultInstruction("Summarize the selected email itself (not a chat with the user) by highlighting its key decisions, asks, and action items.");
         summarize.setOutputFormat(AiFunctionDefinition.OutputFormat.TEXT);
         summarize.setSubjectMode(AiFunctionDefinition.SubjectMode.NONE);
         summarize.setPrimary(true);
