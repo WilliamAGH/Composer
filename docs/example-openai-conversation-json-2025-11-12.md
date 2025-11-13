@@ -81,8 +81,8 @@
       "role": "user",
       "content": "Compare that with the vendor invoice email.",
       "context_refs": [
-        { "ref_type": \"email\", \"ref_id\": \"msg-001\", \"purpose\": \"primary\" },
-        { "ref_type": \"email\", \"ref_id\": \"msg-002\", \"purpose\": \"primary\" }
+        { "ref_type": "email", "ref_id": "msg-001", "purpose": "primary" },
+        { "ref_type": "email", "ref_id": "msg-002", "purpose": "primary" }
       ],
       "meta": {}
     }
