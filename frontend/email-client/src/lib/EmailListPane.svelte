@@ -111,8 +111,8 @@
 >
   <div class="px-4 py-3 border-b border-slate-200">
     <div class="flex items-center gap-3">
-      <button type="button" title="Toggle menu" class="btn btn--icon" on:click={handleToggleMenu}>
-        <Menu class="h-4 w-4" />
+      <button type="button" title="Toggle menu" class="btn btn--icon" aria-label="Toggle mailbox list" on:click={handleToggleMenu}>
+        <Menu class="h-4 w-4" aria-hidden="true" />
       </button>
       <div class="flex-1 min-w-0 flex flex-col gap-1">
         <div class="relative" bind:this={mailboxMenuListRef}>
@@ -220,6 +220,7 @@
                       type="button"
                       class="row-action-btn"
                       title="Archive"
+                      aria-label="Archive email"
                       on:click|stopPropagation={() => handleArchiveEmail(email)}>
                       <Archive class="h-4 w-4" />
                     </button>
@@ -229,6 +230,7 @@
                       type="button"
                       class="row-action-btn"
                       title="Move"
+                      aria-label="Move email"
                       aria-expanded={rowMoveMenuFor === email.id}
                       data-row-move-control="true"
                       on:click|stopPropagation={() => openRowMoveMenu(email.id)}>
@@ -251,6 +253,7 @@
                       type="button"
                       class="row-action-btn row-action-btn--destructive"
                       title="Delete"
+                      aria-label="Delete email"
                       on:click|stopPropagation={() => handleDeleteEmail(email)}>
                       <Trash2 class="h-4 w-4" />
                     </button>
