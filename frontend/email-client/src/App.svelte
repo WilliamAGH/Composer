@@ -232,6 +232,9 @@ const panelErrorsStore = panelStores.errors;
     .filter((fn) => Array.isArray(fn.scopes) && fn.scopes.includes('compose'));
   $: mailboxCommandEntries = deriveMailboxCommands();
   $: hasMailboxCommands = Array.isArray(mailboxCommandEntries) && mailboxCommandEntries.length > 0;
+  $: mailboxActionsComingSoon = Array.isArray(mailboxCommandEntries)
+    && mailboxCommandEntries.length > 0
+    && mailboxCommandEntries.every((entry) => entry?.comingSoon);
   $: selectedActionKey = selected ? (selected.contextId || selected.id || selected.conversationId || null) : null;
   $: {
     if (!selectedActionKey) {
@@ -271,6 +274,11 @@ const panelErrorsStore = panelStores.errors;
   }
 
   function toggleMailboxActions(host) {
+    if (mailboxActionsComingSoon) {
+      closeMailboxActions();
+      openComingSoonModal('Mailbox AI Actions');
+      return;
+    }
     if (mailboxActionsOpen && mailboxActionsHost === host) {
       mailboxActionsOpen = false;
       mailboxActionsHost = null;
@@ -962,7 +970,7 @@ const panelErrorsStore = panelStores.errors;
               />
               <button
                 type="button"
-                class="absolute inset-y-0 right-1 btn btn--primary btn--compact mailbox-ai-trigger"
+                class="absolute inset-y-0 right-0 btn btn--primary btn--compact mailbox-ai-trigger"
                 aria-haspopup="menu"
                 aria-expanded={mailboxActionsOpen && mailboxActionsHost === 'mobile'}
                 on:click={() => toggleMailboxActions('mobile')}

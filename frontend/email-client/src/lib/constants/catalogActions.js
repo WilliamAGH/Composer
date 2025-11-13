@@ -8,7 +8,8 @@ export const MAILBOX_ACTION_FALLBACKS = [
     key: 'smart-triage',
     label: 'Smart triage & cleanup',
     description:
-      'Auto-label Action, Read-Later, FYI, Receipts, Calendar, Tasks, Bulk. Merges duplicates and collapses promos.'
+      'Auto-label Action, Read-Later, FYI, Receipts, Calendar, Tasks, Bulk. Merges duplicates and collapses promos.',
+    comingSoon: true
   }
 ];
 

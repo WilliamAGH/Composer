@@ -124,7 +124,7 @@
           />
           <button
             type="button"
-            class="absolute inset-y-0 right-1 btn btn--primary btn--compact mailbox-ai-trigger"
+            class="absolute inset-y-0 right-0 btn btn--primary btn--compact mailbox-ai-trigger"
             aria-haspopup="menu"
             aria-expanded={mailboxActionsOpen && mailboxActionsHost === 'list'}
             on:click={() => handleToggleActions('list')}
