@@ -28,6 +28,7 @@ public class CompanyLogoProvider {
     private static final String GOOGLE_S2_TEMPLATE = "https://www.google.com/s2/favicons?domain=%s&sz=%d";
     private static final String FAVICON_KIT_TEMPLATE = "https://api.faviconkit.com/%s/%d";
     private static final int DEFAULT_SIZE = 128;
+    private static final int MIN_ACCEPTED_SIZE = 32; // realistic lower bound for remote favicon providers
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(4);
     private static final Duration TTL = Duration.ofHours(6);
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
@@ -135,8 +136,9 @@ public class CompanyLogoProvider {
                 return Optional.empty();
             }
 
-            if (!hasMinimumDimensions(body)) {
-                logger.debug("{} logo too small for domain={} (required>={})", providerName, normalizedDomain, DEFAULT_SIZE);
+            if (!hasAcceptableDimensions(body)) {
+                logger.debug("{} logo dimensions below threshold for domain={} (required>={})",
+                    providerName, normalizedDomain, MIN_ACCEPTED_SIZE);
                 return Optional.empty();
             }
 
@@ -154,13 +156,13 @@ public class CompanyLogoProvider {
         }
     }
 
-    private boolean hasMinimumDimensions(byte[] imageBytes) {
+    private boolean hasAcceptableDimensions(byte[] imageBytes) {
         try (ByteArrayInputStream in = new ByteArrayInputStream(imageBytes)) {
             BufferedImage image = ImageIO.read(in);
             if (image == null) {
                 return false;
             }
-            return image.getWidth() >= DEFAULT_SIZE && image.getHeight() >= DEFAULT_SIZE;
+            return image.getWidth() >= MIN_ACCEPTED_SIZE && image.getHeight() >= MIN_ACCEPTED_SIZE;
         } catch (IOException e) {
             logger.debug("Failed to inspect company logo dimensions", e);
             return false;
