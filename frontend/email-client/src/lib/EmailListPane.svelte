@@ -1,5 +1,8 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
+  import { flip } from 'svelte/animate';
+  import { quintOut } from 'svelte/easing';
+  import { fly } from 'svelte/transition';
   import { Sparkles, Loader2, Menu, Archive, Trash2, FolderSymlink } from 'lucide-svelte';
   import MailboxMoveMenu from './MailboxMoveMenu.svelte';
 
@@ -121,7 +124,7 @@
           />
           <button
             type="button"
-            class="absolute top-1 bottom-1 right-1 btn btn--primary btn--compact mailbox-ai-trigger"
+            class="absolute inset-y-0 right-1 btn btn--primary btn--compact mailbox-ai-trigger"
             aria-haspopup="menu"
             aria-expanded={mailboxActionsOpen && mailboxActionsHost === 'list'}
             on:click={() => handleToggleActions('list')}
@@ -184,18 +187,22 @@
     {#if !filtered || filtered.length === 0}
       <div class="p-6 text-sm text-slate-500">No emails match your filter.</div>
     {:else}
-      {#each filtered as email (email.id)}
-        <button
-          type="button"
-          class="list-row w-full text-left px-4 py-3 border-b border-slate-200 hover:bg-slate-50 cursor-pointer {selected?.id===email.id?'bg-slate-100':''} {email.read?'':'bg-blue-50/30'}"
-          on:click={() => handleSelectEmail(email)}
-          on:keydown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              handleSelectEmail(email);
-            }
-          }}
-        >
+      <div class="list-rows">
+        {#each filtered as email (email.id)}
+          <button
+            type="button"
+            class="list-row w-full text-left px-4 py-3 border-b border-slate-200 hover:bg-slate-50 cursor-pointer {selected?.id===email.id?'bg-slate-100':''} {email.read?'':'bg-blue-50/30'}"
+            animate:flip={{ duration: 220, easing: quintOut }}
+            in:fly={{ y: 18, duration: 180, easing: quintOut }}
+            out:fly={{ y: -18, duration: 220, opacity: 0.1, easing: quintOut }}
+            on:click={() => handleSelectEmail(email)}
+            on:keydown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                handleSelectEmail(email);
+              }
+            }}
+          >
           <div class="flex items-start gap-3">
             <img
               src={email.avatar || email.companyLogoUrl || ('https://i.pravatar.cc/100?u=' + encodeURIComponent(email.fromEmail || email.from))}
@@ -253,8 +260,9 @@
               <p class="text-xs text-slate-500 truncate">{escapeHtmlFn(email.preview)}</p>
             </div>
           </div>
-        </button>
-      {/each}
+          </button>
+        {/each}
+      </div>
     {/if}
   </div>
 </section>
@@ -311,5 +319,10 @@
     box-shadow: 0 20px 45px -12px rgba(15, 23, 42, 0.2);
     padding: 0.35rem;
     min-width: 12rem;
+  }
+
+  .list-rows {
+    display: flex;
+    flex-direction: column;
   }
 </style>
