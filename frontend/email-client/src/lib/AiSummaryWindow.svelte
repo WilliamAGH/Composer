@@ -323,17 +323,6 @@
       align-items: flex-start;
     }
 
-    .window-actions {
-      width: 100%;
-      justify-content: flex-start;
-      gap: 0.6rem;
-    }
-
-    .window-action-controls {
-      width: 100%;
-      justify-content: flex-start;
-    }
-
     .panel-body {
       margin-top: 1rem;
       min-height: min(55vh, 360px);

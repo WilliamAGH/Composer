@@ -23,7 +23,9 @@
         ✕
       </button>
       <div class="coming-soon-modal__eyebrow">
-        <Sparkles class="coming-soon-modal__sparkle" aria-hidden="true" />
+        <span class="coming-soon-modal__sparkle" aria-hidden="true">
+          <Sparkles />
+        </span>
         <span>Coming Soon</span>
       </div>
       <h3 class="coming-soon-modal__headline">
@@ -127,6 +129,7 @@
   }
 
   .coming-soon-modal__sparkle {
+    display: inline-flex;
     width: 16px;
     height: 16px;
     color: #a7f3d0;
