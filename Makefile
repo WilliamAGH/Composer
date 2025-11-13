@@ -87,6 +87,9 @@ lint:
 	@echo "🎨 Stylelint (CSS & Svelte <style> tags - duplicate detection)..."
 	@cd frontend/email-client && npm run lint:css 2>&1 | grep -v "^>" | tail -5 || true
 	@echo ""
+	@echo "🧹 Unused :global() CSS Detection..."
+	@cd frontend/email-client && ./scripts/check-unused-global-css.sh src || true
+	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "✅ Linting complete"
 
