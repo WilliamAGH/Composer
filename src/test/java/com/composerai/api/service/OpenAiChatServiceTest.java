@@ -7,8 +7,10 @@ import com.composerai.api.config.AiFunctionCatalogProperties;
 import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
 import com.composerai.api.config.MagicEmailProperties;
+import com.composerai.api.shared.ledger.UsageMetrics;
 import com.composerai.api.dto.ChatRequest;
 import com.composerai.api.dto.ChatResponse;
+import com.composerai.api.shared.ledger.ChatLedgerRecorder;
 import com.openai.client.OpenAIClient;
 import com.openai.models.embeddings.CreateEmbeddingResponse;
 import com.openai.models.embeddings.Embedding;
@@ -248,19 +250,21 @@ class ChatServiceContextPropagationTest {
     private VectorSearchService vectorSearchService;
     private OpenAiChatService openAiChatService;
     private ContextBuilder contextBuilder;
-    private ContextBuilder.EmailContextRegistry emailContextRegistry;
+    private ContextBuilder.EmailContextCache emailContextRegistry;
     private ChatService.ConversationRegistry conversationRegistry;
     private OpenAiProperties openAiProperties;
     private ChatService chatService;
+    private ChatLedgerRecorder chatLedgerRecorder;
 
     @BeforeEach
     void setUp() {
         vectorSearchService = Mockito.mock(VectorSearchService.class);
         openAiChatService = Mockito.mock(OpenAiChatService.class);
         contextBuilder = new ContextBuilder();
-        emailContextRegistry = new ContextBuilder.EmailContextRegistry();
+        emailContextRegistry = new ContextBuilder.InMemoryEmailContextCache();
         conversationRegistry = new ChatService.ConversationRegistry();
         ExecutorService executorService = Mockito.mock(ExecutorService.class);
+        chatLedgerRecorder = Mockito.mock(ChatLedgerRecorder.class);
 
         openAiProperties = new OpenAiProperties();
         ErrorMessagesProperties errorMessagesProperties = new ErrorMessagesProperties();
@@ -277,7 +281,8 @@ class ChatServiceContextPropagationTest {
             conversationRegistry,
             magicEmailProperties,
             catalogHelper,
-            executorService
+            executorService,
+            chatLedgerRecorder
         );
     }
 
@@ -299,19 +304,26 @@ class ChatServiceContextPropagationTest {
             .thenReturn(List.of(emailContext));
 
         Mockito.when(openAiChatService.analyzeIntent("Review email")).thenReturn("question");
-        Mockito.when(openAiChatService.generateResponse(
+        OpenAiChatService.ChatCompletionResult completionResult = new OpenAiChatService.ChatCompletionResult("raw", "<p>raw</p>");
+        OpenAiChatService.Invocation invocationResult = new OpenAiChatService.Invocation(
+            completionResult,
+            null,
+            null,
+            new UsageMetrics(0, 0, 0, 0)
+        );
+        Mockito.when(openAiChatService.invokeChatResponse(
             any(String.class),
             any(String.class),
             anyList(),
             anyBoolean(),
             any(),
             anyBoolean()
-        )).thenReturn(new OpenAiChatService.ChatCompletionResult("raw", "<p>raw</p>"));
+        )).thenReturn(invocationResult);
 
         chatService.processChat(request);
 
         ArgumentCaptor<String> contextCaptor = ArgumentCaptor.forClass(String.class);
-        Mockito.verify(openAiChatService).generateResponse(
+        Mockito.verify(openAiChatService).invokeChatResponse(
             any(String.class),
             contextCaptor.capture(),
             anyList(),

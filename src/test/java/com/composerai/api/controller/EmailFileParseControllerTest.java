@@ -28,7 +28,7 @@ class EmailFileParseControllerTest {
 
     @Test
     void parseEmail_withNullMetadata_usesFallbackValues() throws Exception {
-        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        ContextBuilder.EmailContextCache registry = new ContextBuilder.InMemoryEmailContextCache();
         EmailFileParseController controller = controllerWithPayload(registry, "{\n" +
             "  \"content\": {\"plainText\": \"Body\", \"markdown\": \"**Body**\"},\n" +
             "  \"metadata\": {\"subject\": null, \"from\": null, \"date\": null}\n" +
@@ -57,7 +57,7 @@ class EmailFileParseControllerTest {
 
     @Test
     void parseEmail_withDateMetadataPreservesIso() throws Exception {
-        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        ContextBuilder.EmailContextCache registry = new ContextBuilder.InMemoryEmailContextCache();
         EmailFileParseController controller = controllerWithPayload(registry, "{\n" +
             "  \"content\": {\"plainText\": \"Body\", \"markdown\": \"**Body**\"},\n" +
             "  \"metadata\": {\"subject\": \"Status\", \"from\": \"Ops\", \"date\": \"Oct 01, 2025 at 4:30 PM -07:00\", \"dateIso\": \"2025-10-01T23:30:00Z\"}\n" +
@@ -78,7 +78,7 @@ class EmailFileParseControllerTest {
 
     @Test
     void parseEmail_sanitizesContentOutputs() throws Exception {
-        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        ContextBuilder.EmailContextCache registry = new ContextBuilder.InMemoryEmailContextCache();
         EmailFileParseController controller = controllerWithPayload(registry, "{\n" +
             "  \"content\": {\"plainText\": \"Hello <script>alert('x')</script> body\", \"markdown\": \"**Hello** <script>alert(1)</script>\"},\n" +
             "  \"metadata\": {\"subject\": \"Status\", \"from\": \"Ops\", \"date\": \"Oct 01, 2025 at 4:30 PM -07:00\"}\n" +
@@ -118,7 +118,7 @@ class EmailFileParseControllerTest {
 
     @Test
     void parseEmail_withUnsupportedExtension_throwsException() {
-        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        ContextBuilder.EmailContextCache registry = new ContextBuilder.InMemoryEmailContextCache();
         EmailFileParseController controller = new EmailFileParseController(
             new EmailParsingService(registry, new ObjectMapper(), new CompanyLogoProvider(), new AppProperties()));
         MockMultipartFile file = new MockMultipartFile(
@@ -133,7 +133,7 @@ class EmailFileParseControllerTest {
 
     @Test
     void parseEmail_withReceivedHeaderUsesReceivedDate() throws Exception {
-        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        ContextBuilder.EmailContextCache registry = new ContextBuilder.InMemoryEmailContextCache();
         EmailFileParseController controller = new EmailFileParseController(
             new EmailParsingService(registry, new ObjectMapper(), new CompanyLogoProvider(), new AppProperties()));
         String eml = String.join("\r\n",
@@ -166,7 +166,7 @@ class EmailFileParseControllerTest {
 
     @Test
     void parseEmail_htmlModeUsesOriginalHtml() throws Exception {
-        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        ContextBuilder.EmailContextCache registry = new ContextBuilder.InMemoryEmailContextCache();
         AppProperties props = new AppProperties();
         props.getEmailRendering().setMode(AppProperties.EmailRenderMode.HTML);
         String payload = """
@@ -204,7 +204,7 @@ class EmailFileParseControllerTest {
 
     @Test
     void parseEmail_htmlModeStripsDangerousMarkup() throws Exception {
-        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        ContextBuilder.EmailContextCache registry = new ContextBuilder.InMemoryEmailContextCache();
         AppProperties props = new AppProperties();
         props.getEmailRendering().setMode(AppProperties.EmailRenderMode.HTML);
         String payload = """
@@ -243,7 +243,7 @@ class EmailFileParseControllerTest {
 
     @Test
     void parseEmail_markdownModeUsesSanitizedHtml() throws Exception {
-        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        ContextBuilder.EmailContextCache registry = new ContextBuilder.InMemoryEmailContextCache();
         AppProperties props = new AppProperties();
         props.getEmailRendering().setMode(AppProperties.EmailRenderMode.MARKDOWN);
         String payload = """
@@ -282,7 +282,7 @@ class EmailFileParseControllerTest {
 
     @Test
     void parseEmail_plaintextModeSuppressesHtml() throws Exception {
-        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        ContextBuilder.EmailContextCache registry = new ContextBuilder.InMemoryEmailContextCache();
         AppProperties props = new AppProperties();
         props.getEmailRendering().setMode(AppProperties.EmailRenderMode.PLAINTEXT);
         String payload = """
@@ -320,7 +320,7 @@ class EmailFileParseControllerTest {
 
     @Test
     void parseEmail_longMessageIdProducesDeterministicBoundedContextId() throws Exception {
-        ContextBuilder.EmailContextRegistry registry = new ContextBuilder.EmailContextRegistry();
+        ContextBuilder.EmailContextCache registry = new ContextBuilder.InMemoryEmailContextCache();
         String longMessageId = "<" + "alpha-" + "x".repeat(220) + "@example-domain.test>";
         String payload = """
             {
@@ -353,11 +353,11 @@ class EmailFileParseControllerTest {
         assertTrue(contextId1.matches("[A-Za-z0-9._:-]+"), "Context ID should contain only safe characters");
     }
 
-    private EmailFileParseController controllerWithPayload(ContextBuilder.EmailContextRegistry registry, String payload) {
+    private EmailFileParseController controllerWithPayload(ContextBuilder.EmailContextCache registry, String payload) {
         return controllerWithPayload(registry, payload, new AppProperties());
     }
 
-    private EmailFileParseController controllerWithPayload(ContextBuilder.EmailContextRegistry registry, String payload, AppProperties appProperties) {
+    private EmailFileParseController controllerWithPayload(ContextBuilder.EmailContextCache registry, String payload, AppProperties appProperties) {
         EmailParsingService emailParsingService = new EmailParsingService(registry, new ObjectMapper(), new CompanyLogoProvider(), appProperties) {
             @Override
             protected String convertEmail(com.composerai.api.service.HtmlToText.Options options) {
