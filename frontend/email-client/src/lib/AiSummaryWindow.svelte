@@ -53,12 +53,12 @@
     <div class="panel-actions">
       <button
         type="button"
-        class="btn btn--secondary btn--labelled"
+        class="btn btn--secondary btn--icon"
         on:click={handlePrimaryAction}
         disabled={isLoading}
+        aria-label={hasContent ? 'Regenerate AI summary' : 'Generate AI summary'}
       >
         <RotateCcw class="h-4 w-4" aria-hidden="true" />
-        {hasContent ? 'Regenerate' : 'Generate summary'}
       </button>
       <div class="panel-window-controls">
         <button type="button" class="btn btn--icon btn--inset" on:click={minimize} title="Minimize" aria-label="Minimize AI panel">
