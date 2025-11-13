@@ -102,12 +102,16 @@
           subdued={true}
           className="border-slate-200" />
       {:else if error}
-        <div class="panel-state panel-error">
-          <p>{error}</p>
-          <button type="button" class="btn btn--ghost btn--labelled" on:click={() => emitRunCommand(lastCommand)}>
-            Try again
-          </button>
-        </div>
+      <div class="panel-state panel-error">
+        <p>{error}</p>
+        <button
+          type="button"
+          class="btn btn--ghost btn--icon"
+          aria-label="Try again"
+          on:click={() => emitRunCommand(lastCommand)}>
+          <RotateCcw class="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
       {:else if hasContent}
         <div class="panel-html">
           {@html html}
@@ -117,8 +121,12 @@
           <Sparkles class="h-6 w-6 text-slate-400" aria-hidden="true" />
           <p class="panel-empty-title">{emptyTitle}</p>
           <p class="panel-empty-copy">{emptyCopy}</p>
-          <button type="button" class="btn btn--secondary btn--labelled" on:click={() => emitRunCommand(lastCommand || 'summarize')}>
-            {emptyActionLabel}
+          <button
+            type="button"
+            class="btn btn--secondary btn--icon"
+            aria-label={emptyActionLabel}
+            on:click={() => emitRunCommand(lastCommand || 'summarize')}>
+            <RotateCcw class="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       {/if}
@@ -366,4 +374,3 @@
     }
   }
 </style>
-
