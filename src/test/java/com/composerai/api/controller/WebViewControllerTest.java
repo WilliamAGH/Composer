@@ -117,10 +117,10 @@ class WebViewControllerTest {
     }
 
     @Test
-    void indexPage_ShouldRedirectToEmailClientV2() throws Exception {
+    void indexPage_ShouldForwardToEmailClientV2() throws Exception {
         mockMvc.perform(get("/"))
-            .andExpect(status().is3xxRedirection())
-            .andExpect(redirectedUrl("/email-client-v2"));
+            .andExpect(status().isOk())
+            .andExpect(forwardedUrl("/email-client-v2"));
     }
 
     @Test
