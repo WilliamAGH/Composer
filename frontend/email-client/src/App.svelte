@@ -687,9 +687,9 @@ const panelErrorsStore = panelStores.errors;
     };
     const journeyToken = beginAiJourney({ scope: journeyScope, scopeTarget: journeyScopeTarget, targetLabel, commandKey: command, headline: journeyHeadline });
 
-    const resolvedContextId = contextId || conversationKey;
-    if (resolvedContextId) {
-      payload.contextId = resolvedContextId;
+    const trimmedContextId = typeof contextId === 'string' ? contextId.trim() : null;
+    if (trimmedContextId) {
+      payload.contextId = trimmedContextId;
     }
 
     const commandMeta = getFunctionMeta(catalogData, command);
