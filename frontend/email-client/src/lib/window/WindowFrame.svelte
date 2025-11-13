@@ -16,6 +16,7 @@
   export let offsetIndex = 0;
   export let allowMaximize = true;
   export let maximized = false;
+  export let maximizedAnchorBounds = null;
 
   const dispatch = createEventDispatcher();
   $: mobile = $isMobile;
@@ -24,9 +25,14 @@
 
   $: floating = mode === 'floating';
   $: mobileFloating = floating && mobile && !maximized;
-  $: frameStyle = floating && !maximized && !mobile
-    ? `right: ${24 + offsetIndex * 16}px; bottom: ${24 + offsetIndex * 16}px;`
+  $: anchoredStyle = maximized && maximizedAnchorBounds
+    ? `top: ${maximizedAnchorBounds.top}px; right: ${maximizedAnchorBounds.right}px; bottom: ${maximizedAnchorBounds.bottom}px; left: ${maximizedAnchorBounds.left}px;`
     : '';
+  $: frameStyle = anchoredStyle
+    ? anchoredStyle
+    : floating && !maximized && !mobile
+      ? `right: ${24 + offsetIndex * 16}px; bottom: ${24 + offsetIndex * 16}px;`
+      : '';
 
   function handleToggle() {
     if (!allowMinimize) return;
