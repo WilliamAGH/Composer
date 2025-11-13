@@ -1,5 +1,7 @@
 package com.composerai.api.util;
 
+import java.util.Map;
+
 /**
  * Utility class for common string operations and validation.
  * Provides null-safe string checks and sanitization methods.
@@ -21,6 +23,13 @@ public final class StringUtils {
     }
 
     /**
+     * Returns {@code true} when the string contains non-whitespace content.
+     */
+    public static boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    /**
      * Check if a string is missing or placeholder value.
      * A string is considered missing if it's null, blank, or a placeholder like "your-openai-api-key".
      *
@@ -33,6 +42,44 @@ public final class StringUtils {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() || trimmed.equalsIgnoreCase("your-openai-api-key");
+    }
+
+    /**
+     * Returns the first non-blank value from the candidate list.
+     */
+    public static String firstNonBlank(String... candidates) {
+        if (candidates == null) {
+            return null;
+        }
+        for (String candidate : candidates) {
+            if (hasText(candidate)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns the first non-blank value for the provided keys inside the source map.
+     */
+    public static String firstNonBlank(Map<String, ?> source, String... keys) {
+        if (source == null || keys == null) {
+            return null;
+        }
+        for (String key : keys) {
+            if (key == null) {
+                continue;
+            }
+            Object value = source.get(key);
+            if (value == null) {
+                continue;
+            }
+            String text = value.toString();
+            if (hasText(text)) {
+                return text;
+            }
+        }
+        return null;
     }
 
     /**
@@ -55,6 +102,24 @@ public final class StringUtils {
      */
     public static String sanitize(String value) {
         return value == null ? null : value.trim();
+    }
+
+    /**
+     * Return fallback when candidate is null/blank.
+     */
+    public static String defaultIfBlank(String value, String fallback) {
+        return (value == null || value.isBlank()) ? fallback : value;
+    }
+
+    /**
+     * Trim whitespace, returning null when the result is blank.
+     */
+    public static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     /**

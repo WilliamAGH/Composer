@@ -126,20 +126,20 @@ public class EmailParsingService {
             String originalHtml = null;
             Object originalHtmlNode = content.get("originalHtml");
             if (originalHtmlNode instanceof String originalHtmlString) {
-                originalHtml = normalizeHtmlCandidate(originalHtmlString);
+                originalHtml = StringUtils.trimToNull(originalHtmlString);
             }
 
-            String subject = firstNonBlank(metadata, "subject");
+            String subject = StringUtils.firstNonBlank(metadata, "subject");
             if (subject == null) {
                 subject = "No subject";
             }
             StructuredParticipant sender = extractSender(metadata);
             StructuredParticipant recipient = extractRecipient(metadata);
-            String date = firstNonBlank(metadata, "date", "dateHeader", "dateIso");
+            String date = StringUtils.firstNonBlank(metadata, "date", "dateHeader", "dateIso");
             if (date == null) {
                 date = "Unknown date";
             }
-            String dateIso = firstNonBlank(metadata, "dateIso", "date");
+            String dateIso = StringUtils.firstNonBlank(metadata, "dateIso", "date");
             String dateWithRelativeTime = enrichDateWithOffset(date, dateIso);
 
             String contextId = resolveContextId(metadata);
@@ -265,32 +265,12 @@ public class EmailParsingService {
         return value.matches(".*[+-]\\d{2}:?\\d{2}.*");
     }
 
-    private static String firstNonBlank(Map<String, Object> source, String... keys) {
-        if (source == null || keys == null) {
-            return null;
-        }
-        for (String key : keys) {
-            if (key == null) {
-                continue;
-            }
-            Object value = source.get(key);
-            if (value == null) {
-                continue;
-            }
-            String text = value.toString();
-            if (text != null && !text.isBlank()) {
-                return text;
-            }
-        }
-        return null;
-    }
-
     private static final int MAX_CONTEXT_ID_LENGTH = 200;
     private static final int CONTEXT_ID_PREFIX_LENGTH = 48;
     private static final int HASH_BYTES = 16; // 128-bit suffix keeps IDs compact and unique
 
     private static String resolveContextId(Map<String, Object> metadata) {
-        String messageId = firstNonBlank(metadata, "messageId", "id");
+        String messageId = StringUtils.firstNonBlank(metadata, "messageId", "id");
         if (!StringUtils.isBlank(messageId)) {
             String sanitized = messageId.replaceAll("[^A-Za-z0-9._:-]", "");
             if (!StringUtils.isBlank(sanitized)) {
@@ -324,7 +304,7 @@ public class EmailParsingService {
     }
 
     private static String resolveMessageId(Map<String, Object> metadata) {
-        String id = firstNonBlank(metadata, "messageId", "id");
+        String id = StringUtils.firstNonBlank(metadata, "messageId", "id");
         if (id != null && !id.isBlank()) {
             return id.trim();
         }
@@ -332,22 +312,22 @@ public class EmailParsingService {
     }
 
     private static StructuredParticipant extractSender(Map<String, Object> metadata) {
-        String name = firstNonBlank(metadata, "fromName");
-        String email = firstNonBlank(metadata, "fromEmail");
+        String name = StringUtils.firstNonBlank(metadata, "fromName");
+        String email = StringUtils.firstNonBlank(metadata, "fromEmail");
         if (name == null && email == null) {
-            String composite = firstNonBlank(metadata, "from");
+            String composite = StringUtils.firstNonBlank(metadata, "from");
             StructuredParticipant extracted = parseCompositeParticipant(composite);
             name = extracted.name();
             email = extracted.email();
         }
-        return new StructuredParticipant(defaultIfBlank(name, "Unknown sender"), email);
+            return new StructuredParticipant(StringUtils.defaultIfBlank(name, "Unknown sender"), email);
     }
 
     private static StructuredParticipant extractRecipient(Map<String, Object> metadata) {
-        String name = firstNonBlank(metadata, "toName");
-        String email = firstNonBlank(metadata, "toEmail");
+        String name = StringUtils.firstNonBlank(metadata, "toName");
+        String email = StringUtils.firstNonBlank(metadata, "toEmail");
         if (name == null && email == null) {
-            String composite = firstNonBlank(metadata, "to");
+            String composite = StringUtils.firstNonBlank(metadata, "to");
             StructuredParticipant extracted = parseCompositeParticipant(composite);
             name = extracted.name();
             email = extracted.email();
@@ -366,17 +346,13 @@ public class EmailParsingService {
             if (start >= 0 && end > start) {
                 String name = trimmed.substring(0, start).trim();
                 String email = trimmed.substring(start + 1, end).trim();
-                return new StructuredParticipant(defaultIfBlank(name, null), defaultIfBlank(email, null));
+                return new StructuredParticipant(StringUtils.defaultIfBlank(name, null), StringUtils.defaultIfBlank(email, null));
             }
         }
         if (trimmed.contains("@")) {
             return new StructuredParticipant(null, trimmed);
         }
         return new StructuredParticipant(trimmed, null);
-    }
-
-    private static String defaultIfBlank(String candidate, String fallback) {
-        return candidate == null || candidate.isBlank() ? fallback : candidate;
     }
 
     private String deriveCompanyLogoUrl(String senderEmail) {
@@ -397,7 +373,7 @@ public class EmailParsingService {
     }
 
     private String deriveSenderAvatar(Map<String, Object> metadata, String companyLogoUrl) {
-        String provided = firstNonBlank(metadata, "avatarUrl", "avatar");
+        String provided = StringUtils.firstNonBlank(metadata, "avatarUrl", "avatar");
         if (!StringUtils.isBlank(provided)) {
             return provided.trim();
         }
@@ -449,7 +425,7 @@ public class EmailParsingService {
     }
 
     private String sanitizeEmailHtml(String candidate) {
-        String normalized = normalizeHtmlCandidate(candidate);
+        String normalized = StringUtils.trimToNull(candidate);
         if (normalized == null) {
             return null;
         }
@@ -460,14 +436,6 @@ public class EmailParsingService {
         return sanitized.trim();
     }
 
-    private static String normalizeHtmlCandidate(String candidate) {
-        if (candidate == null) {
-            return null;
-        }
-        String trimmed = candidate.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
-
     private record StructuredParticipant(String name, String email) {}
 
     public static final class ParsedEmail extends EmailMessage {
@@ -475,7 +443,6 @@ public class EmailParsingService {
         private final String parsedPlain;
         private final String parsedMarkdown;
         private final String parsedHtml;
-        private final String contextForAi;
         private final Map<String, Object> metadata;
         private final String originalFilename;
 
@@ -485,7 +452,6 @@ public class EmailParsingService {
             this.parsedPlain = builder.parsedPlain;
             this.parsedMarkdown = builder.parsedMarkdown;
             this.parsedHtml = builder.parsedHtml;
-            this.contextForAi = builder.contextForAi;
             this.metadata = copyMap(builder.metadata);
             this.originalFilename = builder.originalFilename;
         }
@@ -514,9 +480,6 @@ public class EmailParsingService {
             return parsedHtml;
         }
 
-        public String contextForAi() {
-            return contextForAi;
-        }
 
         public Map<String, Object> metadata() {
             return metadata;
@@ -548,7 +511,6 @@ public class EmailParsingService {
             private String parsedPlain;
             private String parsedMarkdown;
             private String parsedHtml;
-            private String contextForAi;
             private Map<String, Object> metadata;
             private String originalFilename;
 
@@ -561,7 +523,6 @@ public class EmailParsingService {
                 this.parsedPlain = source.parsedPlain;
                 this.parsedMarkdown = source.parsedMarkdown;
                 this.parsedHtml = source.parsedHtml;
-                this.contextForAi = source.contextForAi;
                 this.metadata = source.metadata;
                 this.originalFilename = source.originalFilename;
             }
@@ -592,7 +553,7 @@ public class EmailParsingService {
             }
 
             public Builder contextForAi(String contextForAi) {
-                this.contextForAi = contextForAi;
+                super.contextForAi(contextForAi);
                 return this;
             }
 

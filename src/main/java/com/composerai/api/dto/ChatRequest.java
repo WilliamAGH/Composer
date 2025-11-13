@@ -1,25 +1,30 @@
 package com.composerai.api.dto;
 
+import com.composerai.api.util.StringUtils;
+import com.composerai.api.validation.AiCommandValid;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.AssertTrue;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-
-import com.composerai.api.util.StringUtils;
-import com.composerai.api.validation.AiCommandValid;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @AiCommandValid
+@JsonIgnoreProperties(ignoreUnknown = true)
+/**
+ * Canonical chat payload shared by both free-form chat and catalog-driven AI commands.
+ * Unknown JSON properties are tolerated so the frontend can attach telemetry fields
+ * without breaking server-side validation on older builds.
+ */
 public class ChatRequest {
 
     @NotBlank(message = "Message cannot be blank")

@@ -1,5 +1,6 @@
 package com.composerai.api.model;
 
+import com.composerai.api.util.StringUtils;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -45,13 +46,15 @@ public class EmailMessage {
     private final boolean starred;
     private final boolean read;
     private final String preview;
+    @JsonProperty("contextForAI")
+    private final String contextForAi;
 
     protected EmailMessage(BuilderBase<?> builder) {
         this.id = builder.id;
         this.contextId = builder.contextId;
         String normalizedSenderEmail = normalize(builder.senderEmail);
         this.senderEmail = normalizedSenderEmail;
-        this.senderName = defaultIfBlank(builder.senderName, this.senderEmail);
+        this.senderName = StringUtils.defaultIfBlank(builder.senderName, this.senderEmail);
 
         String normalizedRecipientEmail = normalize(builder.recipientEmail);
         String normalizedRecipientName = normalize(builder.recipientName);
@@ -60,11 +63,11 @@ public class EmailMessage {
             normalizedRecipientName = null;
         }
         this.recipientEmail = normalizedRecipientEmail;
-        this.recipientName = defaultIfBlank(normalizedRecipientName, normalizedRecipientEmail);
-        this.subject = defaultIfBlank(builder.subject, "No subject");
-        String rawBody = defaultIfBlank(builder.emailBodyRaw, "");
+        this.recipientName = StringUtils.defaultIfBlank(normalizedRecipientName, normalizedRecipientEmail);
+        this.subject = StringUtils.defaultIfBlank(builder.subject, "No subject");
+        String rawBody = StringUtils.defaultIfBlank(builder.emailBodyRaw, "");
         this.emailBodyRaw = rawBody;
-        this.emailBodyTransformedText = defaultIfBlank(builder.emailBodyTransformedText, rawBody);
+        this.emailBodyTransformedText = StringUtils.defaultIfBlank(builder.emailBodyTransformedText, rawBody);
         this.emailBodyTransformedMarkdown = normalize(builder.emailBodyTransformedMarkdown);
         this.emailBodyHtml = normalizeHtml(builder.emailBodyHtml);
         this.llmSummary = normalize(builder.llmSummary);
@@ -75,7 +78,8 @@ public class EmailMessage {
         this.avatarUrl = normalizeUrl(builder.avatarUrl);
         this.starred = builder.starred;
         this.read = builder.read;
-        this.preview = defaultIfBlank(builder.preview, derivePreview(this.emailBodyTransformedText));
+        this.preview = StringUtils.defaultIfBlank(builder.preview, derivePreview(this.emailBodyTransformedText));
+        this.contextForAi = StringUtils.trimToNull(builder.contextForAi);
     }
 
     public static Builder builder() {
@@ -189,6 +193,10 @@ public class EmailMessage {
         return preview;
     }
 
+    public String contextForAi() {
+        return contextForAi;
+    }
+
     public EmailMessage copy() {
         return new Builder(this).build();
     }
@@ -216,7 +224,8 @@ public class EmailMessage {
             && Objects.equals(labels, that.labels)
             && Objects.equals(companyLogoUrl, that.companyLogoUrl)
             && Objects.equals(avatarUrl, that.avatarUrl)
-            && Objects.equals(preview, that.preview);
+            && Objects.equals(preview, that.preview)
+            && Objects.equals(contextForAi, that.contextForAi);
     }
 
     @Override
@@ -241,7 +250,8 @@ public class EmailMessage {
             avatarUrl,
             starred,
             read,
-            preview
+            preview,
+            contextForAi
         );
     }
 
@@ -257,6 +267,7 @@ public class EmailMessage {
             ", subject='" + subject + '\'' +
             ", read=" + read +
             ", starred=" + starred +
+            ", contextForAiPresent=" + (contextForAi != null) +
             '}';
     }
 
@@ -299,6 +310,7 @@ public class EmailMessage {
         private boolean starred;
         private boolean read;
         private String preview;
+        private String contextForAi;
 
         protected BuilderBase() {
         }
@@ -324,6 +336,7 @@ public class EmailMessage {
             this.starred = source.starred;
             this.read = source.read;
             this.preview = source.preview;
+            this.contextForAi = source.contextForAi;
         }
 
         protected abstract T self();
@@ -442,14 +455,15 @@ public class EmailMessage {
             this.preview = preview;
             return self();
         }
+
+        public T contextForAi(String contextForAi) {
+            this.contextForAi = contextForAi;
+            return self();
+        }
     }
 
     private static String normalize(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
+        return StringUtils.trimToNull(value);
     }
 
     private static String derivePreview(String value) {
@@ -463,24 +477,12 @@ public class EmailMessage {
         return normalized.substring(0, Math.min(normalized.length(), 177)) + "...";
     }
 
-    private static String defaultIfBlank(String candidate, String fallback) {
-        return (candidate == null || candidate.isBlank()) ? fallback : candidate;
-    }
-
     private static String normalizeUrl(String candidate) {
-        if (candidate == null || candidate.isBlank()) {
-            return null;
-        }
-        String trimmed = candidate.trim();
-        return trimmed.isEmpty() ? null : trimmed;
+        return StringUtils.trimToNull(candidate);
     }
 
     private static String normalizeHtml(String candidate) {
-        if (candidate == null) {
-            return null;
-        }
-        String trimmed = candidate.trim();
-        return trimmed.isEmpty() ? null : trimmed;
+        return StringUtils.trimToNull(candidate);
     }
 
     private static boolean isFallbackRecipient(String name, String email) {
