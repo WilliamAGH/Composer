@@ -1,0 +1,42 @@
+{
+  // Project-specific Zed settings for ComposerAI
+  // Uses oxlint for JavaScript/Svelte linting
+
+  "languages": {
+    "JavaScript": {
+      "language_servers": ["oxlint", "!typescript-language-server", "!eslint"],
+      "format_on_save": "off"
+    },
+    "Svelte": {
+      "language_servers": ["svelte-language-server", "oxlint", "!eslint"],
+      "format_on_save": "off"
+    },
+    "TypeScript": {
+      "language_servers": ["typescript-language-server", "!eslint"],
+      "format_on_save": "off"
+    },
+    "TSX": {
+      "language_servers": ["typescript-language-server", "!eslint"],
+      "format_on_save": "off"
+    }
+  },
+
+  // Use the project's .oxlintrc.json configuration
+  "lsp": {
+    "oxlint": {
+      "settings": {
+        "run": "onSave"
+      }
+    }
+  },
+
+  // Configure file scanning to ignore build outputs
+  "file_scan_exclusions": [
+    "**/.git",
+    "**/node_modules",
+    "**/target",
+    "**/build",
+    "**/.vscode",
+    "**/.idea"
+  ]
+}
