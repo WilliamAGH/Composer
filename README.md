@@ -39,6 +39,24 @@ Compose drafts and AI summary panels share a reusable window shell:
 
 Add new AI windows by creating a feature component that wraps `WindowFrame` and registering it with the window store rather than building bespoke panels.
 
+### Reply & Forward Compose Behavior
+
+- Reply and forward buttons live in `EmailActionToolbar.svelte` and delegate to helper logic in `App.svelte` via `composePrefill.js`.
+- Both flows prefill compose windows with the correct subject prefix (`Re:`/`Fwd:`) and append the selected email's metadata/body at the bottom so greetings and signatures sit above the quoted context.
+- Reply automatically queues an AI helper (current `draft` command) that focuses on greeting/closing lines only; the helper re-attaches the quoted context after the model responds.
+- Forward opens the same compose window but skips the auto-AI call while still including the sanitized quote block.
+- Compose payloads now carry `quotedContext` metadata so future helpers can guarantee the prior thread stays intact even after AI edits.
+
+#### Recipient Metadata in Chat Requests
+
+`ChatRequest` accepts optional `recipientName` and `recipientEmail` fields. The UI populates these whenever a compose surface triggers an AI command so the backend prompt templates can:
+
+- Personalize salutations (falls back to generic greetings when no name is available).
+- Infer friendly names from email addresses when needed.
+- Emit explicit instructions (via `recipientGreetingDirective`) guiding models to use or avoid names/signatures appropriately.
+
+Client integrations should send the best-known recipient metadata alongside AI compose/draft/tone commands to keep greeting behavior consistent with the main UI.
+
 ## Feature Highlights
 
 - **Chat Orchestration** – Routes chat requests through OpenAI-compatible models, classifies user intent, and stitches email snippets into responses.

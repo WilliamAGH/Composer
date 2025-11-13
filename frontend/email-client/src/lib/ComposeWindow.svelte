@@ -8,7 +8,9 @@
 
   /**
    * Compose window leveraging the shared WindowFrame chrome. Keeps feature-specific controls here while
-   * the generic frame handles positioning/minimize logic via the window store.
+   * the generic frame handles positioning/minimize logic via the window store. When payloads include a
+   * quotedContext field the textarea is prefilled with blank space followed by the quoted block so
+   * greetings and AI output always land above the prior conversation.
    */
   export let windowConfig = null;
   export let offsetIndex = 0;
@@ -56,7 +58,7 @@
   }
 
   function requestAi(command) {
-    dispatch('requestAi', { id: windowConfig.id, command, draft: body, subject, isReply });
+    dispatch('requestAi', { id: windowConfig.id, command, draft: body, subject, isReply, to });
   }
 
   function closeWindow() {
@@ -99,13 +101,11 @@
     on:toggleMaximize={toggleMaximizeWindow}
   >
   <div class="compose-body">
-    {#if !isReply}
-      <input
-        bind:this={inputTo}
-        bind:value={to}
-        placeholder="To"
-        class="field" />
-    {/if}
+    <input
+      bind:this={inputTo}
+      bind:value={to}
+      placeholder="To"
+      class="field" />
     <input
       bind:this={inputSubject}
       bind:value={subject}
@@ -114,15 +114,15 @@
 
     <div class="ai-actions">
       {#if !aiFunctions || aiFunctions.length === 0}
-        <button type="button" class="ai-chip" on:click={() => requestAi('draft')}>
+        <button type="button" class="btn btn--ghost btn--labelled" on:click={() => requestAi('draft')}>
           <Wand2 class="h-4 w-4" /> AI Compose
         </button>
-        <button type="button" class="ai-chip" on:click={() => requestAi('tone')}>
+        <button type="button" class="btn btn--ghost btn--labelled" on:click={() => requestAi('tone')}>
           <Highlighter class="h-4 w-4" /> Adjust Tone
         </button>
       {:else}
         {#each aiFunctions as fn (fn.key)}
-          <button type="button" class="ai-chip" on:click={() => requestAi(fn.key)}>
+          <button type="button" class="btn btn--ghost btn--labelled" on:click={() => requestAi(fn.key)}>
             {#if fn.key === 'tone'}
               <Highlighter class="h-4 w-4" />
             {:else}
@@ -171,54 +171,78 @@
   </div>
 
   <div slot="footer" class="compose-footer">
-    <button type="button" class="send-btn" on:click={send}>
+    <button type="button" class="btn btn--primary btn--labelled" on:click={send}>
       <Send class="h-4 w-4" /> Send
     </button>
-    <label class="attach-btn">
+    <button
+      type="button"
+      class="btn btn--secondary btn--labelled"
+      on:click={() => fileInput?.click()}
+      on:keydown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          fileInput?.click();
+        }
+      }}>
       <Paperclip class="h-4 w-4" /> Attach
-      <input bind:this={fileInput} type="file" class="sr-only" on:change={(e) => onFilesSelected(e.currentTarget.files)} multiple />
-    </label>
+    </button>
+    <input bind:this={fileInput} type="file" class="sr-only" on:change={(e) => onFilesSelected(e.currentTarget.files)} multiple />
   </div>
 </WindowFrame>
 {/if}
 
 <style>
+  /**
+   * Compose window styling ensures tap targets meet Apple HIG guidance while
+   * retaining the layered Composer look when floating over desktop.
+   */
+  /**
+   * Stack spacing for the compose form body.
+   */
   .compose-body {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
   }
+  /**
+   * Shared input look with ergonomic padding + font sizing.
+   */
   .field {
     width: 100%;
     border: 1px solid rgba(148, 163, 184, 0.7);
-    border-radius: 12px;
-    padding: 0.65rem 0.85rem;
+    border-radius: 14px;
+    padding: 0.75rem 1rem;
+    font-size: clamp(1rem, 0.95rem + 0.2vw, 1.1rem);
+    line-height: 1.5;
+    min-height: 46px;
+    background: rgba(255, 255, 255, 0.9);
   }
+  /**
+   * Draft textarea gets taller baseline for mobile comfort.
+   */
   .textarea {
     resize: none;
-    min-height: 160px;
+    min-height: 200px;
   }
+  /**
+   * Wrap AI quick actions so they flex on small screens.
+   */
   .ai-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
   }
-  .ai-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    border: 1px solid rgba(148, 163, 184, 0.7);
-    border-radius: 999px;
-    padding: 0.35rem 0.9rem;
-    font-size: 0.85rem;
-    color: #475569;
-    background: white;
-  }
+  /**
+   * Attachment list uses bordered card styling.
+   */
   .attachments {
     border: 1px solid rgba(148, 163, 184, 0.7);
     border-radius: 12px;
     padding: 0.5rem 0.75rem;
   }
+  /**
+   * Attachment header labels + count chips.
+   */
   .attachments-header {
     display: flex;
     justify-content: space-between;
@@ -226,36 +250,58 @@
     text-transform: uppercase;
     color: #475569;
   }
+  /**
+   * Attachment list reset.
+   */
   .attachments ul {
     margin-top: 0.5rem;
     list-style: none;
     padding: 0;
   }
+  /**
+   * Attachment list items share muted text styling.
+   */
   .attachments li {
     font-size: 0.85rem;
     color: #334155;
   }
+  /**
+   * Footer houses send + attach CTAs.
+   */
   .compose-footer {
     display: flex;
     align-items: center;
     gap: 0.5rem;
   }
-  .send-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    border-radius: 999px;
-    padding: 0.5rem 1.2rem;
-    background: linear-gradient(135deg, #0f172a, #1e293b);
-    color: white;
-  }
-  .attach-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    border-radius: 999px;
-    padding: 0.5rem 1rem;
-    border: 1px solid rgba(148, 163, 184, 0.7);
-    cursor: pointer;
+  /**
+   * Mobile overrides keep everything thumb-friendly.
+   */
+  @media (max-width: 640px) {
+    .compose-body {
+      gap: 0.5rem;
+    }
+    .ai-actions {
+      flex-direction: column;
+    }
+    .compose-footer {
+      position: sticky;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding-top: 0.75rem;
+      padding-bottom: 0.5rem;
+      flex-direction: column;
+      align-items: stretch;
+      background: linear-gradient(180deg, rgba(248, 250, 252, 0.9), rgba(255, 255, 255, 0.95));
+      backdrop-filter: blur(20px);
+    }
+    .compose-footer button,
+    .compose-footer .btn {
+      width: 100%;
+      justify-content: center;
+    }
+    .textarea {
+      min-height: min(45vh, 360px);
+    }
   }
 </style>

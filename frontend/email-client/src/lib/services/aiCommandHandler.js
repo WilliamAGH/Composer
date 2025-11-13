@@ -55,7 +55,11 @@ export async function handleAiCommand({
       instructionOverride,
       windowManager,
       callAiCommand,
-      commandArgs
+      commandArgs,
+      recipientContext: {
+        name: descriptor.payload?.recipientName || '',
+        email: descriptor.payload?.recipientEmail || ''
+      }
     });
     return { type: WindowKind.COMPOSE, id: descriptor.id };
   }
@@ -94,7 +98,7 @@ function findMatchingComposeWindow(windowManager, contextId) {
   ) || null;
 }
 
-async function draftWithAi({ descriptor, command, selectedEmail, fn, variant, instructionOverride = null, windowManager, callAiCommand, commandArgs }) {
+async function draftWithAi({ descriptor, command, selectedEmail, fn, variant, instructionOverride = null, windowManager, callAiCommand, commandArgs, recipientContext = null }) {
   const instruction = instructionOverride || resolveDefaultInstruction(fn, variant);
   const data = await callAiCommand(command, instruction, {
     contextId: selectedEmail.contextId,
@@ -104,7 +108,8 @@ async function draftWithAi({ descriptor, command, selectedEmail, fn, variant, in
     journeyLabel: descriptor.payload.subject || selectedEmail.subject || 'reply',
     journeyHeadline: deriveHeadline(command, fn.label || 'AI Assistant'),
     commandVariant: variant?.key || null,
-    commandArgs
+    commandArgs,
+    recipientContext
   });
   let draftText = (data?.response && data.response.trim()) || '';
   if (!draftText && data?.sanitizedHtml) {

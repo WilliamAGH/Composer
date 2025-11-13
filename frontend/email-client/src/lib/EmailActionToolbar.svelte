@@ -39,16 +39,36 @@
       </div>
     </div>
     <div class="flex gap-2 shrink-0" class:w-full={mobile} class:justify-end={mobile}>
-      <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Reply" aria-label="Reply" on:click={() => emit('reply')}>
+      <button
+        type="button"
+        class="btn btn--icon"
+        aria-label="Reply"
+        title="Reply"
+        on:click={() => emit('reply')}>
         <Reply class="h-4 w-4" />
       </button>
-      <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Forward" aria-label="Forward" on:click={() => emit('forward')}>
+      <button
+        type="button"
+        class="btn btn--icon"
+        aria-label="Forward"
+        title="Forward"
+        on:click={() => emit('forward')}>
         <Forward class="h-4 w-4" />
       </button>
-      <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Archive" aria-label="Archive" on:click={() => emit('archive')}>
+      <button
+        type="button"
+        class="btn btn--icon"
+        aria-label="Archive"
+        title="Archive"
+        on:click={() => emit('archive')}>
         <Archive class="h-4 w-4" />
       </button>
-      <button type="button" class="rounded-full h-9 w-9 grid place-items-center border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Delete" aria-label="Delete" on:click={() => emit('delete')}>
+      <button
+        type="button"
+        class="btn btn--icon"
+        aria-label="Delete"
+        title="Delete"
+        on:click={() => emit('delete')}>
         <Trash2 class="h-4 w-4" />
       </button>
     </div>

@@ -40,6 +40,10 @@
 {/if}
 
 <style>
+  /**
+   * Dock styling mirrors the button capsules (blurred white, 999px radius)
+   * used elsewhere so minimized windows feel like part of the same system.
+   */
   .window-dock {
     position: fixed;
     left: 16px;

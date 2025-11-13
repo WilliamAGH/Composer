@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import { Languages, ChevronDown, Sparkles, Wand2, Highlighter, ListChecks, ListTodo } from 'lucide-svelte';
+  import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck } from 'lucide-svelte';
 
   /**
    * Renders the AI command buttons (summary/translate/etc.) so App.svelte only passes metadata.
@@ -10,6 +10,11 @@
   export let actionMenuLoading = false;
   const dispatch = createEventDispatcher();
   const preferredVariantOrder = ['es', 'pt', 'nl'];
+  const FALLBACK_ACTION_OPTIONS = [
+    { id: 'summarize-thread', label: 'Summarize thread', actionType: 'default', defaultPlaceholder: true },
+    { id: 'suggest-reply', label: 'Suggest reply ideas', actionType: 'default', defaultPlaceholder: true },
+    { id: 'cleanup', label: 'Cleanup + tone pass', actionType: 'default', defaultPlaceholder: true }
+  ];
 
   let translateMenuOpen = false;
   let translateDropdownEl;
@@ -19,11 +24,13 @@
   let actionButtonEl;
 
   $: commandsList = Array.isArray(commands) ? commands : [];
+  $: summarizeEntry = commandsList.find((entry) => entry?.key === 'summarize');
   $: draftEntry = commandsList.find((entry) => entry?.key === 'draft');
   $: translateEntry = commandsList.find((entry) => entry?.key === 'translate');
   $: orderedVariants = buildVariantOptions(translateEntry?.meta?.variants || []);
-  $: otherEntries = commandsList.filter((entry) => entry?.key !== 'draft' && entry?.key !== 'translate');
+  $: otherEntries = commandsList.filter((entry) => !['draft', 'translate', 'summarize'].includes(entry?.key));
   $: actionOptionList = Array.isArray(actionOptions) && actionOptions.length ? actionOptions : [];
+  $: actionMenuEntries = actionOptionList.length ? actionOptionList : FALLBACK_ACTION_OPTIONS;
 
   function handleClick(key) {
     dispatch('select', { key });
@@ -37,6 +44,11 @@
 
   function handleActionSelect(option) {
     if (!option) return;
+    if (option.defaultPlaceholder) {
+      triggerComingSoon(option.label);
+      setActionMenuOpen(false);
+      return;
+    }
     dispatch('actionSelect', { option });
     setActionMenuOpen(false);
   }
@@ -51,7 +63,6 @@
   }
 
   function toggleActionMenu() {
-    if (!actionOptionList.length) return;
     setActionMenuOpen(!actionMenuOpen);
   }
 
@@ -97,10 +108,11 @@
   function resolveIconComponent(key) {
     const normalized = (key || '').toLowerCase();
     switch (normalized) {
-      case 'draft':
-        return Wand2;
       case 'summarize':
-        return ListChecks;
+        return BookOpenCheck;
+      case 'draft':
+      case 'compose':
+        return MailPlus;
       case 'tone':
         return Highlighter;
       default:
@@ -109,11 +121,27 @@
   }
 
   function buttonClasses() {
-    return 'inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200/70 bg-white/80 px-3 text-sm font-medium text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur hover:bg-white';
+    return 'btn btn--secondary btn--labelled btn--compact';
+  }
+
+  function labelForEntry(entry) {
+    const key = (entry?.key || '').toLowerCase();
+    switch (key) {
+      case 'summarize':
+        return 'Summarize';
+      case 'draft':
+        return 'Reply';
+      case 'compose':
+        return 'Compose';
+      case 'tone':
+        return 'Tone';
+      default:
+        return entry?.meta?.label || entry?.key;
+    }
   }
 </script>
 
-<div class="mt-4 flex flex-wrap gap-3">
+<div class="mt-4 flex flex-wrap gap-2">
   {#if !commandsList.length}
     <button class={buttonClasses()} on:click={() => handleClick('summarize')}>
       Run AI Assistant
@@ -122,48 +150,56 @@
     <div class="relative">
       <button
         type="button"
-        class={`inline-flex items-center gap-2 rounded-full border border-white/40 bg-gradient-to-br from-slate-50/85 via-white/30 to-emerald-50/30 px-4 py-2 text-sm font-semibold text-slate-900 shadow-[0_25px_55px_-25px_rgba(16,185,129,0.7)] backdrop-blur-xl transition ${!actionOptionList.length ? 'opacity-60 cursor-not-allowed' : 'hover:border-emerald-200'}`}
+        class="btn btn--secondary btn--labelled btn--compact"
         on:click={toggleActionMenu}
         aria-haspopup="menu"
         aria-expanded={actionMenuOpen}
         aria-label="AI Actions"
-        bind:this={actionButtonEl}
-        disabled={!actionOptionList.length}>
-        <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400/35 via-emerald-300/20 to-white/20 text-emerald-700 shadow-inner shadow-emerald-500/40">
-          <ListTodo class="h-4 w-4" />
+        aria-busy={actionMenuLoading}
+        bind:this={actionButtonEl}>
+        <span class="btn-icon-chip">
+          <Sparkles class="h-4 w-4" />
         </span>
         <span class="tracking-wide">Actions</span>
-        <ChevronDown class={`h-4 w-4 transition ${actionMenuOpen ? 'text-emerald-600 rotate-180' : 'text-slate-500'}`} />
-        {#if actionMenuLoading}
-          <span class="ml-2 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400"></span>
-        {/if}
+        <ChevronDown class={`h-4 w-4 transition ${actionMenuOpen ? 'text-slate-700 rotate-180' : 'text-slate-500'}`} />
       </button>
       {#if actionMenuOpen}
         <div
-          class="absolute z-[200] mt-2 w-72 rounded-2xl border border-white/40 bg-white/95 p-4 shadow-[0_35px_65px_-20px_rgba(15,23,42,0.55)] backdrop-blur-xl"
+          class="absolute z-[200] mt-2 menu-surface"
           bind:this={actionDropdownEl}>
-          <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400 mb-3">Suggested Actions</div>
-          <div class="space-y-2">
-            {#each actionOptionList as option (option.id || option.label)}
+          <span class="menu-eyebrow">Suggested Actions</span>
+          <div class="menu-list">
+            {#each actionMenuEntries as option (option.id || option.label)}
               <button
                 type="button"
-                class="flex w-full items-center justify-between rounded-xl border border-transparent bg-slate-50/80 px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-200 hover:bg-white"
+                class="menu-item"
                 on:click={() => handleActionSelect(option)}>
-                <span>{option.label}</span>
-                <span class="text-xs text-slate-400">{option.actionType === 'comingSoon' ? 'Coming soon' : 'AI'}</span>
+                <div class="flex items-center min-w-0">
+                  <span class="menu-item-icon">
+                    <Sparkles class="h-4 w-4" />
+                  </span>
+                  <span class="truncate">{option.label}</span>
+                </div>
+                <span class="text-xs text-slate-400">AI</span>
               </button>
             {/each}
           </div>
-          <div class="mt-4 rounded-xl border border-dashed border-slate-200/80 bg-slate-50/70 p-3 text-center text-xs text-slate-400">
-            {#if actionMenuLoading}
-              Refreshing ideas...
-            {:else}
-              AI refreshes these suggestions automatically.
-            {/if}
+          <div class="mt-4 panel-chip justify-center w-full">
+            AI refreshes these suggestions automatically.
           </div>
         </div>
       {/if}
     </div>
+
+    {#if summarizeEntry}
+      <button
+        type="button"
+        class={buttonClasses()}
+        on:click={() => handleClick(summarizeEntry.key)}>
+        <svelte:component this={resolveIconComponent(summarizeEntry.key)} class="h-4 w-4 text-slate-500" />
+        {labelForEntry(summarizeEntry)}
+      </button>
+    {/if}
 
     {#if draftEntry}
       <button
@@ -171,7 +207,7 @@
         class={buttonClasses()}
         on:click={() => handleClick(draftEntry.key)}>
         <svelte:component this={resolveIconComponent(draftEntry.key)} class="h-4 w-4 text-slate-500" />
-        {draftEntry.meta?.label || draftEntry.key}
+        {labelForEntry(draftEntry)}
       </button>
     {/if}
 
@@ -179,38 +215,43 @@
       <div class="relative">
         <button
           type="button"
-        class={buttonClasses()}
-        on:click={toggleTranslateMenu}
-        aria-haspopup="menu"
-        aria-expanded={translateMenuOpen}
+          class={`${buttonClasses()} justify-between`}
+          on:click={toggleTranslateMenu}
+          aria-haspopup="menu"
+          aria-expanded={translateMenuOpen}
           bind:this={translateButtonEl}>
-          <Languages class="h-4 w-4 text-slate-500" />
-          Translate
-          <ChevronDown class="h-4 w-4 text-slate-500" />
+          <div class="flex items-center gap-2">
+            <Languages class="h-4 w-4 text-slate-500" />
+            <span>Translate</span>
+          </div>
+          <ChevronDown class={`h-4 w-4 text-slate-500 transition ${translateMenuOpen ? 'rotate-180' : ''}`} />
         </button>
         {#if translateMenuOpen}
-          <div class="absolute z-[200] mt-2 w-64 rounded-2xl border border-white/40 bg-white/95 p-4 shadow-[0_35px_65px_-20px_rgba(15,23,42,0.55)] backdrop-blur-xl" bind:this={translateDropdownEl}>
-            <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400 mb-3">Translate To</div>
-            <div class="space-y-2">
+          <div class="absolute z-[200] mt-2 menu-surface" bind:this={translateDropdownEl}>
+            <span class="menu-eyebrow">Translate To</span>
+            <div class="menu-list">
               {#each orderedVariants as variant (variant.key)}
                 <button
                   type="button"
-                  class="flex w-full items-center justify-between rounded-xl border border-transparent bg-slate-50/80 px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-200 hover:bg-white"
+                  class="menu-item"
                   on:click={() => handleVariantSelect(variant.key)}>
-                  <span>{variant.label}</span>
+                  <div class="flex items-center min-w-0">
+                    <span class="menu-item-icon">
+                      <Languages class="h-4 w-4" />
+                    </span>
+                    <span class="truncate">{variant.label}</span>
+                  </div>
                   <span class="text-xs text-slate-400">Instant</span>
                 </button>
               {/each}
             </div>
-            <div class="mt-4 rounded-xl border border-dashed border-slate-200/80 bg-slate-50/70 p-3 text-center">
-              <button
-                type="button"
-                class="flex w-full items-center justify-center gap-1 text-sm font-semibold text-slate-400 hover:text-slate-500"
-                on:click={() => { triggerComingSoon('Translate customization'); translateMenuOpen = false; }}>
-                <Sparkles class="h-4 w-4" />
-                Customize (coming soon)
-              </button>
-            </div>
+            <button
+              type="button"
+              class="mt-4 panel-chip justify-center w-full"
+              on:click={() => { triggerComingSoon('Translate customization'); translateMenuOpen = false; }}>
+              <Sparkles class="h-4 w-4" />
+              Customize (coming soon)
+            </button>
           </div>
         {/if}
       </div>
@@ -219,7 +260,7 @@
     {#each otherEntries as entry (entry.key)}
       <button class={buttonClasses()} on:click={() => handleClick(entry.key)}>
         <svelte:component this={resolveIconComponent(entry.key)} class="h-4 w-4 text-slate-500" />
-        {entry.meta?.label || entry.key}
+        {labelForEntry(entry)}
       </button>
     {/each}
   {/if}
