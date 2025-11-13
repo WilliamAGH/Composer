@@ -90,6 +90,9 @@ lint:
 	@echo "🧹 Unused :global() CSS Detection..."
 	@cd frontend/email-client && ./scripts/check-unused-global-css.sh src || true
 	@echo ""
+	@echo "🗑️  Dead Code Detection (exports, deps, components)..."
+	@cd frontend/email-client && ./scripts/check-dead-code.sh || true
+	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "✅ Linting complete"
 
