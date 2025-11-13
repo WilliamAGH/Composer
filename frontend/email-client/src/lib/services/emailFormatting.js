@@ -2,8 +2,10 @@
  * Escapes HTML using the server-provided helper when available.
  * Falls back to local escaping to prevent XSS when the helper is unavailable.
  */
+const isNil = (value) => value === null || value === undefined;
+
 export function escapeHtmlContent(value) {
-  const safeValue = value == null ? '' : String(value);
+  const safeValue = isNil(value) ? '' : String(value);
   if (window.Composer?.escapeHtml) {
     return window.Composer.escapeHtml(safeValue);
   }
@@ -21,7 +23,7 @@ export function escapeHtmlContent(value) {
  * Falls back to safe HTML escaping to prevent XSS when the helper is unavailable.
  */
 export function renderMarkdownContent(markdown) {
-  const safeMarkdown = markdown == null ? '' : String(markdown);
+  const safeMarkdown = isNil(markdown) ? '' : String(markdown);
   if (window.Composer?.renderMarkdown) {
     return window.Composer.renderMarkdown(safeMarkdown);
   }

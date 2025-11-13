@@ -388,16 +388,19 @@ public class OpenAiChatService {
         if (response == null || response.usage().isEmpty()) {
             return new UsageMetrics(0, 0, 0, latency);
         }
-        long prompt = 0;
-        long completion = 0;
-        long total = 0;
-        try { prompt = response.usage().get().inputTokens(); } catch (Exception ignored) { }
-        try { completion = response.usage().get().outputTokens(); } catch (Exception ignored) { }
-        try { total = response.usage().get().totalTokens(); } catch (Exception ignored) { }
+
+        var usage = response.usage().get();
+        long prompt = safeTokenCount(usage.inputTokens());
+        long completion = safeTokenCount(usage.outputTokens());
+        long total = safeTokenCount(usage.totalTokens());
         if (total == 0) {
             total = prompt + completion;
         }
         return new UsageMetrics(prompt, completion, total, latency);
+    }
+
+    private long safeTokenCount(Long value) {
+        return value == null ? 0L : value;
     }
 
     private record PreparedRequest(ResponseCreateParams.Builder builder,
