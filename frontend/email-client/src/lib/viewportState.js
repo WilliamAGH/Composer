@@ -35,20 +35,26 @@ function measureViewports() {
   if (!isBrowser) return DEFAULT_STATE;
 
   const visual = window.visualViewport;
-  const layoutWidth = window.innerWidth || 0;
-  const layoutHeight = window.innerHeight || 0;
-  const visualWidth = visual?.width ?? null;
-  const visualHeight = visual?.height ?? null;
+  const layoutWidth = window.innerWidth || document.documentElement?.clientWidth || 0;
+  const layoutHeight = window.innerHeight || document.documentElement?.clientHeight || 0;
+  const visualWidth = typeof visual?.width === 'number' ? visual.width : null;
+  const visualHeight = typeof visual?.height === 'number' ? visual.height : null;
   const deviceWidth = window.screen?.width
     ? window.screen.width / (window.devicePixelRatio || 1)
     : null;
   const deviceHeight = window.screen?.height
     ? window.screen.height / (window.devicePixelRatio || 1)
     : null;
-  const widthCandidates = [visualWidth, layoutWidth, deviceWidth].filter((value) => typeof value === 'number' && value > 0);
-  const heightCandidates = [visualHeight, layoutHeight, deviceHeight].filter((value) => typeof value === 'number' && value > 0);
-  const width = widthCandidates.length ? Math.min(...widthCandidates) : 0;
-  const height = heightCandidates.length ? Math.min(...heightCandidates) : 0;
+
+  const width =
+    (visualWidth && visualWidth > 0 && visualWidth <= layoutWidth + 1 ? visualWidth : null) ??
+    (layoutWidth > 0 ? layoutWidth : null) ??
+    (deviceWidth && deviceWidth > 0 ? deviceWidth : 0);
+
+  const height =
+    (visualHeight && visualHeight > 0 && visualHeight <= layoutHeight + 1 ? visualHeight : null) ??
+    (layoutHeight > 0 ? layoutHeight : null) ??
+    (deviceHeight && deviceHeight > 0 ? deviceHeight : 0);
 
   return { width, height, layoutWidth, layoutHeight, visualWidth, visualHeight };
 }

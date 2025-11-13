@@ -270,7 +270,6 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
                     </span>
                     <span class="truncate">{variant.label}</span>
                   </div>
-                  <span class="text-xs text-slate-400">Instant</span>
                 </button>
               {/each}
             </div>

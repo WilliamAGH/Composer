@@ -283,11 +283,6 @@ const panelErrorsStore = panelStores.errors;
   }
 
   function toggleMailboxActions(host) {
-    if (mailboxActionsComingSoon) {
-      closeMailboxActions();
-      openComingSoonModal('Mailbox AI Actions');
-      return;
-    }
     if (mailboxActionsOpen && mailboxActionsHost === host) {
       mailboxActionsOpen = false;
       mailboxActionsHost = null;

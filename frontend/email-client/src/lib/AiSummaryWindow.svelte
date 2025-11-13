@@ -60,17 +60,17 @@
         {/if}
       </div>
     </div>
-    <div class="panel-actions">
+    <div class="window-actions">
       <button
         type="button"
-        class="btn btn--secondary btn--icon btn--icon-chrome"
+        class="btn btn--icon btn--icon-chrome btn--inset"
         on:click={handlePrimaryAction}
         disabled={isLoading}
         aria-label={primaryActionAria}
       >
         <RotateCcw class="h-4 w-4" aria-hidden="true" />
       </button>
-      <div class="panel-window-controls">
+      <div class="window-action-controls">
         <button type="button" class="btn btn--icon btn--icon-chrome btn--inset" on:click={minimize} title="Minimize" aria-label="Minimize AI panel">
           <Minus class="h-4 w-4" />
         </button>
@@ -184,14 +184,14 @@
   }
 
   /**
-   * Badge + timestamp row stays compact with generous tracking.
+   * Badge and timestamp stack vertically so metadata stays directly under the mode chip.
    * @usage - <div class="panel-heading">
    */
   .panel-heading {
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
   }
 
   /**
@@ -222,28 +222,6 @@
     letter-spacing: 0.05em;
     text-transform: uppercase;
     color: #94a3b8;
-  }
-
-  /**
-   * Action cluster for regen + window chrome.
-   * @usage - <div class="panel-actions">
-   */
-  .panel-actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 0.85rem;
-    flex: 1;
-    flex-wrap: wrap;
-  }
-
-  /**
-   * Inline grouping for minimize/max/close buttons.
-   * @usage - <div class="panel-window-controls">
-   */
-  .panel-window-controls {
-    display: inline-flex;
-    gap: 0.4rem;
   }
 
   /**
@@ -345,13 +323,13 @@
       align-items: flex-start;
     }
 
-    .panel-actions {
+    .window-actions {
       width: 100%;
       justify-content: flex-start;
       gap: 0.6rem;
     }
 
-    .panel-window-controls {
+    .window-action-controls {
       width: 100%;
       justify-content: flex-start;
     }

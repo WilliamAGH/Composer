@@ -36,9 +36,6 @@
         <button type="button" class="btn btn--secondary coming-soon-modal__confirm" on:click={close}>
           Sounds good
         </button>
-        <div class="coming-soon-modal__note">
-          Need it sooner? Drop us a note in the roadmap channel.
-        </div>
       </div>
     </div>
   </div>
@@ -166,27 +163,8 @@
     gap: 0.8rem;
   }
 
-  @media (min-width: 640px) {
-    .coming-soon-modal__footer {
-      flex-direction: row;
-      align-items: center;
-    }
-  }
-
   .coming-soon-modal__confirm {
     width: 100%;
     justify-content: center;
-  }
-
-  .coming-soon-modal__note {
-    font-size: 0.75rem;
-    color: rgba(226, 232, 240, 0.9);
-    text-align: center;
-  }
-
-  @media (min-width: 640px) {
-    .coming-soon-modal__note {
-      text-align: left;
-    }
   }
 </style>

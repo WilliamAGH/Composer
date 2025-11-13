@@ -222,6 +222,30 @@ input[type='email'] {
 }
 
 /**
+ * Shared toolbar layout for regen buttons plus minimize/maximize/close chrome.
+ * @usage - Wrap header controls in WindowFrame.svelte and AiSummaryWindow.svelte
+ * @related - .window-action-controls, .btn--icon-chrome
+ */
+:global(.window-actions) {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/**
+ * Clusters minimize/maximize/close buttons so padding stays consistent across windows.
+ * @usage - Nest inside .window-actions around chrome controls
+ * @related - .window-actions, .btn--icon-chrome
+ */
+:global(.window-action-controls) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/**
  * Guarantees labelled CTAs meet touch targets with wider padding (especially on mobile sheets).
  * @usage - Send/save buttons in Compose, mobile compose sheet pills, full-width mailbox actions
  * @related - .btn--compact, .btn

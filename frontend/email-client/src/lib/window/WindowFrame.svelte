@@ -62,24 +62,28 @@
     <div class="window-title">{title}</div>
     <div class="window-actions">
       <slot name="headerActions"></slot>
-      {#if allowMinimize}
-        <button type="button" class="btn btn--icon btn--icon-chrome btn--inset" on:click|stopPropagation={handleToggle} title="Minimize">
-          <Minus class="h-4 w-4" />
-        </button>
-      {/if}
-      {#if allowMaximize}
-        <button type="button" class="btn btn--icon btn--icon-chrome btn--inset" on:click|stopPropagation={handleToggleMaximize} title={maximized ? 'Restore' : 'Maximize'}>
-          {#if maximized}
-            <Minimize2 class="h-4 w-4" />
-          {:else}
-            <Maximize2 class="h-4 w-4" />
+      {#if allowMinimize || allowMaximize || allowClose}
+        <div class="window-action-controls">
+          {#if allowMinimize}
+            <button type="button" class="btn btn--icon btn--icon-chrome btn--inset" on:click|stopPropagation={handleToggle} title="Minimize">
+              <Minus class="h-4 w-4" />
+            </button>
           {/if}
-        </button>
-      {/if}
-      {#if allowClose}
-        <button type="button" class="btn btn--icon btn--icon-chrome btn--inset" on:click|stopPropagation={handleClose} title="Close">
-          <X class="h-4 w-4" />
-        </button>
+          {#if allowMaximize}
+            <button type="button" class="btn btn--icon btn--icon-chrome btn--inset" on:click|stopPropagation={handleToggleMaximize} title={maximized ? 'Restore' : 'Maximize'}>
+              {#if maximized}
+                <Minimize2 class="h-4 w-4" />
+              {:else}
+                <Maximize2 class="h-4 w-4" />
+              {/if}
+            </button>
+          {/if}
+          {#if allowClose}
+            <button type="button" class="btn btn--icon btn--icon-chrome btn--inset" on:click|stopPropagation={handleClose} title="Close">
+              <X class="h-4 w-4" />
+            </button>
+          {/if}
+        </div>
       {/if}
     </div>
   </header>
@@ -188,14 +192,6 @@
   .window-title {
     font-weight: 600;
     color: #0f172a;
-  }
-  /**
-   * Control group spacing.
-   */
-  .window-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
   }
   /**
    * Footer shares the frosted background.
