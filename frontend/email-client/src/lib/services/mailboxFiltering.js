@@ -2,11 +2,13 @@
  * Returns true when the message belongs in the currently selected mailbox bucket.
  */
 export function matchesMailbox(mailbox, email, folderResolver) {
+  const normalizedMailbox = `${mailbox || 'inbox'}`.toLowerCase();
   const labels = (email.labels || []).map((label) => String(label).toLowerCase());
-  const folderId = typeof folderResolver === 'function' ? folderResolver(email) : 'inbox';
-  switch (mailbox) {
+  const folderIdRaw = typeof folderResolver === 'function' ? folderResolver(email) : 'inbox';
+  const folderId = `${folderIdRaw || 'inbox'}`.toLowerCase();
+  switch (normalizedMailbox) {
     case 'inbox':
-      return true;
+      return folderId === 'inbox';
     case 'starred':
       return Boolean(email.starred);
     case 'snoozed':
@@ -20,7 +22,7 @@ export function matchesMailbox(mailbox, email, folderResolver) {
     case 'trash':
       return folderId === 'trash';
     default:
-      return folderId === mailbox;
+      return folderId === normalizedMailbox;
   }
 }
 

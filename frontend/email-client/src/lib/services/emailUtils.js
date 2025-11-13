@@ -21,7 +21,8 @@ export function mapEmailMessage(message, index = 0) {
     starred: Boolean(message?.starred),
     avatar: message?.avatarUrl || message?.companyLogoUrl || '',
     labels: Array.isArray(message?.labels) ? message.labels : [],
-    companyLogoUrl: message?.companyLogoUrl || null
+    companyLogoUrl: message?.companyLogoUrl || null,
+    contextForAi: message?.contextForAi || message?.contextForAI || null
   };
 }
 
