@@ -9,16 +9,25 @@
   import EmailDetailView from './lib/EmailDetailView.svelte';
   import MailboxSidebar from './lib/MailboxSidebar.svelte';
   import AiLoadingJourney from './lib/AiLoadingJourney.svelte';
+  import DrawerBackdrop from './lib/DrawerBackdrop.svelte';
+  import AiPanelDockChip from './lib/AiPanelDockChip.svelte';
+  import ComingSoonModal from './lib/ComingSoonModal.svelte';
+  import WindowNotice from './lib/WindowNotice.svelte';
   import { isMobile, isTablet, isDesktop, isWide, viewport } from './lib/viewport';
   import { createWindowManager } from './lib/window/windowStore'; // temp use
   import { createComposeWindow, WindowKind } from './lib/window/windowTypes';
   import { catalogStore, hydrateCatalog, ensureCatalogLoaded as ensureCatalog, getFunctionMeta, mergeDefaultArgs, resolveDefaultInstruction } from './lib/services/aiCatalog';
   import { handleAiCommand } from './lib/services/aiCommandHandler';
 import { mapEmailMessage, computeMailboxCounts, parseSubjectAndBody } from './lib/services/emailUtils';
-import { buildEmailContextString, parseRecipientInput, recipientFromEmail } from './lib/services/emailContextConstructor';
-import { buildReplyPrefill, buildForwardPrefill } from './lib/services/composePrefill.js';
+  import { buildEmailContextString, parseRecipientInput, recipientFromEmail } from './lib/services/emailContextConstructor';
+  import { buildReplyPrefill, buildForwardPrefill } from './lib/services/composePrefill.js';
+  import { matchesMailbox as matchesMailboxFilter } from './lib/services/mailboxFiltering';
   import { createAiJourneyStore } from './lib/services/aiJourneyStore';
   import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, ArrowLeft, ChevronLeft, ChevronRight, Archive, Trash2, Sparkles, Loader2 } from 'lucide-svelte';
+  import { ACTION_IDEAS_INSTRUCTION, ACTION_MENU_COMMAND_KEY, DEFAULT_ACTION_OPTIONS, MAILBOX_ACTION_FALLBACKS, PRIMARY_TOOLBAR_PREFERENCE } from './lib/constants/catalogActions';
+  import { escapeHtmlContent, renderMarkdownContent, formatRelativeTimestamp, formatFullTimestamp } from './lib/services/emailFormatting';
+  import { initializeUiNonce, postJsonWithNonce, startChatHeartbeat } from './lib/services/sessionNonceClient';
+  import './app-shared.css';
   export let bootstrap = {};
 
   hydrateCatalog(bootstrap.aiFunctions || null);
@@ -27,8 +36,7 @@ import { buildReplyPrefill, buildForwardPrefill } from './lib/services/composePr
   $: aiFunctionsByKey = catalogData?.functionsByKey || {};
   $: aiPrimaryCommandKeys = Array.isArray(catalogData?.primaryCommands) ? catalogData.primaryCommands : [];
 
-  let uiNonce = bootstrap.uiNonce || null;
-  let nonceRefreshPromise = null;
+  initializeUiNonce(bootstrap.uiNonce || null);
   let search = '';
   let emails = Array.isArray(bootstrap.messages) ? bootstrap.messages.map(mapEmailMessage) : [];
   let selected = null;
@@ -40,20 +48,6 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   const windowErrorStore = windowManager.lastError;
   const aiJourney = createAiJourneyStore();
   const aiJourneyOverlayStore = aiJourney.overlay;
-  const MAILBOX_ACTION_FALLBACKS = [
-    {
-      key: 'smart-triage',
-      label: 'Smart triage & cleanup',
-      description: 'Auto-label Action, Read-Later, FYI, Receipts, Calendar, Tasks, Bulk. Merges duplicates and collapses promos.'
-    }
-  ];
-  const ACTION_MENU_COMMAND_KEY = 'actions_menu';
-  const ACTION_IDEAS_INSTRUCTION = 'List three creative but practical follow-up ideas for this email. Each idea must be one sentence and drive the thread toward a clear next step.';
-  const DEFAULT_ACTION_OPTIONS = [
-    { id: 'action-create-task', label: 'Create Task', actionType: 'comingSoon', commandKey: null, commandVariant: null, instruction: null },
-    { id: 'action-remind-me', label: 'Remind Me About This', actionType: 'comingSoon', commandKey: null, commandVariant: null, instruction: null },
-    { id: 'action-give-ideas', label: 'Give me Ideas', actionType: 'summary', commandKey: 'summarize', commandVariant: null, instruction: ACTION_IDEAS_INSTRUCTION }
-  ];
   let windowNotice = '';
   let windowNoticeTimer = null;
   let actionMenuOptions = DEFAULT_ACTION_OPTIONS.map((option) => ({ ...option }));
@@ -132,11 +126,10 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
 
   // Derived
   $: mailboxCounts = computeMailboxCounts(emails);
-  $: baseEmails = emails.filter(matchesMailbox);
+  $: baseEmails = emails.filter((email) => matchesMailboxFilter(mailbox, email));
   $: filtered = !search
     ? baseEmails
     : baseEmails.filter(e => [e.subject, e.from, e.preview].join(' ').toLowerCase().includes(search.toLowerCase()));
-  const PRIMARY_TOOLBAR_PREFERENCE = ['draft', 'translate'];
   $: primaryCommandEntries = (() => {
     const sourceKeys = aiPrimaryCommandKeys.length ? aiPrimaryCommandKeys : Object.keys(aiFunctionsByKey || {});
     if (!sourceKeys || sourceKeys.length === 0) return [];
@@ -508,52 +501,8 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
     triggerComposeAi(event.detail);
   }
 
-  function matchesMailbox(e) {
-    const labels = (e.labels || []).map(l => String(l).toLowerCase());
-    switch (mailbox) {
-      case 'inbox': return true;
-      case 'starred': return !!e.starred;
-      case 'snoozed': return labels.includes('snoozed');
-      case 'sent': return labels.includes('sent');
-      case 'drafts': return labels.includes('drafts') || labels.includes('draft');
-      case 'archive': return labels.includes('archive') || labels.includes('archived');
-      case 'trash': return labels.includes('trash') || labels.includes('deleted');
-      default: return true;
-    }
-  }
-
-  function escapeHtml(s) { return window.Composer?.escapeHtml ? window.Composer.escapeHtml(s) : (s || ''); }
-  function renderMarkdown(md) { return window.Composer?.renderMarkdown ? window.Composer.renderMarkdown(md || '') : (md || ''); }
-
-  // Date helpers: list shows relative time only; detail shows full date/time
-  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
-  function parseDate(val) {
-    if (!val) return null;
-    const d = new Date(val);
-    return isNaN(d.getTime()) ? null : d;
-  }
-  function formatRelativeTime(primary, fallback) {
-    const d = parseDate(primary) || parseDate(fallback);
-    if (!d) return escapeHtml(fallback || '');
-    const now = new Date();
-    const diffMs = d.getTime() - now.getTime();
-    const absMs = Math.abs(diffMs);
-    const minute = 60 * 1000, hour = 60 * minute, day = 24 * hour, month = 30 * day, year = 365 * day;
-    if (absMs < minute) return 'just now';
-    if (absMs < hour) return rtf.format(Math.round(diffMs / minute), 'minute');
-    if (absMs < day) return rtf.format(Math.round(diffMs / hour), 'hour');
-    if (absMs < month) return rtf.format(Math.round(diffMs / day), 'day');
-    if (absMs < year) return rtf.format(Math.round(diffMs / month), 'month');
-    return rtf.format(Math.round(diffMs / year), 'year');
-  }
-  function formatFullDate(primary, fallback) {
-    const d = parseDate(primary) || parseDate(fallback);
-    if (!d) return escapeHtml(fallback || '');
-    return d.toLocaleString(undefined, {
-      year: 'numeric', month: 'short', day: '2-digit',
-      hour: 'numeric', minute: '2-digit', hour12: true, timeZoneName: 'short'
-    });
-  }
+  const escapeHtml = escapeHtmlContent;
+  const renderMarkdown = renderMarkdownContent;
 
   const JOURNEY_SCOPE_META = {
     global: { subhead: 'Composer assistant' },
@@ -635,61 +584,6 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   }
 
   /**
-   * Request a fresh UI nonce from the backend when the servlet session expires.
-   * The promise is memoized so concurrent 403 retries wait on the same refresh.
-   */
-  async function refreshUiNonce() {
-    if (nonceRefreshPromise) return nonceRefreshPromise;
-    const headers = { 'Content-Type': 'application/json' };
-    if (uiNonce) headers['X-UI-Request'] = uiNonce;
-    nonceRefreshPromise = (async () => {
-      try {
-        const resp = await fetch('/ui/session/nonce', {
-          method: 'POST',
-          headers
-        });
-        const data = await resp.json().catch(() => null);
-        if (!resp.ok) {
-          throw new Error((data && data.error) || `HTTP ${resp.status}`);
-        }
-        if (!data?.uiNonce) {
-          throw new Error('Nonce refresh response missing uiNonce');
-        }
-        uiNonce = data.uiNonce;
-        return uiNonce;
-      } finally {
-        nonceRefreshPromise = null;
-      }
-    })();
-    return nonceRefreshPromise;
-  }
-
-  /**
-   * Keep the servlet session warm with a lightweight /api/chat/health ping.
-   * If it fails we fall back to the on-demand nonce refresh path.
-   */
-  async function pingChatHealth() {
-    if (!uiNonce) return;
-    try {
-      await fetch('/api/chat/health', {
-        method: 'GET',
-        headers: { 'X-UI-Request': uiNonce }
-      });
-    } catch (_) {
-      // Heartbeat is best-effort; failures are handled when sending the next chat request.
-    }
-  }
-
-  onMount(() => {
-    if (!uiNonce) {
-      refreshUiNonce().catch(() => {});
-    }
-    const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000;
-    const heartbeatId = window.setInterval(pingChatHealth, HEARTBEAT_INTERVAL_MS);
-    return () => window.clearInterval(heartbeatId);
-  });
-
-  /**
    * Call AI command with email context.
    *
    * Context priority:
@@ -759,9 +653,12 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
     advanceAiJourney(journeyToken, 'ai:context-search');
 
     try {
-      const data = await postChatPayload(JSON.stringify(payload));
+      const data = await postJsonWithNonce('/api/chat', payload);
       advanceAiJourney(journeyToken, 'ai:llm-thinking');
       completeAiJourney(journeyToken);
+      if (data?.conversationId) {
+        conversationId = data.conversationId;
+      }
       return data;
     } catch (err) {
       failAiJourney(journeyToken);
@@ -772,27 +669,10 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   /**
    * POST helper that retries once after silently refreshing the nonce.
    */
-  async function postChatPayload(body, allowRetry = true) {
-    const resp = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-UI-Request': uiNonce || '' },
-      body
-    });
-
-    if (resp.status === 403 && allowRetry) {
-      await refreshUiNonce();
-      return postChatPayload(body, false);
-    }
-
-    const data = await resp.json().catch(() => null);
-    if (!resp.ok) {
-      throw new Error((data && (data.message || data.error)) || `HTTP ${resp.status}`);
-    }
-    if (data?.conversationId) {
-      conversationId = data.conversationId;
-    }
-    return data;
-  }
+  onMount(() => {
+    const stopHeartbeat = startChatHeartbeat();
+    return () => stopHeartbeat();
+  });
 
   /** Builds compose/draft instructions while preserving catalog defaults and current user drafts. */
   function buildComposeInstruction(command, currentDraft, isReply, meta) {
@@ -1078,12 +958,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
       }}
     />
     <!-- Mobile/Tablet: Semi-transparent backdrop overlay to close drawer when clicking outside -->
-    {#if drawerVisible}
-      <button type="button" class="fixed inset-0 bg-black/30 z-[50]" aria-label="Close menu overlay"
-              on:click={() => (showDrawer = false)}
-              on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showDrawer = false; } }}>
-      </button>
-    {/if}
+    <DrawerBackdrop visible={drawerVisible} on:close={() => (showDrawer = false)} />
 
   <!-- List -->
   <section class="shrink-0 flex flex-col bg-white/90 border-r border-slate-200"
@@ -1102,27 +977,29 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
         </button>
         <div class="flex-1 min-w-0 flex flex-col gap-1">
           <div class="relative" bind:this={mailboxMenuListRef}>
-            <input
-              placeholder="Search emails..."
-              bind:value={search}
-              class="mailbox-search-input w-full rounded-2xl border border-slate-200 bg-white/90 pl-4 pr-32 py-2 text-base text-slate-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-slate-200"
-            />
-            <button
-              type="button"
-              class="absolute inset-y-1 right-1 btn btn--secondary btn--compact shadow-none"
-              aria-haspopup="menu"
-              aria-expanded={mailboxActionsOpen && mailboxActionsHost === 'list'}
-              on:click={() => toggleMailboxActions('list')}
-              disabled={!hasMailboxCommands || filtered.length === 0 || !!mailboxCommandPendingKey}
-            >
-              {#if mailboxCommandPendingKey}
-                <Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
-                <span>{activeMailboxActionLabel ? `${activeMailboxActionLabel}…` : 'Working…'}</span>
-              {:else}
-                <Sparkles class="h-4 w-4" aria-hidden="true" />
-                <span>Actions</span>
-              {/if}
-            </button>
+            <div class="flex items-center rounded-2xl border border-slate-200 bg-white/90 shadow-inner focus-within:ring-2 focus-within:ring-slate-200 overflow-hidden">
+              <input
+                placeholder="Search emails..."
+                bind:value={search}
+                class="mailbox-search-input flex-1 bg-transparent border-0 pl-4 pr-3 py-2 text-base text-slate-800 focus:outline-none"
+              />
+              <button
+                type="button"
+                class="btn btn--secondary btn--compact rounded-none border-0 shadow-none"
+                aria-haspopup="menu"
+                aria-expanded={mailboxActionsOpen && mailboxActionsHost === 'list'}
+                on:click={() => toggleMailboxActions('list')}
+                disabled={!hasMailboxCommands || filtered.length === 0 || !!mailboxCommandPendingKey}
+              >
+                {#if mailboxCommandPendingKey}
+                  <Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
+                  <span>{activeMailboxActionLabel ? `${activeMailboxActionLabel}…` : 'Working…'}</span>
+                {:else}
+                  <Sparkles class="h-4 w-4" aria-hidden="true" />
+                  <span>Actions</span>
+                {/if}
+              </button>
+            </div>
             {#if mailboxActionsOpen && mailboxActionsHost === 'list'}
               <div
                 class="absolute right-0 top-[calc(100%+0.5rem)] menu-surface z-30"
@@ -1180,7 +1057,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
               <div class="min-w-0 flex-1">
                 <div class="flex items-center justify-between">
                   <span class="font-semibold truncate" class:text-slate-700={e.read} class:text-slate-900={!e.read}>{escapeHtml(e.from)}</span>
-<span class="text-xs text-slate-400 ml-2 shrink-0">{formatRelativeTime(e.timestampIso, e.timestamp)}</span>
+          <span class="text-xs text-slate-400 ml-2 shrink-0">{formatRelativeTimestamp(e.timestampIso, e.timestamp)}</span>
                 </div>
                 <p class="text-sm truncate" class:font-medium={!e.read} class:text-slate-700={e.read} class:text-slate-900={!e.read}>{escapeHtml(e.subject)}</p>
                 <p class="text-xs text-slate-500 truncate">{escapeHtml(e.preview)}</p>
@@ -1303,8 +1180,8 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
           actionMenuOptions={actionMenuOptions}
           actionMenuLoading={actionMenuLoading}
           mobile={mobile}
-          escapeHtmlFn={escapeHtml}
-          formatFullDateFn={formatFullDate}
+          escapeHtmlFn={escapeHtmlContent}
+          formatFullDateFn={formatFullTimestamp}
           on:reply={openReply}
           on:forward={openForward}
           on:commandSelect={(event) => runMainAiCommand(event.detail)}
@@ -1324,7 +1201,7 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
             tablet={tablet}
             desktop={desktop}
             wide={wide}
-            renderMarkdownFn={renderMarkdown}
+            renderMarkdownFn={renderMarkdownContent}
           />
         </div>
         {#if panelRenderReady}
@@ -1362,17 +1239,10 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   {/each}
 
   <WindowDock windows={minimizedWindows} />
-  {#if panelSessionActive && panelMinimized}
-    <button class="panel-dock-chip" type="button" on:click={restorePanelFromDock}>
-      <Sparkles class="h-4 w-4" aria-hidden="true" />
-      AI Panel
-    </button>
-  {/if}
+  <AiPanelDockChip visible={panelSessionActive && panelMinimized} on:restore={restorePanelFromDock} />
 </WindowProvider>
 
-{#if windowNotice}
-  <div class="window-notice">{windowNotice}</div>
-{/if}
+<WindowNotice message={windowNotice} />
 
 {#if aiJourneyOverlay.visible && aiJourneyOverlay.scope === 'global'}
   <div class="fixed bottom-6 left-1/2 z-[80] -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0">
@@ -1387,414 +1257,6 @@ const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   </div>
 {/if}
 
-{#if comingSoonModal.open}
-  <div
-    class="fixed inset-0 z-[180] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4 relative"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Coming soon">
-    <button
-      type="button"
-      class="absolute inset-0 h-full w-full bg-transparent z-0"
-      aria-label="Close coming soon modal"
-      on:click={closeComingSoonModal}>
-      <span class="sr-only">Close</span>
-    </button>
-    <div
-      class="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-800 p-6 text-white shadow-[0_35px_80px_rgba(15,23,42,0.55)]"
-      role="document"
-      tabindex="-1">
-      <button type="button" class="absolute right-4 top-4 btn btn--icon text-white bg-white/10 border-white/30 hover:bg-white/20" aria-label="Close" on:click={closeComingSoonModal}>
-        ✕
-      </button>
-      <div class="mb-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]">
-        <Sparkles class="h-4 w-4 text-emerald-300" />
-        Coming Soon
-      </div>
-      <h3 class="text-2xl font-semibold tracking-tight">
-        {comingSoonModal.sourceLabel || 'This feature'} is almost here
-      </h3>
-      <p class="mt-3 text-sm text-slate-200 leading-relaxed">
-        We&apos;re putting the finishing touches on this workflow. Follow along in Composer updates for early access and let us know how you&apos;d like it to work.
-      </p>
-      <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <button type="button" class="btn btn--secondary w-full justify-center" on:click={closeComingSoonModal}>
-          Sounds good
-        </button>
-        <div class="text-xs text-slate-300 text-center sm:text-left">
-          Need it sooner? Drop us a note in the roadmap channel.
-        </div>
-      </div>
-    </div>
-  </div>
-{/if}
+<ComingSoonModal open={comingSoonModal.open} sourceLabel={comingSoonModal.sourceLabel} on:close={closeComingSoonModal} />
 
-<style>
-  /**
-   * Responsive styling guardrails keep interactive inputs legible (≥16px),
-   * constrain floating surfaces to the viewport, and preserve the glassy
-   * layering language on both desktop and mobile breakpoints.
-   */
-  /**
-   * Primary rounded button baseline reused across every CTA.
-   */
-  :global(.btn) {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    border-radius: 999px;
-    border: 1px solid transparent;
-    font-size: 0.85rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    padding: 0.45rem 1rem;
-    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-    box-shadow: 0 12px 30px -18px rgba(15, 23, 42, 0.4);
-    backdrop-filter: blur(12px);
-  }
-  /**
-   * Disabled state keeps elevation consistent without motion.
-   */
-  :global(.btn:disabled) {
-    opacity: 0.55;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: 0 12px 30px -18px rgba(15, 23, 42, 0.25);
-  }
-  /**
-   * Accessible outline styling harmonized with glass shadows.
-   */
-  :global(.btn:focus-visible) {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.4), 0 12px 30px -18px rgba(15, 23, 42, 0.45);
-  }
-  /**
-   * Dark gradient primary button for destructive/confirm actions.
-   */
-  :global(.btn--primary) {
-    color: white;
-    background: linear-gradient(135deg, #0f172a, #1e293b 60%, #1a365d);
-    border-color: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 30px 60px -30px rgba(15, 23, 42, 0.7);
-  }
-  :global(.btn--primary:hover) {
-    transform: translateY(-1px);
-    box-shadow: 0 35px 70px -30px rgba(15, 23, 42, 0.75);
-  }
-  /**
-   * Secondary translucent button for neutral actions.
-   */
-  :global(.btn--secondary) {
-    color: #0f172a;
-    background: rgba(255, 255, 255, 0.92);
-    border-color: rgba(148, 163, 184, 0.6);
-    box-shadow: 0 25px 50px -25px rgba(15, 23, 42, 0.35);
-  }
-  :global(.btn--secondary:hover) {
-    border-color: rgba(99, 102, 241, 0.35);
-    background: rgba(255, 255, 255, 0.98);
-  }
-  /**
-   * Ghost buttons used for tertiary actions inside cards.
-   */
-  :global(.btn--ghost) {
-    color: #475569;
-    background: rgba(248, 250, 252, 0.85);
-    border-color: rgba(148, 163, 184, 0.5);
-    box-shadow: none;
-  }
-  :global(.btn--ghost:hover) {
-    border-color: rgba(148, 163, 184, 0.8);
-    background: white;
-  }
-  /**
-   * Icon-only circular button for toolbars and window controls.
-   */
-  :global(.btn--icon) {
-    width: 42px;
-    height: 42px;
-    padding: 0;
-    border-radius: 999px;
-    border-color: rgba(148, 163, 184, 0.5);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.8));
-    color: #475569;
-    box-shadow: 0 12px 30px -18px rgba(15, 23, 42, 0.35);
-  }
-  :global(.btn--icon:hover) {
-    color: #0f172a;
-    border-color: rgba(99, 102, 241, 0.35);
-  }
-  /**
-   * Dedicated search input style keeping ≥16px text for iOS stability.
-   */
-  :global(.mailbox-search-input) {
-    font-size: clamp(1rem, 0.95rem + 0.2vw, 1.075rem);
-    line-height: 1.45;
-  }
-  /**
-   * Global input baseline that enforces the minimum font-size rule.
-   */
-  :global(input[type='text']),
-  :global(input[type='search']),
-  :global(textarea),
-  :global(input[type='email']) {
-    font-size: clamp(1rem, 0.95rem + 0.15vw, 1.1rem);
-  }
-  /**
-   * Inset variant used for window chrome controls.
-   */
-  :global(.btn--icon.btn--inset) {
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6), 0 12px 30px -18px rgba(15, 23, 42, 0.35);
-  }
-  /**
-   * Shared padding + min-height for labelled pill buttons.
-   */
-  :global(.btn--labelled) {
-    padding-left: 1.05rem;
-    padding-right: 1.05rem;
-    min-height: 42px;
-  }
-  :global(.btn--compact) {
-    min-height: 40px;
-    padding-top: 0.35rem;
-    padding-bottom: 0.35rem;
-  }
-  /**
-   * Icon chip that prefixes AI actions and menu items.
-   */
-  :global(.btn-icon-chip) {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    border-radius: 999px;
-    background: rgba(15, 23, 42, 0.08);
-    color: #0f172a;
-    border: 1px solid rgba(15, 23, 42, 0.12);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  }
-  /**
-   * Menu surface shell reused by AI and mailbox dropdowns.
-   */
-  :global(.menu-surface) {
-    border-radius: 22px;
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 45px 75px -35px rgba(15, 23, 42, 0.55);
-    backdrop-filter: blur(20px);
-    padding: 1rem;
-    width: min(20rem, calc(100vw - 2.5rem));
-    max-height: min(420px, 70vh);
-    overflow-y: auto;
-  }
-  /**
-   * Column layout for menu buttons.
-   */
-  :global(.menu-list) {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  /**
-   * Individual menu rows styled as soft pills.
-   */
-  :global(.menu-item) {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    padding: 0.6rem 0.85rem 0.6rem 0.75rem;
-    border-radius: 16px;
-    border: 1px solid transparent;
-    background: rgba(248, 250, 252, 0.9);
-    font-size: 0.9rem;
-    color: #0f172a;
-    transition: border-color 0.2s ease, background 0.2s ease;
-  }
-  /**
-   * Hover state brightens border/background subtly.
-   */
-  :global(.menu-item:hover) {
-    border-color: rgba(148, 163, 184, 0.5);
-    background: white;
-  }
-  /**
-   * Leading icon container for menu items.
-   */
-  :global(.menu-item-icon) {
-    margin-right: 0.75rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 999px;
-    background: rgba(15, 23, 42, 0.05);
-    color: #475569;
-  }
-  /**
-   * Eyebrow labels used on dropdown headers.
-   */
-  :global(.menu-eyebrow) {
-    font-size: 0.7rem;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: #94a3b8;
-    margin-bottom: 0.75rem;
-    display: block;
-  }
-  /* Secondary status chip used inside dropdown footers + inline callouts */
-  /**
-   * Chip styling shared by AI info banners.
-   */
-  :global(.panel-chip) {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    border-radius: 999px;
-    padding: 0.35rem 0.85rem;
-    border: 1px solid rgba(148, 163, 184, 0.45);
-    background: rgba(248, 250, 252, 0.85);
-    color: #475569;
-    font-size: 0.8rem;
-  }
-  /* Sidebar mailbox entries mimic compose capsules for consistent geometry */
-  /**
-   * Sidebar navigation pill baseline.
-   */
-  :global(.nav-pill) {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    width: 100%;
-    border-radius: 18px;
-    padding: 0.55rem 0.85rem;
-    color: #475569;
-    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-    border: 1px solid transparent;
-  }
-  /**
-   * Hover state for nav pills.
-   */
-  :global(.nav-pill:hover) {
-    background: rgba(15, 23, 42, 0.05);
-    color: #0f172a;
-  }
-  /**
-   * Active nav pill matches darker slate tokens.
-   */
-  :global(.nav-pill--active) {
-    background: rgba(15, 23, 42, 0.08);
-    border-color: rgba(15, 23, 42, 0.12);
-    color: #0f172a;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  }
-  /**
-   * Badge bubble for counts inside nav pills.
-   */
-  :global(.nav-pill-badge) {
-    margin-left: auto;
-    padding: 0.1rem 0.5rem;
-    border-radius: 999px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    background: rgba(226, 232, 240, 0.8);
-    color: #475569;
-  }
-  /**
-   * Toast bubble for transient window notices.
-   */
-  .window-notice {
-    position: fixed;
-    bottom: 90px;
-    right: 24px;
-    background: rgba(15, 23, 42, 0.9);
-    color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 999px;
-    font-size: 0.85rem;
-    z-index: 120;
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
-  }
-  /**
-   * Container governing AI summary stack height.
-   */
-  .ai-panel-wrapper {
-    position: relative;
-    z-index: 10;
-    height: clamp(280px, 35vh, 520px);
-    max-height: 45vh;
-    display: flex;
-    flex-direction: column;
-  }
-  /**
-   * Maximized AI panel fills its column.
-   */
-  .ai-panel-wrapper.maximized {
-    position: absolute;
-    inset: 0;
-    z-index: 30;
-    height: 100%;
-    max-height: 100%;
-  }
-  /**
-   * Column wrapper keeps panel stacking context.
-   */
-  .panel-column {
-    position: relative;
-    min-height: 0;
-  }
-  /**
-   * Floating chip that restores minimized AI panel.
-   */
-  .panel-dock-chip {
-    position: fixed;
-    bottom: 24px;
-    left: 24px;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.5);
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 15px 30px -18px rgba(15, 23, 42, 0.35);
-    padding: 0.45rem 0.95rem;
-    font-size: 0.85rem;
-    color: #0f172a;
-    z-index: 150;
-  }
-  /**
-   * Mobile overrides for panel height and dock chip behavior.
-   */
-  @media (max-width: 768px) {
-    .ai-panel-wrapper {
-      height: auto;
-      max-height: none;
-    }
-    .ai-panel-wrapper.maximized {
-      position: fixed;
-      inset: 0;
-      padding: 0.75rem;
-    }
-    .panel-dock-chip {
-      left: 16px;
-      right: 16px;
-      justify-content: center;
-    }
-  }
-  /**
-   * Safe-area padding for notched devices.
-   */
-  @supports (padding: env(safe-area-inset-top)) {
-    @media (max-width: 768px) {
-      .ai-panel-wrapper.maximized {
-        padding-top: env(safe-area-inset-top);
-        padding-right: env(safe-area-inset-right);
-        padding-bottom: env(safe-area-inset-bottom);
-        padding-left: env(safe-area-inset-left);
-      }
-    }
-  }
-</style>
+
