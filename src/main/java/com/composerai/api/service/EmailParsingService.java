@@ -11,8 +11,8 @@ import com.composerai.api.util.StringUtils;
 import com.composerai.api.util.TemporalUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,10 +30,10 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class EmailParsingService {
+
+    private static final Logger logger = LoggerFactory.getLogger(EmailParsingService.class);
 
     private static final DateTimeFormatter DATE_WITH_OFFSET_FORMATTER =
         DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' h:mm a xxx", Locale.US);
@@ -42,6 +42,16 @@ public class EmailParsingService {
     private final ObjectMapper objectMapper;
     private final CompanyLogoProvider companyLogoProvider;
     private final AppProperties appProperties;
+
+    public EmailParsingService(EmailContextCache emailContextRegistry,
+                               ObjectMapper objectMapper,
+                               CompanyLogoProvider companyLogoProvider,
+                               AppProperties appProperties) {
+        this.emailContextRegistry = emailContextRegistry;
+        this.objectMapper = objectMapper;
+        this.companyLogoProvider = companyLogoProvider;
+        this.appProperties = appProperties;
+    }
 
     public Map<String, Object> parseEmailFile(MultipartFile file) {
         validateFile(file);
@@ -71,7 +81,7 @@ public class EmailParsingService {
             if (e.getMessage() != null && !e.getMessage().isBlank()) {
                 detailedMessage += ": " + e.getMessage();
             }
-            log.error("Email parsing failed for file: {}", file.getOriginalFilename(), e);
+            logger.error("Email parsing failed for file: {}", file.getOriginalFilename(), e);
             throw new RuntimeException(detailedMessage, e);
         } finally {
             if (tempFile != null) {
@@ -395,10 +405,10 @@ public class EmailParsingService {
         String sanitizedMarkdown = sanitizeEmailHtml(markdownHtml);
 
         if (sanitizedOriginal == null && originalHtml != null && !originalHtml.isBlank()) {
-            log.warn("Sanitized original HTML was empty; will consider fallbacks.");
+            logger.warn("Sanitized original HTML was empty; will consider fallbacks.");
         }
         if (sanitizedMarkdown == null && markdownHtml != null && !markdownHtml.isBlank()) {
-            log.warn("Sanitized markdown-derived HTML was empty; markdown fallback unavailable.");
+            logger.warn("Sanitized markdown-derived HTML was empty; markdown fallback unavailable.");
         }
 
         String rendered = switch (mode) {
@@ -415,10 +425,10 @@ public class EmailParsingService {
 
         // Only log error if rendering unexpectedly failed (not PLAINTEXT mode where null is expected)
         if (rendered == null && mode != AppProperties.EmailRenderMode.PLAINTEXT) {
-            log.error("Email rendering failed; mode={}, sanitizedOriginalPresent={}, sanitizedMarkdownPresent={}",
+            logger.error("Email rendering failed; mode={}, sanitizedOriginalPresent={}, sanitizedMarkdownPresent={}",
                 mode, sanitizedOriginal != null, sanitizedMarkdown != null);
         } else if (rendered != null) {
-            log.info("Email rendered using mode={} (source={})", mode, renderSource);
+            logger.info("Email rendered using mode={} (source={})", mode, renderSource);
         }
 
         return rendered;
