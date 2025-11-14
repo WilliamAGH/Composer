@@ -1,11 +1,12 @@
 import { buildEmailContextString } from './emailContextConstructor';
+import { normalizeReplySubject, normalizeForwardSubject } from './emailSubjectPrefixHandler.js';
 
 /**
  * Builds compose payload defaults for reply windows while keeping App.svelte lean.
  * Returned body values always leave blank space above the quoted context so greetings land naturally.
  */
 export function buildReplyPrefill(email) {
-  const subject = email?.subject ? `Re: ${email.subject}` : '';
+  const subject = email?.subject ? normalizeReplySubject(email.subject) : '';
   const quotedContext = quoteEmailContext(email);
   const body = quotedContext ? `\n\n${quotedContext}` : '';
   return {
@@ -21,7 +22,7 @@ export function buildReplyPrefill(email) {
  * Includes a distinct forwarded header before the quoted metadata/body.
  */
 export function buildForwardPrefill(email) {
-  const subject = email?.subject ? `Fwd: ${email.subject}` : '';
+  const subject = email?.subject ? normalizeForwardSubject(email.subject) : '';
   const quotedContext = quoteEmailContext(email, true);
   const body = quotedContext ? `\n\n${quotedContext}` : '';
   return {

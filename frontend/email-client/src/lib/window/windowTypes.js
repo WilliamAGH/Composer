@@ -4,6 +4,7 @@
  * bootstrapping empty components just to import helper logic and keeps the state purely client-side.
  */
 import { formatRecipientDisplay } from '../services/emailContextConstructor.js';
+import { normalizeReplySubject } from '../services/emailSubjectPrefixHandler.js';
 
 function toTrimmed(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -44,7 +45,7 @@ export function createComposeWindow(email = {}, overrides = {}) {
       to: overrides.to ?? defaultToValue,
       recipientName: safeRecipientName,
       recipientEmail: safeRecipientEmail,
-      subject: overrides.subject ?? (email.subject ? `Re: ${email.subject}` : ''),
+      subject: overrides.subject ?? (email.subject ? normalizeReplySubject(email.subject) : ''),
       body: overrides.body ?? '',
       hasQuotedContext: overrides.hasQuotedContext ?? false,
       quotedContext: overrides.quotedContext ?? '',

@@ -2,6 +2,7 @@ import { get } from 'svelte/store';
 import { createComposeWindow, WindowKind } from '../window/windowTypes.js';
 import { mergeDefaultArgs, resolveDefaultInstruction, getFunctionMeta } from './aiCatalog';
 import { parseSubjectAndBody } from './emailUtils';
+import { normalizeReplySubject } from './emailSubjectPrefixHandler.js';
 
 /**
  * Centralizes AI-command handling so App.svelte can delegate compose/summary logic. By isolating this in
@@ -32,7 +33,7 @@ export async function handleAiCommand({
     const existingCompose = findMatchingComposeWindow(windowManager, selectedEmail?.id || null);
     const descriptor = existingCompose || createComposeWindow(selectedEmail, {
       to: selectedEmail.fromEmail || '',
-      subject: `Re: ${selectedEmail.subject || ''}`,
+      subject: normalizeReplySubject(selectedEmail.subject || ''),
       isReply: true,
       title: selectedEmail.subject ? `Reply: ${selectedEmail.subject}` : fn.label || 'AI Compose'
     });
