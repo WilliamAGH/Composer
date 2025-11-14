@@ -56,3 +56,13 @@ Cutover
 - Validate `/email-client-v2` in staging (legacy path already redirects here).
 - Verify `/` (and `/index`) forward server-side to `/email-client-v2` so every environment loads the same bootstrap template by default.
 - `/email-client` remains as a redirect only; there is no separate fallback template.
+
+## Mobile acceptance checklist
+
+Use this quick sweep whenever mobile UX changes ship (compose, AI summary, drawers):
+
+1. **Email selection + nav** – On ≤640px width, select an email and verify the shared mobile top navigation renders (back + menu + search) and toggles the drawer correctly.
+2. **Summary modal** – Trigger an AI summary/translation; the mobile modal should take the full viewport, show the AI journey, and close via the nav back button.
+3. **Docking** – Tap the dock/minimize action inside the summary modal and confirm the AI panel dock chip appears for restoration.
+4. **Compose parity** – Open Compose (new, reply, forward) and ensure the same nav chrome appears with the close control and send CTA, even while AI drafts run inline.
+5. **Breakpoint sanity** – Rotate the simulator or drag DevTools to switch between mobile/tablet widths to make sure compose + summary overlays adapt without clipping and AI journeys remain visible.
