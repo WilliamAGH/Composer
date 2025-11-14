@@ -45,6 +45,7 @@ Add new AI windows by creating a feature component that wraps `WindowFrame` and 
 - Both flows prefill compose windows with the correct subject prefix (`Re:`/`Fwd:`) and append the selected email's metadata/body at the bottom so greetings and signatures sit above the quoted context.
 - Reply automatically queues an AI helper (current `draft` command) that focuses on greeting/closing lines only; the helper re-attaches the quoted context after the model responds.
 - Forward opens the same compose window but skips the auto-AI call while still including the sanitized quote block.
+- Forward windows intentionally leave the `To` field blank (no auto-fill from the original sender) so users can choose a new recipient without accidentally emailing the prior sender.
 - Compose payloads now carry `quotedContext` metadata so future helpers can guarantee the prior thread stays intact even after AI edits.
 
 #### Recipient Metadata in Chat Requests

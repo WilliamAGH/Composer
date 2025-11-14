@@ -474,6 +474,9 @@ const panelErrorsStore = panelStores.errors;
     if (!selected) return alert('Select an email first.');
     const prefills = buildForwardPrefill(selected);
     const descriptor = createComposeWindow(selected, {
+      to: '',
+      recipientName: '',
+      recipientEmail: '',
       subject: prefills.subject,
       body: prefills.body,
       hasQuotedContext: prefills.hasQuotedContext,
