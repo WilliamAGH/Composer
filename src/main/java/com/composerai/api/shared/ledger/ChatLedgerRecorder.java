@@ -150,9 +150,9 @@ public class ChatLedgerRecorder {
         try {
             String preview = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(envelope);
             logger.info("[LEDGER] {}", preview);
-    } catch (Exception e) {
-      logger.warn("[LEDGER] Failed to serialize conversation envelope for local debugging", e);
-    }
+        } catch (Exception e) {
+            logger.warn("[LEDGER] Failed to serialize conversation envelope for local debugging", e);
+        }
     }
 
     private List<ContextRef> buildContextRefs(ChatRequest request) {
