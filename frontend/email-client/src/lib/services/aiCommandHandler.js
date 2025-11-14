@@ -126,7 +126,7 @@ async function draftWithAi({ descriptor, command, selectedEmail, fn, variant, in
   }
 }
 
-function deriveHeadline(command, fallback) {
+export function deriveHeadline(command, fallback) {
   switch (command) {
     case 'summarize':
       return 'Summarizing this email';

@@ -18,20 +18,19 @@ import { createMobileOverlayCoordinator } from './lib/MobileOverlayCoordinator';
   import ComingSoonModal from './lib/ComingSoonModal.svelte';
   import WindowNotice from './lib/WindowNotice.svelte';
 import { isMobile, isTablet, isDesktop, isWide, viewport, viewportSize } from './lib/viewportState';
-import { createWindowManager } from './lib/window/windowStore'; // temp use
-import { createComposeWindow, WindowKind } from './lib/window/windowTypes';
+  import { createWindowManager } from './lib/window/windowStore'; // temp use
+  import { createComposeWindow, WindowKind } from './lib/window/windowTypes';
   import { catalogStore, hydrateCatalog, ensureCatalogLoaded as ensureCatalog, getFunctionMeta, mergeDefaultArgs, resolveDefaultInstruction } from './lib/services/aiCatalog';
-  import { handleAiCommand } from './lib/services/aiCommandHandler';
+  import { handleAiCommand, deriveHeadline } from './lib/services/aiCommandHandler';
   import { mapEmailMessage, parseSubjectAndBody } from './lib/services/emailUtils';
-  import { buildEmailContextString, parseRecipientInput, recipientFromEmail } from './lib/services/emailContextConstructor';
+  import { buildEmailContextString, deriveRecipientContext } from './lib/services/emailContextConstructor';
   import { buildReplyPrefill, buildForwardPrefill } from './lib/services/composePrefill.js';
   import { createAiJourneyStore } from './lib/services/aiJourneyStore';
-  import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, ChevronLeft, ChevronRight, Archive, Trash2, Sparkles, Loader2 } from 'lucide-svelte';
+  import { ChevronLeft, ChevronRight } from 'lucide-svelte';
   import { DEFAULT_ACTION_OPTIONS, MAILBOX_ACTION_FALLBACKS, PRIMARY_TOOLBAR_PREFERENCE } from './lib/constants/catalogActions';
   import { getJourneySubhead } from './lib/constants/journeyScopes';
   import { escapeHtmlContent, renderMarkdownContent, formatRelativeTimestamp, formatFullTimestamp } from './lib/services/emailFormatting';
   import { initializeUiNonce, startChatHeartbeat, CLIENT_WARNING_EVENT } from './lib/services/sessionNonceClient';
-  import { ensureMailboxSessionToken } from './lib/services/mailboxSessionService';
 import { createMailboxLayoutStore } from './lib/stores/mailboxLayoutStore';
 import { createActionMenuSuggestionsStore } from './lib/stores/actionMenuSuggestionsStore';
 import { createConversationLedger } from './lib/services/conversationLedger';
@@ -55,7 +54,6 @@ import { createAiPanelStore } from './lib/stores/aiPanelStore';
   $: aiPrimaryCommandKeys = Array.isArray(catalogData?.primaryCommands) ? catalogData.primaryCommands : [];
 
   initializeUiNonce(bootstrap.uiNonce || null);
-  const mailboxSessionToken = ensureMailboxSessionToken();
   const initialEmails = Array.isArray(bootstrap.messages) ? bootstrap.messages.map(mapEmailMessage) : [];
   const initialFolderCounts = bootstrap.folderCounts && typeof bootstrap.folderCounts === 'object' ? bootstrap.folderCounts : null;
   const initialEffectiveFolders = bootstrap.effectiveFolders && typeof bootstrap.effectiveFolders === 'object' ? bootstrap.effectiveFolders : null;
@@ -267,9 +265,6 @@ const panelErrorsStore = panelStores.errors;
     .filter((fn) => Array.isArray(fn.scopes) && fn.scopes.includes('compose'));
   $: mailboxCommandEntries = deriveMailboxCommands();
   $: hasMailboxCommands = Array.isArray(mailboxCommandEntries) && mailboxCommandEntries.length > 0;
-  $: mailboxActionsComingSoon = Array.isArray(mailboxCommandEntries)
-    && mailboxCommandEntries.length > 0
-    && mailboxCommandEntries.every((entry) => entry?.comingSoon);
   $: selectedActionKey = selected ? (selected.contextId || selected.id || selected.conversationId || null) : null;
   $: {
     if (!selectedActionKey) {
@@ -281,12 +276,6 @@ const panelErrorsStore = panelStores.errors;
   $: activeMailboxActionLabel = (mailboxCommandEntries || []).find((entry) => entry.key === mailboxCommandPendingKey)?.label || '';
   $: if ((filtered.length === 0 || !hasMailboxCommands) && mailboxActionsOpen) {
     closeMailboxActions();
-  }
-
-  /** Looks up a variant (e.g., translation language) within a given function definition. */
-  function getVariant(meta, variantKey) {
-    if (!meta || !Array.isArray(meta.variants) || !variantKey) return null;
-    return meta.variants.find((variant) => variant.key === variantKey) || null;
   }
 
   function deriveMailboxCommands() {
@@ -594,7 +583,7 @@ const panelErrorsStore = panelStores.errors;
         journeyScope: 'compose',
         journeyScopeTarget: id,
         journeyLabel: draftSubject || relatedEmail?.subject || 'draft',
-        journeyHeadline: deriveJourneyHeadline(command, fn.label || 'AI Assistant'),
+        journeyHeadline: deriveHeadline(command, fn.label || 'AI Assistant'),
         commandArgs,
         recipientContext
       });
@@ -628,25 +617,10 @@ const panelErrorsStore = panelStores.errors;
   const escapeHtml = escapeHtmlContent;
   const renderMarkdown = renderMarkdownContent;
 
-  function deriveJourneyHeadline(command, fallback) {
-    const catalogLabel = getFunctionMeta(catalogData, command)?.label;
-    switch (command) {
-      case 'summarize': return 'Summarizing this email';
-      case 'translate': return 'Translating the thread';
-      case 'draft':
-      case 'compose':
-        return 'Drafting your reply';
-      case 'tone':
-        return 'Retuning the tone';
-      default:
-        return catalogLabel || fallback || 'Working on your request';
-    }
-  }
-
   function beginAiJourney({ scope = 'global', targetLabel = 'message', commandKey, headline, scopeTarget } = {}) {
     const defaultHeadline = getFunctionMeta(catalogData, commandKey)?.label || 'Working on your request';
     const subhead = getJourneySubhead(scope);
-    return aiJourney.begin({ scope, targetLabel, commandKey, scopeTarget, headline: headline || deriveJourneyHeadline(commandKey, defaultHeadline), subhead });
+    return aiJourney.begin({ scope, targetLabel, commandKey, scopeTarget, headline: headline || deriveHeadline(commandKey, defaultHeadline), subhead });
   }
 
   function advanceAiJourney(token, eventId) {
@@ -662,44 +636,6 @@ const panelErrorsStore = panelStores.errors;
   }
 
   // ---------- AI integration (parity with v1) ----------
-
-  function normalizeRecipient(recipient = {}) {
-    const name = typeof recipient.name === 'string' ? recipient.name.trim() : '';
-    const email = typeof recipient.email === 'string' ? recipient.email.trim() : '';
-    return { name, email };
-  }
-
-  function deriveRecipientContext({ toInput, composePayload, fallbackEmail } = {}) {
-    const fromInput = normalizeRecipient(parseRecipientInput(toInput));
-    if (fromInput.name || fromInput.email) {
-      return fromInput;
-    }
-
-    if (composePayload) {
-      const directPayload = normalizeRecipient({
-        name: composePayload.recipientName,
-        email: composePayload.recipientEmail || composePayload.toEmail
-      });
-      if (directPayload.name || directPayload.email) {
-        return directPayload;
-      }
-      if (composePayload.to) {
-        const parsedTo = normalizeRecipient(parseRecipientInput(composePayload.to));
-        if (parsedTo.name || parsedTo.email) {
-          return parsedTo;
-        }
-      }
-    }
-
-    if (fallbackEmail) {
-      const fallbackRecipient = normalizeRecipient(recipientFromEmail(fallbackEmail));
-      if (fallbackRecipient.name || fallbackRecipient.email) {
-        return fallbackRecipient;
-      }
-    }
-
-    return { name: '', email: '' };
-  }
 
   /**
    * Call AI command with email context.

@@ -35,6 +35,44 @@ export function recipientFromEmail(email) {
   return { name, email: address };
 }
 
+export function normalizeRecipient(recipient = {}) {
+  const name = typeof recipient.name === 'string' ? recipient.name.trim() : '';
+  const email = typeof recipient.email === 'string' ? recipient.email.trim() : '';
+  return { name, email };
+}
+
+export function deriveRecipientContext({ toInput, composePayload, fallbackEmail } = {}) {
+  const fromInput = normalizeRecipient(parseRecipientInput(toInput));
+  if (fromInput.name || fromInput.email) {
+    return fromInput;
+  }
+
+  if (composePayload) {
+    const directPayload = normalizeRecipient({
+      name: composePayload.recipientName,
+      email: composePayload.recipientEmail || composePayload.toEmail
+    });
+    if (directPayload.name || directPayload.email) {
+      return directPayload;
+    }
+    if (composePayload.to) {
+      const parsedTo = normalizeRecipient(parseRecipientInput(composePayload.to));
+      if (parsedTo.name || parsedTo.email) {
+        return parsedTo;
+      }
+    }
+  }
+
+  if (fallbackEmail) {
+    const fallbackRecipient = normalizeRecipient(recipientFromEmail(fallbackEmail));
+    if (fallbackRecipient.name || fallbackRecipient.email) {
+      return fallbackRecipient;
+    }
+  }
+
+  return { name: '', email: '' };
+}
+
 function formatParticipant(name, email, fallback) {
   const safeName = (name || '').trim();
   const safeEmail = (email || '').trim();
