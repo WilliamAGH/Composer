@@ -255,6 +255,7 @@
       actionOptions={actionMenuOptions}
       actionMenuLoading={actionMenuLoading}
       {mobile}
+      layout="tray"
       compact={compactActions}
       on:select={(event) => emit('commandSelect', event.detail)}
       on:actionSelect={(event) => emit('actionSelect', event.detail)}

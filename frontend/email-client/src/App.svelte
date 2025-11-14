@@ -11,7 +11,9 @@
   import EmailListPane from './lib/EmailListPane.svelte';
   import AiLoadingJourney from './lib/AiLoadingJourney.svelte';
   import DrawerBackdrop from './lib/DrawerBackdrop.svelte';
+  import MobileTopBar from './lib/MobileTopBar.svelte';
   import AiPanelDockChip from './lib/AiPanelDockChip.svelte';
+  import AiSummaryMobileSheet from './lib/AiSummaryMobileSheet.svelte';
   import ComingSoonModal from './lib/ComingSoonModal.svelte';
   import WindowNotice from './lib/WindowNotice.svelte';
 import { isMobile, isTablet, isDesktop, isWide, viewport, viewportSize } from './lib/viewportState';
@@ -23,7 +25,7 @@ import { isMobile, isTablet, isDesktop, isWide, viewport, viewportSize } from '.
   import { buildEmailContextString, parseRecipientInput, recipientFromEmail } from './lib/services/emailContextConstructor';
   import { buildReplyPrefill, buildForwardPrefill } from './lib/services/composePrefill.js';
   import { createAiJourneyStore } from './lib/services/aiJourneyStore';
-  import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, ArrowLeft, ChevronLeft, ChevronRight, Archive, Trash2, Sparkles, Loader2 } from 'lucide-svelte';
+  import { Menu, Pencil, Inbox as InboxIcon, Star as StarIcon, AlarmClock, Send, ChevronLeft, ChevronRight, Archive, Trash2, Sparkles, Loader2 } from 'lucide-svelte';
   import { DEFAULT_ACTION_OPTIONS, MAILBOX_ACTION_FALLBACKS, PRIMARY_TOOLBAR_PREFERENCE } from './lib/constants/catalogActions';
   import { getJourneySubhead } from './lib/constants/journeyScopes';
   import { escapeHtmlContent, renderMarkdownContent, formatRelativeTimestamp, formatFullTimestamp } from './lib/services/emailFormatting';
@@ -196,6 +198,15 @@ const panelErrorsStore = panelStores.errors;
   $: activePanelState = selectedPanelKey ? ($panelResponsesStore[selectedPanelKey] || null) : null;
   $: activePanelError = selectedPanelKey ? ($panelErrorsStore[selectedPanelKey] || '') : '';
   $: panelRenderReady = $panelSessionActiveStore && !$panelMinimizedStore && (activePanelState || activePanelJourneyOverlay);
+  $: mobilePanelVisible = mobile && panelRenderReady;
+  $: mobileDetailOverlayVisible = mobile && !!selected;
+  $: mobileComposeOverlayWindows = mobile
+    ? (Array.isArray(floatingWindows)
+      ? floatingWindows.filter((win) => win.kind === WindowKind.COMPOSE && !win.minimized)
+      : [])
+    : [];
+  $: mobileComposeOverlayVisible = mobileComposeOverlayWindows.length > 0;
+  $: overlayBackdropVisible = drawerVisible || mobileDetailOverlayVisible || mobilePanelVisible || mobileComposeOverlayVisible;
   $: if (selectedPanelKey !== previousPanelKey) {
     previousPanelKey = selectedPanelKey;
     panelStore.resetSessionState();
@@ -415,6 +426,31 @@ const panelErrorsStore = panelStores.errors;
   }
   function handleMenuClick(event) {
     toggleSidebar();
+  }
+
+  function closeTopComposeWindow() {
+    if (!mobileComposeOverlayVisible) return false;
+    const latest = mobileComposeOverlayWindows[mobileComposeOverlayWindows.length - 1];
+    if (!latest) return false;
+    windowManager.close(latest.id);
+    return true;
+  }
+
+  function handleOverlayBackdropClose() {
+    if (mobileComposeOverlayVisible && closeTopComposeWindow()) {
+      return;
+    }
+    if (mobilePanelVisible) {
+      handlePanelClose();
+      return;
+    }
+    if (mobileDetailOverlayVisible) {
+      mailboxLayout.selectEmailById(null);
+      return;
+    }
+    if (drawerVisible) {
+      mailboxLayout.closeDrawer();
+    }
   }
 
   function showWindowLimitMessage() {
@@ -905,8 +941,8 @@ const panelErrorsStore = panelStores.errors;
         }
       }}
     />
-    <!-- Mobile/Tablet: Semi-transparent backdrop overlay to close drawer when clicking outside -->
-    <DrawerBackdrop visible={drawerVisible} on:close={() => mailboxLayout.closeDrawer()} />
+    <!-- Mobile overlays + drawer share a single backdrop to keep context visible. -->
+    <DrawerBackdrop visible={overlayBackdropVisible} on:close={handleOverlayBackdropClose} />
 
     <EmailListPane
       search={search}
@@ -945,92 +981,27 @@ const panelErrorsStore = panelStores.errors;
   <!-- Content -->
   <section class="flex-1 flex flex-col bg-white/95 relative"
            class:hidden={mobile && !selected}>
-    {#if mobile}
-      <div class="px-4 py-3 border-b border-slate-200 flex flex-col gap-2">
-        <div class="flex items-center gap-2">
-          <button type="button" class="btn btn--icon" on:click={() => { mailboxLayout.selectEmailById(null); mailboxLayout.closeDrawer(); }} aria-label="Back to list">
-            <ArrowLeft class="h-4 w-4" />
-          </button>
-          <button type="button" title="Toggle menu" class="btn btn--icon relative z-[70]" on:click={handleMenuClick} aria-label="Open folders">
-            <Menu class="h-4 w-4" />
-          </button>
-          <div class="flex-1 min-w-0 flex flex-col gap-1">
-            <div class="relative" bind:this={mailboxMenuMobileRef}>
-              <input
-                placeholder="Search emails..."
-                value={search}
-                on:input={(event) => mailboxLayout.setSearch(event.currentTarget.value)}
-                class="mailbox-search-input w-full rounded-2xl border border-slate-200 bg-white/90 pl-4 pr-32 py-2 text-base text-slate-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-slate-200"
-              />
-              <button
-                type="button"
-                class="absolute inset-y-0 right-0 btn btn--primary btn--compact mailbox-ai-trigger"
-                class:mailbox-ai-trigger--compact={compactActions}
-                aria-haspopup="menu"
-                aria-expanded={mailboxActionsOpen && mailboxActionsHost === 'mobile'}
-                on:click={() => toggleMailboxActions('mobile')}
-                disabled={!hasMailboxCommands || filtered.length === 0 || !!mailboxCommandPendingKey}
-              >
-                <span class="flex items-center gap-1">
-                  {#if mailboxCommandPendingKey}
-                    <Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
-                  {:else}
-                    <Sparkles class="h-4 w-4" aria-hidden="true" />
-                  {/if}
-                </span>
-                <span class="mailbox-ai-trigger__label">
-                  {#if mailboxCommandPendingKey}
-                    {activeMailboxActionLabel ? `${activeMailboxActionLabel}…` : 'Running…'}
-                  {:else}
-                    AI Actions
-                  {/if}
-                </span>
-              </button>
-              {#if mailboxActionsOpen && mailboxActionsHost === 'mobile'}
-                <div
-                  class="absolute right-0 top-[calc(100%+0.5rem)] menu-surface"
-                  role="menu"
-                  tabindex="0"
-                  on:click|stopPropagation
-                  on:keydown|stopPropagation>
-                  <span class="menu-eyebrow">Mailbox Actions</span>
-                  <div class="menu-list">
-                    {#each mailboxCommandEntries as entry (entry.key)}
-                      <button
-                        type="button"
-                        class="menu-item text-left"
-                        on:click={() => handleMailboxAction(entry)}
-                        disabled={filtered.length === 0}
-                      >
-                        <div class="flex items-center gap-3 min-w-0">
-                          <div class="menu-item-icon">
-                            <Sparkles class="h-4 w-4" aria-hidden="true" />
-                          </div>
-                          <div class="flex-1 min-w-0">
-                            <p class="font-medium text-slate-900 tracking-wide truncate">{entry.label || entry.key}</p>
-                            {#if entry.description}
-                              <p class="text-xs text-slate-500 leading-snug">{entry.description}</p>
-                            {/if}
-                          </div>
-                        </div>
-                      </button>
-                    {/each}
-                  </div>
-                  <div class="mt-3 text-xs text-slate-500">
-                    Mailbox AI actions apply to the {filtered.length} message{filtered.length === 1 ? '' : 's'} currently listed.
-                  </div>
-                </div>
-              {/if}
-            </div>
-            {#if mailboxCommandPendingKey && activeMailboxActionLabel}
-              <p class="text-xs text-slate-500">{activeMailboxActionLabel} in progress…</p>
-            {/if}
-            {#if mailboxActionError}
-              <p class="text-xs text-rose-600">{mailboxActionError}</p>
-            {/if}
-          </div>
-        </div>
-      </div>
+    {#if mobile && !mobileDetailOverlayVisible}
+      <MobileTopBar
+        variant="search"
+        showBackButton={false}
+        searchValue={search}
+        hasMailboxCommands={hasMailboxCommands}
+        mailboxCommandEntries={mailboxCommandEntries}
+        mailboxCommandPendingKey={mailboxCommandPendingKey}
+        mailboxActionsOpen={mailboxActionsOpen}
+        activeActionsHost={mailboxActionsHost}
+        actionsHost="mobile"
+        activeMailboxActionLabel={activeMailboxActionLabel}
+        mailboxActionError={mailboxActionError}
+        filteredCount={filtered.length}
+        compactActions={compactActions}
+        bind:actionSurfaceRef={mailboxMenuMobileRef}
+        on:toggleMenu={handleMenuClick}
+        on:searchChange={(event) => mailboxLayout.setSearch(event.detail.value)}
+        on:toggleMailboxActions={(event) => toggleMailboxActions(event.detail.host)}
+        on:mailboxAction={(event) => handleMailboxAction(event.detail.entry)}
+      />
     {/if}
     {#if tablet}
       <div class="px-5 py-3 border-b border-slate-200">
@@ -1050,7 +1021,7 @@ const panelErrorsStore = panelStores.errors;
           <p>Select an email to read</p>
         </div>
       </div>
-    {:else}
+    {:else if !mobile}
       <div class="border-b border-slate-200"
            class:px-4={mobile}
            class:px-5={tablet}
@@ -1093,7 +1064,7 @@ const panelErrorsStore = panelStores.errors;
             renderMarkdownFn={renderMarkdown}
           />
         </div>
-        {#if panelRenderReady}
+        {#if panelRenderReady && !mobile}
           <div class={`ai-panel-wrapper ${$panelMaximizedStore ? 'maximized' : ''}`}>
             <AiSummaryWindow
               panelState={activePanelState}
@@ -1113,6 +1084,69 @@ const panelErrorsStore = panelStores.errors;
     {/if}
   </section>
   </div>
+
+  {#if mobileDetailOverlayVisible && selected}
+    <div class="mobile-detail-sheet">
+      <MobileTopBar
+        variant="custom"
+        backButtonAriaLabel="Back to inbox"
+        on:back={() => mailboxLayout.selectEmailById(null)}
+        on:toggleMenu={handleMenuClick}>
+        <div slot="center" class="mobile-detail-sheet__title">
+          <p class="mobile-detail-sheet__eyebrow">{escapeHtml(selected.from || selected.fromEmail || 'Sender')}</p>
+          <p class="mobile-detail-sheet__headline">{escapeHtml(selected.subject || 'No subject')}</p>
+        </div>
+      </MobileTopBar>
+      <div class="mobile-detail-sheet__body">
+        <div class="mobile-detail-sheet__toolbar">
+          <EmailActionToolbar
+            email={selected}
+            commands={primaryCommandEntries}
+            actionMenuOptions={actionMenuOptions}
+            actionMenuLoading={actionMenuLoading}
+            mobile={true}
+            compactActions={compactActions}
+            currentFolderId={resolveFolderForMessage(selected)}
+            pendingMove={pendingMoves.has(selected?.id)}
+            escapeHtmlFn={escapeHtml}
+            formatFullDateFn={formatFullTimestamp}
+            on:reply={openReply}
+            on:forward={openForward}
+            on:archive={() => archiveEmail(selected)}
+            on:delete={() => deleteEmail(selected)}
+            on:move={(event) => moveEmailToFolder(selected, event.detail.targetFolderId)}
+            on:commandSelect={(event) => runMainAiCommand(event.detail)}
+            on:actionSelect={handleActionSelect}
+            on:actionMenuToggle={handleActionMenuToggle}
+            on:comingSoon={(event) => handleComingSoon(event.detail)}
+          />
+        </div>
+        <div class="mobile-detail-sheet__content">
+          <EmailDetailView
+            email={selected}
+            mobile={true}
+            tablet={false}
+            desktop={false}
+            wide={false}
+            renderMarkdownFn={renderMarkdown}
+          />
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  {#if mobilePanelVisible}
+    <AiSummaryMobileSheet
+      panelState={activePanelState}
+      journeyOverlay={activePanelJourneyOverlay}
+      error={activePanelError}
+      visible={true}
+      on:close={handlePanelClose}
+      on:minimize={handlePanelMinimize}
+      on:toggleMenu={handleMenuClick}
+      on:runCommand={(event) => runMainAiCommand(event.detail.command)}
+    />
+  {/if}
 
   {#each floatingWindows as win, index}
     {#if win.kind === WindowKind.COMPOSE}
@@ -1220,5 +1254,77 @@ const panelErrorsStore = panelStores.errors;
         padding-left: env(safe-area-inset-left);
       }
     }
+  }
+
+  /**
+   * Mobile detail overlay mirrors compose + AI sheets so message reading uses a dedicated modal.
+   */
+  .mobile-detail-sheet {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(15, 23, 42, 0.08));
+    backdrop-filter: blur(12px);
+  }
+
+  @supports (padding: env(safe-area-inset-top)) {
+    .mobile-detail-sheet {
+      padding-top: env(safe-area-inset-top);
+      padding-right: env(safe-area-inset-right);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+    }
+  }
+
+  .mobile-detail-sheet__title {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .mobile-detail-sheet__eyebrow {
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: rgba(148, 163, 184, 0.9);
+  }
+
+  .mobile-detail-sheet__headline {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mobile-detail-sheet__body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0 1rem 1rem;
+    min-height: 0;
+  }
+
+  .mobile-detail-sheet__toolbar {
+    padding-top: 0.25rem;
+  }
+
+  .mobile-detail-sheet__content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 25px 45px -20px rgba(15, 23, 42, 0.25);
+  }
+
+  .mobile-detail-sheet__content :global(.prose),
+  .mobile-detail-sheet__content :global(iframe) {
+    border-radius: 1rem;
   }
 </style>

@@ -8,6 +8,7 @@
   export let journeyOverlay = null;
   export let error = '';
   export let maximized = false;
+  export let hideChrome = false;
 
   const dispatch = createEventDispatcher();
 
@@ -51,33 +52,35 @@
   }
 </script>
 
-<section class={`ai-summary-panel ${maximized ? 'maximized' : ''}`} aria-live="polite">
-  <header class="panel-header">
-    <div class="panel-title-group">
-      <div class="panel-heading">
-        <span class="panel-chip">{badgeLabel}</span>
-        {#if updatedLabel}
-          <span class="panel-meta">Updated at {updatedLabel}</span>
-        {/if}
+<section class={`ai-summary-panel ${maximized ? 'maximized' : ''} ${hideChrome ? 'ai-summary-panel--sheet' : ''}`} aria-live="polite">
+  {#if !hideChrome}
+    <header class="panel-header">
+      <div class="panel-title-group">
+        <div class="panel-heading">
+          <span class="panel-chip">{badgeLabel}</span>
+          {#if updatedLabel}
+            <span class="panel-meta">Updated at {updatedLabel}</span>
+          {/if}
+        </div>
       </div>
-    </div>
-    <WindowActionControls
-      showRefresh={true}
-      {maximized}
-      refreshDisabled={isLoading}
-      refreshAriaLabel={primaryActionAria}
-      allowMinimize={true}
-      allowMaximize={true}
-      allowClose={true}
-      minimizeTitle="Minimize"
-      maximizeTitle={maximized ? 'Restore' : 'Maximize'}
-      closeTitle="Close"
-      on:refresh={handlePrimaryAction}
-      on:minimize={minimize}
-      on:maximize={toggleMaximize}
-      on:close={closePanel}
-    />
-  </header>
+      <WindowActionControls
+        showRefresh={true}
+        {maximized}
+        refreshDisabled={isLoading}
+        refreshAriaLabel={primaryActionAria}
+        allowMinimize={true}
+        allowMaximize={true}
+        allowClose={true}
+        minimizeTitle="Minimize"
+        maximizeTitle={maximized ? 'Restore' : 'Maximize'}
+        closeTitle="Close"
+        on:refresh={handlePrimaryAction}
+        on:minimize={minimize}
+        on:maximize={toggleMaximize}
+        on:close={closePanel}
+      />
+    </header>
+  {/if}
   <div class="panel-body">
     <div class="panel-scroll">
       {#if isLoading}
@@ -485,3 +488,9 @@
     }
   }
 </style>
+  .ai-summary-panel--sheet {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    background: transparent;
+  }

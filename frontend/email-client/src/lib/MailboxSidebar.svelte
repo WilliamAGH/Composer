@@ -56,9 +56,14 @@
     }
   };
   const FALLBACK_VARIANT = 'inline-desktop';
+  const TRANSLATE_FALLBACKS = {
+    '-translate-x-full': 'translateX(-100%)'
+  };
   $: variantConfig = sidebarVariants[variant] || sidebarVariants[FALLBACK_VARIANT];
   $: collapsed = variant === 'inline-collapsed';
   $: ariaHidden = (variantConfig.hidden || collapsed) ? 'true' : 'false';
+  $: pointerEventsValue = variantConfig.pointerNone ? 'none' : 'auto';
+  $: transformValue = TRANSLATE_FALLBACKS[variantConfig.translateClass] || 'none';
 
   function select(target) {
     dispatch('selectMailbox', { target });
@@ -79,7 +84,9 @@
        class:left-0={variantConfig.fixed}
        class:z-[60]={variantConfig.fixed}
        class:shadow-xl={variantConfig.fixed}
-       aria-hidden={ariaHidden}>
+       aria-hidden={ariaHidden}
+       style:pointer-events={pointerEventsValue}
+       style:transform={transformValue}>
   <div class="p-4 border-b border-slate-200">
     <div class="flex items-center gap-2 mb-4 justify-center w-full text-center">
       <InboxIcon class="h-6 w-6 text-slate-900" />

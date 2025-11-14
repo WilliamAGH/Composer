@@ -32,6 +32,7 @@
   export let resolveFolderFn = () => 'inbox';
   export let pendingMoveIds = new Set();
   export let compactActions = false;
+  $: drawerOverlayActive = mobile && drawerVisible;
 
   const dispatch = createEventDispatcher();
   let rowMoveMenuFor = null;
@@ -102,6 +103,11 @@
 </script>
 
 <section class="shrink-0 flex flex-col bg-white/90 border-r border-slate-200"
+         class:fixed={drawerOverlayActive}
+         class:inset-0={drawerOverlayActive}
+         class:z-[70]={drawerOverlayActive}
+         class:shadow-2xl={drawerOverlayActive}
+         class:bg-white={drawerOverlayActive}
          class:w-[28rem]={wide}
          class:w-[25rem]={desktop && !wide}
          class:w-[20rem]={tablet && showEmailList}

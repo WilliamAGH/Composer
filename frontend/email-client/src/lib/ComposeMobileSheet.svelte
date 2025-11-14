@@ -1,7 +1,8 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { Wand2, Highlighter, ChevronDown, Send, Paperclip, Trash2, X } from 'lucide-svelte';
+  import { Wand2, Highlighter, ChevronDown, Send, Paperclip, Trash2 } from 'lucide-svelte';
   import AiLoadingJourney from './AiLoadingJourney.svelte';
+  import MobileTopBar from './MobileTopBar.svelte';
 
   export let title = 'Compose';
   export let to = '';
@@ -83,18 +84,22 @@
 </script>
 
 <div class="compose-mobile">
-  <header class="compose-mobile__header">
-    <button type="button" class="btn btn--icon" aria-label="Close compose" on:click={onClose}>
-      <X class="h-4 w-4" />
-    </button>
-    <div class="compose-mobile__title">
+  <MobileTopBar
+    variant="custom"
+    showMenuButton={false}
+    backIcon="close"
+    backButtonAriaLabel="Close compose"
+    on:back={onClose}>
+    <div slot="center" class="compose-mobile__title">
       <p class="compose-mobile__eyebrow">Compose</p>
       <h2>{title}</h2>
     </div>
-    <button type="button" class="btn btn--primary btn--labelled" on:click={onSend} disabled={journeyInlineActive}>
-      <Send class="h-4 w-4" /> Send
-    </button>
-  </header>
+    <div slot="actions">
+      <button type="button" class="btn btn--primary btn--labelled" on:click={onSend} disabled={journeyInlineActive}>
+        <Send class="h-4 w-4" /> Send
+      </button>
+    </div>
+  </MobileTopBar>
 
   <section class="compose-mobile__body">
     <input
@@ -231,17 +236,8 @@
     z-index: 85;
   }
   /**
-   * Header arranges close button, title, and primary send CTA inline for quick access.
-   * @usage - compose-mobile header region
-   */
-  .compose-mobile__header {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-  /**
    * Title stack mirrors the desktop naming but centers for limited horizontal room.
-   * @usage - compose-mobile title area
+   * @usage - compose-mobile title area inside MobileTopBar slot
    */
   .compose-mobile__title {
     flex: 1;
@@ -274,15 +270,15 @@
    * Field styling mirrors shared desktop fields but keeps mobile-safe padding baked in locally.
    * @usage - compose-mobile inputs only
    */
-  .compose-mobile__field {
-    width: 100%;
-    border: 1px solid rgba(148, 163, 184, 0.7);
-    border-radius: 16px;
-    padding: 0.85rem 1rem;
-    font-size: 1rem;
-    line-height: 1.5;
-    background: rgba(255, 255, 255, 0.95);
-  }
+.compose-mobile__field {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.7);
+  border-radius: 16px;
+  padding: 0.85rem 1rem;
+  font-size: clamp(16px, 1rem + 0.05vw, 17px);
+  line-height: 1.5;
+  background: rgba(255, 255, 255, 0.95);
+}
   /**
    * AI action rows present buttons side-by-side while collapsing menus underneath.
    * @usage - compose-mobile AI quick actions (Draft + Tone)
@@ -325,17 +321,17 @@
    * Textarea keeps taller baseline for comfortable mobile drafting.
    * @usage - compose-mobile message body
    */
-  .compose-mobile__textarea {
-    width: 100%;
-    border: 1px solid rgba(148, 163, 184, 0.7);
-    border-radius: 16px;
-    padding: 0.85rem 1rem;
-    font-size: 1rem;
-    line-height: 1.5;
-    min-height: min(45vh, 360px);
-    resize: none;
-    background: rgba(255, 255, 255, 0.95);
-  }
+.compose-mobile__textarea {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.7);
+  border-radius: 16px;
+  padding: 0.85rem 1rem;
+  font-size: clamp(16px, 1rem + 0.05vw, 17px);
+  line-height: 1.5;
+  min-height: min(45vh, 360px);
+  resize: none;
+  background: rgba(255, 255, 255, 0.95);
+}
   /**
    * Journey card inherits spacing from body but adds subtle border for readability.
    * @usage - compose-mobile inline AI journey readout
