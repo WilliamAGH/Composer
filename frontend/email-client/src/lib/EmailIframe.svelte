@@ -45,7 +45,7 @@
 
 <div class="email-html-container" bind:this={container}>
   {#if !rendered && fallback}
-    <div class="email-html-fallback prose prose-sm text-slate-700 break-words">{@html fallback}</div>
+    <div class="email-html-fallback prose prose-sm text-slate-700">{@html fallback}</div>
   {/if}
 </div>
 
@@ -63,7 +63,7 @@
   }
 
   /**
-   * Sanitized fallback rendering mirrors iframe padding and allows horizontal scroll when needed.
+   * Sanitized fallback rendering mirrors iframe padding and wraps content to fit mobile viewport.
    * @usage - Applied to the fallback div rendered when EmailRenderer fails or is unavailable
    * @related - .email-html-container to inherit width constraints
    */
@@ -71,7 +71,6 @@
     width: 100%;
     max-width: 100%;
     padding: 1rem;
-    overflow-x: auto;
     background: transparent;
     overflow-wrap: anywhere;
   }
