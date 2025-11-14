@@ -59,6 +59,7 @@ import { createAiPanelStore } from './lib/stores/aiPanelStore';
   const initialEffectiveFolders = bootstrap.effectiveFolders && typeof bootstrap.effectiveFolders === 'object' ? bootstrap.effectiveFolders : null;
 const mailboxLayout = createMailboxLayoutStore(initialEmails, initialFolderCounts, initialEffectiveFolders);
 const ACTIVE_MAILBOX_ID = 'primary';
+const HAMBURGER_COLLAPSE_BREAKPOINT = 1215;
 const ACTION_TOOLBAR_COMPACT_BREAKPOINT = 1180;
 const SIDEBAR_WIDTH_MAP = {
   'inline-wide': 448,
@@ -191,8 +192,8 @@ const panelErrorsStore = panelStores.errors;
   $: viewportType = $viewport;
   $: viewportTier = wide ? 'wide' : desktop ? 'desktop' : tablet ? 'tablet' : 'mobile';
   $: viewportDimensions = $viewportSize;
-  $: inlineSidebar = viewportTier === 'desktop' || viewportTier === 'wide';
-  $: mailboxLayout.setDrawerMode(mobile || tablet);
+  $: inlineSidebar = (viewportDimensions?.width ?? 0) >= HAMBURGER_COLLAPSE_BREAKPOINT && (viewportTier === 'desktop' || viewportTier === 'wide');
+  $: mailboxLayout.setDrawerMode(!inlineSidebar);
   $: sidebarVariant = (() => {
     if (!inlineSidebar) {
       return drawerVisible ? 'drawer-visible' : 'drawer-hidden';

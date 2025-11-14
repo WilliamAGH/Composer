@@ -22,6 +22,7 @@
   export let onAttach = () => {};
   export let onClose = () => {};
   export let registerInputRefs = () => {};
+  export let showDraftMenu = true;
 
   let draftMenuOpen = false;
   let toneMenuOpen = false;
@@ -55,6 +56,9 @@
   });
 
   $: registerInputRefs?.({ to: toInputEl, subject: subjectInputEl, message: bodyInputEl });
+  $: if (!showDraftMenu) {
+    draftMenuOpen = false;
+  }
 
   function runPrimaryDraft() {
     onRunPrimaryDraft?.();
@@ -117,30 +121,32 @@
       <button type="button" class="btn btn--ghost btn--labelled compose-mobile__pill" on:click={runPrimaryDraft}>
         <Wand2 class="h-4 w-4" /> {primaryDraftOption?.label || 'Draft'}
       </button>
-      <button
-        type="button"
-        class="btn btn--ghost btn--icon compose-mobile__pill compose-mobile__pill-toggle"
-        aria-haspopup="menu"
-        aria-expanded={draftMenuOpen}
-        bind:this={draftToggleButton}
-        on:click={toggleDraftMenu}
-        aria-label="More drafting options">
-        <ChevronDown class={`h-4 w-4 transition ${draftMenuOpen ? 'rotate-180' : ''}`} />
-      </button>
-      {#if draftMenuOpen && draftOptions.length}
-        <div class="menu-surface compose-mobile__menu" bind:this={draftMenuRef}>
-          <span class="menu-eyebrow">Drafting Options</span>
-          <div class="menu-list">
-            {#each draftOptions as option (option.key)}
-              <button type="button" class="menu-item" on:click={() => invokeDraftOption(option)}>
-                <div class="flex items-center gap-2 min-w-0">
-                  <Wand2 class="h-4 w-4 text-slate-500" />
-                  <span class="truncate">{option.label}</span>
-                </div>
-              </button>
-            {/each}
+      {#if showDraftMenu}
+        <button
+          type="button"
+          class="btn btn--ghost btn--icon compose-mobile__pill compose-mobile__pill-toggle"
+          aria-haspopup="menu"
+          aria-expanded={draftMenuOpen}
+          bind:this={draftToggleButton}
+          on:click={toggleDraftMenu}
+          aria-label="More drafting options">
+          <ChevronDown class={`h-4 w-4 transition ${draftMenuOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {#if draftMenuOpen && draftOptions.length}
+          <div class="menu-surface compose-mobile__menu" bind:this={draftMenuRef}>
+            <span class="menu-eyebrow">Drafting Options</span>
+            <div class="menu-list">
+              {#each draftOptions as option (option.key)}
+                <button type="button" class="menu-item" on:click={() => invokeDraftOption(option)}>
+                  <div class="flex items-center gap-2 min-w-0">
+                    <Wand2 class="h-4 w-4 text-slate-500" />
+                    <span class="truncate">{option.label}</span>
+                  </div>
+                </button>
+              {/each}
+            </div>
           </div>
-        </div>
+        {/if}
       {/if}
     </div>
 
