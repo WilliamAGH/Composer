@@ -1,10 +1,9 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { Wand2, Highlighter, ChevronDown, Send, Paperclip, Trash2 } from 'lucide-svelte';
+  import { Wand2, Highlighter, ChevronDown, Send, Paperclip, Trash2, MoreVertical } from 'lucide-svelte';
   import AiLoadingJourney from './AiLoadingJourney.svelte';
   import MobileTopBar from './MobileTopBar.svelte';
 
-  export let title = 'Compose';
   export let to = '';
   export let subject = '';
   export let body = '';
@@ -26,10 +25,13 @@
 
   let draftMenuOpen = false;
   let toneMenuOpen = false;
+  let overflowMenuOpen = false;
   let draftMenuRef = null;
   let toneMenuRef = null;
+  let overflowMenuRef = null;
   let draftToggleButton = null;
   let toneToggleButton = null;
+  let overflowMenuButton = null;
   let toInputEl = null;
   let subjectInputEl = null;
   let bodyInputEl = null;
@@ -43,6 +45,9 @@
     }
     if (toneMenuOpen && toneMenuRef && !toneMenuRef.contains(target) && !toneToggleButton?.contains(target)) {
       toneMenuOpen = false;
+    }
+    if (overflowMenuOpen && overflowMenuRef && !overflowMenuRef.contains(target) && !overflowMenuButton?.contains(target)) {
+      overflowMenuOpen = false;
     }
   }
 
@@ -83,7 +88,18 @@
 
   function toggleToneMenu() {
     toneMenuOpen = !toneMenuOpen;
-    if (toneMenuOpen) draftMenuOpen = false;
+    if (toneMenuOpen) {
+      draftMenuOpen = false;
+      overflowMenuOpen = false;
+    }
+  }
+
+  function toggleOverflowMenu() {
+    overflowMenuOpen = !overflowMenuOpen;
+    if (overflowMenuOpen) {
+      draftMenuOpen = false;
+      toneMenuOpen = false;
+    }
   }
 </script>
 
@@ -96,9 +112,30 @@
     on:back={onClose}>
     <div slot="center" class="compose-mobile__title">
       <p class="compose-mobile__eyebrow">Compose</p>
-      <h2>{title}</h2>
     </div>
-    <div slot="actions">
+    <div slot="actions" class="compose-mobile__actions">
+      <button
+        bind:this={overflowMenuButton}
+        type="button"
+        class="btn btn--ghost btn--icon"
+        aria-label="More options"
+        aria-haspopup="menu"
+        aria-expanded={overflowMenuOpen}
+        on:click={toggleOverflowMenu}>
+        <MoreVertical class="h-4 w-4" />
+      </button>
+      {#if overflowMenuOpen}
+        <div class="compose-mobile__overflow-menu" bind:this={overflowMenuRef}>
+          <button type="button" class="compose-mobile__overflow-item" on:click={() => { onAttach(); overflowMenuOpen = false; }}>
+            <Paperclip class="h-4 w-4" />
+            <span>Attach</span>
+          </button>
+          <button type="button" class="compose-mobile__overflow-item compose-mobile__overflow-item--destructive" on:click={() => { onDeleteDraft(); overflowMenuOpen = false; }}>
+            <Trash2 class="h-4 w-4" />
+            <span>Delete</span>
+          </button>
+        </div>
+      {/if}
       <button type="button" class="btn btn--primary btn--labelled" on:click={onSend} disabled={journeyInlineActive}>
         <Send class="h-4 w-4" /> Send
       </button>
@@ -119,7 +156,7 @@
 
     <div class="compose-mobile__ai-row">
       <button type="button" class="btn btn--ghost btn--labelled compose-mobile__pill" on:click={runPrimaryDraft}>
-        <Wand2 class="h-4 w-4" /> {primaryDraftOption?.label || 'Draft'}
+        <Wand2 class="h-4 w-4" /> {primaryDraftOption?.label || 'Draft Reply'}
       </button>
       {#if showDraftMenu}
         <button
@@ -148,12 +185,9 @@
           </div>
         {/if}
       {/if}
-    </div>
-
-    <div class="compose-mobile__ai-row">
       <button
         type="button"
-        class="btn btn--ghost btn--labelled compose-mobile__pill compose-mobile__pill--wide"
+        class="btn btn--ghost btn--labelled compose-mobile__pill compose-mobile__tone-pill"
         aria-haspopup="menu"
         aria-expanded={toneMenuOpen}
         bind:this={toneToggleButton}
@@ -162,7 +196,7 @@
         <ChevronDown class={`h-4 w-4 text-slate-500 transition ${toneMenuOpen ? 'rotate-180' : ''}`} />
       </button>
       {#if toneMenuOpen}
-        <div class="menu-surface compose-mobile__menu" bind:this={toneMenuRef}>
+        <div class="menu-surface compose-mobile__menu compose-mobile__menu--tone" bind:this={toneMenuRef}>
           <span class="menu-eyebrow">Rewrite Tone</span>
           <div class="menu-list">
             {#each tonePresets as preset (preset.id)}
@@ -181,7 +215,6 @@
     <textarea
       bind:this={bodyInputEl}
       bind:value={body}
-      rows={8}
       placeholder="Type your message..."
       class="compose-mobile__textarea"
       disabled={journeyInlineActive}
@@ -215,15 +248,6 @@
       </div>
     {/if}
   </section>
-
-  <footer class="compose-mobile__footer">
-    <button type="button" class="btn btn--secondary btn--labelled" on:click={onAttach}>
-      <Paperclip class="h-4 w-4" /> Attach
-    </button>
-    <button type="button" class="btn btn--ghost btn--labelled" on:click={onDeleteDraft}>
-      <Trash2 class="h-4 w-4" /> Delete
-    </button>
-  </footer>
 </div>
 
 <style>
@@ -242,17 +266,12 @@
     z-index: 85;
   }
   /**
-   * Title stack mirrors the desktop naming but centers for limited horizontal room.
+   * Title stack shows only eyebrow label, subject removed to save space.
    * @usage - compose-mobile title area inside MobileTopBar slot
    */
   .compose-mobile__title {
     flex: 1;
     min-width: 0;
-  }
-  .compose-mobile__title h2 {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #0f172a;
   }
   .compose-mobile__eyebrow {
     font-size: 0.65rem;
@@ -262,7 +281,7 @@
     margin-bottom: 0.15rem;
   }
   /**
-   * Body stacks form controls with generous spacing while preserving ≥16px font sizing.
+   * Body stacks form controls and uses remaining space for textarea.
    * @usage - compose-mobile main form section
    */
   .compose-mobile__body {
@@ -271,6 +290,7 @@
     flex-direction: column;
     gap: 0.75rem;
     overflow-y: auto;
+    min-height: 0;
   }
   /**
    * Field styling mirrors shared desktop fields but keeps mobile-safe padding baked in locally.
@@ -308,9 +328,12 @@
     justify-content: center;
     padding: 0;
   }
-  .compose-mobile__pill--wide {
-    flex: 1;
-    justify-content: space-between;
+  /**
+   * Tone pill sits inline with Draft button.
+   * @usage - Tone button inside AI row
+   */
+  .compose-mobile__tone-pill {
+    min-width: max-content;
   }
   /**
    * Dropdown menus reuse the shared glass surface but anchor underneath the trigger.
@@ -320,11 +343,20 @@
     position: absolute;
     left: 0;
     right: 0;
-    margin-top: 0.35rem;
+    top: calc(100% + 0.35rem);
     z-index: var(--z-dropdown, 200);
   }
   /**
-   * Textarea keeps taller baseline for comfortable mobile drafting.
+   * Tone menu anchors to right edge since tone button is on right side.
+   * @usage - Tone dropdown menu
+   */
+  .compose-mobile__menu--tone {
+    left: auto;
+    right: 0;
+    min-width: 16rem;
+  }
+  /**
+   * Textarea expands to fill remaining space for maximum drafting area.
    * @usage - compose-mobile message body
    */
 .compose-mobile__textarea {
@@ -334,7 +366,8 @@
   padding: 0.85rem 1rem;
   font-size: clamp(16px, 1rem + 0.05vw, 17px);
   line-height: 1.5;
-  min-height: min(45vh, 360px);
+  flex: 1;
+  min-height: 0;
   resize: none;
   background: rgba(255, 255, 255, 0.95);
 }
@@ -375,12 +408,61 @@
     color: #334155;
   }
   /**
-   * Footer pins primary secondary actions with safe spacing at the bottom of the sheet.
-   * @usage - compose-mobile footer controls
+   * Actions container for overflow menu and send button.
+   * @usage - Top bar actions slot
    */
-  .compose-mobile__footer {
+  .compose-mobile__actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    position: relative;
+  }
+
+  /**
+   * Overflow menu for attach and delete actions.
+   * @usage - Dropdown from overflow button
+   */
+  .compose-mobile__overflow-menu {
+    position: fixed;
+    right: 1rem;
+    top: auto;
+    bottom: auto;
+    z-index: 250;
+    background: white;
+    border-radius: 0.85rem;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.18);
+    padding: 0.5rem;
+    min-width: 11rem;
+  }
+
+  /**
+   * Overflow menu item styling.
+   * @usage - Buttons inside overflow menu
+   */
+  .compose-mobile__overflow-item {
     display: flex;
-    gap: 0.5rem;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    border-radius: 0.5rem;
+    background: transparent;
+    border: none;
+    color: #0f172a;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .compose-mobile__overflow-item:hover {
+    background: rgba(248, 250, 252, 0.9);
+  }
+
+  .compose-mobile__overflow-item--destructive {
+    color: #b91c1c;
   }
 
   @supports (padding: env(safe-area-inset-top)) {

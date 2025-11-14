@@ -156,10 +156,15 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
       <span class="action-pill__label">Run AI Assistant</span>
     </button>
   {:else}
-      <div class={`relative ${mobile ? 'span-2' : ''}`}>
+      <div class="relative" class:span-2={mobile && !trayMode}>
         <button
           type="button"
-          class={`btn btn--ghost btn--compact action-pill ${mobile ? 'w-full justify-center' : ''}`}
+          class="btn action-pill"
+          class:btn--icon={trayMode}
+          class:btn--ghost={!trayMode}
+          class:btn--compact={!trayMode}
+          class:w-full={mobile && !trayMode}
+          class:justify-center={mobile && !trayMode}
           class:action-pill--tray={trayMode}
           on:click={toggleActionMenu}
           aria-haspopup="menu"
@@ -168,13 +173,17 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
           title="AI Actions"
           aria-busy={actionMenuLoading}
           bind:this={actionButtonEl}>
-          <span class="action-pill__icon btn-icon-chip">
+          {#if trayMode}
             <Sparkles class="h-4 w-4" aria-hidden="true" />
-          </span>
-          <span class="action-pill__label tracking-wide">Actions</span>
-          <ChevronDown
-            class={`action-pill__chevron h-4 w-4 transition ${actionMenuOpen ? 'text-slate-700 rotate-180' : 'text-slate-500'}`}
-            aria-hidden="true" />
+          {:else}
+            <span class="action-pill__icon btn-icon-chip">
+              <Sparkles class="h-4 w-4" aria-hidden="true" />
+            </span>
+            <span class="action-pill__label tracking-wide">Actions</span>
+            <ChevronDown
+              class={`action-pill__chevron h-4 w-4 transition ${actionMenuOpen ? 'text-slate-700 rotate-180' : 'text-slate-500'}`}
+              aria-hidden="true" />
+          {/if}
         </button>
       {#if actionMenuOpen}
         <div
@@ -206,30 +215,44 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
     {#if summarizeEntry}
       <button
         type="button"
-        class="btn btn--secondary btn--compact action-pill"
+        class="btn action-pill"
+        class:btn--icon={trayMode}
+        class:btn--secondary={!trayMode}
+        class:btn--compact={!trayMode}
         class:action-pill--tray={trayMode}
         aria-label={labelForEntry(summarizeEntry)}
         title={labelForEntry(summarizeEntry)}
         on:click={() => handleClick(summarizeEntry.key)}>
-        <span class="action-pill__icon">
-          <svelte:component this={resolveIconComponent(summarizeEntry.key)} class="h-4 w-4 text-slate-500" aria-hidden="true" />
-        </span>
-        <span class="action-pill__label">{labelForEntry(summarizeEntry)}</span>
+        {#if trayMode}
+          <svelte:component this={resolveIconComponent(summarizeEntry.key)} class="h-4 w-4" aria-hidden="true" />
+        {:else}
+          <span class="action-pill__icon">
+            <svelte:component this={resolveIconComponent(summarizeEntry.key)} class="h-4 w-4 text-slate-500" aria-hidden="true" />
+          </span>
+          <span class="action-pill__label">{labelForEntry(summarizeEntry)}</span>
+        {/if}
       </button>
     {/if}
 
     {#if draftEntry}
       <button
         type="button"
-        class="btn btn--secondary btn--compact action-pill"
+        class="btn action-pill"
+        class:btn--icon={trayMode}
+        class:btn--secondary={!trayMode}
+        class:btn--compact={!trayMode}
         class:action-pill--tray={trayMode}
         aria-label={labelForEntry(draftEntry)}
         title={labelForEntry(draftEntry)}
         on:click={() => handleClick(draftEntry.key)}>
-        <span class="action-pill__icon">
-          <svelte:component this={resolveIconComponent(draftEntry.key)} class="h-4 w-4 text-slate-500" aria-hidden="true" />
-        </span>
-        <span class="action-pill__label">{labelForEntry(draftEntry)}</span>
+        {#if trayMode}
+          <svelte:component this={resolveIconComponent(draftEntry.key)} class="h-4 w-4" aria-hidden="true" />
+        {:else}
+          <span class="action-pill__icon">
+            <svelte:component this={resolveIconComponent(draftEntry.key)} class="h-4 w-4 text-slate-500" aria-hidden="true" />
+          </span>
+          <span class="action-pill__label">{labelForEntry(draftEntry)}</span>
+        {/if}
       </button>
     {/if}
 

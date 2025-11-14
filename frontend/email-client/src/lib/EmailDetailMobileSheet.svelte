@@ -1,6 +1,5 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { ArrowLeft } from 'lucide-svelte';
   import EmailActionToolbar from './EmailActionToolbar.svelte';
   import EmailDetailView from './EmailDetailView.svelte';
 
@@ -32,15 +31,6 @@
 
 {#if email}
   <div class="mobile-detail-sheet">
-    <div class="mobile-detail-sheet__header">
-      <button
-        type="button"
-        class="btn btn--icon z-[70]"
-        aria-label="Back to inbox"
-        on:click={handleBack}>
-        <ArrowLeft class="h-4 w-4" aria-hidden="true" />
-      </button>
-    </div>
     <div class="mobile-detail-sheet__body">
       <div class="mobile-detail-sheet__toolbar">
         <EmailActionToolbar
@@ -54,6 +44,8 @@
           pendingMove={pendingMove}
           escapeHtmlFn={escapeHtmlFn}
           formatFullDateFn={formatFullDateFn}
+          showBackButton={true}
+          on:back={handleBack}
           on:reply={() => emit('reply')}
           on:forward={() => emit('forward')}
           on:archive={() => emit('archive')}
@@ -102,14 +94,6 @@
     }
   }
 
-
-  .mobile-detail-sheet__header {
-    display: flex;
-    align-items: center;
-    padding: 0.75rem 1rem;
-    background: rgba(255, 255, 255, 0.96);
-    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-  }
 
   .mobile-detail-sheet__body {
     flex: 1;

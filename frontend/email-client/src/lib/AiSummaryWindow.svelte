@@ -161,13 +161,16 @@
    * for better performance and switch to a solid white background for maximum contrast
    * and readability of longer content.
    *
+   * IMPORTANT: This only applies when NOT in sheet mode. The sheet variant overrides
+   * all styling to prevent nested backgrounds.
+   *
    * @usage - Applied when panel is in maximized state via .ai-summary-panel.maximized
    * @background - Solid white replaces gradient for clarity
    * @backdrop - Blur removed for performance during expanded view
    * @shadow - Deeper shadow emphasizes elevated maximized state
-   * @related - .ai-summary-panel base styles
+   * @related - .ai-summary-panel base styles, .ai-summary-panel--sheet
    */
-  .ai-summary-panel.maximized {
+  .ai-summary-panel.maximized:not(.ai-summary-panel--sheet) {
     background: #ffffff;
     border-color: rgba(15, 23, 42, 0.15);
     box-shadow: 0 60px 140px -55px rgba(15, 23, 42, 0.5);
@@ -488,10 +491,26 @@
     }
   }
 
+  /**
+   * Sheet variant removes ALL visual framing to prevent nested backgrounds.
+   *
+   * CRITICAL: This variant must override both base AND maximized styles to prevent
+   * the "window within a window" effect when rendered inside mobile sheets or other
+   * container surfaces. Uses !important on background to ensure it overrides the more
+   * specific .ai-summary-panel.maximized:not(.ai-summary-panel--sheet) selector.
+   *
+   * @usage - Applied when hideChrome={true} prop is passed
+   * @background - transparent overrides all background gradients/colors
+   * @borders - Removed to eliminate nested frames
+   * @shadows - Removed to prevent double-shadowing
+   * @padding - Removed to maximize content area
+   * @related - .ai-summary-panel base, .ai-summary-panel.maximized
+   */
   .ai-summary-panel--sheet {
     border: none;
     box-shadow: none;
     padding: 0;
-    background: transparent;
+    background: transparent !important;
+    backdrop-filter: none;
   }
 </style>

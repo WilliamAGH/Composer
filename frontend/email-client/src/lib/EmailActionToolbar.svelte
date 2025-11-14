@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import { Reply, Forward, Archive, Trash2, FolderSymlink, Loader2, MoreVertical, Languages } from 'lucide-svelte';
+  import { Reply, Forward, Archive, Trash2, FolderSymlink, Loader2, MoreVertical, Languages, ArrowLeft } from 'lucide-svelte';
   import AiCommandButtons from './AiCommandButtons.svelte';
   import MailboxMoveMenu from './MailboxMoveMenu.svelte';
 
@@ -13,6 +13,7 @@
   export let actionMenuOptions = [];
   export let actionMenuLoading = false;
   export let mobile = false;
+  export let showBackButton = false;
   export let compactActions = false;
   export let currentFolderId = 'inbox';
   export let pendingMove = false;
@@ -105,11 +106,21 @@
   {#if mobile}
     <div class="email-header-mobile">
       <div class="email-header-mobile__meta">
-        <img
-          src={email.avatar || email.companyLogoUrl || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 120 120%22%3E%3Crect fill=%22%23e2e8f0%22 width=%22120%22 height=%22120%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22system-ui%22 font-size=%2248%22 fill=%22%2394a3b8%22%3E%3F%3C/text%3E%3C/svg%3E'}
-          alt={escapeHtmlFn(email.from)}
-          class="email-header-mobile__avatar"
-          loading="lazy" />
+        {#if showBackButton}
+          <button
+            type="button"
+            class="btn btn--icon z-[70]"
+            aria-label="Back to inbox"
+            on:click={() => emit('back')}>
+            <ArrowLeft class="h-4 w-4" aria-hidden="true" />
+          </button>
+        {:else}
+          <img
+            src={email.avatar || email.companyLogoUrl || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 120 120%22%3E%3Crect fill=%22%23e2e8f0%22 width=%22120%22 height=%22120%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22system-ui%22 font-size=%2248%22 fill=%22%2394a3b8%22%3E%3F%3C/text%3E%3C/svg%3E'}
+            alt={escapeHtmlFn(email.from)}
+            class="email-header-mobile__avatar"
+            loading="lazy" />
+        {/if}
         <div class="email-header-mobile__meta-content">
           <h2 class="email-header-mobile__subject">{escapeHtmlFn(email.subject)}</h2>
           <div class="email-header-mobile__line">
@@ -163,7 +174,7 @@
               </div>
             {/if}
           </div>
-          <div class="action-tray__ai">
+          <div class="action-tray__buttons">
             <AiCommandButtons
               {commands}
               layout="tray"
@@ -176,8 +187,6 @@
               on:actionMenuToggle={(event) => emit('actionMenuToggle', event.detail)}
               on:comingSoon={(event) => emit('comingSoon', event.detail)}
             />
-          </div>
-          <div class="mobile-action-menu-shell" class:mobile-action-menu-shell--open={moreMenuOpen}>
             <button
               bind:this={moreMenuButton}
               type="button"
@@ -188,6 +197,8 @@
               on:click={toggleMoreMenu}>
               <MoreVertical class="h-4 w-4" />
             </button>
+          </div>
+          <div class="mobile-action-menu-shell" class:mobile-action-menu-shell--open={moreMenuOpen}>
             {#if moreMenuOpen}
               <div class="mobile-overflow-menu" bind:this={moreMenuRef}>
                 <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('forward'); closeMoreMenu(); }}>
@@ -462,12 +473,14 @@
 
   /**
    * Scroll container enables horizontal overflow for one-handed use on mobile action tray.
+   * Right-aligns all buttons with consistent spacing across sections.
    * @usage - Direct child within .action-tray surrounding buttons and AI toolbar
-   * @related - .action-tray__ai
+   * @related - .action-tray__buttons
    */
   .action-tray__scroller {
     display: flex;
     align-items: flex-start;
+    justify-content: flex-end;
     gap: 0.5rem;
     overflow-x: auto;
     padding-bottom: 0.25rem;
@@ -538,12 +551,12 @@
   }
 
   /**
-   * Wrapper keeps the AI toolbar aligned with the surrounding chips when embedded on mobile.
-   * @usage - Container around <AiCommandButtons layout="tray" /> inside action tray
+   * Wrapper keeps the AI buttons and overflow menu aligned as a unified group.
+   * Uses same gap as parent scroller for visual consistency.
+   * @usage - Container around AI buttons + overflow menu inside action tray
    * @related - .ai-action-toolbar.mobile.tray-mode
    */
-  .action-tray__ai {
-    flex: 0 0 auto;
-    min-width: max(220px, 45%);
+  .action-tray__buttons {
+    display: contents;
   }
 </style>
