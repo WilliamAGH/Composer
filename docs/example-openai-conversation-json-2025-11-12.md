@@ -16,7 +16,7 @@
       "timestamp": "2025-01-16T10:00:05Z",
       "type": "system_message",
       "role": "system",
-      "content": "You are ComposerAI. Cite email IDs when referencing messages.",
+      "content": "You are Composer. Cite email IDs when referencing messages.",
       "context_refs": [],
       "meta": {}
     },
