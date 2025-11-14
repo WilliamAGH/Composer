@@ -36,6 +36,12 @@
   let lastSavedSignature = null;
   $: journeyInlineActive = Boolean(journeyOverlay?.visible);
   let maximized = false;
+  let composePromptOpen = false;
+  let composePromptValue = '';
+  let composePromptError = '';
+  let composePromptTextarea = null;
+  let composePromptCard = null;
+  $: composePromptReady = (composePromptValue || '').trim().length > 0;
 
   $: if (!initialized && windowConfig) {
     to = windowConfig.payload?.to || '';
@@ -56,6 +62,7 @@
     setTimeout(() => (isReply ? inputSubject?.focus() : (inputTo || inputSubject)?.focus()), 50);
     scheduleDraftSave(`${to}||${subject}||${body}`, true);
     document.addEventListener('pointerdown', handleGlobalPointer);
+    document.addEventListener('keydown', handlePromptKeydown);
     if (typeof window !== 'undefined') {
       window.addEventListener('resize', handleViewportChange, { passive: true });
       window.addEventListener('scroll', handleViewportChange, { passive: true });
@@ -65,6 +72,7 @@
   onDestroy(() => {
     clearTimeout(saveTimeout);
     document.removeEventListener('pointerdown', handleGlobalPointer);
+    document.removeEventListener('keydown', handlePromptKeydown);
     if (typeof window !== 'undefined') {
       window.removeEventListener('resize', handleViewportChange);
       window.removeEventListener('scroll', handleViewportChange);
@@ -88,6 +96,46 @@
     dispatch('requestAi', { id: windowConfig.id, command, draft: body, subject, isReply, to, instructionOverride });
   }
 
+  async function openComposePrompt() {
+    composePromptValue = '';
+    composePromptError = '';
+    composePromptOpen = true;
+    draftMenuOpen = false;
+    toneMenuOpen = false;
+    await tick();
+    composePromptTextarea?.focus();
+  }
+
+  function closeComposePrompt() {
+    composePromptOpen = false;
+    composePromptError = '';
+    composePromptValue = '';
+  }
+
+  function submitComposePrompt() {
+    const trimmed = (composePromptValue || '').trim();
+    if (!trimmed) {
+      composePromptError = 'Share a quick summary so we know what to write.';
+      composePromptTextarea?.focus();
+      return;
+    }
+    requestAi('compose', trimmed);
+    closeComposePrompt();
+  }
+
+  function handlePromptKeydown(event) {
+    if (!composePromptOpen) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeComposePrompt();
+      return;
+    }
+    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+      event.preventDefault();
+      submitComposePrompt();
+    }
+  }
+
   const fallbackDraftOptions = [
     { key: 'draft', label: 'Draft Reply' },
     { key: 'compose', label: 'AI Compose' }
@@ -99,6 +147,12 @@
     { id: 'tone-legal', label: 'Legal', guidance: 'Rewrite this email in a formal, legal-friendly tone. Be explicit, cite facts, and avoid emotional language while preserving intent.' },
     { id: 'tone-bestie', label: 'Bestie', guidance: 'Rewrite this email as if texting a close friend ("bestie"). Keep it upbeat, encouraging, and informal while preserving the main points.' },
     { id: 'tone-bro', label: 'Bro', guidance: 'Rewrite this email with relaxed “bro” energy—supportive, informal, and direct. Keep key facts intact.' }
+  ];
+
+  const composePromptSuggestions = [
+    'Welcome a new lead and highlight our concierge onboarding',
+    'Summarize today\'s call with next steps and deadlines',
+    'Introduce the Fall release with friendly excitement'
   ];
 
   $: draftOptions = deriveDraftOptions(aiFunctions);
@@ -125,13 +179,20 @@
     for (const fn of list) {
       if (!fn?.key || fn.key === 'tone' || seen.has(fn.key)) continue;
       seen.add(fn.key);
-      entries.push({ key: fn.key, label: fn.label || (fn.key === 'draft' ? 'Draft Reply' : fn.key === 'compose' ? 'AI Compose' : fn.key) });
+      const label = fn.key === 'draft'
+        ? 'Draft Reply'
+        : fn.label || (fn.key === 'compose' ? 'AI Compose' : fn.key);
+      entries.push({ key: fn.key, label });
     }
     return entries.length ? entries : fallbackDraftOptions;
   }
 
   function runPrimaryDraft() {
     const target = primaryDraftOption?.key || 'draft';
+    if (target === 'compose') {
+      openComposePrompt();
+      return;
+    }
     requestAi(target);
   }
 
@@ -154,6 +215,12 @@
   }
 
   function invokeDraftOption(option) {
+    if (!option) return;
+    if (option.key === 'compose') {
+      draftMenuOpen = false;
+      openComposePrompt();
+      return;
+    }
     requestAi(option.key);
     draftMenuOpen = false;
   }
@@ -174,6 +241,9 @@
     }
     if (toneMenuOpen && !isWithin(target, toneMenuRef, toneToggleButton)) {
       toneMenuOpen = false;
+    }
+    if (composePromptOpen && composePromptCard && !composePromptCard.contains(target)) {
+      closeComposePrompt();
     }
   }
 
@@ -229,20 +299,33 @@
     };
   }
 
-  function syncMenuPosition(kind = 'draft') {
+  function syncMenuPosition(kind = 'draft', attempt = 0) {
     if (typeof window === 'undefined') return;
     const trigger = kind === 'tone' ? toneToggleButton : draftToggleButton;
     if (!trigger) return;
     const rect = trigger.getBoundingClientRect();
     const panel = kind === 'tone' ? toneMenuRef : draftMenuRef;
-    const menuHeight = panel?.offsetHeight || 0;
+    const menuHeight = panel?.offsetHeight || panel?.scrollHeight || 0;
     const viewportPadding = MENU_VIEWPORT_GUTTER;
     const offset = MENU_OFFSET;
-    const desiredTop = rect.bottom + offset;
     const viewportBottom = window.innerHeight - viewportPadding;
-    const fitsBelow = !menuHeight || desiredTop + menuHeight <= viewportBottom;
-    let top = fitsBelow ? desiredTop : Math.max(viewportPadding, rect.top - offset - menuHeight);
-    top = Math.min(Math.max(viewportPadding, top), viewportBottom);
+    const spaceBelow = viewportBottom - rect.bottom;
+    const spaceAbove = rect.top - viewportPadding;
+
+    if (!menuHeight && attempt < 2) {
+      requestAnimationFrame(() => syncMenuPosition(kind, attempt + 1));
+      return;
+    }
+
+    const openBelow = menuHeight > 0 && spaceBelow >= menuHeight + offset + viewportPadding;
+    let top;
+    if (openBelow) {
+      const desiredTop = rect.bottom + offset;
+      top = Math.min(desiredTop, viewportBottom - Math.max(menuHeight, 0));
+    } else {
+      const desiredTop = rect.top - offset - menuHeight;
+      top = Math.max(viewportPadding, desiredTop);
+    }
     const right = Math.max(viewportPadding, window.innerWidth - rect.right);
     const next = { top, right };
     if (kind === 'tone') {
@@ -509,6 +592,45 @@
     </WindowFrame>
   {/if}
   <input bind:this={fileInput} type="file" class="sr-only" on:change={(e) => onFilesSelected(e.currentTarget.files)} multiple />
+  {#if composePromptOpen}
+    <div class="compose-prompt-backdrop" role="presentation">
+      <div
+        class="compose-prompt-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="composePromptTitle"
+        aria-describedby="composePromptDescription"
+        bind:this={composePromptCard}>
+        <p class="compose-prompt-eyebrow">AI Compose</p>
+        <h3 id="composePromptTitle">What should we write?</h3>
+        <p id="composePromptDescription">Give the assistant a quick brief—who it\'s for, the outcome, or any details we should weave in.</p>
+        <div class="compose-prompt-suggestions" aria-label="Prompt suggestions">
+          {#each composePromptSuggestions as suggestion (suggestion)}
+            <button type="button" class="compose-prompt-chip" on:click={() => {
+              composePromptValue = suggestion;
+              composePromptError = '';
+              composePromptTextarea?.focus();
+            }}>{suggestion}</button>
+          {/each}
+        </div>
+        <textarea
+          bind:this={composePromptTextarea}
+          bind:value={composePromptValue}
+          rows={4}
+          class="field compose-prompt-textarea"
+          placeholder="e.g., Introduce our beta, recap yesterday\'s demo, and ask for a follow-up call"
+          aria-label="Compose brief"
+          aria-describedby="composePromptDescription"></textarea>
+        {#if composePromptError}
+          <p class="compose-prompt-error" role="alert">{composePromptError}</p>
+        {/if}
+        <div class="compose-prompt-actions">
+          <button type="button" class="btn btn--ghost" on:click={closeComposePrompt}>Cancel</button>
+          <button type="button" class="btn btn--primary" disabled={!composePromptReady} on:click={submitComposePrompt}>Compose for me</button>
+        </div>
+      </div>
+    </div>
+  {/if}
 {/if}
 
 <style>
@@ -702,6 +824,87 @@
     .compose-ai-pill {
       padding-left: 0.5rem;
       padding-right: 0.5rem;
+    }
+  }
+  .compose-prompt-backdrop {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at top, rgba(148, 163, 184, 0.15), rgba(15, 23, 42, 0.45));
+    backdrop-filter: blur(16px) saturate(110%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    z-index: var(--z-modal, 180);
+  }
+  .compose-prompt-card {
+    width: min(480px, 100%);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.92));
+    border-radius: 24px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    box-shadow: 0 25px 60px -25px rgba(15, 23, 42, 0.4);
+    padding: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    color: #0f172a;
+  }
+  .compose-prompt-eyebrow {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    color: rgba(99, 102, 241, 0.7);
+    margin-bottom: -0.25rem;
+  }
+  .compose-prompt-card h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+  }
+  .compose-prompt-card p {
+    margin: 0;
+    color: #475569;
+  }
+  .compose-prompt-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .compose-prompt-chip {
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    border-radius: 999px;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.8rem;
+    background: rgba(248, 250, 252, 0.9);
+    color: #0f172a;
+    transition: border-color 0.2s ease, background 0.2s ease;
+    cursor: pointer;
+  }
+  .compose-prompt-chip:hover {
+    border-color: rgba(99, 102, 241, 0.5);
+    background: white;
+  }
+  .compose-prompt-textarea {
+    min-height: 150px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+  }
+  .compose-prompt-error {
+    font-size: 0.85rem;
+    color: #b91c1c;
+  }
+  .compose-prompt-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 640px) {
+    .compose-prompt-card {
+      border-radius: 20px;
+      padding: 1.25rem;
+      gap: 0.75rem;
     }
   }
   /* Mobile compose experience handled by ComposeMobileSheet.svelte */
