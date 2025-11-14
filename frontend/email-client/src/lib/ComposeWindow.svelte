@@ -136,9 +136,10 @@
     }
   }
 
+  const composeDraftOption = { key: 'compose', label: 'AI Compose' };
   const fallbackDraftOptions = [
     { key: 'draft', label: 'Draft Reply' },
-    { key: 'compose', label: 'AI Compose' }
+    composeDraftOption
   ];
 
   const tonePresets = [
@@ -155,8 +156,12 @@
     'Introduce the Fall release with friendly excitement'
   ];
 
-  $: draftOptions = deriveDraftOptions(aiFunctions);
-  $: primaryDraftOption = draftOptions.find((option) => option.key === 'draft') || draftOptions[0] || fallbackDraftOptions[0];
+  $: derivedDraftOptions = deriveDraftOptions(aiFunctions);
+  $: draftOptions = isReply ? derivedDraftOptions : [composeDraftOption];
+  $: primaryDraftOption = draftOptions.find((option) => option.key === 'draft') || draftOptions[0] || composeDraftOption;
+  $: if (!isReply && draftMenuOpen) {
+    draftMenuOpen = false;
+  }
 
   let draftMenuOpen = false;
   let toneMenuOpen = false;
@@ -201,7 +206,7 @@
     if (draftMenuOpen) {
       toneMenuOpen = false;
       await tick();
-      syncMenuPosition('draft');
+      positionMenu('draft');
     }
   }
 
@@ -210,7 +215,7 @@
     if (toneMenuOpen) {
       draftMenuOpen = false;
       await tick();
-      syncMenuPosition('tone');
+      positionMenu('tone');
     }
   }
 
@@ -299,46 +304,55 @@
     };
   }
 
-  function syncMenuPosition(kind = 'draft', attempt = 0) {
+  function positionMenu(kind = 'draft', attempt = 0) {
     if (typeof window === 'undefined') return;
     const trigger = kind === 'tone' ? toneToggleButton : draftToggleButton;
-    if (!trigger) return;
-    const rect = trigger.getBoundingClientRect();
     const panel = kind === 'tone' ? toneMenuRef : draftMenuRef;
-    const menuHeight = panel?.offsetHeight || panel?.scrollHeight || 0;
-    const viewportPadding = MENU_VIEWPORT_GUTTER;
-    const offset = MENU_OFFSET;
-    const viewportBottom = window.innerHeight - viewportPadding;
-    const spaceBelow = viewportBottom - rect.bottom;
-    const spaceAbove = rect.top - viewportPadding;
+    if (!trigger || !panel) return;
 
-    if (!menuHeight && attempt < 2) {
-      requestAnimationFrame(() => syncMenuPosition(kind, attempt + 1));
-      return;
-    }
+    requestAnimationFrame(() => {
+      const menuHeight = panel.offsetHeight || panel.scrollHeight || 0;
+      const menuWidth = panel.offsetWidth || panel.scrollWidth || 0;
+      if ((!menuHeight || !menuWidth) && attempt < 4) {
+        positionMenu(kind, attempt + 1);
+        return;
+      }
 
-    const openBelow = menuHeight > 0 && spaceBelow >= menuHeight + offset + viewportPadding;
-    let top;
-    if (openBelow) {
-      const desiredTop = rect.bottom + offset;
-      top = Math.min(desiredTop, viewportBottom - Math.max(menuHeight, 0));
-    } else {
-      const desiredTop = rect.top - offset - menuHeight;
-      top = Math.max(viewportPadding, desiredTop);
-    }
-    const right = Math.max(viewportPadding, window.innerWidth - rect.right);
-    const next = { top, right };
-    if (kind === 'tone') {
-      toneMenuPosition = next;
-    } else {
-      draftMenuPosition = next;
-    }
+      const rect = trigger.getBoundingClientRect();
+      const viewportPadding = MENU_VIEWPORT_GUTTER;
+      const offset = MENU_OFFSET;
+      const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
+      const spaceAbove = rect.top - viewportPadding;
+      const spaceBelow = viewportHeight - viewportPadding - rect.bottom;
+      const openBelow = spaceBelow >= menuHeight + offset || spaceBelow >= spaceAbove;
+
+      let top;
+      if (openBelow) {
+        const desiredTop = rect.bottom + offset;
+        top = Math.min(desiredTop, viewportHeight - viewportPadding - menuHeight);
+      } else {
+        const desiredTop = rect.top - offset - menuHeight;
+        top = Math.max(viewportPadding, desiredTop);
+      }
+
+      const maxRight = viewportWidth - viewportPadding - menuWidth;
+      const alignRight = viewportWidth - rect.right;
+      const right = Math.max(viewportPadding, Math.min(alignRight, maxRight));
+
+      const next = { top, right };
+      if (kind === 'tone') {
+        toneMenuPosition = next;
+      } else {
+        draftMenuPosition = next;
+      }
+    });
   }
 
   function handleViewportChange() {
     syncComposeAnchorBounds();
-    if (draftMenuOpen) syncMenuPosition('draft');
-    if (toneMenuOpen) syncMenuPosition('tone');
+    if (draftMenuOpen) positionMenu('draft');
+    if (toneMenuOpen) positionMenu('tone');
   }
 
   $: if (maximized && !mobile) {
@@ -361,8 +375,8 @@
     maximized = !maximized;
     if (draftMenuOpen || toneMenuOpen) {
       await tick();
-      if (draftMenuOpen) syncMenuPosition('draft');
-      if (toneMenuOpen) syncMenuPosition('tone');
+      if (draftMenuOpen) positionMenu('draft');
+      if (toneMenuOpen) positionMenu('tone');
     }
   }
 
@@ -427,6 +441,7 @@
       {tonePresets}
       journeyOverlay={journeyOverlay}
       journeyInlineActive={journeyInlineActive}
+      showDraftMenu={isReply}
       onSend={send}
       onDeleteDraft={deleteDraft}
       onRunPrimaryDraft={runPrimaryDraft}
@@ -523,38 +538,44 @@
     </div>
     <div class="compose-footer-ai">
       <div class="compose-ai-cluster">
-        <div class="compose-ai-split">
-          <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill compose-ai-pill--main" on:click={runPrimaryDraft}>
-            <Wand2 class="h-4 w-4" /> <span class="compose-ai-label">{primaryDraftOption?.label || 'Draft'}</span>
-          </button>
-          <button
-            type="button"
-            class="btn btn--ghost btn--icon compose-ai-pill compose-ai-pill--toggle"
-            aria-haspopup="menu"
-            aria-expanded={draftMenuOpen}
-            bind:this={draftToggleButton}
-            on:click={toggleDraftMenu}
-            aria-label="More drafting options">
-            <ChevronDown class={`h-4 w-4 transition ${draftMenuOpen ? 'rotate-180' : ''}`} />
-          </button>
-        </div>
-        {#if draftMenuOpen && draftOptions.length}
-          <div
-            class="menu-surface compose-menu compose-menu--footer"
-            bind:this={draftMenuRef}
-            style={`top: ${draftMenuPosition.top}px; right: ${draftMenuPosition.right}px;`}>
-            <span class="menu-eyebrow">Drafting Options</span>
-            <div class="menu-list">
-              {#each draftOptions as option (option.key)}
-                <button type="button" class="menu-item" on:click={() => invokeDraftOption(option)}>
-                  <div class="flex items-center gap-2 min-w-0">
-                    <Wand2 class="h-4 w-4 text-slate-500" />
-                    <span class="truncate">{option.label}</span>
-                  </div>
-                </button>
-              {/each}
-            </div>
+        {#if isReply}
+          <div class="compose-ai-split">
+            <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill compose-ai-pill--main" on:click={runPrimaryDraft}>
+              <Wand2 class="h-4 w-4" /> <span class="compose-ai-label">{primaryDraftOption?.label || 'Draft'}</span>
+            </button>
+            <button
+              type="button"
+              class="btn btn--ghost btn--icon compose-ai-pill compose-ai-pill--toggle"
+              aria-haspopup="menu"
+              aria-expanded={draftMenuOpen}
+              bind:this={draftToggleButton}
+              on:click={toggleDraftMenu}
+              aria-label="More drafting options">
+              <ChevronDown class={`h-4 w-4 transition ${draftMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
           </div>
+          {#if draftMenuOpen && draftOptions.length}
+            <div
+              class="menu-surface compose-menu compose-menu--footer"
+              bind:this={draftMenuRef}
+              style={`top: ${draftMenuPosition.top}px; right: ${draftMenuPosition.right}px;`}>
+              <span class="menu-eyebrow">Drafting Options</span>
+              <div class="menu-list">
+                {#each draftOptions as option (option.key)}
+                  <button type="button" class="menu-item" on:click={() => invokeDraftOption(option)}>
+                    <div class="flex items-center gap-2 min-w-0">
+                      <Wand2 class="h-4 w-4 text-slate-500" />
+                      <span class="truncate">{option.label}</span>
+                    </div>
+                  </button>
+                {/each}
+              </div>
+            </div>
+          {/if}
+        {:else}
+          <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill" on:click={runPrimaryDraft}>
+            <Wand2 class="h-4 w-4" /> <span class="compose-ai-label">AI Compose</span>
+          </button>
         {/if}
       </div>
       <div class="compose-ai-cluster">
