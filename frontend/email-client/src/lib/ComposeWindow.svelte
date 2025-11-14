@@ -528,12 +528,12 @@
    * Shared input look keeps iOS 16px minimum font while trimming desktop padding for a lighter feel.
    * @usage - ComposeWindow.svelte `To`, `Subject`, and message textarea controls
    */
-  .field {
+.field {
     width: 100%;
     border: 1px solid rgba(148, 163, 184, 0.7);
     border-radius: 14px;
     padding: 0.65rem 0.9rem;
-    font-size: clamp(1rem, 0.88rem + 0.15vw, 1.03rem);
+    font-size: clamp(16px, 0.95rem + 0.12vw, 17px);
     line-height: 1.5;
     min-height: 42px;
     background: rgba(255, 255, 255, 0.9);
