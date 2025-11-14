@@ -127,7 +127,9 @@
             placeholder="Search emails..."
             value={search}
             on:input={handleSearch}
-            class="mailbox-search-input w-full rounded-2xl border border-slate-200 bg-white/90 pl-4 pr-32 py-2 text-base text-slate-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-slate-200"
+            class="mailbox-search-input w-full rounded-2xl border border-slate-200 bg-white/90 pl-4 py-2 text-base text-slate-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-slate-200"
+            class:pr-16={compactActions}
+            class:pr-32={!compactActions}
           />
           <button
             type="button"

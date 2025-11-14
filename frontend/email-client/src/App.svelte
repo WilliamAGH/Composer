@@ -873,17 +873,6 @@ const panelErrorsStore = panelStores.errors;
         on:mailboxAction={(event) => handleMailboxAction(event.detail.entry)}
       />
     {/if}
-    {#if tablet && selected}
-      <div class="px-5 py-3 border-b border-slate-200">
-        <button type="button" class="btn btn--icon" on:click={() => showEmailList = !showEmailList} aria-label="Toggle email list">
-          {#if showEmailList}
-            <ChevronLeft class="h-4 w-4" />
-          {:else}
-            <ChevronRight class="h-4 w-4" />
-          {/if}
-        </button>
-      </div>
-    {/if}
     {#if !selected}
       <div class="flex-1 grid place-items-center text-slate-400">
         <div class="text-center">
