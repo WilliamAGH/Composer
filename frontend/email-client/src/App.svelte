@@ -27,7 +27,7 @@ import { buildEmailContextString, deriveRecipientContext, normalizeRecipient } f
 import { buildReplyPrefill, buildForwardPrefill } from './lib/services/composePrefill.js';
 import { createAiJourneyStore } from './lib/services/aiJourneyStore';
 import { ChevronLeft, ChevronRight } from 'lucide-svelte';
-import { DEFAULT_ACTION_OPTIONS, MAILBOX_ACTION_FALLBACKS, PRIMARY_TOOLBAR_PREFERENCE } from './lib/constants/catalogActions';
+import { MAILBOX_ACTION_FALLBACKS, PRIMARY_TOOLBAR_PREFERENCE } from './lib/constants/catalogActions';
 import { getJourneySubhead } from './lib/constants/journeyScopes';
 import { escapeHtmlContent, renderMarkdownContent, formatRelativeTimestamp, formatFullTimestamp } from './lib/services/emailFormatting';
 import { initializeUiNonce, startChatHeartbeat, CLIENT_WARNING_EVENT } from './lib/services/sessionNonceClient';
@@ -140,13 +140,11 @@ let windowNoticeTimer = null;
   const aiJourney = createAiJourneyStore();
   const aiJourneyOverlayStore = aiJourney.overlay;
   const actionMenuStore = createActionMenuSuggestionsStore({
-    ensureCatalogReady,
+    ensureCatalogReady: ensureCatalog,
     callCatalogCommand: (commandKey, instruction, context) => callAiCommand(commandKey, instruction, context)
   });
   const actionMenuOptionsStore = actionMenuStore.options;
   const actionMenuLoadingStore = actionMenuStore.loading;
-  let actionMenuOptions = DEFAULT_ACTION_OPTIONS.map((option) => ({ ...option, aiGenerated: false }));
-  let actionMenuLoading = false;
   let selectedActionKey = null;
   let isActionMenuOpen = false;
   let comingSoonModal = { open: false, sourceLabel: '' };
@@ -175,8 +173,6 @@ const panelErrorsStore = panelStores.errors;
   $: drawerMode = $drawerModeStore;
   $: drawerVisible = $drawerVisibleStore;
   $: pendingMoves = $pendingMovesStore;
-  $: actionMenuOptions = $actionMenuOptionsStore;
-  $: actionMenuLoading = $actionMenuLoadingStore;
   $: windows = $windowsStore;
   $: floatingWindows = $floatingStore;
   $: minimizedWindows = $minimizedStore;
@@ -334,7 +330,7 @@ const panelErrorsStore = panelStores.errors;
     if (mailboxCommandPendingKey || filtered.length === 0) return;
     mailboxActionError = '';
     closeMailboxActions();
-    const ready = await ensureCatalogReady();
+    const ready = await ensureCatalog();
     if (!ready) {
       mailboxActionError = 'AI helpers unavailable';
       alert('AI helpers are unavailable. Please try again.');
@@ -403,10 +399,6 @@ const panelErrorsStore = panelStores.errors;
       window.removeEventListener(CLIENT_WARNING_EVENT, handler);
     };
   });
-
-  async function ensureCatalogReady() {
-    return ensureCatalog();
-  }
 
   // Auto-select first email on larger screens when none selected
   $: {
@@ -572,7 +564,7 @@ const panelErrorsStore = panelStores.errors;
         windowConfig,
         detail,
         catalogStore: catalog,
-        ensureCatalogLoaded: ensureCatalogReady,
+        ensureCatalogLoaded: ensureCatalog,
         callAiCommand,
         resolveEmailById: (id) => emails.find((entry) => entry.id === id),
         selectedEmail: selected
@@ -590,18 +582,6 @@ const panelErrorsStore = panelStores.errors;
     const defaultHeadline = getFunctionMeta(catalogData, commandKey)?.label || 'Working on your request';
     const subhead = getJourneySubhead(scope);
     return aiJourney.begin({ scope, targetLabel, commandKey, scopeTarget, headline: headline || deriveHeadline(commandKey, defaultHeadline), subhead });
-  }
-
-  function advanceAiJourney(token, eventId) {
-    aiJourney.advance(token, eventId);
-  }
-
-  function completeAiJourney(token) {
-    aiJourney.complete(token);
-  }
-
-  function failAiJourney(token) {
-    aiJourney.fail(token);
   }
 
   // ---------- AI integration (parity with v1) ----------
@@ -682,18 +662,18 @@ const panelErrorsStore = panelStores.errors;
       }
     }
 
-    advanceAiJourney(journeyToken, 'ai:context-search');
+    aiJourney.advance(journeyToken, 'ai:context-search');
 
     try {
       const data = await executeCatalogCommand(command, payload);
-      advanceAiJourney(journeyToken, 'ai:llm-thinking');
-      completeAiJourney(journeyToken);
+      aiJourney.advance(journeyToken, 'ai:llm-thinking');
+      aiJourney.complete(journeyToken);
       if (data?.conversationId) {
         conversationLedger.write(conversationKey, data.conversationId);
       }
       return data;
     } catch (err) {
-      failAiJourney(journeyToken);
+      aiJourney.fail(journeyToken);
       throw err;
     }
   }
@@ -732,7 +712,7 @@ const panelErrorsStore = panelStores.errors;
         catalogStore: catalog,
         windowManager,
         callAiCommand,
-        ensureCatalogLoaded: ensureCatalogReady
+        ensureCatalogLoaded: ensureCatalog
       });
 
       if (result?.type === WindowKind.SUMMARY) {
@@ -921,8 +901,8 @@ const panelErrorsStore = panelStores.errors;
         <EmailActionToolbar
           email={selected}
           commands={primaryCommandEntries}
-          actionMenuOptions={actionMenuOptions}
-          actionMenuLoading={actionMenuLoading}
+          actionMenuOptions={$actionMenuOptionsStore}
+          actionMenuLoading={$actionMenuLoadingStore}
           mobile={mobile}
           compactActions={compactActions}
           currentFolderId={resolveFolderForMessage(selected)}
@@ -979,8 +959,8 @@ const panelErrorsStore = panelStores.errors;
     <EmailDetailMobileSheet
       email={selected}
       commands={primaryCommandEntries}
-      actionMenuOptions={actionMenuOptions}
-      actionMenuLoading={actionMenuLoading}
+      actionMenuOptions={$actionMenuOptionsStore}
+      actionMenuLoading={$actionMenuLoadingStore}
       compactActions={compactActions}
       currentFolderId={resolveFolderForMessage(selected)}
       pendingMove={pendingMoves.has(selected?.id)}
