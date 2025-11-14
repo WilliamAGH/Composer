@@ -357,8 +357,8 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   }
 
   .ai-action-toolbar.compact :global(.btn.btn--compact) {
-    padding-left: 0.65rem;
-    padding-right: 0.65rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
   }
 
   .ai-action-toolbar.compact .action-pill__label {

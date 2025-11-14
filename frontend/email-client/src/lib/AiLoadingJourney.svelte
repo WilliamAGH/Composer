@@ -14,7 +14,6 @@
   $: activeStep = activeIndex > -1 ? steps[activeIndex] : steps[0];
   $: primaryText = headline || activeStep?.title || '';
   $: secondaryText = activeStep?.title && activeStep.title !== primaryText ? activeStep.title : '';
-  $: progressText = activeStep && steps.length > 1 ? `Step ${Math.max(1, (activeIndex >= 0 ? activeIndex + 1 : 1))} of ${steps.length}` : '';
   $: sectionClasses = [
     'rounded-2xl border px-4 py-3 transition-all duration-300 flex flex-col gap-1 text-slate-900',
     inline ? 'w-full' : 'max-w-sm',
@@ -38,9 +37,6 @@
   </div>
   {#if secondaryText}
     <p class="text-xs text-slate-500 truncate">{secondaryText}</p>
-  {/if}
-  {#if progressText}
-    <p class="text-[10px] uppercase tracking-[0.25em] text-slate-400">{progressText}</p>
   {/if}
 </section>
 {/if}
