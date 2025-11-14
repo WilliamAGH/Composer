@@ -49,7 +49,7 @@
   }
 </script>
 
-<div class="mobile-top-bar">
+<div class="mobile-top-bar" class:mobile-top-bar--no-divider={variant === 'custom'}>
   <div class="mobile-top-bar__row">
     {#if showBackButton}
       <button type="button" class="btn btn--icon z-[70]" aria-label={backButtonAriaLabel} on:click={handleBack}>
@@ -164,6 +164,11 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+  }
+
+  .mobile-top-bar--no-divider {
+    border-bottom: none;
+    padding-bottom: 0.75rem;
   }
 
   .mobile-top-bar__row {

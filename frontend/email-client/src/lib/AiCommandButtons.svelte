@@ -159,13 +159,13 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
       <div class="relative" class:span-2={mobile && !trayMode}>
         <button
           type="button"
-          class="btn action-pill"
+          class="btn"
+          class:action-pill={!trayMode}
           class:btn--icon={trayMode}
           class:btn--ghost={!trayMode}
           class:btn--compact={!trayMode}
           class:w-full={mobile && !trayMode}
           class:justify-center={mobile && !trayMode}
-          class:action-pill--tray={trayMode}
           on:click={toggleActionMenu}
           aria-haspopup="menu"
           aria-expanded={actionMenuOpen}
@@ -215,11 +215,11 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
     {#if summarizeEntry}
       <button
         type="button"
-        class="btn action-pill"
+        class="btn"
+        class:action-pill={!trayMode}
         class:btn--icon={trayMode}
         class:btn--secondary={!trayMode}
         class:btn--compact={!trayMode}
-        class:action-pill--tray={trayMode}
         aria-label={labelForEntry(summarizeEntry)}
         title={labelForEntry(summarizeEntry)}
         on:click={() => handleClick(summarizeEntry.key)}>
@@ -237,11 +237,11 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
     {#if draftEntry}
       <button
         type="button"
-        class="btn action-pill"
+        class="btn"
+        class:action-pill={!trayMode}
         class:btn--icon={trayMode}
         class:btn--secondary={!trayMode}
         class:btn--compact={!trayMode}
-        class:action-pill--tray={trayMode}
         aria-label={labelForEntry(draftEntry)}
         title={labelForEntry(draftEntry)}
         on:click={() => handleClick(draftEntry.key)}>
@@ -455,9 +455,6 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
    * @usage - Base class for AI action buttons regardless of viewport
    * @related - .action-pill--tray for compact variant
    */
-  .action-pill {
-    /* Padding and min-height now controlled by .btn--compact in app-shared.css */
-  }
 
   .action-pill :global(svg) {
     width: 16px;

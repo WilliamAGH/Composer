@@ -469,22 +469,23 @@
    */
   .action-tray {
     width: 100%;
+    display: flex;
   }
 
   /**
    * Scroll container enables horizontal overflow for one-handed use on mobile action tray.
-   * Right-aligns all buttons with consistent spacing across sections.
+   * Consistent spacing across all button sections while anchoring the lane to the right edge.
    * @usage - Direct child within .action-tray surrounding buttons and AI toolbar
    * @related - .action-tray__buttons
    */
   .action-tray__scroller {
     display: flex;
-    align-items: flex-start;
-    justify-content: flex-end;
+    align-items: center;
     gap: 0.5rem;
     overflow-x: auto;
     padding-bottom: 0.25rem;
     -webkit-overflow-scrolling: touch;
+    margin-left: auto; /* push action lane to the right within the header row */
   }
 
   /**

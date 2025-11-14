@@ -101,6 +101,17 @@
       toneMenuOpen = false;
     }
   }
+
+  function positionOverflowMenu() {
+    if (!overflowMenuButton || !overflowMenuRef || typeof window === 'undefined') return;
+    const rect = overflowMenuButton.getBoundingClientRect();
+    const offset = 8;
+    overflowMenuRef.style.top = `${rect.bottom + offset}px`;
+  }
+
+  $: if (overflowMenuOpen && overflowMenuButton && overflowMenuRef) {
+    positionOverflowMenu();
+  }
 </script>
 
 <div class="compose-mobile">
@@ -155,36 +166,38 @@
       class="compose-mobile__field" />
 
     <div class="compose-mobile__ai-row">
-      <button type="button" class="btn btn--ghost btn--labelled compose-mobile__pill" on:click={runPrimaryDraft}>
-        <Wand2 class="h-4 w-4" /> {primaryDraftOption?.label || 'Draft Reply'}
-      </button>
-      {#if showDraftMenu}
-        <button
-          type="button"
-          class="btn btn--ghost btn--icon compose-mobile__pill compose-mobile__pill-toggle"
-          aria-haspopup="menu"
-          aria-expanded={draftMenuOpen}
-          bind:this={draftToggleButton}
-          on:click={toggleDraftMenu}
-          aria-label="More drafting options">
-          <ChevronDown class={`h-4 w-4 transition ${draftMenuOpen ? 'rotate-180' : ''}`} />
+      <div class="compose-mobile__draft-split">
+        <button type="button" class="btn btn--ghost btn--labelled compose-mobile__pill compose-mobile__pill--main" on:click={runPrimaryDraft}>
+          <Wand2 class="h-4 w-4" /> {primaryDraftOption?.label || 'Draft Reply'}
         </button>
-        {#if draftMenuOpen && draftOptions.length}
-          <div class="menu-surface compose-mobile__menu" bind:this={draftMenuRef}>
-            <span class="menu-eyebrow">Drafting Options</span>
-            <div class="menu-list">
-              {#each draftOptions as option (option.key)}
-                <button type="button" class="menu-item" on:click={() => invokeDraftOption(option)}>
-                  <div class="flex items-center gap-2 min-w-0">
-                    <Wand2 class="h-4 w-4 text-slate-500" />
-                    <span class="truncate">{option.label}</span>
-                  </div>
-                </button>
-              {/each}
+        {#if showDraftMenu}
+          <button
+            type="button"
+            class="btn btn--ghost btn--icon compose-mobile__pill compose-mobile__pill-toggle compose-mobile__pill--toggle"
+            aria-haspopup="menu"
+            aria-expanded={draftMenuOpen}
+            bind:this={draftToggleButton}
+            on:click={toggleDraftMenu}
+            aria-label="More drafting options">
+            <ChevronDown class={`h-4 w-4 transition ${draftMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {#if draftMenuOpen && draftOptions.length}
+            <div class="menu-surface compose-mobile__menu" bind:this={draftMenuRef}>
+              <span class="menu-eyebrow">Drafting Options</span>
+              <div class="menu-list">
+                {#each draftOptions as option (option.key)}
+                  <button type="button" class="menu-item" on:click={() => invokeDraftOption(option)}>
+                    <div class="flex items-center gap-2 min-w-0">
+                      <Wand2 class="h-4 w-4 text-slate-500" />
+                      <span class="truncate">{option.label}</span>
+                    </div>
+                  </button>
+                {/each}
+              </div>
             </div>
-          </div>
+          {/if}
         {/if}
-      {/if}
+      </div>
       <button
         type="button"
         class="btn btn--ghost btn--labelled compose-mobile__pill compose-mobile__tone-pill"
@@ -261,8 +274,8 @@
     display: flex;
     flex-direction: column;
     background: linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(255, 255, 255, 0.97));
-    padding: 1rem;
-    gap: 1rem;
+    padding: 0.5rem 1rem 1rem;
+    gap: 0.75rem;
     z-index: 85;
   }
   /**
@@ -312,6 +325,7 @@
   .compose-mobile__ai-row {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 0.35rem;
     position: relative;
   }
@@ -323,10 +337,22 @@
     min-height: 36px;
     padding: 0.25rem 0.8rem;
   }
+  .compose-mobile__draft-split {
+    display: flex;
+  }
+  .compose-mobile__pill--main {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
   .compose-mobile__pill-toggle {
     width: 42px;
     justify-content: center;
     padding: 0;
+  }
+  .compose-mobile__pill--toggle {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    margin-left: -1px;
   }
   /**
    * Tone pill sits inline with Draft button.
@@ -467,7 +493,7 @@
 
   @supports (padding: env(safe-area-inset-top)) {
     .compose-mobile {
-      padding-top: max(1rem, env(safe-area-inset-top));
+      padding-top: max(0.5rem, env(safe-area-inset-top));
       padding-right: max(1rem, env(safe-area-inset-right));
       padding-bottom: max(1rem, env(safe-area-inset-bottom));
       padding-left: max(1rem, env(safe-area-inset-left));
