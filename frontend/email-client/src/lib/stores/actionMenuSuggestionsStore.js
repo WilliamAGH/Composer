@@ -85,6 +85,12 @@ export function createActionMenuSuggestionsStore({ ensureCatalogReady, callCatal
     const commandKey = option.commandKey || (actionType === 'summary' ? 'summarize' : actionType === 'compose' ? 'compose' : null);
     const commandVariant = option.commandVariant || null;
     const instruction = typeof option.instruction === 'string' ? option.instruction.trim() || null : null;
+
+    // Filter out translate actions since they have a dedicated UI control
+    if (commandKey === 'translate' || rawLabel.toLowerCase().includes('translat')) {
+      return null;
+    }
+
     return {
       id: option.id || `ai-action-${rawLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`,
       label: rawLabel,

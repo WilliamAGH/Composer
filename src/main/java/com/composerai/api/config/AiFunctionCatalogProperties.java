@@ -174,8 +174,9 @@ Return ONLY valid JSON in this exact structure:
 
 Rules:
 - labels must be unique, 1-2 words, and title case.
-- actionType "compose" or "summary" MUST include commandKey (e.g., "compose", "draft", "summarize", "translate") and an instruction describing what to generate.
+- actionType "compose" or "summary" MUST include commandKey (e.g., "compose", "draft", "summarize") and an instruction describing what to generate.
 - actionType "comingSoon" MUST set commandKey and commandVariant to null and omit instructions.
+- DO NOT suggest "translate" actions since translation already has a dedicated UI control.
 - Never include prose outside the JSON block.
 User guidance: {{instruction}}
 """);
