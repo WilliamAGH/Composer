@@ -1,4 +1,17 @@
-/** Shared email helpers extracted to keep App.svelte lean and reusable across components. */
+/**
+ * Shared email helpers extracted to keep App.svelte lean and reusable across components.
+ *
+ * ⚠️ WARNING: DO NOT ADD NEW FUNCTIONS TO THIS FILE
+ * This file has a generic name ("emailUtils") which violates our naming standards.
+ * It exists for legacy reasons only and contains:
+ *   - mapEmailMessage: Backend message → frontend email format
+ *   - coalescePreview: Truncate email preview text
+ *   - parseSubjectAndBody: Extract subject/body from text
+ *   - computeMailboxCounts: Calculate folder counts
+ *
+ * For NEW functionality, create a specifically-named file that describes its purpose.
+ * See AGENTS.md for guidance on avoiding generic "utils" files.
+ */
 export function mapEmailMessage(message, index = 0) {
   const preview = coalescePreview(message);
   return {
