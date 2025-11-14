@@ -283,6 +283,7 @@
     letter-spacing: 0.05em;
     text-transform: uppercase;
     color: #94a3b8;
+    padding-left: 0.125rem;
   }
 
   /**

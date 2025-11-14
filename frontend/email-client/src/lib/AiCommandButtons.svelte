@@ -400,7 +400,7 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
     margin-top: 0;
     display: flex;
     flex-wrap: nowrap;
-    align-items: stretch;
+    align-items: center;
     gap: 0.5rem;
     overflow: visible;
   }
@@ -424,13 +424,12 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
 
   /**
    * Action pills normalize icon sizing between AI actions and native controls.
+   * REMOVED: min-height and padding now inherit from global .btn--compact for consistency.
    * @usage - Base class for AI action buttons regardless of viewport
    * @related - .action-pill--tray for compact variant
    */
   .action-pill {
-    min-height: 36px;
-    padding-top: 0.3rem;
-    padding-bottom: 0.3rem;
+    /* Padding and min-height now controlled by .btn--compact in app-shared.css */
   }
 
   .action-pill :global(svg) {

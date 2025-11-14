@@ -167,7 +167,7 @@ const panelErrorsStore = panelStores.errors;
   $: compactActions = (() => {
     const width = viewportDimensions?.width ?? 0;
     if (mobile) {
-      return false;
+      return true; // Hide "AI Actions" text on mobile, show only icon
     }
     return width > 0 && width < ACTION_TOOLBAR_COMPACT_BREAKPOINT;
   })();
@@ -945,23 +945,12 @@ const panelErrorsStore = panelStores.errors;
   <!-- Content -->
   <section class="flex-1 flex flex-col bg-white/95 relative"
            class:hidden={mobile && !selected}>
-    {#if mobile || tablet}
+    {#if mobile}
       <div class="px-4 py-3 border-b border-slate-200 flex flex-col gap-2">
         <div class="flex items-center gap-2">
-          {#if mobile}
-            <button type="button" class="btn btn--icon" on:click={() => { mailboxLayout.selectEmailById(null); mailboxLayout.closeDrawer(); }} aria-label="Back to list">
-              <ArrowLeft class="h-4 w-4" />
-            </button>
-          {/if}
-          {#if tablet}
-            <button type="button" class="btn btn--icon" on:click={() => showEmailList = !showEmailList} aria-label="Toggle email list">
-              {#if showEmailList}
-                <ChevronLeft class="h-4 w-4" />
-              {:else}
-                <ChevronRight class="h-4 w-4" />
-              {/if}
-            </button>
-          {/if}
+          <button type="button" class="btn btn--icon" on:click={() => { mailboxLayout.selectEmailById(null); mailboxLayout.closeDrawer(); }} aria-label="Back to list">
+            <ArrowLeft class="h-4 w-4" />
+          </button>
           <button type="button" title="Toggle menu" class="btn btn--icon relative z-[70]" on:click={handleMenuClick} aria-label="Open folders">
             <Menu class="h-4 w-4" />
           </button>
@@ -1041,6 +1030,17 @@ const panelErrorsStore = panelStores.errors;
             {/if}
           </div>
         </div>
+      </div>
+    {/if}
+    {#if tablet}
+      <div class="px-5 py-3 border-b border-slate-200">
+        <button type="button" class="btn btn--icon" on:click={() => showEmailList = !showEmailList} aria-label="Toggle email list">
+          {#if showEmailList}
+            <ChevronLeft class="h-4 w-4" />
+          {:else}
+            <ChevronRight class="h-4 w-4" />
+          {/if}
+        </button>
       </div>
     {/if}
     {#if !selected}

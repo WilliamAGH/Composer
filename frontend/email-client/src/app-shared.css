@@ -49,6 +49,7 @@
 }
 /**
  * Glassmorphic pill baseline that equalizes CTA sizing across compose, sidebars, and toolbars.
+ * Refined to match modern design systems (shadcn/Vercel/Tailwind/Apple).
  * @usage - Base class for every actionable button; pair with modifiers (primary/secondary/ghost/icon)
  * @related - .btn--primary, .btn--secondary, .btn--ghost, .btn--icon, .btn--compact
  */
@@ -57,11 +58,11 @@
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  border-radius: 999px;
+  border-radius: 8px;
   border: 1px solid transparent;
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   padding: 0.45rem 1rem;
   transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   box-shadow: 0 12px 30px -18px rgba(15, 23, 42, 0.4);
@@ -216,7 +217,7 @@ input[type='email'] {
  */
 .btn--compact {
   min-height: 40px;
-  padding: 0.35rem 0.75rem;
+  padding: 0.5rem 0.75rem;
 }
 
 /**
