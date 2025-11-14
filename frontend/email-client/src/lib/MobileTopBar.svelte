@@ -99,7 +99,7 @@
                 <Sparkles class="h-4 w-4" aria-hidden="true" />
               {/if}
             </span>
-            <span class="mailbox-ai-trigger__label">
+            <span class="mailbox-ai-trigger__label" class:hidden={compactActions}>
               {#if mailboxCommandPendingKey}
                 {activeMailboxActionLabel ? `${activeMailboxActionLabel}…` : 'Working…'}
               {:else}

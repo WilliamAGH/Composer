@@ -118,7 +118,7 @@
 >
   <div class="px-4 py-3 border-b border-slate-200">
     <div class="flex items-center gap-3">
-      <button type="button" title="Toggle menu" class="btn btn--icon" aria-label="Toggle mailbox list" on:click={handleToggleMenu}>
+      <button type="button" title="Toggle menu" class="btn btn--icon z-[70]" aria-label="Toggle mailbox list" on:click={handleToggleMenu}>
         <Menu class="h-4 w-4" aria-hidden="true" />
       </button>
       <div class="flex-1 min-w-0 flex flex-col gap-1">
@@ -145,7 +145,7 @@
                 <Sparkles class="h-4 w-4" aria-hidden="true" />
               {/if}
             </span>
-            <span class="mailbox-ai-trigger__label">
+            <span class="mailbox-ai-trigger__label" class:hidden={compactActions}>
               {#if mailboxCommandPendingKey}
                 {activeMailboxActionLabel ? `${activeMailboxActionLabel}…` : 'Working…'}
               {:else}

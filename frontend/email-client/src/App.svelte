@@ -23,7 +23,7 @@ import { isMobile, isTablet, isDesktop, isWide, viewport, viewportSize } from '.
   import { catalogStore, hydrateCatalog, ensureCatalogLoaded as ensureCatalog, getFunctionMeta, mergeDefaultArgs, resolveDefaultInstruction } from './lib/services/aiCatalog';
   import { handleAiCommand, deriveHeadline } from './lib/services/aiCommandHandler';
   import { mapEmailMessage, parseSubjectAndBody } from './lib/services/emailUtils';
-  import { buildEmailContextString, deriveRecipientContext } from './lib/services/emailContextConstructor';
+  import { buildEmailContextString, deriveRecipientContext, normalizeRecipient } from './lib/services/emailContextConstructor';
   import { buildReplyPrefill, buildForwardPrefill } from './lib/services/composePrefill.js';
   import { createAiJourneyStore } from './lib/services/aiJourneyStore';
   import { ChevronLeft, ChevronRight } from 'lucide-svelte';
@@ -59,7 +59,14 @@ import { createAiPanelStore } from './lib/stores/aiPanelStore';
   const initialEffectiveFolders = bootstrap.effectiveFolders && typeof bootstrap.effectiveFolders === 'object' ? bootstrap.effectiveFolders : null;
 const mailboxLayout = createMailboxLayoutStore(initialEmails, initialFolderCounts, initialEffectiveFolders);
 const ACTIVE_MAILBOX_ID = 'primary';
-const ACTION_TOOLBAR_COMPACT_BREAKPOINT = 960;
+const ACTION_TOOLBAR_COMPACT_BREAKPOINT = 1180;
+const SIDEBAR_WIDTH_MAP = {
+  'inline-wide': 448,
+  'inline-desktop': 400,
+  'inline-collapsed': 88,
+  'drawer-visible': 0,
+  'drawer-hidden': 0
+};
   const mailboxStores = mailboxLayout.stores;
   const mailboxStore = mailboxStores.mailbox;
   const searchStore = mailboxStores.search;
@@ -184,13 +191,6 @@ const panelErrorsStore = panelStores.errors;
   $: viewportType = $viewport;
   $: viewportTier = wide ? 'wide' : desktop ? 'desktop' : tablet ? 'tablet' : 'mobile';
   $: viewportDimensions = $viewportSize;
-  $: compactActions = (() => {
-    const width = viewportDimensions?.width ?? 0;
-    if (mobile) {
-      return true; // Hide "AI Actions" text on mobile, show only icon
-    }
-    return width > 0 && width < ACTION_TOOLBAR_COMPACT_BREAKPOINT;
-  })();
   $: inlineSidebar = viewportTier === 'desktop' || viewportTier === 'wide';
   $: mailboxLayout.setDrawerMode(mobile || tablet);
   $: sidebarVariant = (() => {
@@ -201,6 +201,14 @@ const panelErrorsStore = panelStores.errors;
       return 'inline-collapsed';
     }
     return viewportTier === 'wide' ? 'inline-wide' : 'inline-desktop';
+  })();
+  $: sidebarWidth = SIDEBAR_WIDTH_MAP[sidebarVariant] ?? 0;
+  $: availableContentWidth = Math.max(0, (viewportDimensions?.width ?? 0) - sidebarWidth);
+  $: compactActions = (() => {
+    if (mobile || tablet) {
+      return true;
+    }
+    return availableContentWidth > 0 && availableContentWidth < ACTION_TOOLBAR_COMPACT_BREAKPOINT;
   })();
   $: if (!drawerMode && drawerVisible) {
     mailboxLayout.closeDrawer();
@@ -915,10 +923,11 @@ const panelErrorsStore = panelStores.errors;
   <!-- Content -->
   <section class="flex-1 flex flex-col bg-white/95 relative"
            class:hidden={mobile && !selected}>
-    {#if mobile && !mobileDetailOverlayVisible}
+    {#if mobile && !mobileDetailOverlayVisible && !tablet}
       <MobileTopBar
         variant="search"
         showBackButton={false}
+        showMenuButton={true}
         searchValue={search}
         hasMailboxCommands={hasMailboxCommands}
         mailboxCommandEntries={mailboxCommandEntries}
@@ -937,7 +946,7 @@ const panelErrorsStore = panelStores.errors;
         on:mailboxAction={(event) => handleMailboxAction(event.detail.entry)}
       />
     {/if}
-    {#if tablet}
+    {#if tablet && selected}
       <div class="px-5 py-3 border-b border-slate-200">
         <button type="button" class="btn btn--icon" on:click={() => showEmailList = !showEmailList} aria-label="Toggle email list">
           {#if showEmailList}

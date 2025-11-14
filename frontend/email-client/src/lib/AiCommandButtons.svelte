@@ -335,7 +335,6 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 20px;
     margin-right: 0.4rem;
   }
 
@@ -379,8 +378,8 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   }
 
   .ai-action-toolbar.mobile :global(.btn-icon-chip) {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
   }
 
   .ai-action-toolbar.mobile :global(.btn svg) {
@@ -439,8 +438,8 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   }
 
   .action-pill :global(.btn-icon-chip) {
-    width: 22px;
-    height: 22px;
+    width: 16px;
+    height: 16px;
   }
 
   /**
