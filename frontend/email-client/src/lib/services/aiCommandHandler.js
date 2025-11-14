@@ -114,9 +114,10 @@ async function draftWithAi({ descriptor, command, selectedEmail, fn, variant, in
     recipientContext
   });
   let draftText = (data?.response && data.response.trim()) || '';
-  if (!draftText && data?.sanitizedHtml) {
+  const htmlContent = data?.sanitizedHtml || data?.sanitizedHTML;
+  if (!draftText && htmlContent) {
     const temp = document.createElement('div');
-    temp.innerHTML = data.sanitizedHtml;
+    temp.innerHTML = htmlContent;
     draftText = temp.textContent.trim();
   }
   if (draftText) {
@@ -212,9 +213,10 @@ export async function runComposeWindowAi({
     recipientContext
   });
   let draftText = (data?.response && data.response.trim()) || '';
-  if (!draftText && data?.sanitizedHtml) {
+  const htmlContent = data?.sanitizedHtml || data?.sanitizedHTML;
+  if (!draftText && htmlContent) {
     const temp = document.createElement('div');
-    temp.innerHTML = data.sanitizedHtml;
+    temp.innerHTML = htmlContent;
     draftText = temp.textContent.trim();
   }
   if (draftText) {
