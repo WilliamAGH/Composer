@@ -424,12 +424,13 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
    * @related - .action-tray__ai wrapper in EmailActionToolbar.svelte
    */
   .ai-action-toolbar.mobile.tray-mode {
-    margin-top: 0;
     display: flex;
-    flex-wrap: nowrap;
     align-items: center;
-    gap: 0.5rem;
     overflow: visible;
+  }
+
+  .ai-action-toolbar.mobile.tray-mode > * + * {
+    margin-left: 0.5rem; /* Use margin for consistent spacing in nested flex */
   }
 
   .ai-action-toolbar.mobile.tray-mode > * {

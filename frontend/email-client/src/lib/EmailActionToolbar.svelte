@@ -1,6 +1,18 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import { Reply, Forward, Archive, Trash2, FolderSymlink, Loader2, MoreVertical, Languages, ArrowLeft } from 'lucide-svelte';
+  import {
+    Reply,
+    Forward,
+    Archive,
+    Trash2,
+    FolderSymlink,
+    Loader2,
+    MoreVertical,
+    Languages,
+    ArrowLeft,
+    ChevronLeft,
+    Sparkles
+  } from 'lucide-svelte';
   import AiCommandButtons from './AiCommandButtons.svelte';
   import MailboxMoveMenu from './MailboxMoveMenu.svelte';
 
@@ -21,15 +33,36 @@
   export let formatFullDateFn = () => '';
 
   const dispatch = createEventDispatcher();
+  const preferredVariantOrder = ['es', 'pt', 'nl'];
   let moveMenuOpen = false;
   let localMoveMenuButton = null;
   let moveMenuRef = null;
   let moreMenuOpen = false;
   let moreMenuButton = null;
   let moreMenuRef = null;
+  let translateMenuOpen = false;
+
+  $: commandsList = Array.isArray(commands) ? commands : [];
+  $: translateEntry = commandsList.find((entry) => entry?.key === 'translate');
+  $: orderedVariants = buildVariantOptions(translateEntry?.meta?.variants || []);
 
   function emit(type, detail) {
     dispatch(type, detail);
+  }
+
+  function buildVariantOptions(rawVariants) {
+    if (!Array.isArray(rawVariants)) return [];
+    const map = new Map(rawVariants.map((variant) => [variant.key, variant]));
+    return preferredVariantOrder.map((key) => map.get(key)).filter(Boolean);
+  }
+
+  function handleVariantSelect(variantKey) {
+    if (!translateEntry) return;
+    // Defer to ensure menu animations can complete before any parent re-renders
+    setTimeout(() => {
+      emit('commandSelect', { key: translateEntry.key, variantKey });
+    }, 100);
+    closeMoreMenu();
   }
 
   /**
@@ -37,7 +70,10 @@
    */
   function toggleMoveMenu() {
     moveMenuOpen = !moveMenuOpen;
-    if (moveMenuOpen) moreMenuOpen = false;
+    if (moveMenuOpen) {
+      moreMenuOpen = false;
+      translateMenuOpen = false;
+    }
   }
 
   function closeMoveMenu() {
@@ -50,12 +86,16 @@
   function toggleMoreMenu() {
     const nextState = !moreMenuOpen;
     moreMenuOpen = nextState;
-    if (nextState) moveMenuOpen = false;
+    if (nextState) {
+      moveMenuOpen = false;
+      translateMenuOpen = false; // Reset nested menu on toggle
+    }
     emit('moreMenuToggle', { open: nextState });
   }
 
   function closeMoreMenu() {
     moreMenuOpen = false;
+    translateMenuOpen = false;
     emit('moreMenuToggle', { open: false });
   }
 
@@ -201,22 +241,44 @@
           <div class="mobile-action-menu-shell" class:mobile-action-menu-shell--open={moreMenuOpen}>
             {#if moreMenuOpen}
               <div class="mobile-overflow-menu" bind:this={moreMenuRef}>
-                <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('forward'); closeMoreMenu(); }}>
-                  <Forward class="h-4 w-4" />
-                  <span>Forward</span>
-                </button>
-                <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('comingSoon', { label: 'Translate' }); closeMoreMenu(); }}>
-                  <Languages class="h-4 w-4" />
-                  <span>Translate</span>
-                </button>
-                <button type="button" class="mobile-overflow-menu__item" on:click={() => { toggleMoveMenu(); closeMoreMenu(); }}>
-                  <FolderSymlink class="h-4 w-4" />
-                  <span>Move to folder</span>
-                </button>
-                <button type="button" class="mobile-overflow-menu__item mobile-overflow-menu__item--destructive" on:click={() => { emit('delete'); closeMoreMenu(); }}>
-                  <Trash2 class="h-4 w-4" />
-                  <span>Delete</span>
-                </button>
+                {#if translateMenuOpen}
+                  <button type="button" class="mobile-overflow-menu__item mobile-overflow-menu__item--header" on:click={() => translateMenuOpen = false}>
+                    <ChevronLeft class="h-4 w-4" />
+                    <span>Back</span>
+                  </button>
+                  <div class="mobile-overflow-menu__divider" />
+                  <div class="mobile-overflow-menu__eyebrow">Translate To</div>
+                  {#each orderedVariants as variant (variant.key)}
+                    <button type="button" class="mobile-overflow-menu__item" on:click={() => handleVariantSelect(variant.key)}>
+                      <Languages class="h-4 w-4" />
+                      <span>{variant.label}</span>
+                    </button>
+                  {/each}
+                  <div class="mobile-overflow-menu__divider" />
+                  <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('comingSoon', { label: 'Translate customization' }); closeMoreMenu(); }}>
+                    <Sparkles class="h-4 w-4" />
+                    <span>Customize</span>
+                  </button>
+                {:else}
+                  <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('forward'); closeMoreMenu(); }}>
+                    <Forward class="h-4 w-4" />
+                    <span>Forward</span>
+                  </button>
+                  {#if translateEntry && orderedVariants.length}
+                    <button type="button" class="mobile-overflow-menu__item" on:click={() => translateMenuOpen = true}>
+                      <Languages class="h-4 w-4" />
+                      <span>Translate</span>
+                    </button>
+                  {/if}
+                  <button type="button" class="mobile-overflow-menu__item" on:click={() => { toggleMoveMenu(); closeMoreMenu(); }}>
+                    <FolderSymlink class="h-4 w-4" />
+                    <span>Move to folder</span>
+                  </button>
+                  <button type="button" class="mobile-overflow-menu__item mobile-overflow-menu__item--destructive" on:click={() => { emit('delete'); closeMoreMenu(); }}>
+                    <Trash2 class="h-4 w-4" />
+                    <span>Delete</span>
+                  </button>
+                {/if}
               </div>
             {/if}
           </div>
@@ -469,23 +531,40 @@
    */
   .action-tray {
     width: 100%;
-    display: flex;
+    display: flex; /* Establish a flex context to control alignment of the scroller */
+    justify-content: flex-end; /* Push the scroller to the far right */
   }
 
   /**
    * Scroll container enables horizontal overflow for one-handed use on mobile action tray.
-   * Consistent spacing across all button sections while anchoring the lane to the right edge.
+   * This element now simply holds the buttons and scrolls if they overflow.
    * @usage - Direct child within .action-tray surrounding buttons and AI toolbar
    * @related - .action-tray__buttons
    */
   .action-tray__scroller {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    margin-left: auto; /* Aligns the entire button group to the right */
     overflow-x: auto;
     padding-bottom: 0.25rem;
     -webkit-overflow-scrolling: touch;
-    margin-left: auto; /* push action lane to the right within the header row */
+  }
+
+  /* Use adjacent sibling selector for robust, consistent spacing */
+  .action-tray__scroller > :global(*) + :global(*) {
+    margin-left: 0.5rem;
+  }
+  /**
+   * High-specificity override to guarantee all icon buttons in the tray are perfectly circular.
+   * This solves the \"oval button\" and icon clipping issues by enforcing the correct box model.
+   * - `flex-shrink: 0` is critical to prevent buttons from being squashed.
+   * - `padding: 0` overrides the base `.btn` padding that creates pill shapes.
+   */
+  .action-tray__scroller :global(.btn.btn--icon) {
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    flex-shrink: 0;
   }
 
   /**
@@ -551,6 +630,25 @@
     color: #b91c1c;
   }
 
+  .mobile-overflow-menu__item--header {
+    color: #475569;
+    font-weight: 400;
+  }
+
+  .mobile-overflow-menu__divider {
+    height: 1px;
+    background: rgba(148, 163, 184, 0.25);
+    margin: 0.25rem 0.5rem;
+  }
+
+  .mobile-overflow-menu__eyebrow {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    padding: 0.5rem 0.75rem;
+  }
+
   /**
    * Wrapper keeps the AI buttons and overflow menu aligned as a unified group.
    * Uses same gap as parent scroller for visual consistency.
@@ -558,6 +656,11 @@
    * @related - .ai-action-toolbar.mobile.tray-mode
    */
   .action-tray__buttons {
-    display: contents;
+    display: flex;
+    align-items: center;
+  }
+
+  .action-tray__buttons > :global(*) + :global(*) {
+    margin-left: 0.5rem;
   }
 </style>
