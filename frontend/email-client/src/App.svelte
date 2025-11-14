@@ -156,6 +156,7 @@ let selected = get(selectedEmailStore);
 let sidebarOpen = get(sidebarOpenStore);
 let drawerMode = get(drawerModeStore);
 let drawerVisible = get(drawerVisibleStore);
+let pendingMoves = get(pendingMovesStore);
 const conversationLedger = createConversationLedger(() => selected);
 const panelStore = createAiPanelStore();
 const panelStores = panelStore.stores;
