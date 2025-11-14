@@ -200,22 +200,6 @@ export async function runComposeWindowAi({
     composePayload: windowConfig.payload,
     fallbackEmail: relatedEmail
   });
-  if (typeof window !== 'undefined' && window.Composer?.debugRecipientContext) {
-    console.debug('[ComposeAI] recipientContext', {
-      toInput: detail.to,
-      payload: {
-        to: windowConfig.payload?.to,
-        recipientName: windowConfig.payload?.recipientName,
-        recipientEmail: windowConfig.payload?.recipientEmail
-      },
-      fallbackEmail: relatedEmail && {
-        from: relatedEmail.from,
-        fromEmail: relatedEmail.fromEmail,
-        senderName: relatedEmail.senderName
-      },
-      resolved: recipientContext
-    });
-  }
 
   const data = await callAiCommand(detail.command, instruction, {
     contextId: relatedEmail?.contextId || relatedEmail?.id || null,

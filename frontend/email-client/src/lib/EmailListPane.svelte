@@ -117,8 +117,8 @@
          class:overflow-hidden={tablet && !showEmailList && !(mailboxActionsOpen && mailboxActionsHost === 'list')}
 >
   <div class="px-4 py-3 border-b border-slate-200">
-    <div class="flex items-center gap-3">
-      <button type="button" title="Toggle menu" class="btn btn--icon z-[70]" aria-label="Toggle mailbox list" on:click={handleToggleMenu}>
+    <div class="flex items-center gap-3 mailbox-list-header">
+      <button type="button" title="Toggle menu" class="btn btn--icon" aria-label="Toggle mailbox list" on:click={handleToggleMenu}>
         <Menu class="h-4 w-4" aria-hidden="true" />
       </button>
       <div class="flex-1 min-w-0 flex flex-col gap-1">
@@ -288,6 +288,19 @@
 </section>
 
 <style>
+  /**
+   * Desktop/tablet mailbox list header (search + AI button + hamburger).
+   * @usage - Ensures header nav controls sit above DrawerBackdrop and MailboxSidebar when the
+   *          list pane is acting as a drawer on mobile/tablet.
+   * @z-index-warning - Shares the var(--z-toolbar-surface) tier with MobileTopBar so the
+   *                    hamburger remains clickable whenever the list is visible.
+   * @related - MobileTopBar.svelte, DrawerBackdrop.svelte, app-shared.css z-index architecture
+   */
+  .mailbox-list-header {
+    position: relative;
+    z-index: var(--z-toolbar-surface, 150);
+  }
+
   /* Base list row container for hover actions */
   .list-row {
     position: relative;

@@ -156,6 +156,13 @@
 </div>
 
 <style>
+  /**
+   * Mobile primary navigation bar for search + hamburger.
+   * @usage - Top-most mailbox nav when viewing the list on mobile.
+   * @z-index-warning - Uses var(--z-toolbar-surface) to sit above DrawerBackdrop (50) and
+   *                    MailboxSidebar (60), but below global modals and dropdown menus.
+   * @related - .mobile-search__actions, DrawerBackdrop.svelte, MailboxSidebar.svelte, app-shared.css
+   */
   .mobile-top-bar {
     padding: 1rem;
     border-bottom: 1px solid rgba(148, 163, 184, 0.4);
@@ -164,6 +171,8 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    position: relative;
+    z-index: var(--z-toolbar-surface, 150);
   }
 
   .mobile-top-bar--no-divider {

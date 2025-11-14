@@ -12,7 +12,7 @@
  * 80  - Floating window frames
  * 120 - Window notices
  * 140 - Window backdrop (notches modal dimmers)
- * 150 - Toolbar chips / dock controls
+ * 150 - Primary nav + toolbar surfaces (mobile top bar, mailbox list header, dock controls)
  * 180 - Modals (ComingSoonModal)
  * 200 - Dropdown menus
  * 220 - Nested dropdowns
@@ -25,6 +25,13 @@
   --z-window-floating: 80;
   --z-window-notice: 120;
   --z-window-backdrop: 140;
+  /**
+   * Primary navigation + toolbar surface tier.
+   * @usage - MobileTopBar, EmailListPane header, AiPanelDockChip and other top-of-shell controls
+   * @z-index-warning - Must sit above DrawerBackdrop (50) and MailboxSidebar (60),
+   *                    but below global modals (180) and dropdown menus (200+).
+   * @related - DrawerBackdrop.svelte, MailboxSidebar.svelte, MobileTopBar.svelte, EmailListPane.svelte
+   */
   --z-toolbar-surface: 150;
   --z-modal: 180;
   --z-dropdown: 200;
