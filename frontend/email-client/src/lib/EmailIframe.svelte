@@ -70,7 +70,7 @@
   .email-html-fallback {
     width: 100%;
     max-width: 100%;
-    padding: 1rem;
+    padding: 0.75rem;
     background: transparent;
     overflow-wrap: anywhere;
   }

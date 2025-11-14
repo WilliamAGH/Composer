@@ -22,7 +22,6 @@
   export let filteredCount = 0;
   export let searchDisabled = false;
   export let actionSurfaceRef = null;
-  export let zIndexUtility = 'z-[70]';
 
   const dispatch = createEventDispatcher();
 
@@ -52,26 +51,15 @@
 
 <div class="mobile-top-bar">
   <div class="mobile-top-bar__row">
-    <div class="mobile-top-bar__buttons">
-      {#if showBackButton}
-        <button type="button" class="btn btn--icon" aria-label={backButtonAriaLabel} on:click={handleBack}>
-          {#if backIcon === 'close'}
-            <X class="h-4 w-4" aria-hidden="true" />
-          {:else}
-            <ArrowLeft class="h-4 w-4" aria-hidden="true" />
-          {/if}
-        </button>
-      {/if}
-      {#if showMenuButton}
-        <button
-          type="button"
-          class={`btn btn--icon relative ${zIndexUtility}`}
-          aria-label={menuButtonAriaLabel}
-          on:click={handleMenu}>
-          <Menu class="h-4 w-4" aria-hidden="true" />
-        </button>
-      {/if}
-    </div>
+    {#if showBackButton}
+      <button type="button" class="btn btn--icon z-[70]" aria-label={backButtonAriaLabel} on:click={handleBack}>
+        {#if backIcon === 'close'}
+          <X class="h-4 w-4" aria-hidden="true" />
+        {:else}
+          <ArrowLeft class="h-4 w-4" aria-hidden="true" />
+        {/if}
+      </button>
+    {/if}
 
     <div class="mobile-top-bar__content" class:mobile-top-bar__content--search={variant === 'search'}>
       {#if variant === 'search'}
@@ -81,34 +69,47 @@
             value={searchValue}
             on:input={handleSearch}
             class="mailbox-search-input w-full rounded-2xl border border-slate-200 bg-white/90 pl-4 py-2 text-base text-slate-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-slate-200"
-            class:pr-16={compactActions}
-            class:pr-32={!compactActions}
+            class:pr-28={compactActions && showMenuButton}
+            class:pr-16={compactActions && !showMenuButton}
+            class:pr-44={!compactActions && showMenuButton}
+            class:pr-32={!compactActions && !showMenuButton}
             disabled={searchDisabled}
           />
-          <button
-            type="button"
-            class="btn btn--primary btn--compact mailbox-ai-trigger"
-            class:mailbox-ai-trigger--compact={compactActions}
-            aria-haspopup="menu"
-            aria-expanded={actionsMenuVisible}
-            on:click={handleToggleActions}
-            disabled={disableAiButton}
-          >
-            <span class="flex items-center gap-1">
-              {#if mailboxCommandPendingKey}
-                <Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
-              {:else}
-                <Sparkles class="h-4 w-4" aria-hidden="true" />
-              {/if}
-            </span>
-            <span class="mailbox-ai-trigger__label" class:hidden={compactActions}>
-              {#if mailboxCommandPendingKey}
-                {activeMailboxActionLabel ? `${activeMailboxActionLabel}…` : 'Working…'}
-              {:else}
-                AI Actions
-              {/if}
-            </span>
-          </button>
+          <div class="mobile-search__actions">
+            <button
+              type="button"
+              class="btn btn--primary btn--compact mailbox-ai-trigger"
+              class:mailbox-ai-trigger--compact={compactActions}
+              aria-haspopup="menu"
+              aria-expanded={actionsMenuVisible}
+              on:click={handleToggleActions}
+              disabled={disableAiButton}
+            >
+              <span class="flex items-center gap-1">
+                {#if mailboxCommandPendingKey}
+                  <Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
+                {:else}
+                  <Sparkles class="h-4 w-4" aria-hidden="true" />
+                {/if}
+              </span>
+              <span class="mailbox-ai-trigger__label" class:hidden={compactActions}>
+                {#if mailboxCommandPendingKey}
+                  {activeMailboxActionLabel ? `${activeMailboxActionLabel}…` : 'Working…'}
+                {:else}
+                  AI Actions
+                {/if}
+              </span>
+            </button>
+            {#if showMenuButton}
+              <button
+                type="button"
+                class="btn btn--icon relative z-[70]"
+                aria-label={menuButtonAriaLabel}
+                on:click={handleMenu}>
+                <Menu class="h-4 w-4" aria-hidden="true" />
+              </button>
+            {/if}
+          </div>
           {#if actionsMenuVisible}
             <div class="mobile-search__menu menu-surface" role="menu" tabindex="0" on:click|stopPropagation on:keydown|stopPropagation>
               <span class="menu-eyebrow">Mailbox Actions</span>
@@ -171,11 +172,6 @@
     gap: 0.75rem;
   }
 
-  .mobile-top-bar__buttons {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
 
   .mobile-top-bar__content {
     flex: 1;
@@ -200,9 +196,17 @@
     flex: 1;
   }
 
-  .mobile-search .mailbox-ai-trigger {
+  /**
+   * Actions container for AI trigger + hamburger menu inside search input.
+   * @usage - Right-aligned button group within mobile search
+   * @related - .mailbox-ai-trigger, .btn--icon
+   */
+  .mobile-search__actions {
     position: absolute;
     inset: 3px 3px 3px auto;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
   }
 
   .mobile-search__menu {

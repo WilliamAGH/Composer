@@ -325,14 +325,18 @@
       const viewportWidth = window.innerWidth;
       const spaceAbove = rect.top - viewportPadding;
       const spaceBelow = viewportHeight - viewportPadding - rect.bottom;
-      const openBelow = spaceBelow >= menuHeight + offset || spaceBelow >= spaceAbove;
+      
+      // Use estimated menu height when actual dimensions aren't available yet
+      const effectiveMenuHeight = menuHeight || 240;
+      // Footer menus should always open upward since buttons are at the bottom
+      const openBelow = false;
 
       let top;
       if (openBelow) {
         const desiredTop = rect.bottom + offset;
-        top = Math.min(desiredTop, viewportHeight - viewportPadding - menuHeight);
+        top = Math.min(desiredTop, viewportHeight - viewportPadding - effectiveMenuHeight);
       } else {
-        const desiredTop = rect.top - offset - menuHeight;
+        const desiredTop = rect.top - offset - effectiveMenuHeight;
         top = Math.max(viewportPadding, desiredTop);
       }
 
@@ -554,24 +558,6 @@
               <ChevronDown class={`h-4 w-4 transition ${draftMenuOpen ? 'rotate-180' : ''}`} />
             </button>
           </div>
-          {#if draftMenuOpen && draftOptions.length}
-            <div
-              class="menu-surface compose-menu compose-menu--footer"
-              bind:this={draftMenuRef}
-              style={`top: ${draftMenuPosition.top}px; right: ${draftMenuPosition.right}px;`}>
-              <span class="menu-eyebrow">Drafting Options</span>
-              <div class="menu-list">
-                {#each draftOptions as option (option.key)}
-                  <button type="button" class="menu-item" on:click={() => invokeDraftOption(option)}>
-                    <div class="flex items-center gap-2 min-w-0">
-                      <Wand2 class="h-4 w-4 text-slate-500" />
-                      <span class="truncate">{option.label}</span>
-                    </div>
-                  </button>
-                {/each}
-              </div>
-            </div>
-          {/if}
         {:else}
           <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill" on:click={runPrimaryDraft}>
             <Wand2 class="h-4 w-4" /> <span class="compose-ai-label">AI Compose</span>
@@ -589,30 +575,48 @@
           <Highlighter class="h-4 w-4" /> <span class="compose-ai-label">Tone</span>
           <ChevronDown class={`h-4 w-4 text-slate-500 transition ${toneMenuOpen ? 'rotate-180' : ''}`} />
         </button>
-        {#if toneMenuOpen}
-          <div
-            class="menu-surface compose-menu compose-menu--footer"
-            bind:this={toneMenuRef}
-            style={`top: ${toneMenuPosition.top}px; right: ${toneMenuPosition.right}px;`}>
-            <span class="menu-eyebrow">Rewrite Tone</span>
-            <div class="menu-list">
-              {#each tonePresets as preset (preset.id)}
-                <button type="button" class="menu-item" on:click={() => invokeTonePreset(preset)}>
-                  <div class="flex flex-col text-left">
-                    <span class="font-medium text-slate-900">{preset.label}</span>
-                    <span class="text-xs text-slate-500">Rewrite using the {preset.label.toLowerCase()} voice.</span>
-                  </div>
-                </button>
-              {/each}
-            </div>
-          </div>
-        {/if}
       </div>
     </div>
   </div>
     </WindowFrame>
   {/if}
   <input bind:this={fileInput} type="file" class="sr-only" on:change={(e) => onFilesSelected(e.currentTarget.files)} multiple />
+  {#if !mobile && draftMenuOpen && draftOptions.length}
+    <div
+      class="menu-surface compose-menu compose-menu--footer"
+      bind:this={draftMenuRef}
+      style={`top: ${draftMenuPosition.top}px; right: ${draftMenuPosition.right}px;`}>
+      <span class="menu-eyebrow">Drafting Options</span>
+      <div class="menu-list">
+        {#each draftOptions as option (option.key)}
+          <button type="button" class="menu-item" on:click={() => invokeDraftOption(option)}>
+            <div class="flex items-center gap-2 min-w-0">
+              <Wand2 class="h-4 w-4 text-slate-500" />
+              <span class="truncate">{option.label}</span>
+            </div>
+          </button>
+        {/each}
+      </div>
+    </div>
+  {/if}
+  {#if !mobile && toneMenuOpen}
+    <div
+      class="menu-surface compose-menu compose-menu--footer"
+      bind:this={toneMenuRef}
+      style={`top: ${toneMenuPosition.top}px; right: ${toneMenuPosition.right}px;`}>
+      <span class="menu-eyebrow">Rewrite Tone</span>
+      <div class="menu-list">
+        {#each tonePresets as preset (preset.id)}
+          <button type="button" class="menu-item" on:click={() => invokeTonePreset(preset)}>
+            <div class="flex flex-col text-left">
+              <span class="font-medium text-slate-900">{preset.label}</span>
+              <span class="text-xs text-slate-500">Rewrite using the {preset.label.toLowerCase()} voice.</span>
+            </div>
+          </button>
+        {/each}
+      </div>
+    </div>
+  {/if}
   {#if composePromptOpen}
     <div class="compose-prompt-backdrop" role="presentation">
       <div

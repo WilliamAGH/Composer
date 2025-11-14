@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import { Reply, Forward, Archive, Trash2, FolderSymlink, Loader2 } from 'lucide-svelte';
+  import { Reply, Forward, Archive, Trash2, FolderSymlink, Loader2, MoreVertical, Languages } from 'lucide-svelte';
   import AiCommandButtons from './AiCommandButtons.svelte';
   import MailboxMoveMenu from './MailboxMoveMenu.svelte';
 
@@ -21,8 +21,11 @@
 
   const dispatch = createEventDispatcher();
   let moveMenuOpen = false;
-  let moveMenuButton = null;
+  let localMoveMenuButton = null;
   let moveMenuRef = null;
+  let moreMenuOpen = false;
+  let moreMenuButton = null;
+  let moreMenuRef = null;
 
   function emit(type, detail) {
     dispatch(type, detail);
@@ -33,10 +36,26 @@
    */
   function toggleMoveMenu() {
     moveMenuOpen = !moveMenuOpen;
+    if (moveMenuOpen) moreMenuOpen = false;
   }
 
   function closeMoveMenu() {
     moveMenuOpen = false;
+  }
+
+  /**
+   * Toggles the mobile overflow menu visibility.
+   */
+  function toggleMoreMenu() {
+    const nextState = !moreMenuOpen;
+    moreMenuOpen = nextState;
+    if (nextState) moveMenuOpen = false;
+    emit('moreMenuToggle', { open: nextState });
+  }
+
+  function closeMoreMenu() {
+    moreMenuOpen = false;
+    emit('moreMenuToggle', { open: false });
   }
 
   /**
@@ -48,21 +67,38 @@
   }
 
   /**
-   * Closes the dropdown when clicking outside the control.
+   * Closes dropdowns when clicking outside the control.
    */
   function handleGlobalPointer(event) {
-    if (!moveMenuOpen) return;
+    if (!moveMenuOpen && !moreMenuOpen) return;
     const target = event.target;
-    if (moveMenuButton?.contains(target) || moveMenuRef?.contains(target)) {
+    if (localMoveMenuButton?.contains(target) || moveMenuRef?.contains(target)) {
+      return;
+    }
+    if (moreMenuButton?.contains(target) || moreMenuRef?.contains(target)) {
       return;
     }
     moveMenuOpen = false;
+    closeMoreMenu();
   }
 
   onMount(() => {
     document.addEventListener('pointerdown', handleGlobalPointer);
     return () => document.removeEventListener('pointerdown', handleGlobalPointer);
   });
+
+  /**
+   * Positions the overflow menu below the trigger button.
+   */
+  function positionOverflowMenu() {
+    if (!moreMenuButton || !moreMenuRef) return;
+    const buttonRect = moreMenuButton.getBoundingClientRect();
+    moreMenuRef.style.top = `${buttonRect.bottom + 8}px`;
+  }
+
+  $: if (moreMenuOpen && moreMenuButton && moreMenuRef) {
+    positionOverflowMenu();
+  }
 </script>
 
 {#if email}
@@ -104,61 +140,29 @@
         <div class="action-tray__scroller">
           <button
             type="button"
-            class="action-chip"
+            class="btn btn--icon"
             aria-label="Reply"
+            title="Reply"
             on:click={() => emit('reply')}>
-            <span class="action-chip__icon"><Reply class="h-4 w-4" /></span>
-            <span class="action-chip__label">Reply</span>
-          </button>
-          <button
-            type="button"
-            class="action-chip"
-            aria-label="Forward"
-            on:click={() => emit('forward')}>
-            <span class="action-chip__icon"><Forward class="h-4 w-4" /></span>
-            <span class="action-chip__label">Forward</span>
+            <Reply class="h-4 w-4" />
           </button>
           {#if currentFolderId !== 'archive'}
             <button
               type="button"
-              class="action-chip"
+              class="btn btn--icon"
               aria-label="Archive"
+              title="Archive"
               on:click={() => emit('archive')}>
-              <span class="action-chip__icon"><Archive class="h-4 w-4" /></span>
-              <span class="action-chip__label">Archive</span>
+              <Archive class="h-4 w-4" />
             </button>
           {/if}
-          <div class="action-chip-shell" class:action-chip-shell--open={moveMenuOpen}>
-            <button
-              bind:this={moveMenuButton}
-              type="button"
-              class="action-chip action-chip__trigger"
-              aria-label="Move"
-              aria-expanded={moveMenuOpen}
-              on:click={toggleMoveMenu}>
-              <span class="action-chip__icon">
-                {#if pendingMove}
-                  <Loader2 class="h-4 w-4 animate-spin" />
-                {:else}
-                  <FolderSymlink class="h-4 w-4" />
-                {/if}
-              </span>
-              <span class="action-chip__label">Move</span>
-            </button>
+          <div class="mobile-action-menu-shell" class:mobile-action-menu-shell--open={moveMenuOpen}>
             {#if moveMenuOpen}
               <div class="move-menu-surface" bind:this={moveMenuRef}>
                 <MailboxMoveMenu currentFolderId={currentFolderId} pending={pendingMove} on:select={handleMoveSelect} />
               </div>
             {/if}
           </div>
-          <button
-            type="button"
-            class="action-chip action-chip--destructive"
-            aria-label="Delete"
-            on:click={() => emit('delete')}>
-            <span class="action-chip__icon"><Trash2 class="h-4 w-4" /></span>
-            <span class="action-chip__label">Delete</span>
-          </button>
           <div class="action-tray__ai">
             <AiCommandButtons
               {commands}
@@ -172,6 +176,38 @@
               on:actionMenuToggle={(event) => emit('actionMenuToggle', event.detail)}
               on:comingSoon={(event) => emit('comingSoon', event.detail)}
             />
+          </div>
+          <div class="mobile-action-menu-shell" class:mobile-action-menu-shell--open={moreMenuOpen}>
+            <button
+              bind:this={moreMenuButton}
+              type="button"
+              class="btn btn--icon"
+              aria-label="More actions"
+              title="More"
+              aria-expanded={moreMenuOpen}
+              on:click={toggleMoreMenu}>
+              <MoreVertical class="h-4 w-4" />
+            </button>
+            {#if moreMenuOpen}
+              <div class="mobile-overflow-menu" bind:this={moreMenuRef}>
+                <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('forward'); closeMoreMenu(); }}>
+                  <Forward class="h-4 w-4" />
+                  <span>Forward</span>
+                </button>
+                <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('comingSoon', { label: 'Translate' }); closeMoreMenu(); }}>
+                  <Languages class="h-4 w-4" />
+                  <span>Translate</span>
+                </button>
+                <button type="button" class="mobile-overflow-menu__item" on:click={() => { toggleMoveMenu(); closeMoreMenu(); }}>
+                  <FolderSymlink class="h-4 w-4" />
+                  <span>Move to folder</span>
+                </button>
+                <button type="button" class="mobile-overflow-menu__item mobile-overflow-menu__item--destructive" on:click={() => { emit('delete'); closeMoreMenu(); }}>
+                  <Trash2 class="h-4 w-4" />
+                  <span>Delete</span>
+                </button>
+              </div>
+            {/if}
           </div>
         </div>
       </div>
@@ -221,7 +257,7 @@
         {/if}
         <div class="relative">
           <button
-            bind:this={moveMenuButton}
+            bind:this={localMoveMenuButton}
             type="button"
             class="btn btn--icon"
             aria-label="Move"
@@ -303,7 +339,7 @@
   .email-header-mobile {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
     width: 100%;
   }
 
@@ -425,13 +461,13 @@
   }
 
   /**
-   * Scroll container enables horizontal overflow with snap-like spacing for one-handed use.
-   * @usage - Direct child within .action-tray surrounding chips and AI toolbar
-   * @related - .action-chip, .action-tray__ai
+   * Scroll container enables horizontal overflow for one-handed use on mobile action tray.
+   * @usage - Direct child within .action-tray surrounding buttons and AI toolbar
+   * @related - .action-tray__ai
    */
   .action-tray__scroller {
     display: flex;
-    align-items: stretch;
+    align-items: flex-start;
     gap: 0.5rem;
     overflow-x: auto;
     padding-bottom: 0.25rem;
@@ -439,86 +475,66 @@
   }
 
   /**
-   * Base chip styling ensures ≥40px tap targets without oversized icons.
-   * @usage - Reply/Forward/Archive/Delete chips on mobile action tray
-   * @related - .action-chip__icon, .action-chip__label
+   * Shell keeps menu triggers positioned relative to dropdown surfaces on mobile.
+   * @usage - Wraps buttons + dropdowns inside the action tray
+   * @related - .move-menu-surface, .mobile-overflow-menu
    */
-  .action-chip {
-    flex: 0 0 auto;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    padding: 0.4rem 0.85rem;
-    border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.45);
-    background: rgba(248, 250, 252, 0.95);
-    color: #0f172a;
-    font-size: 0.85rem;
-    font-weight: 600;
-    box-shadow: 0 20px 40px -28px rgba(15, 23, 42, 0.45);
-    cursor: pointer;
-  }
-
-  /**
-   * Icon capsule keeps linework crisp and centered in the compact chip layout.
-   * @usage - Inline span preceding chip labels
-   * @related - .action-chip, .action-chip__label
-   */
-  .action-chip__icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.5);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0.9);
-    color: #475569;
-  }
-
-  /**
-   * Text style for chip labels keeps accessible contrast yet leaves room for AI badges.
-   * @usage - Inline span describing the action represented by the chip
-   * @related - .action-chip__icon
-   */
-  .action-chip__label {
-    white-space: nowrap;
-  }
-
-  /**
-   * Destructive chip variant leans on rose palette to warn users before irreversible actions.
-   * @usage - Delete chip on mobile action tray
-   * @related - .action-chip
-   */
-  .action-chip--destructive {
-    border-color: rgba(244, 63, 94, 0.35);
-    color: #b91c1c;
-  }
-
-  /**
-   * Shell keeps the move trigger positioned relative to its dropdown surface without altering chip layout.
-   * @usage - Wraps the move button + dropdown inside the action tray
-   * @related - .move-menu-surface, .action-chip__trigger
-   */
-  .action-chip-shell {
+  .mobile-action-menu-shell {
     position: relative;
     flex: 0 0 auto;
     display: inline-flex;
   }
 
-  .action-chip-shell--open .action-chip {
-    border-color: rgba(99, 102, 241, 0.45);
+  /**
+   * Overflow menu for less-common mobile actions (forward, translate, move, delete).
+   * @usage - Dropdown menu triggered by More button at end of mobile action tray
+   * @z-index-warning - Uses z-index 250 to render above all other UI including AI panels (z-150)
+   * @related - .mobile-overflow-menu__item
+   */
+  .mobile-overflow-menu {
+    position: fixed;
+    right: 1rem;
+    top: auto;
+    bottom: auto;
+    z-index: 250;
+    background: white;
+    border-radius: 0.85rem;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.18);
+    padding: 0.5rem;
+    min-width: 11rem;
+    max-height: 80vh;
+    overflow-y: auto;
   }
 
   /**
-   * Trigger button mirrors base chip styling while remaining a proper interactive element for a11y.
-   * @usage - Button nested inside .action-chip-shell for the move action
-   * @related - .action-chip
+   * Menu item button styling for overflow actions.
+   * @usage - Individual action buttons inside .mobile-overflow-menu
+   * @related - .mobile-overflow-menu__item--destructive
    */
-  .action-chip__trigger {
+  .mobile-overflow-menu__item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
     width: 100%;
-    justify-content: flex-start;
-    appearance: none;
+    padding: 0.65rem 0.75rem;
+    border-radius: 0.5rem;
+    background: transparent;
+    border: none;
+    color: #0f172a;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .mobile-overflow-menu__item:hover {
+    background: rgba(248, 250, 252, 0.9);
+  }
+
+  .mobile-overflow-menu__item--destructive {
+    color: #b91c1c;
   }
 
   /**

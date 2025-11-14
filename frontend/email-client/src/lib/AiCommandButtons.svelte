@@ -233,8 +233,8 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
       </button>
     {/if}
 
-    {#if translateEntry && orderedVariants.length}
-      <div class={`relative ${mobile ? 'span-2' : ''}`}>
+    {#if translateEntry && orderedVariants.length && !mobile}
+      <div class="relative">
         <button
           type="button"
           class={`btn btn--ghost btn--compact action-pill justify-between ${mobile ? 'w-full' : ''}`}
@@ -335,7 +335,9 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin-right: 0.4rem;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
   }
 
   .action-pill__label {
@@ -359,6 +361,8 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   .ai-action-toolbar.compact :global(.btn.btn--compact) {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
+    gap: 0;
+    min-width: 42px;
   }
 
   .ai-action-toolbar.compact .action-pill__label {
@@ -433,8 +437,8 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   }
 
   .action-pill :global(svg) {
-    width: 15px;
-    height: 15px;
+    width: 16px;
+    height: 16px;
   }
 
   .action-pill :global(.btn-icon-chip) {

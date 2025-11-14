@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import MobileTopBar from './MobileTopBar.svelte';
+  import { ArrowLeft } from 'lucide-svelte';
   import EmailActionToolbar from './EmailActionToolbar.svelte';
   import EmailDetailView from './EmailDetailView.svelte';
 
@@ -25,10 +25,6 @@
     emit('back');
   }
 
-  function handleToggleMenu(event) {
-    emit('toggleMenu', event.detail);
-  }
-
   function handleToolbar(eventName, event) {
     emit(eventName, event?.detail);
   }
@@ -36,16 +32,15 @@
 
 {#if email}
   <div class="mobile-detail-sheet">
-    <MobileTopBar
-      variant="custom"
-      backButtonAriaLabel="Back to inbox"
-      on:back={handleBack}
-      on:toggleMenu={handleToggleMenu}>
-      <div slot="center" class="mobile-detail-sheet__title">
-        <p class="mobile-detail-sheet__eyebrow">{escapeHtmlFn(email.from || email.fromEmail || 'Sender')}</p>
-        <p class="mobile-detail-sheet__headline">{escapeHtmlFn(email.subject || 'No subject')}</p>
-      </div>
-    </MobileTopBar>
+    <div class="mobile-detail-sheet__header">
+      <button
+        type="button"
+        class="btn btn--icon z-[70]"
+        aria-label="Back to inbox"
+        on:click={handleBack}>
+        <ArrowLeft class="h-4 w-4" aria-hidden="true" />
+      </button>
+    </div>
     <div class="mobile-detail-sheet__body">
       <div class="mobile-detail-sheet__toolbar">
         <EmailActionToolbar
@@ -70,16 +65,14 @@
           on:comingSoon={(event) => handleToolbar('comingSoon', event)}
         />
       </div>
-      <div class="mobile-detail-sheet__content">
-        <EmailDetailView
-          email={email}
-          mobile={true}
-          tablet={false}
-          desktop={false}
-          wide={false}
-          renderMarkdownFn={renderMarkdownFn}
-        />
-      </div>
+      <EmailDetailView
+        email={email}
+        mobile={true}
+        tablet={false}
+        desktop={false}
+        wide={false}
+        renderMarkdownFn={renderMarkdownFn}
+      />
     </div>
   </div>
 {/if}
@@ -109,27 +102,13 @@
     }
   }
 
-  .mobile-detail-sheet__title {
+
+  .mobile-detail-sheet__header {
     display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    min-width: 0;
-  }
-
-  .mobile-detail-sheet__eyebrow {
-    font-size: 0.65rem;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    color: rgba(148, 163, 184, 0.9);
-  }
-
-  .mobile-detail-sheet__headline {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #0f172a;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.96);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
   }
 
   .mobile-detail-sheet__body {
@@ -137,25 +116,13 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    padding: 0 1rem 1rem;
+    padding: 0.75rem 0.75rem 0;
     min-height: 0;
+    overflow-y: auto;
+    background: white;
   }
 
   .mobile-detail-sheet__toolbar {
     padding-top: 0.25rem;
-  }
-
-  .mobile-detail-sheet__content {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    border-radius: 1rem;
-    background: rgba(255, 255, 255, 0.9);
-    box-shadow: 0 25px 45px -20px rgba(15, 23, 42, 0.25);
-  }
-
-  .mobile-detail-sheet__content :global(.prose),
-  .mobile-detail-sheet__content :global(iframe) {
-    border-radius: 1rem;
   }
 </style>
