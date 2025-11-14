@@ -2,6 +2,7 @@
 import { onMount } from 'svelte';
 import { get, writable } from 'svelte/store';
 import { useMailboxDataStore, useMailboxChromeStore, useMailboxResponsiveState } from './lib/providers/MailboxChromeProvider.svelte';
+import { useAiCommandContext } from './lib/providers/AiCommandProvider.svelte';
   import ComposeWindow from './lib/ComposeWindow.svelte';
   import AiSummaryWindow from './lib/AiSummaryWindow.svelte';
   import WindowDock from './lib/window/WindowDock.svelte';
@@ -21,37 +22,29 @@ import { createMobileOverlayCoordinator } from './lib/MobileOverlayCoordinator';
 import { isMobile, isTablet, isDesktop, isWide, viewport, viewportSize } from './lib/viewportState';
   import { createWindowManager } from './lib/window/windowStore'; // temp use
   import { createComposeWindow, WindowKind } from './lib/window/windowTypes';
-  import { catalogStore, hydrateCatalog, ensureCatalogLoaded as ensureCatalog, getFunctionMeta, mergeDefaultArgs, resolveDefaultInstruction } from './lib/services/aiCatalog';
+import { getFunctionMeta, mergeDefaultArgs, resolveDefaultInstruction } from './lib/services/aiCatalog';
 import { handleAiCommand, deriveHeadline, runComposeWindowAi } from './lib/services/aiCommandHandler';
-import { buildEmailContextString, deriveRecipientContext, normalizeRecipient } from './lib/services/emailContextConstructor';
+import { deriveRecipientContext } from './lib/services/emailContextConstructor';
 import { buildReplyPrefill, buildForwardPrefill } from './lib/services/composePrefill.js';
-import { createAiJourneyStore } from './lib/services/aiJourneyStore';
 import { ChevronLeft, ChevronRight } from 'lucide-svelte';
 import { MAILBOX_ACTION_FALLBACKS, PRIMARY_TOOLBAR_PREFERENCE } from './lib/constants/catalogActions';
-import { getJourneySubhead } from './lib/constants/journeyScopes';
 import { escapeHtmlContent, renderMarkdownContent, formatRelativeTimestamp, formatFullTimestamp } from './lib/services/emailFormatting';
-import { initializeUiNonce, startChatHeartbeat, CLIENT_WARNING_EVENT } from './lib/services/sessionNonceClient';
-import { createActionMenuSuggestionsStore } from './lib/stores/actionMenuSuggestionsStore';
-import { createConversationLedger } from './lib/services/conversationLedger';
+  import { createActionMenuSuggestionsStore } from './lib/stores/actionMenuSuggestionsStore';
 import { createAiPanelStore } from './lib/stores/aiPanelStore';
-import { executeCatalogCommand } from './lib/services/catalogCommandClient';
-import { launchMailboxAutomation } from './lib/services/mailboxAutomationClient';
-import EmailDetailMobileSheet from './lib/EmailDetailMobileSheet.svelte';
+  import { launchMailboxAutomation } from './lib/services/mailboxAutomationClient';
+  import EmailDetailMobileSheet from './lib/EmailDetailMobileSheet.svelte';
+import { recordClientDiagnostic, showWindowNotice } from './lib/services/clientDiagnosticsService.js';
 
   /**
-   * ShellLayout consumes the MailboxChromeProvider contexts and drives the interactive shell. Keep it as
+   * ShellLayout consumes provider contexts and drives the interactive shell. Keep it as
    * a composition root only—business logic lives inside services/controllers so we maintain single
    * responsibility per module.
    */
-  export let bootstrap = {};
 
-  hydrateCatalog(bootstrap.aiFunctions || null);
-  const catalog = catalogStore();
+  const { catalog, ensureCatalog, windowNoticeStore, createAiCommandService } = useAiCommandContext();
   $: catalogData = $catalog;
   $: aiFunctionsByKey = catalogData?.functionsByKey || {};
   $: aiPrimaryCommandKeys = Array.isArray(catalogData?.primaryCommands) ? catalogData.primaryCommands : [];
-
-  initializeUiNonce(bootstrap.uiNonce || null);
 const mailboxDataStore = useMailboxDataStore();
 const mailboxChromeStore = useMailboxChromeStore();
 const responsiveState = useMailboxResponsiveState();
@@ -75,46 +68,11 @@ const ACTIVE_MAILBOX_ID = 'primary';
   const compactActionsStore = responsiveStores.compactActions;
   const viewportTierStore = responsiveStores.viewportTier;
   const viewportStateStore = responsiveStores.viewport;
-  const resolveFolderForMessage = (email) => mailboxDataStore.resolveFolderForMessage(email);
+const resolveFolderForMessage = (email) => mailboxDataStore.resolveFolderForMessage(email);
 let emails = [];
 mailboxStores.emails.subscribe((value) => {
   emails = value;
 });
-let windowNotice = '';
-let windowNoticeTimer = null;
-
-  function recordClientDiagnostic(level, message, error) {
-    if (typeof window === 'undefined') return;
-    const entry = {
-      level,
-      message: message || '',
-      detail: error?.message || null,
-      stack: error?.stack || null,
-      at: Date.now()
-    };
-    if (Array.isArray(window.__COMPOSER_DIAGNOSTICS__)) {
-      window.__COMPOSER_DIAGNOSTICS__.push(entry);
-    } else {
-      window.__COMPOSER_DIAGNOSTICS__ = [entry];
-    }
-  }
-
-  function showGlobalNotice(message, duration = 4000) {
-    if (!message) return;
-    windowNotice = message;
-    clearTimeout(windowNoticeTimer);
-    windowNoticeTimer = setTimeout(() => {
-      windowNotice = '';
-    }, duration);
-  }
-
-  function processClientWarning(detail = {}) {
-    const { message, error, silent, level = 'warn' } = detail || {};
-    recordClientDiagnostic(level, message || 'Client warning', error);
-    if (!silent && message) {
-      showGlobalNotice(message);
-    }
-  }
 
   const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
   const windowsStore = windowManager.windows;
@@ -133,8 +91,6 @@ let windowNoticeTimer = null;
   const mobileDetailOverlayVisibleStore = mobileOverlayCoordinator.detailVisible;
   const mobilePanelVisibleStore = mobileOverlayCoordinator.panelVisible;
   const overlayBackdropVisibleStore = mobileOverlayCoordinator.overlayVisible;
-  const aiJourney = createAiJourneyStore();
-  const aiJourneyOverlayStore = aiJourney.overlay;
   const actionMenuStore = createActionMenuSuggestionsStore({
     ensureCatalogReady: ensureCatalog,
     callCatalogCommand: (commandKey, instruction, context) => callAiCommand(commandKey, instruction, context)
@@ -153,7 +109,8 @@ let sidebarOpen = get(sidebarOpenStore);
 let drawerMode = get(drawerModeStore);
 let drawerVisible = get(drawerVisibleStore);
 let pendingMoves = get(pendingMovesStore);
-const conversationLedger = createConversationLedger(() => selected);
+const { aiClient, journeyStore: aiJourney, conversationLedger } = createAiCommandService(() => selected);
+const aiJourneyOverlayStore = aiJourney.overlay;
 const panelStore = createAiPanelStore();
 const panelStores = panelStore.stores;
 const panelSessionActiveStore = panelStores.sessionActive;
@@ -332,7 +289,7 @@ const panelErrorsStore = panelStores.errors;
         messageContextIds,
         catalogCommandKey: entry.key
       });
-      showGlobalNotice(`${entry.label || 'Mailbox action'} queued`);
+      showWindowNotice(`${entry.label || 'Mailbox action'} queued`);
     } catch (error) {
       mailboxActionError = error?.message || 'Unable to run mailbox action.';
       alert(mailboxActionError);
@@ -417,7 +374,7 @@ const panelErrorsStore = panelStores.errors;
   function showWindowLimitMessage() {
     const err = get(windowErrorStore);
     if (!err) return;
-    showGlobalNotice(err.message);
+    showWindowNotice(err.message);
   }
 
   function openCompose() {
@@ -476,10 +433,10 @@ const panelErrorsStore = panelStores.errors;
     if (!email || !targetFolderId) return;
     mailboxDataStore
       .moveMessageRemote({ mailboxId: ACTIVE_MAILBOX_ID, messageId: email.id, targetFolderId })
-      .then(() => showGlobalNotice(`Moved to ${targetFolderId}`))
+      .then(() => showWindowNotice(`Moved to ${targetFolderId}`))
       .catch((error) => {
         recordClientDiagnostic('error', 'Unable to move message.', error);
-        showGlobalNotice('Unable to move message.');
+        showWindowNotice('Unable to move message.');
       });
   }
 
@@ -495,7 +452,7 @@ const panelErrorsStore = panelStores.errors;
     const instruction = buildReplyGreetingInstruction(relatedEmail);
     runMainAiCommand({ key: 'draft', instructionOverride: instruction || null }).catch((error) => {
       recordClientDiagnostic('warn', 'Reply AI prefill failed.', error);
-      showGlobalNotice('AI reply prefill unavailable. Please try again.');
+      showWindowNotice('AI reply prefill unavailable. Please try again.');
     });
   }
 
@@ -516,7 +473,7 @@ const panelErrorsStore = panelStores.errors;
   function handleComposeSend(event) {
     mailboxDataStore.markDraftAsSent(event.detail.id);
     windowManager.close(event.detail.id);
-    showGlobalNotice('Draft moved to Sent');
+    showWindowNotice('Draft moved to Sent');
   }
 
   /**
@@ -528,7 +485,7 @@ const panelErrorsStore = panelStores.errors;
 
   function handleComposeDeleteDraft(event) {
     mailboxDataStore.deleteDraftMessage(event.detail.id);
-    showGlobalNotice('Draft deleted');
+    showWindowNotice('Draft deleted');
   }
 
   async function handleComposeRequestAi(event) {
@@ -559,113 +516,14 @@ const panelErrorsStore = panelStores.errors;
   const escapeHtml = escapeHtmlContent;
   const renderMarkdown = renderMarkdownContent;
 
-  function beginAiJourney({ scope = 'global', targetLabel = 'message', commandKey, headline, scopeTarget } = {}) {
-    const defaultHeadline = getFunctionMeta(catalogData, commandKey)?.label || 'Working on your request';
-    const subhead = getJourneySubhead(scope);
-    return aiJourney.begin({ scope, targetLabel, commandKey, scopeTarget, headline: headline || deriveHeadline(commandKey, defaultHeadline), subhead });
-  }
-
   // ---------- AI integration (parity with v1) ----------
 
-  /**
-   * Call AI command with email context.
-   *
-   * Context priority:
-   * 1. contextId - References pre-stored context in backend EmailContextRegistry
-   * 2. emailContext - Fallback to sending markdown content directly
-   *
-   * The backend's ChatService will use contextId first, then emailContext as fallback.
-   */
-  /**
-   * Sends chat payloads with consistent metadata so the backend sees the same structure regardless
-   * of which UI surface initiated the helper.
-   */
-  async function callAiCommand(command, instruction, { contextId, subject, journeyScope = 'global', journeyScopeTarget = null, journeyLabel, journeyHeadline, commandVariant, commandArgs, emailContext, recipientContext } = {}) {
-    const targetLabel = journeyLabel || subject || selected?.subject || 'message';
-    const conversationKey = conversationLedger.resolveKey({ journeyScope, journeyScopeTarget, contextId });
-    const scopedConversationId = conversationLedger.read(conversationKey);
-    const payload = {
-      instruction,
-      message: instruction,
-      conversationId: scopedConversationId,
-      targetLabel,
-      journeyScope,
-      journeyScopeTarget,
-      journeyLabel,
-      journeyHeadline,
-      maxResults: 5,
-      thinkingEnabled: false,
-      jsonOutput: false
-    };
-    const journeyToken = beginAiJourney({ scope: journeyScope, scopeTarget: journeyScopeTarget, targetLabel, commandKey: command, headline: journeyHeadline });
-
-    const trimmedContextId = typeof contextId === 'string' ? contextId.trim() : null;
-    if (trimmedContextId) {
-      payload.contextId = trimmedContextId;
-    }
-
-    const commandMeta = getFunctionMeta(catalogData, command);
-    if (command && commandMeta) {
-      payload.aiCommand = command;
-      if (commandVariant) {
-        payload.commandVariant = commandVariant;
-      }
-      const argsPayload = commandArgs && Object.keys(commandArgs).length ? commandArgs : null;
-      if (argsPayload) {
-        payload.commandArgs = argsPayload;
-      }
-    }
-
-    if (subject && subject.trim()) {
-      payload.subject = subject.trim();
-    }
-
-    if (recipientContext) {
-      const normalizedRecipient = normalizeRecipient(recipientContext);
-      if (normalizedRecipient.name) {
-        payload.recipientName = normalizedRecipient.name;
-      }
-      if (normalizedRecipient.email) {
-        payload.recipientEmail = normalizedRecipient.email;
-      }
-    }
-
-    // Only send emailContext if no contextId is available
-    // This ensures we use the backend's pre-processed context when possible
-    if (!contextId) {
-      if (selected?.contextForAi && selected.contextForAi.trim()) {
-        payload.emailContext = selected.contextForAi.trim();
-      } else if (emailContext && emailContext.trim()) {
-        payload.emailContext = emailContext.trim();
-      } else if (selected) {
-        const ctx = buildEmailContextString(selected);
-        if (ctx) payload.emailContext = ctx;
-      }
-    }
-
-    aiJourney.advance(journeyToken, 'ai:context-search');
-
-    try {
-      const data = await executeCatalogCommand(command, payload);
-      aiJourney.advance(journeyToken, 'ai:llm-thinking');
-      aiJourney.complete(journeyToken);
-      if (data?.conversationId) {
-        conversationLedger.write(conversationKey, data.conversationId);
-      }
-      return data;
-    } catch (err) {
-      aiJourney.fail(journeyToken);
-      throw err;
-    }
+  async function callAiCommand(command, instruction, overrides = {}) {
+    return aiClient.call(command, instruction, {
+      ...overrides,
+      fallbackEmail: overrides.fallbackEmail || selected
+    });
   }
-
-  /**
-   * POST helper that retries once after silently refreshing the nonce.
-   */
-  onMount(() => {
-    const stopHeartbeat = startChatHeartbeat();
-    return () => stopHeartbeat();
-  });
 
   /** Builds compose/draft instructions while preserving catalog defaults and current user drafts. */
 
@@ -982,7 +840,7 @@ const panelErrorsStore = panelStores.errors;
   <AiPanelDockChip visible={$panelSessionActiveStore && $panelMinimizedStore} on:restore={restorePanelFromDock} />
 </WindowProvider>
 
-<WindowNotice message={windowNotice} />
+<WindowNotice message={$windowNoticeStore} />
 
 {#if aiJourneyOverlay.visible && aiJourneyOverlay.scope === 'global'}
   <div class="fixed bottom-6 left-1/2 z-[80] -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0">

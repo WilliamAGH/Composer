@@ -1,6 +1,7 @@
 <script>
   import MailboxChromeProvider from './lib/providers/MailboxChromeProvider.svelte';
   import ShellLayout from './ShellLayout.svelte';
+  import AiCommandProvider from './lib/providers/AiCommandProvider.svelte';
   import './app-shared.css';
 
   /**
@@ -11,5 +12,7 @@
 </script>
 
 <MailboxChromeProvider {bootstrap}>
-  <ShellLayout {bootstrap} />
+  <AiCommandProvider {bootstrap}>
+    <ShellLayout />
+  </AiCommandProvider>
 </MailboxChromeProvider>
