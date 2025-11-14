@@ -9,20 +9,18 @@ import com.composerai.api.service.ChatService;
 import com.composerai.api.util.StringUtils;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ScheduledExecutorService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
-import java.util.Map;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ScheduledExecutorService;
 
 @Slf4j
 @RestController
@@ -36,11 +34,13 @@ public class ChatController {
     private final ErrorMessagesProperties errorMessages;
     private static final String INSIGHTS_TRIGGER = "__INSIGHTS_TRIGGER__";
 
-    public ChatController(ChatService chatService,
-                          @Qualifier("chatStreamExecutor") Executor chatStreamExecutor,
-                          @Qualifier("sseHeartbeatExecutor") ScheduledExecutorService sseHeartbeatExecutor,
-                          OpenAiProperties openAiProperties,
-                          ErrorMessagesProperties errorMessages) {
+    public ChatController(
+        ChatService chatService,
+        @Qualifier("chatStreamExecutor") Executor chatStreamExecutor,
+        @Qualifier("sseHeartbeatExecutor") ScheduledExecutorService sseHeartbeatExecutor,
+        OpenAiProperties openAiProperties,
+        ErrorMessagesProperties errorMessages
+    ) {
         this.chatService = chatService;
         this.chatStreamExecutor = chatStreamExecutor;
         this.sseHeartbeatExecutor = sseHeartbeatExecutor;
@@ -73,15 +73,22 @@ public class ChatController {
         // Send periodic keepalive comments to prevent proxies from closing idle streams
         // Configuration source of truth: OpenAiProperties.Stream.getHeartbeatIntervalSeconds() - 10 seconds
         // Using shared executor to avoid thread pool exhaustion
-        final java.util.concurrent.atomic.AtomicBoolean completed = new java.util.concurrent.atomic.AtomicBoolean(false);
-        final java.util.concurrent.ScheduledFuture<?> heartbeatTask = sseHeartbeatExecutor.scheduleAtFixedRate(() -> {
-            if (completed.get()) return;
-            try {
-                emitter.send(SseEmitter.event().comment("heartbeat"));
-            } catch (Exception ignored) {
-                // ignore intermittent heartbeat failures
-            }
-        }, 0L, openAiProperties.getStream().getHeartbeatIntervalSeconds(), java.util.concurrent.TimeUnit.SECONDS);
+        final java.util.concurrent.atomic.AtomicBoolean completed = new java.util.concurrent.atomic.AtomicBoolean(
+            false
+        );
+        final java.util.concurrent.ScheduledFuture<?> heartbeatTask = sseHeartbeatExecutor.scheduleAtFixedRate(
+            () -> {
+                if (completed.get()) return;
+                try {
+                    emitter.send(SseEmitter.event().comment("heartbeat"));
+                } catch (Exception ignored) {
+                    // ignore intermittent heartbeat failures
+                }
+            },
+            0L,
+            openAiProperties.getStream().getHeartbeatIntervalSeconds(),
+            java.util.concurrent.TimeUnit.SECONDS
+        );
         emitter.onTimeout(() -> {
             log.warn("SSE timeout for conversationId={}", conversationId);
             emitter.complete();
@@ -98,83 +105,103 @@ public class ChatController {
         });
         try {
             chatStreamExecutor.execute(() -> {
-            try {
-                emitter.send(SseEmitter.event().comment("stream-start"));
-                final boolean jsonOutputRequested = request.isJsonOutput();
-                emitter.send(SseEmitter.event().name(SseEventType.METADATA.getEventName()).data(Map.of(
-                    "conversationId", conversationId,
-                    "userMessageId", userMessageId,
-                    "assistantMessageId", assistantMessageId,
-                    "jsonOutput", jsonOutputRequested
-                )));
-
-                // SSE Event Routing: StreamEvents → SSE named events → Frontend SSEEventRouter
-                chatService.streamChat(
-                    request,
-                    userMessageId,
-                    assistantMessageId,
-                    // Route HTML chunks: StreamEvent.RenderedHtml → SSE "rendered_html"
-                    token -> {
-                        try {
-                            SseEventType eventType = jsonOutputRequested
-                                ? SseEventType.RAW_JSON
-                                : SseEventType.RENDERED_HTML;
-                            emitter.send(SseEmitter.event().name(eventType.getEventName()).data(token));
-                        } catch (Exception e) {
-                            emitter.completeWithError(e);
-                        }
-                    },
-                    // Route thinking progress: StreamEvent.Reasoning → SSE "reasoning"
-                    message -> {
-                        try {
-                            if (message != null) {
-                                emitter.send(SseEmitter.event()
-                                    .name(SseEventType.REASONING.getEventName())
-                                    .data(message));
-                            }
-                        } catch (Exception e) {
-                            log.debug("Failed to forward reasoning event", e);
-                        }
-                    },
-                    // Route completion: onComplete → SSE "done"
-                    () -> {
-                        completed.set(true);
-                        heartbeatTask.cancel(false);
-                        try {
-                            emitter.send(SseEmitter.event().name(SseEventType.DONE.getEventName()).data("[DONE]"));
-                            emitter.complete();
-                        } catch (Exception e) {
-                            emitter.completeWithError(e);
-                        }
-                    },
-                    // Route errors: onError → SSE "error"
-                    error -> {
-                        // Use safe, predefined error message to avoid leaking backend internals
-                        String safeMessage = errorMessages.getStream().getError();
-                        try {
-                            emitter.send(SseEmitter.event().name(SseEventType.ERROR.getEventName()).data(safeMessage));
-                            log.warn("Streaming completed with error: {} (original: {})", safeMessage, error.getMessage());
-                        } catch (Exception ignored) {
-                            log.debug("Failed to send SSE error event", ignored);
-                        }
-                        completed.set(true);
-                        heartbeatTask.cancel(false);
-                        emitter.complete();
-                    }
-                );
-            } catch (Exception e) {
                 try {
-                    emitter.send(SseEmitter.event().name(SseEventType.ERROR.getEventName()).data("Streaming failed to start"));
-                    log.error("Streaming failed to start", e);
-                } catch (Exception ignored) {
-                    log.debug("Failed to send SSE startup error event", ignored);
+                    emitter.send(SseEmitter.event().comment("stream-start"));
+                    final boolean jsonOutputRequested = request.isJsonOutput();
+                    emitter.send(
+                        SseEmitter.event()
+                            .name(SseEventType.METADATA.getEventName())
+                            .data(
+                                Map.of(
+                                    "conversationId",
+                                    conversationId,
+                                    "userMessageId",
+                                    userMessageId,
+                                    "assistantMessageId",
+                                    assistantMessageId,
+                                    "jsonOutput",
+                                    jsonOutputRequested
+                                )
+                            )
+                    );
+
+                    // SSE Event Routing: StreamEvents → SSE named events → Frontend SSEEventRouter
+                    chatService.streamChat(
+                        request,
+                        userMessageId,
+                        assistantMessageId,
+                        // Route HTML chunks: StreamEvent.RenderedHtml → SSE "rendered_html"
+                        token -> {
+                            try {
+                                SseEventType eventType = jsonOutputRequested
+                                    ? SseEventType.RAW_JSON
+                                    : SseEventType.RENDERED_HTML;
+                                emitter.send(SseEmitter.event().name(eventType.getEventName()).data(token));
+                            } catch (Exception e) {
+                                emitter.completeWithError(e);
+                            }
+                        },
+                        // Route thinking progress: StreamEvent.Reasoning → SSE "reasoning"
+                        message -> {
+                            try {
+                                if (message != null) {
+                                    emitter.send(
+                                        SseEmitter.event().name(SseEventType.REASONING.getEventName()).data(message)
+                                    );
+                                }
+                            } catch (Exception e) {
+                                log.debug("Failed to forward reasoning event", e);
+                            }
+                        },
+                        // Route completion: onComplete → SSE "done"
+                        () -> {
+                            completed.set(true);
+                            heartbeatTask.cancel(false);
+                            try {
+                                emitter.send(SseEmitter.event().name(SseEventType.DONE.getEventName()).data("[DONE]"));
+                                emitter.complete();
+                            } catch (Exception e) {
+                                emitter.completeWithError(e);
+                            }
+                        },
+                        // Route errors: onError → SSE "error"
+                        error -> {
+                            // Use safe, predefined error message to avoid leaking backend internals
+                            String safeMessage = errorMessages.getStream().getError();
+                            try {
+                                emitter.send(
+                                    SseEmitter.event().name(SseEventType.ERROR.getEventName()).data(safeMessage)
+                                );
+                                log.warn(
+                                    "Streaming completed with error: {} (original: {})",
+                                    safeMessage,
+                                    error.getMessage()
+                                );
+                            } catch (Exception ignored) {
+                                log.debug("Failed to send SSE error event", ignored);
+                            }
+                            completed.set(true);
+                            heartbeatTask.cancel(false);
+                            emitter.complete();
+                        }
+                    );
+                } catch (Exception e) {
+                    try {
+                        emitter.send(
+                            SseEmitter.event().name(SseEventType.ERROR.getEventName()).data("Streaming failed to start")
+                        );
+                        log.error("Streaming failed to start", e);
+                    } catch (Exception ignored) {
+                        log.debug("Failed to send SSE startup error event", ignored);
+                    }
+                    emitter.complete();
                 }
-                emitter.complete();
-            }
-        });
+            });
         } catch (java.util.concurrent.RejectedExecutionException rejection) {
             try {
-                emitter.send(SseEmitter.event().name(SseEventType.ERROR.getEventName()).data("Server busy — please retry"));
+                emitter.send(
+                    SseEmitter.event().name(SseEventType.ERROR.getEventName()).data("Server busy — please retry")
+                );
             } catch (Exception ignored) {
                 log.debug("Failed to send rejection SSE error", ignored);
             }
@@ -192,5 +219,4 @@ public class ChatController {
         // Delegate to regular stream endpoint with modified request
         return stream(request, response);
     }
-
 }

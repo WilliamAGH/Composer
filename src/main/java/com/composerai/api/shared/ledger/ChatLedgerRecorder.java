@@ -6,19 +6,16 @@ import com.composerai.api.service.OpenAiChatService;
 import com.composerai.api.util.IdGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.openai.models.responses.Response;
-import com.openai.models.responses.ResponseCreateParams;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.lang.Nullable;
-import org.springframework.stereotype.Component;
-
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.lang.Nullable;
+import org.springframework.stereotype.Component;
 
 /**
  * Assembles {@link ConversationEnvelope}s for chat completions and hands them to
@@ -36,20 +33,24 @@ public class ChatLedgerRecorder {
     private final ObjectMapper objectMapper;
     private final OpenAiProperties openAiProperties;
 
-    public ChatLedgerRecorder(ConversationLedgerService ledgerService,
-                              EmailContextResolver emailContextResolver,
-                              ObjectMapper objectMapper,
-                              OpenAiProperties openAiProperties) {
+    public ChatLedgerRecorder(
+        ConversationLedgerService ledgerService,
+        EmailContextResolver emailContextResolver,
+        ObjectMapper objectMapper,
+        OpenAiProperties openAiProperties
+    ) {
         this.ledgerService = ledgerService;
         this.emailContextResolver = emailContextResolver;
         this.objectMapper = objectMapper;
         this.openAiProperties = openAiProperties;
     }
 
-    public void recordChatCompletion(ChatRequest request,
-                                     String conversationId,
-                                     OpenAiChatService.Invocation invocation,
-                                     String assistantContent) {
+    public void recordChatCompletion(
+        ChatRequest request,
+        String conversationId,
+        OpenAiChatService.Invocation invocation,
+        String assistantContent
+    ) {
         boolean shouldPersist = ledgerService.enabled();
         boolean shouldLog = openAiProperties.isLocalDebugEnabled();
         if ((!shouldPersist && !shouldLog) || request == null || invocation == null) {
@@ -59,23 +60,25 @@ public class ChatLedgerRecorder {
         Instant now = Instant.now();
         List<ConversationEvent> events = new ArrayList<>();
         List<ContextRef> contextRefs = buildContextRefs(request);
-        List<EmailObject> emailObjects = emailContextResolver.resolveAll(contextRefs.stream()
-            .map(ContextRef::refId)
-            .toList());
+        List<EmailObject> emailObjects = emailContextResolver.resolveAll(
+            contextRefs.stream().map(ContextRef::refId).toList()
+        );
 
-        events.add(new ConversationEvent(
-            IdGenerator.uuidV7(),
-            1,
-            null,
-            now,
-            "user_message",
-            "user",
-            Objects.toString(request.getMessage(), ""),
-            contextRefs,
-            Map.of(),
-            null,
-            null
-        ));
+        events.add(
+            new ConversationEvent(
+                IdGenerator.uuidV7(),
+                1,
+                null,
+                now,
+                "user_message",
+                "user",
+                Objects.toString(request.getMessage(), ""),
+                contextRefs,
+                Map.of(),
+                null,
+                null
+            )
+        );
 
         LlmCallPayload llmPayload = new LlmCallPayload(
             "openai",
@@ -86,33 +89,37 @@ public class ChatLedgerRecorder {
             invocation.usage()
         );
 
-        events.add(new ConversationEvent(
-            IdGenerator.uuidV7(),
-            2,
-            null,
-            now,
-            "llm_call",
-            null,
-            null,
-            contextRefs,
-            Map.of("jsonOutput", request.isJsonOutput()),
-            llmPayload,
-            null
-        ));
+        events.add(
+            new ConversationEvent(
+                IdGenerator.uuidV7(),
+                2,
+                null,
+                now,
+                "llm_call",
+                null,
+                null,
+                contextRefs,
+                Map.of("jsonOutput", request.isJsonOutput()),
+                llmPayload,
+                null
+            )
+        );
 
-        events.add(new ConversationEvent(
-            IdGenerator.uuidV7(),
-            3,
-            null,
-            now,
-            "assistant_message",
-            "assistant",
-            assistantContent,
-            contextRefs,
-            Map.of("jsonOutput", request.isJsonOutput()),
-            null,
-            null
-        ));
+        events.add(
+            new ConversationEvent(
+                IdGenerator.uuidV7(),
+                3,
+                null,
+                now,
+                "assistant_message",
+                "assistant",
+                assistantContent,
+                contextRefs,
+                Map.of("jsonOutput", request.isJsonOutput()),
+                null,
+                null
+            )
+        );
 
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("journeyScope", request.getJourneyScope());
@@ -142,8 +149,7 @@ public class ChatLedgerRecorder {
         try {
             String preview = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(envelope);
             logger.info("[LEDGER] {}", preview);
-        } catch (Exception ignored) {
-        }
+        } catch (Exception ignored) {}
     }
 
     private List<ContextRef> buildContextRefs(ChatRequest request) {
