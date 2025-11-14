@@ -53,7 +53,8 @@ public class ChatLedgerRecorder {
     ) {
         boolean shouldPersist = ledgerService.enabled();
         boolean shouldLog = openAiProperties.isLocalDebugEnabled();
-        if ((!shouldPersist && !shouldLog) || request == null || invocation == null) {
+        if ((!shouldPersist && !shouldLog) || request == null || invocation == null
+                || conversationId == null || assistantContent == null) {
             return;
         }
 
