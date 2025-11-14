@@ -23,6 +23,7 @@ Refer to `README.md` (Technology Stack and Requirements) for current runtime ver
 - Maintain a lightweight working note (scratchpad, checklist, or plan) that records the validated why and revisit it throughout the task so investigations stay anchored to the goal instead of assumptions.
 - Audit existing documentation up front and bring it in sync with the confirmed purpose following the guidance in "Documentation & Communication" before proceeding.
 - Treat purpose alignment as a gate—do not move into execution until both the why and the documentation plan are explicit.
+- Never undo, overwrite, or “clean up” another agent’s work just because it looks unfamiliar—review the relevant docs/code and coordinate before touching files you didn’t introduce.
 
 ## Backend Development Principles
 
@@ -129,6 +130,7 @@ Note: This structure governs placement only; it does not change existing error e
 - Treat `layout.html` as the shared frame; inject page-specific content through fragments
 - Keep JavaScript modular and progressive-enhancement friendly; use plain ES modules over large frameworks
 - **NEVER duplicate backend constants/enums in HTML/JS**: Use `@ControllerAdvice` + `@ModelAttribute` + `th:inline="javascript"` to inject Java enums directly into templates. See `GlobalModelAttributes.java` and `WebViewControllerTest.java` for the canonical pattern
+- **Before touching UI tasks**: revisit Tailwind CSS docs (pay attention to CDN-injected specificity) and skim the relevant Svelte docs/node_modules helpers so implementation details stay accurate.
 
 ### Design Language
 
