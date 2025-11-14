@@ -72,6 +72,9 @@ public class SessionScopedMessagePlacementAdapter implements SessionScopedMessag
     }
 
     private String mailboxKey(String mailboxId) {
-        return mailboxId == null ? "default" : mailboxId.trim().toLowerCase();
+        if (mailboxId == null || mailboxId.isBlank()) {
+            return "default";
+        }
+        return mailboxId.trim().toLowerCase();
     }
 }
