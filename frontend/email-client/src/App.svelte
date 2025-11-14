@@ -1,6 +1,6 @@
 <script>
-  import { onMount } from 'svelte';
-  import { get } from 'svelte/store';
+import { onMount } from 'svelte';
+import { get, writable } from 'svelte/store';
   import ComposeWindow from './lib/ComposeWindow.svelte';
   import AiSummaryWindow from './lib/AiSummaryWindow.svelte';
   import WindowDock from './lib/window/WindowDock.svelte';
@@ -11,14 +11,15 @@
   import EmailListPane from './lib/EmailListPane.svelte';
   import AiLoadingJourney from './lib/AiLoadingJourney.svelte';
   import DrawerBackdrop from './lib/DrawerBackdrop.svelte';
-  import MobileTopBar from './lib/MobileTopBar.svelte';
+import MobileTopBar from './lib/MobileTopBar.svelte';
+import { createMobileOverlayCoordinator } from './lib/MobileOverlayCoordinator';
   import AiPanelDockChip from './lib/AiPanelDockChip.svelte';
   import AiSummaryMobileSheet from './lib/AiSummaryMobileSheet.svelte';
   import ComingSoonModal from './lib/ComingSoonModal.svelte';
   import WindowNotice from './lib/WindowNotice.svelte';
 import { isMobile, isTablet, isDesktop, isWide, viewport, viewportSize } from './lib/viewportState';
-  import { createWindowManager } from './lib/window/windowStore'; // temp use
-  import { createComposeWindow, WindowKind } from './lib/window/windowTypes';
+import { createWindowManager } from './lib/window/windowStore'; // temp use
+import { createComposeWindow, WindowKind } from './lib/window/windowTypes';
   import { catalogStore, hydrateCatalog, ensureCatalogLoaded as ensureCatalog, getFunctionMeta, mergeDefaultArgs, resolveDefaultInstruction } from './lib/services/aiCatalog';
   import { handleAiCommand } from './lib/services/aiCommandHandler';
   import { mapEmailMessage, parseSubjectAndBody } from './lib/services/emailUtils';
@@ -38,6 +39,13 @@ import { createAiPanelStore } from './lib/stores/aiPanelStore';
   import { executeCatalogCommand } from './lib/services/catalogCommandClient';
   import { launchMailboxAutomation } from './lib/services/mailboxAutomationClient';
   import './app-shared.css';
+
+  /**
+   * App.svelte acts strictly as the entrypoint/orchestrator. All business logic, overlay behavior, and UI
+   * implementations live in lib/* modules; this file wires their stores together, reacts to state, and
+   * renders the page shell. Avoid embedding new behavior here—add it to a dedicated service/store/component
+   * and only connect it in App.svelte so the controller stays thin.
+   */
   export let bootstrap = {};
 
   hydrateCatalog(bootstrap.aiFunctions || null);
@@ -110,6 +118,18 @@ let windowNoticeTimer = null;
   const floatingStore = windowManager.floating;
   const minimizedStore = windowManager.minimized;
   const windowErrorStore = windowManager.lastError;
+  const panelReadyStore = writable(false);
+  const mobileOverlayCoordinator = createMobileOverlayCoordinator({
+    mobileStore: isMobile,
+    selectedEmailStore,
+    floatingWindowsStore: floatingStore,
+    drawerVisibleStore,
+    panelReadyStore,
+    windowManager
+  });
+  const mobileDetailOverlayVisibleStore = mobileOverlayCoordinator.detailVisible;
+  const mobilePanelVisibleStore = mobileOverlayCoordinator.panelVisible;
+  const overlayBackdropVisibleStore = mobileOverlayCoordinator.overlayVisible;
   const aiJourney = createAiJourneyStore();
   const aiJourneyOverlayStore = aiJourney.overlay;
   const actionMenuStore = createActionMenuSuggestionsStore({
@@ -198,15 +218,10 @@ const panelErrorsStore = panelStores.errors;
   $: activePanelState = selectedPanelKey ? ($panelResponsesStore[selectedPanelKey] || null) : null;
   $: activePanelError = selectedPanelKey ? ($panelErrorsStore[selectedPanelKey] || '') : '';
   $: panelRenderReady = $panelSessionActiveStore && !$panelMinimizedStore && (activePanelState || activePanelJourneyOverlay);
-  $: mobilePanelVisible = mobile && panelRenderReady;
-  $: mobileDetailOverlayVisible = mobile && !!selected;
-  $: mobileComposeOverlayWindows = mobile
-    ? (Array.isArray(floatingWindows)
-      ? floatingWindows.filter((win) => win.kind === WindowKind.COMPOSE && !win.minimized)
-      : [])
-    : [];
-  $: mobileComposeOverlayVisible = mobileComposeOverlayWindows.length > 0;
-  $: overlayBackdropVisible = drawerVisible || mobileDetailOverlayVisible || mobilePanelVisible || mobileComposeOverlayVisible;
+  $: panelReadyStore.set(panelRenderReady);
+  $: mobilePanelVisible = $mobilePanelVisibleStore;
+  $: mobileDetailOverlayVisible = $mobileDetailOverlayVisibleStore;
+  $: overlayBackdropVisible = $overlayBackdropVisibleStore;
   $: if (selectedPanelKey !== previousPanelKey) {
     previousPanelKey = selectedPanelKey;
     panelStore.resetSessionState();
@@ -428,29 +443,12 @@ const panelErrorsStore = panelStores.errors;
     toggleSidebar();
   }
 
-  function closeTopComposeWindow() {
-    if (!mobileComposeOverlayVisible) return false;
-    const latest = mobileComposeOverlayWindows[mobileComposeOverlayWindows.length - 1];
-    if (!latest) return false;
-    windowManager.close(latest.id);
-    return true;
-  }
-
   function handleOverlayBackdropClose() {
-    if (mobileComposeOverlayVisible && closeTopComposeWindow()) {
-      return;
-    }
-    if (mobilePanelVisible) {
-      handlePanelClose();
-      return;
-    }
-    if (mobileDetailOverlayVisible) {
-      mailboxLayout.selectEmailById(null);
-      return;
-    }
-    if (drawerVisible) {
-      mailboxLayout.closeDrawer();
-    }
+    mobileOverlayCoordinator.handleBackdropClose({
+      onClosePanel: handlePanelClose,
+      onClearSelection: () => mailboxLayout.selectEmailById(null),
+      onCloseDrawer: () => mailboxLayout.closeDrawer()
+    });
   }
 
   function showWindowLimitMessage() {
