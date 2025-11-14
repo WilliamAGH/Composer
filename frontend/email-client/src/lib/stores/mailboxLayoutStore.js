@@ -108,6 +108,8 @@ export function createMailboxLayoutStore(initialEmails = [], initialFolderCounts
       }
       if (!isDrawer) {
         drawerVisible.set(false);
+      } else {
+        sidebarOpen.set(true);
       }
       return isDrawer;
     });

@@ -21,23 +21,24 @@ import { isMobile, isTablet, isDesktop, isWide, viewport, viewportSize } from '.
   import { createWindowManager } from './lib/window/windowStore'; // temp use
   import { createComposeWindow, WindowKind } from './lib/window/windowTypes';
   import { catalogStore, hydrateCatalog, ensureCatalogLoaded as ensureCatalog, getFunctionMeta, mergeDefaultArgs, resolveDefaultInstruction } from './lib/services/aiCatalog';
-  import { handleAiCommand, deriveHeadline } from './lib/services/aiCommandHandler';
-  import { mapEmailMessage, parseSubjectAndBody } from './lib/services/emailUtils';
-  import { buildEmailContextString, deriveRecipientContext, normalizeRecipient } from './lib/services/emailContextConstructor';
-  import { buildReplyPrefill, buildForwardPrefill } from './lib/services/composePrefill.js';
-  import { createAiJourneyStore } from './lib/services/aiJourneyStore';
-  import { ChevronLeft, ChevronRight } from 'lucide-svelte';
-  import { DEFAULT_ACTION_OPTIONS, MAILBOX_ACTION_FALLBACKS, PRIMARY_TOOLBAR_PREFERENCE } from './lib/constants/catalogActions';
-  import { getJourneySubhead } from './lib/constants/journeyScopes';
-  import { escapeHtmlContent, renderMarkdownContent, formatRelativeTimestamp, formatFullTimestamp } from './lib/services/emailFormatting';
-  import { initializeUiNonce, startChatHeartbeat, CLIENT_WARNING_EVENT } from './lib/services/sessionNonceClient';
+import { handleAiCommand, deriveHeadline, runComposeWindowAi } from './lib/services/aiCommandHandler';
+import { mapEmailMessage } from './lib/services/emailUtils';
+import { buildEmailContextString, deriveRecipientContext, normalizeRecipient } from './lib/services/emailContextConstructor';
+import { buildReplyPrefill, buildForwardPrefill } from './lib/services/composePrefill.js';
+import { createAiJourneyStore } from './lib/services/aiJourneyStore';
+import { ChevronLeft, ChevronRight } from 'lucide-svelte';
+import { DEFAULT_ACTION_OPTIONS, MAILBOX_ACTION_FALLBACKS, PRIMARY_TOOLBAR_PREFERENCE } from './lib/constants/catalogActions';
+import { getJourneySubhead } from './lib/constants/journeyScopes';
+import { escapeHtmlContent, renderMarkdownContent, formatRelativeTimestamp, formatFullTimestamp } from './lib/services/emailFormatting';
+import { initializeUiNonce, startChatHeartbeat, CLIENT_WARNING_EVENT } from './lib/services/sessionNonceClient';
 import { createMailboxLayoutStore } from './lib/stores/mailboxLayoutStore';
 import { createActionMenuSuggestionsStore } from './lib/stores/actionMenuSuggestionsStore';
 import { createConversationLedger } from './lib/services/conversationLedger';
 import { createAiPanelStore } from './lib/stores/aiPanelStore';
-  import { executeCatalogCommand } from './lib/services/catalogCommandClient';
-  import { launchMailboxAutomation } from './lib/services/mailboxAutomationClient';
-  import './app-shared.css';
+import { executeCatalogCommand } from './lib/services/catalogCommandClient';
+import { launchMailboxAutomation } from './lib/services/mailboxAutomationClient';
+import './app-shared.css';
+import EmailDetailMobileSheet from './lib/EmailDetailMobileSheet.svelte';
 
   /**
    * App.svelte acts strictly as the entrypoint/orchestrator. All business logic, overlay behavior, and UI
@@ -211,12 +212,6 @@ const panelErrorsStore = panelStores.errors;
     }
     return availableContentWidth > 0 && availableContentWidth < ACTION_TOOLBAR_COMPACT_BREAKPOINT;
   })();
-  $: if (!drawerMode && drawerVisible) {
-    mailboxLayout.closeDrawer();
-  }
-  $: if (drawerMode && !sidebarOpen) {
-    mailboxLayout.setSidebarOpen(true);
-  }
   let showEmailList = true; // For tablet view toggle
 
   let previousPanelKey = null;
@@ -479,7 +474,7 @@ const panelErrorsStore = panelStores.errors;
       return;
     }
     if (withAi) {
-      queueReplyPrefillAi(descriptor.id, descriptor.payload.subject, selected);
+      queueReplyPrefillAi(selected);
     }
   }
 
@@ -523,16 +518,9 @@ const panelErrorsStore = panelStores.errors;
     moveEmailToFolder(email, 'trash');
   }
 
-  function queueReplyPrefillAi(windowId, subject, relatedEmail) {
+  function queueReplyPrefillAi(relatedEmail) {
     const instruction = buildReplyGreetingInstruction(relatedEmail);
-    triggerComposeAi({
-      id: windowId,
-      command: 'draft',
-      draft: '',
-      subject,
-      isReply: true,
-      instructionOverride: instruction || undefined
-    }).catch((error) => {
+    runMainAiCommand({ key: 'draft', instructionOverride: instruction || null }).catch((error) => {
       recordClientDiagnostic('warn', 'Reply AI prefill failed.', error);
       showGlobalNotice('AI reply prefill unavailable. Please try again.');
     });
@@ -570,57 +558,29 @@ const panelErrorsStore = panelStores.errors;
     showGlobalNotice('Draft deleted');
   }
 
-  async function triggerComposeAi(detail) {
-    const { id, command, draft, subject: draftSubject, isReply, to: toInput, instructionOverride } = detail;
-    const ready = await ensureCatalogReady();
-    if (!ready) return alert('AI helpers are unavailable. Please try again.');
-    const fn = getFunctionMeta(catalogData, command);
-    if (!fn) return alert('Command unavailable.');
-    const instruction = instructionOverride || buildComposeInstruction(command, draft || '', isReply, fn);
-    const win = get(windowsStore).find((w) => w.id === id);
-    const relatedEmail = win?.contextId ? emails.find((e) => e.id === win.contextId) : selected;
-    const commandArgs = mergeDefaultArgs(fn, null);
-    const recipientContext = deriveRecipientContext({
-      toInput,
-      composePayload: win?.payload,
-      fallbackEmail: relatedEmail
-    });
+  async function handleComposeRequestAi(event) {
+    const detail = event?.detail;
+    if (!detail?.id || !detail.command) return;
+    const windowConfig = windows.find((win) => win.id === detail.id);
+    if (!windowConfig) {
+      alert('Compose window unavailable.');
+      return;
+    }
     try {
-      const data = await callAiCommand(command, instruction, {
-        contextId: relatedEmail?.contextId || relatedEmail?.id,
-        subject: draftSubject || relatedEmail?.subject,
-        journeyScope: 'compose',
-        journeyScopeTarget: id,
-        journeyLabel: draftSubject || relatedEmail?.subject || 'draft',
-        journeyHeadline: deriveHeadline(command, fn.label || 'AI Assistant'),
-        commandArgs,
-        recipientContext
+      await runComposeWindowAi({
+        windowManager,
+        windowConfig,
+        detail,
+        catalogStore: catalog,
+        ensureCatalogLoaded: ensureCatalogReady,
+        callAiCommand,
+        resolveEmailById: (id) => emails.find((entry) => entry.id === id),
+        selectedEmail: selected
       });
-      let draftText = (data?.response && data.response.trim()) || '';
-      if (!draftText && data?.sanitizedHtml) {
-        const temp = document.createElement('div');
-        temp.innerHTML = data.sanitizedHtml;
-        draftText = temp.textContent.trim();
-      }
-      if (draftText) {
-        const parsed = parseSubjectAndBody(draftText);
-        let updatedBody = parsed.body || draftText;
-        const quote = win?.payload?.quotedContext;
-        if (quote && !updatedBody.includes(quote.trim())) {
-          updatedBody = `${updatedBody.trimEnd()}\n\n${quote}`;
-        }
-        windowManager.updateComposeDraft(id, {
-          subject: parsed.subject || draftSubject,
-          body: updatedBody
-        });
-      }
     } catch (error) {
+      recordClientDiagnostic('warn', 'Compose AI request failed.', error);
       alert(error?.message || 'Unable to complete AI request.');
     }
-  }
-
-  function handleComposeRequestAi(event) {
-    triggerComposeAi(event.detail);
   }
 
   const escapeHtml = escapeHtmlContent;
@@ -747,20 +707,6 @@ const panelErrorsStore = panelStores.errors;
   });
 
   /** Builds compose/draft instructions while preserving catalog defaults and current user drafts. */
-  function buildComposeInstruction(command, currentDraft, isReply, meta) {
-    const fallback = resolveDefaultInstruction(meta, null);
-    if (command === 'draft') {
-      if (currentDraft && currentDraft.length > 0) return `Improve this ${isReply ? 'reply' : 'draft'} while preserving the intent:\n\n${currentDraft}`;
-      return isReply ? fallback : `${fallback}`;
-    }
-    if (command === 'compose') {
-      return currentDraft && currentDraft.length > 0 ? `Polish this email draft and make it clear and concise:\n\n${currentDraft}` : fallback;
-    }
-    if (command === 'tone') {
-      return currentDraft && currentDraft.length > 0 ? `Adjust the tone of this email to be friendly but professional:\n\n${currentDraft}` : fallback;
-    }
-    return fallback;
-  }
 
   /** Entry point for primary AI actions (summary, translation, compose helpers). */
   async function runMainAiCommand(request) {
@@ -1030,53 +976,29 @@ const panelErrorsStore = panelStores.errors;
   </div>
 
   {#if mobileDetailOverlayVisible && selected}
-    <div class="mobile-detail-sheet">
-      <MobileTopBar
-        variant="custom"
-        backButtonAriaLabel="Back to inbox"
-        on:back={() => mailboxLayout.selectEmailById(null)}
-        on:toggleMenu={handleMenuClick}>
-        <div slot="center" class="mobile-detail-sheet__title">
-          <p class="mobile-detail-sheet__eyebrow">{escapeHtml(selected.from || selected.fromEmail || 'Sender')}</p>
-          <p class="mobile-detail-sheet__headline">{escapeHtml(selected.subject || 'No subject')}</p>
-        </div>
-      </MobileTopBar>
-      <div class="mobile-detail-sheet__body">
-        <div class="mobile-detail-sheet__toolbar">
-          <EmailActionToolbar
-            email={selected}
-            commands={primaryCommandEntries}
-            actionMenuOptions={actionMenuOptions}
-            actionMenuLoading={actionMenuLoading}
-            mobile={true}
-            compactActions={compactActions}
-            currentFolderId={resolveFolderForMessage(selected)}
-            pendingMove={pendingMoves.has(selected?.id)}
-            escapeHtmlFn={escapeHtml}
-            formatFullDateFn={formatFullTimestamp}
-            on:reply={openReply}
-            on:forward={openForward}
-            on:archive={() => archiveEmail(selected)}
-            on:delete={() => deleteEmail(selected)}
-            on:move={(event) => moveEmailToFolder(selected, event.detail.targetFolderId)}
-            on:commandSelect={(event) => runMainAiCommand(event.detail)}
-            on:actionSelect={handleActionSelect}
-            on:actionMenuToggle={handleActionMenuToggle}
-            on:comingSoon={(event) => handleComingSoon(event.detail)}
-          />
-        </div>
-        <div class="mobile-detail-sheet__content">
-          <EmailDetailView
-            email={selected}
-            mobile={true}
-            tablet={false}
-            desktop={false}
-            wide={false}
-            renderMarkdownFn={renderMarkdown}
-          />
-        </div>
-      </div>
-    </div>
+    <EmailDetailMobileSheet
+      email={selected}
+      commands={primaryCommandEntries}
+      actionMenuOptions={actionMenuOptions}
+      actionMenuLoading={actionMenuLoading}
+      compactActions={compactActions}
+      currentFolderId={resolveFolderForMessage(selected)}
+      pendingMove={pendingMoves.has(selected?.id)}
+      escapeHtmlFn={escapeHtml}
+      formatFullDateFn={formatFullTimestamp}
+      renderMarkdownFn={renderMarkdown}
+      on:back={() => mailboxLayout.selectEmailById(null)}
+      on:toggleMenu={handleMenuClick}
+      on:reply={openReply}
+      on:forward={openForward}
+      on:archive={() => archiveEmail(selected)}
+      on:delete={() => deleteEmail(selected)}
+      on:move={(event) => moveEmailToFolder(selected, event.detail.targetFolderId)}
+      on:commandSelect={(event) => runMainAiCommand(event.detail)}
+      on:actionSelect={handleActionSelect}
+      on:actionMenuToggle={handleActionMenuToggle}
+      on:comingSoon={(event) => handleComingSoon(event.detail)}
+    />
   {/if}
 
   {#if mobilePanelVisible}
@@ -1200,75 +1122,4 @@ const panelErrorsStore = panelStores.errors;
     }
   }
 
-  /**
-   * Mobile detail overlay mirrors compose + AI sheets so message reading uses a dedicated modal.
-   */
-  .mobile-detail-sheet {
-    position: fixed;
-    inset: 0;
-    z-index: 80;
-    display: flex;
-    flex-direction: column;
-    background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(15, 23, 42, 0.08));
-    backdrop-filter: blur(12px);
-  }
-
-  @supports (padding: env(safe-area-inset-top)) {
-    .mobile-detail-sheet {
-      padding-top: env(safe-area-inset-top);
-      padding-right: env(safe-area-inset-right);
-      padding-bottom: env(safe-area-inset-bottom);
-      padding-left: env(safe-area-inset-left);
-    }
-  }
-
-  .mobile-detail-sheet__title {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    min-width: 0;
-  }
-
-  .mobile-detail-sheet__eyebrow {
-    font-size: 0.65rem;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    color: rgba(148, 163, 184, 0.9);
-  }
-
-  .mobile-detail-sheet__headline {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #0f172a;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .mobile-detail-sheet__body {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 0 1rem 1rem;
-    min-height: 0;
-  }
-
-  .mobile-detail-sheet__toolbar {
-    padding-top: 0.25rem;
-  }
-
-  .mobile-detail-sheet__content {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    border-radius: 1rem;
-    background: rgba(255, 255, 255, 0.9);
-    box-shadow: 0 25px 45px -20px rgba(15, 23, 42, 0.25);
-  }
-
-  .mobile-detail-sheet__content :global(.prose),
-  .mobile-detail-sheet__content :global(iframe) {
-    border-radius: 1rem;
-  }
 </style>
