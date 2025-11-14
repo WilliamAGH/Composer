@@ -18,7 +18,6 @@
   export let tablet = false;
   export let desktop = false;
   export let wide = false;
-  export let drawerVisible = false;
   export let showEmailList = true;
   export let hasMailboxCommands = false;
   export let mailboxCommandEntries = [];
@@ -33,7 +32,6 @@
   export let resolveFolderFn = () => 'inbox';
   export let pendingMoveIds = new Set();
   export let compactActions = false;
-  $: drawerOverlayActive = mobile && drawerVisible;
 
   const dispatch = createEventDispatcher();
   let rowMoveMenuFor = null;
@@ -109,16 +107,12 @@
 </script>
 
 <section class="shrink-0 flex flex-col bg-white/90 border-r border-slate-200"
-         class:fixed={drawerOverlayActive}
-         class:inset-0={drawerOverlayActive}
-         class:shadow-2xl={drawerOverlayActive}
-         class:bg-white={drawerOverlayActive}
          class:w-[28rem]={wide}
          class:w-[25rem]={desktop && !wide}
          class:w-[20rem]={tablet && showEmailList}
          class:w-0={tablet && !showEmailList}
          class:w-full={mobile}
-         class:hidden={mobile && (selected || drawerVisible)}
+         class:hidden={mobile && selected}
          class:overflow-hidden={tablet && !showEmailList && !(mailboxActionsOpen && mailboxActionsHost === 'list')}
 >
   <div class="px-4 py-3 border-b border-slate-200">

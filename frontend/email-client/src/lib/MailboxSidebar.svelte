@@ -15,7 +15,7 @@
       overflowHidden: false,
       pointerNone: false,
       fixed: false,
-      translateClass: '',
+      drawerClass: '',
       hidden: false
     },
     'inline-desktop': {
@@ -24,7 +24,7 @@
       overflowHidden: false,
       pointerNone: false,
       fixed: false,
-      translateClass: '',
+      drawerClass: '',
       hidden: false
     },
     'inline-collapsed': {
@@ -33,7 +33,7 @@
       overflowHidden: true,
       pointerNone: true,
       fixed: false,
-      translateClass: '',
+      drawerClass: '',
       hidden: true
     },
     'drawer-visible': {
@@ -42,7 +42,7 @@
       overflowHidden: false,
       pointerNone: false,
       fixed: true,
-      translateClass: '',
+      drawerClass: 'mailbox-sidebar--drawer-visible',
       hidden: false
     },
     'drawer-hidden': {
@@ -51,19 +51,22 @@
       overflowHidden: false,
       pointerNone: true,
       fixed: true,
-      translateClass: '-translate-x-full',
+      drawerClass: 'mailbox-sidebar--drawer-hidden',
       hidden: true
     }
   };
   const FALLBACK_VARIANT = 'inline-desktop';
-  const TRANSLATE_FALLBACKS = {
-    '-translate-x-full': 'translateX(-100%)'
-  };
   $: variantConfig = sidebarVariants[variant] || sidebarVariants[FALLBACK_VARIANT];
   $: collapsed = variant === 'inline-collapsed';
   $: ariaHidden = (variantConfig.hidden || collapsed) ? 'true' : 'false';
   $: pointerEventsValue = variantConfig.pointerNone ? 'none' : 'auto';
-  $: transformValue = TRANSLATE_FALLBACKS[variantConfig.translateClass] || 'none';
+  $: drawerStateClass = variantConfig.drawerClass || '';
+  $: transformValue = (() => {
+    if (variant === 'drawer-hidden') {
+      return 'translate3d(-100%, 0, 0)';
+    }
+    return 'translate3d(0, 0, 0)';
+  })();
 
   function select(target) {
     dispatch('selectMailbox', { target });
@@ -74,7 +77,8 @@
   }
 </script>
 
-<aside class={`shrink-0 border-slate-200 bg-white/80 backdrop-blur transition-all duration-200 will-change-transform ${variantConfig.widthClass} ${variantConfig.translateClass || ''}`}
+<aside class={`mailbox-sidebar shrink-0 border-slate-200 bg-white/80 backdrop-blur transition-all duration-200 will-change-transform ${variantConfig.widthClass} ${drawerStateClass}`}
+       data-style-usage="mailbox-sidebar"
        class:border-r={!variantConfig.hideBorder}
        class:border-r-0={variantConfig.hideBorder}
        class:overflow-hidden={variantConfig.overflowHidden}
@@ -82,11 +86,9 @@
        class:fixed={variantConfig.fixed}
        class:inset-y-0={variantConfig.fixed}
        class:left-0={variantConfig.fixed}
-       class:z-[60]={variantConfig.fixed}
        class:shadow-xl={variantConfig.fixed}
        aria-hidden={ariaHidden}
-       style:pointer-events={pointerEventsValue}
-       style:transform={transformValue}>
+       style="pointer-events: {pointerEventsValue}; transform: {transformValue}; z-index: {variantConfig.fixed ? '60' : 'auto'};">
   <div class="p-4 border-b border-slate-200">
     <div class="flex items-center gap-2 mb-4 justify-center w-full text-center">
       <InboxIcon class="h-6 w-6 text-slate-900" />
