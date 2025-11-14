@@ -487,10 +487,11 @@
       min-height: min(55vh, 360px);
     }
   }
-</style>
+
   .ai-summary-panel--sheet {
     border: none;
     box-shadow: none;
     padding: 0;
     background: transparent;
   }
+</style>
