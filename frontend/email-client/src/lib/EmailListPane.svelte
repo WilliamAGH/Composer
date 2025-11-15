@@ -564,10 +564,12 @@
    * Scroll container for the list maintains vertical scrolling while allowing dropdown portals to overflow horizontally.
    * @usage - Wrapper div around the .list-rows stack
    * @overflow - y: auto for scrolling, x: visible so dropdown portals are not clipped
+   * @padding - Horizontal padding provides consistent breathing room for the lifted-card selected state
    */
   .mailbox-list-scroll {
     overflow-y: auto;
     overflow-x: visible;
+    padding: 0 8px;
   }
 
   /**
@@ -646,14 +648,15 @@
   /* "Lifted Card" selected state - physically elevated with depth */
   .list-row--selected {
     background: white;
-    transform: translateX(8px) scale(1.02);
+    transform: translateY(-2px) scale(1.01);
     box-shadow:
-      0 6px 16px -4px rgba(15, 23, 42, 0.15),
-      0 2px 8px -2px rgba(15, 23, 42, 0.08),
-      0 0 0 1px rgba(148, 163, 184, 0.2);
-    border-radius: 8px;
-    margin: 4px 8px 4px 0;
+      0 8px 24px -6px rgba(15, 23, 42, 0.12),
+      0 4px 12px -2px rgba(15, 23, 42, 0.06),
+      0 0 0 1px rgba(148, 163, 184, 0.15);
+    border-radius: 10px;
+    margin: 6px 4px;
     z-index: 10;
+    border-bottom: none; /* Remove bottom border that creates edge gap */
   }
 
   /* Unread message accent (blue tint background) */
