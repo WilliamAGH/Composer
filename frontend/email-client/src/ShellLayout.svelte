@@ -5,7 +5,7 @@ import { useMailboxDataStore, useMailboxChromeStore, useMailboxResponsiveState }
 import { useAiCommandContext } from './lib/providers/AiCommandProvider.svelte';
   import ComposeWindow from './lib/ComposeWindow.svelte';
   import AiSummaryWindow from './lib/AiSummaryWindow.svelte';
-  import WindowDock from './lib/window/WindowDock.svelte';
+  import UnifiedDock from './lib/UnifiedDock.svelte';
   import WindowProvider from './lib/window/WindowProvider.svelte';
   import EmailActionToolbar from './lib/EmailActionToolbar.svelte';
   import EmailDetailView from './lib/EmailDetailView.svelte';
@@ -14,10 +14,10 @@ import { useAiCommandContext } from './lib/providers/AiCommandProvider.svelte';
   import AiLoadingJourney from './lib/AiLoadingJourney.svelte';
   import DrawerBackdrop from './lib/DrawerBackdrop.svelte';
 import MobileTopBar from './lib/MobileTopBar.svelte';
-  import AiPanelDockChip from './lib/AiPanelDockChip.svelte';
   import AiSummaryMobileSheet from './lib/AiSummaryMobileSheet.svelte';
   import ComingSoonModal from './lib/ComingSoonModal.svelte';
   import WindowNotice from './lib/WindowNotice.svelte';
+  import { Sparkles } from 'lucide-svelte';
 import OverlayStack from './lib/overlay/OverlayStack.svelte';
 import { createOverlayController } from './lib/overlay/OverlayController';
 import { provideOverlayController } from './lib/overlay/overlayContext';
@@ -343,6 +343,31 @@ onDestroy(() => {
     panelStore.resetSessionState();
   }
 
+  // Unified dock items - combines all minimized components
+  $: dockItems = [
+    // Minimized compose windows
+    ...minimizedWindows.map(win => ({
+      id: win.id,
+      type: 'compose',
+      title: win.title,
+      icon: null,
+      onRestore: () => windowManager.toggleMinimize(win.id),
+      onClose: () => windowManager.close(win.id),
+      closeable: true
+    })),
+
+    // Minimized AI panel
+    ...($panelSessionActiveStore && $panelMinimizedStore ? [{
+      id: 'ai-panel',
+      type: 'panel',
+      title: 'AI Panel',
+      icon: Sparkles,
+      onRestore: () => panelStore.restoreFromDock(),
+      onClose: () => panelStore.closePanel(selectedPanelKey),
+      closeable: true
+    }] : [])
+  ];
+
   // UI state
   let mailboxActionsOpen = false;
   let mailboxActionsHost = null;
@@ -551,6 +576,15 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
   }
 
   function openCompose() {
+    // Minimize panel if open before creating new compose window
+    const sessionActive = get(panelSessionActiveStore);
+    const panelMinimized = get(panelMinimizedStore);
+    console.log('[openCompose] Panel state check:', { sessionActive, panelMinimized });
+    if (sessionActive && !panelMinimized) {
+      console.log('[openCompose] Minimizing panel');
+      panelStore.minimize();
+    }
+
     const result = windowManager.open(createComposeWindow());
     if (!result.ok) {
       showWindowLimitMessage();
@@ -559,6 +593,16 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
 
   function openReply(withAi = true) {
     if (!selected) return alert('Select an email first.');
+
+    // Minimize panel if open before creating new compose window
+    const sessionActive = get(panelSessionActiveStore);
+    const panelMinimized = get(panelMinimizedStore);
+    console.log('[openReply] Panel state check:', { sessionActive, panelMinimized });
+    if (sessionActive && !panelMinimized) {
+      console.log('[openReply] Minimizing panel');
+      panelStore.minimize();
+    }
+
     const prefills = buildReplyPrefill(selected);
     const descriptor = createComposeWindow(selected, {
       subject: prefills.subject,
@@ -580,6 +624,16 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
 
   function openForward() {
     if (!selected) return alert('Select an email first.');
+
+    // Minimize panel if open before creating new compose window
+    const sessionActive = get(panelSessionActiveStore);
+    const panelMinimized = get(panelMinimizedStore);
+    console.log('[openForward] Panel state check:', { sessionActive, panelMinimized });
+    if (sessionActive && !panelMinimized) {
+      console.log('[openForward] Minimizing panel');
+      panelStore.minimize();
+    }
+
     const prefills = buildForwardPrefill(selected);
     const descriptor = createComposeWindow(selected, {
       to: '',
@@ -715,6 +769,15 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
     const targetsCompose = Array.isArray(fnMeta?.scopes) && fnMeta.scopes.includes('compose');
 
     if (!targetsCompose && selectedContextKey) {
+      // Minimize all non-minimized compose windows before opening panel
+      const composeToMinimize = windows.filter(win => win.kind === WindowKind.COMPOSE && !win.minimized);
+      console.log('[runMainAiCommand] Panel command - minimizing compose windows:', composeToMinimize.length);
+      composeToMinimize.forEach((win) => {
+        console.log('[runMainAiCommand] Minimizing compose window:', win.id);
+        windowManager.toggleMinimize(win.id);
+      });
+
+      console.log('[runMainAiCommand] Beginning panel session');
       panelStore.beginSession(selectedContextKey);
       panelStore.clearError(selectedContextKey);
     }
@@ -728,7 +791,8 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
         catalogStore: catalog,
         windowManager,
         callAiCommand,
-        ensureCatalogLoaded: ensureCatalog
+        ensureCatalogLoaded: ensureCatalog,
+        panelStore
       });
 
       if (result?.type === WindowKind.SUMMARY) {
@@ -771,10 +835,6 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
 
   function handlePanelClose() {
     panelStore.closePanel(selectedPanelKey);
-  }
-
-  function restorePanelFromDock() {
-    panelStore.restoreFromDock();
   }
 
   function handleActionMenuToggle(event) {
@@ -847,7 +907,6 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
       bind:mailboxMenuListRef={mailboxMenuListRef}
       resolveFolderFn={resolveFolderForMessage}
       pendingMoveIds={pendingMoves}
-      compactActions={compactActions}
       on:toggleMenu={handleMenuClick}
       on:searchChange={(event) => mailboxDataStore.setSearch(event.detail.value)}
       on:toggleMailboxActions={(event) => toggleMailboxActions(event.detail.host)}
@@ -971,8 +1030,7 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
     {/if}
   {/each}
 
-  <WindowDock windows={minimizedWindows} />
-  <AiPanelDockChip visible={$panelSessionActiveStore && $panelMinimizedStore} on:restore={restorePanelFromDock} />
+  <UnifiedDock items={dockItems} />
 
   <OverlayStack controller={overlayController} />
 </WindowProvider>

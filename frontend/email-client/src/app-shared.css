@@ -10,7 +10,7 @@
  * 80  - Floating window frames
  * 120 - Window notices
  * 140 - Window backdrop (notches modal dimmers)
- * 150 - Primary nav + toolbar surfaces (mobile top bar, mailbox list header, dock controls)
+ * 150 - Primary nav + toolbar surfaces (mobile top bar, mailbox list header, UnifiedDock for minimized items)
  * 160 - Drawer backdrop (above toolbar when drawer opens)
  * 170 - Drawer sidebar (above backdrop)
  * 175 - Drawer controls (hamburger menu, back button - remain clickable above drawer)
@@ -26,10 +26,10 @@
   --z-window-backdrop: 140;
   /**
    * Primary navigation + toolbar surface tier.
-   * @usage - MobileTopBar, EmailListPane header, AiPanelDockChip and other top-of-shell controls
+   * @usage - MobileTopBar, EmailListPane header, UnifiedDock (minimized windows/panels) and other top-of-shell controls
    * @z-index-warning - Must sit below drawer overlays (160+) when drawer is open,
    *                    but above content and below global modals (180) and dropdown menus (200+).
-   * @related - DrawerBackdrop.svelte, MailboxSidebar.svelte, MobileTopBar.svelte, EmailListPane.svelte
+   * @related - DrawerBackdrop.svelte, MailboxSidebar.svelte, MobileTopBar.svelte, EmailListPane.svelte, UnifiedDock.svelte
    */
   --z-toolbar-surface: 150;
   /**
