@@ -17,6 +17,7 @@
   export let offsetIndex = 0;
   export let aiFunctions = [];
   export let journeyOverlay = null;
+  export let mobileActive = true;
 
   const dispatch = createEventDispatcher();
   const windowManager = useWindowContext();
@@ -434,27 +435,29 @@
 
 {#if windowConfig}
   {#if mobile}
-    <ComposeMobileSheet
-      title={windowConfig.title || (isReply ? 'Reply' : 'New Message')}
-      bind:to
-      bind:subject
-      bind:body
-      {attachments}
-      {draftOptions}
-      {primaryDraftOption}
-      {tonePresets}
-      journeyOverlay={journeyOverlay}
-      journeyInlineActive={journeyInlineActive}
-      showDraftMenu={isReply}
-      onSend={send}
-      onDeleteDraft={deleteDraft}
-      onRunPrimaryDraft={runPrimaryDraft}
-      onInvokeDraftOption={invokeDraftOption}
-      onInvokeTonePreset={invokeTonePreset}
-      onAttach={() => fileInput?.click()}
-      onClose={closeWindow}
-      registerInputRefs={registerInputRefs}
-    />
+    {#if mobileActive}
+      <ComposeMobileSheet
+        title={windowConfig.title || (isReply ? 'Reply' : 'New Message')}
+        bind:to
+        bind:subject
+        bind:body
+        {attachments}
+        {draftOptions}
+        {primaryDraftOption}
+        {tonePresets}
+        journeyOverlay={journeyOverlay}
+        journeyInlineActive={journeyInlineActive}
+        showDraftMenu={isReply}
+        onSend={send}
+        onDeleteDraft={deleteDraft}
+        onRunPrimaryDraft={runPrimaryDraft}
+        onInvokeDraftOption={invokeDraftOption}
+        onInvokeTonePreset={invokeTonePreset}
+        onAttach={() => fileInput?.click()}
+        onClose={closeWindow}
+        registerInputRefs={registerInputRefs}
+      />
+    {/if}
   {:else}
     <WindowFrame
       open={true}

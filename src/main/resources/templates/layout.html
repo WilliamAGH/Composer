@@ -9,31 +9,8 @@
     <meta name="apple-mobile-web-app-title" content="Composer" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ["-apple-system", "BlinkMacSystemFont", "'Segoe UI'", "system-ui", "sans-serif"],
-                    },
-                    colors: {
-                        brand: {
-                            DEFAULT: "#0f172a",
-                            surface: "#f8fafc",
-                            muted: "#e2e8f0",
-                        },
-                    },
-                    boxShadow: {
-                        ultra: "0 25px 50px -12px rgba(15, 23, 42, 0.25)",
-                    },
-                    backgroundImage: {
-                        "subtle-glow": "linear-gradient(180deg, rgba(15, 23, 42, 0.08) 0%, rgba(15, 23, 42, 0) 60%)",
-                    },
-                },
-            },
-        };
-    </script>
+    <link rel="stylesheet" href="/app/email-client/assets/tailwind.css" />
+    <link rel="stylesheet" href="/app/email-client/assets/index.css" />
     <link rel="stylesheet" href="/css/layout.css" />
     <title th:text="${pageTitle}">Composer</title>
     <th:block th:if="${headContent} != null" th:replace="${headContent}"></th:block>

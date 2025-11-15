@@ -215,10 +215,6 @@ export const viewportState: Readable<ViewportSnapshot> = readable(DEFAULT_STATE,
 /**
  * Returns the latest viewport snapshot for non-Svelte consumers.
  */
-export function getViewportSnapshot() {
-  return latestSnapshot;
-}
-
 /**
  * Reactive store exposing the current viewport tier ('mobile' | 'tablet' | ...).
  */

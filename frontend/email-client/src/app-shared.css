@@ -54,6 +54,7 @@
   border: 0;
   white-space: nowrap;
 }
+
 /**
  * Glassmorphic pill baseline that equalizes CTA sizing across compose, sidebars, and toolbars.
  * Refined to match modern design systems (shadcn/Vercel/Tailwind/Apple).

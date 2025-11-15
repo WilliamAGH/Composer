@@ -10,10 +10,3 @@ export const JOURNEY_SCOPE_META: JourneyScopeMeta = Object.freeze({
   panel: { subhead: 'Mailbox assistant' },
   compose: { subhead: 'Draft assistant' }
 } satisfies JourneyScopeMeta);
-
-/**
- * Returns the readable subhead for a journey scope.
- */
-export function getJourneySubhead(scope: JourneyScope = 'global') {
-  return JOURNEY_SCOPE_META[scope]?.subhead ?? JOURNEY_SCOPE_META.global.subhead;
-}

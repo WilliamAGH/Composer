@@ -36,6 +36,7 @@ import { createAiPanelStore } from './lib/stores/aiPanelStore';
   import { launchMailboxAutomation } from './lib/services/mailboxAutomationClient';
   import EmailDetailMobileSheet from './lib/EmailDetailMobileSheet.svelte';
 import { recordClientDiagnostic, showWindowNotice } from './lib/services/clientDiagnosticsService';
+import { CLIENT_WARNING_EVENT } from './lib/services/sessionNonceClient';
 
   /**
    * ShellLayout consumes provider contexts and drives the interactive shell. Keep it as
@@ -102,6 +103,13 @@ function buildPrimaryCommandEntries(catalogData) {
   const compactActionsStore = responsiveStores.compactActions;
   const viewportTierStore = responsiveStores.viewportTier;
   const viewportStateStore = responsiveStores.viewport;
+  const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
+  const windowsStore = windowManager.windows;
+  const floatingStore = windowManager.floating;
+  const minimizedStore = windowManager.minimized;
+  const windowErrorStore = windowManager.lastError;
+  const panelReadyStore = writable(false);
+  const comingSoonModalStore = writable({ open: false, sourceLabel: '' });
 const mobileDetailOverlayVisibleStore = derived([isMobile, selectedEmailStore], ([$mobile, $selected]) => Boolean($mobile && $selected));
 const composeOverlayVisibleStore = derived([isMobile, floatingStore], ([$mobile, $floating]) => {
   if (!$mobile || !Array.isArray($floating)) return false;
@@ -118,12 +126,9 @@ mailboxStores.emails.subscribe((value) => {
   emails = value;
 });
 
-  const windowManager = createWindowManager({ maxFloating: 4, maxDocked: 3 });
-  const windowsStore = windowManager.windows;
-  const floatingStore = windowManager.floating;
-  const minimizedStore = windowManager.minimized;
-  const windowErrorStore = windowManager.lastError;
-  const panelReadyStore = writable(false);
+  const primaryCommandEntriesStore = derived(catalog, ($catalog) => buildPrimaryCommandEntries($catalog));
+  $: primaryCommandEntries = $primaryCommandEntriesStore;
+
   const actionMenuStore = createActionMenuSuggestionsStore({
     ensureCatalogReady: ensureCatalog,
     callCatalogCommand: (commandKey, instruction, context) => callAiCommand(commandKey, instruction, context)
@@ -176,31 +181,6 @@ mailboxStores.emails.subscribe((value) => {
     }
   );
 
-  const aiSheetInstances = derived(
-    [mobilePanelVisibleStore, activePanelStateStore, activePanelErrorStore, aiJourneyOverlayStore],
-    ([$visible, $state, $error, $journey]) => {
-      if (!$visible) {
-        return [];
-      }
-      return [
-        {
-          id: 'ai-summary-mobile',
-          component: AiSummaryMobileSheet,
-          props: {
-            panelState: $state,
-            journeyOverlay: $journey,
-            error: $error,
-            showMenuButton: true,
-            onClose: handlePanelClose,
-            onToggleMenu: handleMenuClick,
-            onMinimize: handlePanelMinimize,
-            onRunCommand: (detail) => runMainAiCommand(detail?.detail || detail)
-          }
-        }
-      ];
-    }
-  );
-
   const comingSoonOverlayInstances = derived(comingSoonModalStore, ($modal) => {
     if (!$modal.open) {
       return [];
@@ -233,39 +213,8 @@ mailboxStores.emails.subscribe((value) => {
     ];
   });
 
-  const overlayRegistrations = [
-    overlayController.registerOverlay({
-      key: 'drawer-backdrop',
-      presenter: 'backdrop',
-      priority: 10,
-      source: drawerBackdropInstances
-    }),
-    overlayController.registerOverlay({
-      key: 'detail-sheet',
-      presenter: 'sheet',
-      priority: 20,
-      source: detailSheetInstances
-    }),
-    overlayController.registerOverlay({
-      key: 'ai-sheet',
-      presenter: 'sheet',
-      priority: 30,
-      source: aiSheetInstances
-    }),
-    overlayController.registerOverlay({
-      key: 'coming-soon',
-      presenter: 'modal',
-      priority: 50,
-      source: comingSoonOverlayInstances
-    })
-  ];
-
-  onDestroy(() => {
-    overlayRegistrations.forEach((dispose) => dispose());
-  });
   let selectedActionKey = null;
   let isActionMenuOpen = false;
-  const comingSoonModalStore = writable({ open: false, sourceLabel: '' });
   $: comingSoonModal = $comingSoonModalStore;
   let mailbox = get(mailboxStore);
   let search = get(searchStore);
@@ -299,12 +248,70 @@ const activePanelErrorStore = derived([panelErrorsStore, panelActiveKeyStore], (
   $: pendingMoves = $pendingMovesStore;
   $: windows = $windowsStore;
   $: floatingWindows = $floatingStore;
+  $: composeWindowStack = floatingWindows.filter((win) => win.kind === WindowKind.COMPOSE && !win.minimized);
+  $: activeMobileComposeId = composeWindowStack.length ? composeWindowStack[composeWindowStack.length - 1].id : null;
   $: minimizedWindows = $minimizedStore;
   $: windowAlert = $windowErrorStore ? $windowErrorStore.message : '';
   $: aiJourneyOverlay = $aiJourneyOverlayStore;
   $: composeJourneyOverlay = aiJourneyOverlay.scope === 'compose' ? aiJourneyOverlay : null;
   $: panelJourneyOverlay = aiJourneyOverlay.scope === 'panel' ? aiJourneyOverlay : null;
-  $: activePanelJourneyOverlay = panelJourneyOverlay && selected && (panelJourneyOverlay.scopeTarget === selected.id || panelJourneyOverlay.scopeTarget === selected.contextId) ? panelJourneyOverlay : null;
+$: activePanelJourneyOverlay = panelJourneyOverlay && selected && (panelJourneyOverlay.scopeTarget === selected.id || panelJourneyOverlay.scopeTarget === selected.contextId) ? panelJourneyOverlay : null;
+
+const aiSheetInstances = derived(
+  [mobilePanelVisibleStore, activePanelStateStore, activePanelErrorStore, aiJourneyOverlayStore],
+  ([$visible, $state, $error, $journey]) => {
+    if (!$visible) {
+      return [];
+    }
+    return [
+      {
+        id: 'ai-summary-mobile',
+        component: AiSummaryMobileSheet,
+        props: {
+          panelState: $state,
+          journeyOverlay: $journey,
+          error: $error,
+          showMenuButton: true,
+          onClose: handlePanelClose,
+          onToggleMenu: handleMenuClick,
+          onMinimize: handlePanelMinimize,
+          onRunCommand: (detail) => runMainAiCommand(detail?.detail || detail)
+        }
+      }
+    ];
+  }
+);
+
+const overlayRegistrations = [
+  overlayController.registerOverlay({
+    key: 'drawer-backdrop',
+    presenter: 'backdrop',
+    priority: 10,
+    source: drawerBackdropInstances
+  }),
+  overlayController.registerOverlay({
+    key: 'detail-sheet',
+    presenter: 'sheet',
+    priority: 20,
+    source: detailSheetInstances
+  }),
+  overlayController.registerOverlay({
+    key: 'ai-sheet',
+    presenter: 'sheet',
+    priority: 30,
+    source: aiSheetInstances
+  }),
+  overlayController.registerOverlay({
+    key: 'coming-soon',
+    presenter: 'modal',
+    priority: 50,
+    source: comingSoonOverlayInstances
+  })
+];
+
+onDestroy(() => {
+  overlayRegistrations.forEach((dispose) => dispose());
+});
   // Viewport responsive
   $: mobile = $isMobile;
   $: tablet = $isTablet;
@@ -343,9 +350,7 @@ const activePanelErrorStore = derived([panelErrorsStore, panelActiveKeyStore], (
   let mailboxMenuMobileRef = null;
 
   // Derived
-  const primaryCommandEntriesStore = derived(catalog, ($catalog) => buildPrimaryCommandEntries($catalog));
-  $: primaryCommandEntries = $primaryCommandEntriesStore;
-  $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
+$: composeAiFunctions = Object.values(aiFunctionsByKey || {})
     .filter((fn) => Array.isArray(fn.scopes) && fn.scopes.includes('compose'));
   $: mailboxCommandEntries = deriveMailboxCommands();
   $: hasMailboxCommands = Array.isArray(mailboxCommandEntries) && mailboxCommandEntries.length > 0;
@@ -955,6 +960,7 @@ const activePanelErrorStore = derived([panelErrorsStore, panelActiveKeyStore], (
         offsetIndex={index}
         aiFunctions={composeAiFunctions}
         journeyOverlay={composeJourneyOverlay && composeJourneyOverlay.scopeTarget === win.id ? composeJourneyOverlay : null}
+        mobileActive={win.id === activeMobileComposeId}
         on:send={handleComposeSend}
         on:requestAi={handleComposeRequestAi}
         on:saveDraft={handleComposeSaveDraft}
