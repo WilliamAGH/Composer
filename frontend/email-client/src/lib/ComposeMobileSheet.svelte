@@ -282,6 +282,7 @@
   /**
    * Mobile compose sheet anchors to the viewport with frosted backdrop and maximal padding for thumb reach.
    * @usage - Rendered exclusively when ComposeWindow detects a mobile viewport
+   * @z-index-warning - Must sit above drawer overlays (160-170) to be visible when compose opens
    */
   .compose-mobile {
     position: fixed;
@@ -291,7 +292,7 @@
     background: linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(255, 255, 255, 0.97));
     padding: 0.5rem 1rem 1rem;
     gap: 0.75rem;
-    z-index: 85;
+    z-index: var(--z-modal, 180);
   }
   /**
    * Title stack shows only eyebrow label, subject removed to save space.
@@ -326,6 +327,8 @@
    */
 .compose-mobile__field {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   border: 1px solid rgba(148, 163, 184, 0.7);
   border-radius: 16px;
   padding: 0.85rem 1rem;
@@ -407,6 +410,8 @@
    */
 .compose-mobile__textarea {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   border: 1px solid rgba(148, 163, 184, 0.7);
   border-radius: 16px;
   padding: 0.85rem 1rem;

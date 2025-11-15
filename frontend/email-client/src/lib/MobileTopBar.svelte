@@ -204,6 +204,8 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+    margin-left: auto;
+    justify-content: flex-end;
   }
 
   .mobile-search {
@@ -224,12 +226,18 @@
     gap: 0.35rem;
   }
 
+  /**
+   * Dropdown shell for AI mailbox actions on mobile search.
+   * @usage - Menu rendered when the Actions button in the mobile search bar is toggled
+   * @z-index-warning - Must stay above the toolbar surface (z-150); rely on --z-dropdown stack
+   * @related - .menu-surface in app-shared.css for shared styling
+   */
   .mobile-search__menu {
     position: absolute;
     right: 0;
     top: calc(100% + 0.5rem);
     min-width: 16rem;
-    z-index: 80;
+    z-index: var(--z-dropdown, 200);
   }
 
   .mobile-top-bar__status {

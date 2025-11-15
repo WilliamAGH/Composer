@@ -62,14 +62,24 @@
   .overlay-backdrop {
     position: fixed;
     inset: 0;
+    z-index: var(--z-drawer-backdrop, 160);
   }
 
-  .overlay-sheet,
+  .overlay-sheet {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--z-drawer-sidebar, 170);
+  }
+
   .overlay-modal {
     position: fixed;
     inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: var(--z-modal, 180);
   }
 </style>
