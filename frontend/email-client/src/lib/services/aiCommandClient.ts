@@ -9,6 +9,7 @@ import { buildEmailContextString, deriveRecipientContext, normalizeRecipient } f
 import { parseSubjectAndBody } from './emailUtils';
 import { deriveHeadline } from './aiCommandHandler';
 import { executeCatalogCommand } from './catalogCommandClient';
+import type { ChatRequestPayload } from './catalogCommandClient';
 import { createConversationLedger } from './conversationLedger';
 import { createAiJourneyStore } from './aiJourneyStore';
 
@@ -22,7 +23,7 @@ interface CallOptions {
   journeyLabel?: string | null;
   journeyHeadline?: string | null;
   commandVariant?: string | null;
-  commandArgs?: Record<string, unknown> | null;
+  commandArgs?: Record<string, string> | null;
   emailContext?: string | null;
   fallbackEmail?: any;
   recipientContext?: { name?: string; email?: string } | null;
@@ -36,7 +37,7 @@ interface RunOptions {
   journeyScope?: string;
   journeyScopeTarget?: string | null;
   journeyLabel?: string | null;
-  commandArgs?: Record<string, unknown> | null;
+  commandArgs?: Record<string, string> | null;
 }
 
 interface PrefillOptions {
@@ -109,7 +110,7 @@ export function createAiCommandClient({
     const targetLabel = journeyLabel || subject || fallbackEmail?.subject || 'message';
     const conversationKey = (ledger.resolveKey({ journeyScope, journeyScopeTarget, contextId }) ?? null) as string | null;
     const scopedConversationId = conversationKey ? ledger.read(conversationKey) : null;
-    const payload: Record<string, unknown> = {
+    const payload: ChatRequestPayload = {
       instruction,
       message: instruction,
       conversationId: scopedConversationId,

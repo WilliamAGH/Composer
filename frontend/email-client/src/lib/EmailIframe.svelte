@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte';
+  import { sanitizeHtml } from './services/sanitizeHtml';
   export let html = '';
   let container = null;
   let fallback = '';
@@ -22,21 +23,8 @@
       }
     }
 
-    // Generate sanitized fallback HTML (used when iframe unavailable or fails)
     const raw = normalizedHtml || '';
-    if (!raw) {
-      fallback = '';
-      return;
-    }
-
-    if (window.DOMPurify) {
-      fallback = window.DOMPurify.sanitize(raw, {
-        ALLOWED_TAGS: ['p','br','strong','em','u','a','img','div','span','table','thead','tbody','tr','th','td','ul','ol','li','blockquote','pre','code'],
-        ALLOWED_ATTR: ['href','title','target','rel','class','src','alt','width','height','loading','decoding','style']
-      });
-    } else {
-      fallback = raw.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
-    }
+    fallback = raw ? sanitizeHtml(raw) : '';
   }
 
   $: tryRender(html);

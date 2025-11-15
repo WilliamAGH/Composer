@@ -3,6 +3,7 @@
   import AiLoadingJourney from './AiLoadingJourney.svelte';
   import WindowActionControls from './window/WindowActionControls.svelte';
   import { Sparkles, RotateCcw } from 'lucide-svelte';
+  import { sanitizeHtml } from './services/sanitizeHtml';
 
   export let panelState = null;
   export let journeyOverlay = null;
@@ -13,13 +14,14 @@
   const dispatch = createEventDispatcher();
 
   $: title = panelState?.title || 'AI Summary';
-  $: html = panelState?.html || '';
+  $: rawHtml = panelState?.html || '';
+  $: html = sanitizeHtml(rawHtml);
   $: lastCommand = panelState?.commandKey || 'summarize';
   $: updatedLabel = panelState?.updatedAt
     ? new Date(panelState.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : null;
   $: isLoading = Boolean(journeyOverlay && journeyOverlay.visible);
-  $: hasContent = Boolean(html && !isLoading);
+  $: hasContent = Boolean(rawHtml && !isLoading);
   $: activeCommandKey = (panelState?.commandKey || lastCommand || '').toLowerCase();
   $: badgeLabel = activeCommandKey === 'translate' ? 'Translation' : 'Summary';
   $: emptyTitle = badgeLabel === 'Translation' ? 'No translation yet' : 'No summary yet';
