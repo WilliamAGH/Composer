@@ -1,7 +1,6 @@
 import { derived, get, writable, type Readable } from 'svelte/store';
 import { computeMailboxCounts, mapEmailMessage } from '../services/emailUtils';
 import { filterEmailsByMailbox } from '../services/mailboxFiltering';
-import type { FilterableEmail } from '../services/mailboxFiltering';
 import { fetchMailboxStateSnapshot, moveMailboxMessage, type MailboxStateSnapshotResult, type MessageMoveResult } from '../services/mailboxStateClient';
 
 type Message = ReturnType<typeof mapEmailMessage>;

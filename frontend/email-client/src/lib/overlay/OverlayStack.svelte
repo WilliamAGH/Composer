@@ -3,7 +3,7 @@
   import Portal from '../components/Portal.svelte';
   import type { OverlayController, OverlayStackItem } from './OverlayController';
 
-  export let controller: OverlayController;
+  export let controller: OverlayController | null = null;
   export let target = 'overlay-root';
 
   let overlays: OverlayStackItem[] = [];

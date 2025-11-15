@@ -1,4 +1,4 @@
-import { derived, writable, get, type Writable, type Readable } from 'svelte/store';
+import { derived, writable, get } from 'svelte/store';
 import { computeMailboxCounts, mapEmailMessage, type FrontendEmailMessage } from '../services/emailUtils';
 import { filterEmailsByMailbox } from '../services/mailboxFiltering';
 import { fetchMailboxStateSnapshot, moveMailboxMessage, type MailboxStateSnapshotResult, type MessageMoveResult } from '../services/mailboxStateClient';
@@ -43,7 +43,8 @@ export function createMailboxLayoutStore(
    */
   function initializeSnapshot(snapshot: SnapshotPayload) {
     if (!snapshot) return;
-    const nextEmails = normalizeMessages(snapshot.emails || snapshot.messages || []);
+    const sourceEmails = Array.isArray(snapshot.emails) ? snapshot.emails : snapshot.messages || [];
+    const nextEmails = normalizeMessages(sourceEmails);
     emails.set(nextEmails);
     selectedEmailId.set(snapshot.selectedEmailId || null);
     if (snapshot.folderCounts) {
@@ -202,7 +203,7 @@ export function createMailboxLayoutStore(
   async function moveMessageRemote({ mailboxId, messageId, targetFolderId }: { mailboxId: string; messageId: string; targetFolderId: string }) {
     if (!mailboxId || !messageId || !targetFolderId) return null;
     if (get(pendingMoves).has(messageId)) return null;
-    const previousMessage = get(emails).find((entry) => entry.id === messageId);
+    const previousMessage = get(emails).find((entry) => entry.id === messageId) || null;
     const previousLabels = previousMessage ? [...(previousMessage.labels || [])] : null;
     const previousFolderId = resolveFolderForMessage(previousMessage);
     markMovePending(messageId);
@@ -216,7 +217,8 @@ export function createMailboxLayoutStore(
       if (previousLabels) {
         revertMailboxMove(messageId, previousLabels, previousFolderId);
       }
-      registerMoveError(messageId, error?.message || 'Unable to move message.');
+      const message = error instanceof Error ? error.message : 'Unable to move message.';
+      registerMoveError(messageId, message);
       throw error;
     }
   }

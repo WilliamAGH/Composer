@@ -1,4 +1,4 @@
-import type { EmailMessage } from '../../main';
+import type { FrontendEmailMessage } from './emailUtils';
 import { buildEmailContextString } from './emailContextConstructor';
 import { normalizeReplySubject, normalizeForwardSubject } from './emailSubjectPrefixHandler';
 
@@ -6,7 +6,7 @@ import { normalizeReplySubject, normalizeForwardSubject } from './emailSubjectPr
  * Builds compose payload defaults for reply windows while keeping App.svelte lean.
  * Returned body values always leave blank space above the quoted context so greetings land naturally.
  */
-export function buildReplyPrefill(email: EmailMessage | null | undefined) {
+export function buildReplyPrefill(email: FrontendEmailMessage | null | undefined) {
   const subject = email?.subject ? normalizeReplySubject(email.subject) : '';
   const quotedContext = quoteEmailContext(email);
   const body = quotedContext ? `\n\n${quotedContext}` : '';
@@ -22,7 +22,7 @@ export function buildReplyPrefill(email: EmailMessage | null | undefined) {
  * Builds compose payload defaults for forward windows.
  * Includes a distinct forwarded header before the quoted metadata/body.
  */
-export function buildForwardPrefill(email: EmailMessage | null | undefined) {
+export function buildForwardPrefill(email: FrontendEmailMessage | null | undefined) {
   const subject = email?.subject ? normalizeForwardSubject(email.subject) : '';
   const quotedContext = quoteEmailContext(email, true);
   const body = quotedContext ? `\n\n${quotedContext}` : '';
@@ -38,7 +38,7 @@ export function buildForwardPrefill(email: EmailMessage | null | undefined) {
  * Serializes an email into the canonical metadata/body context block.
  * Optionally prefixes a forwarded header line.
  */
-export function quoteEmailContext(email: EmailMessage | null | undefined, includeHeaders = false) {
+export function quoteEmailContext(email: FrontendEmailMessage | null | undefined, includeHeaders = false) {
   if (!email) return '';
   const context = buildEmailContextString(email);
   if (!context) return '';

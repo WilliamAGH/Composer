@@ -12,7 +12,7 @@ import type { FrontendEmailMessage } from './emailUtils';
 
 type CatalogStore = Readable<AiFunctionCatalogDto | null>;
 
-type SelectedEmail = FrontendEmailMessage | null;
+type SelectedEmail = FrontendEmailMessage;
 
 type CallAiCommandFn = (command: string, instruction: string, options: Record<string, unknown>) => Promise<ChatResponsePayload | null>;
 
@@ -39,9 +39,6 @@ export async function handleAiCommand({
   callAiCommand: CallAiCommandFn;
   ensureCatalogLoaded: () => Promise<boolean>;
 }) {
-  if (!selectedEmail) {
-    throw new Error('Select an email first.');
-  }
   const ready = await ensureCatalogLoaded();
   if (!ready) throw new Error('AI helpers are unavailable. Please refresh and try again.');
   const catalog = get(catalogStore);

@@ -61,7 +61,8 @@ export function createActionMenuSuggestionsStore({ ensureCatalogReady, callCatal
       cache[cacheKey] = nextOptions;
       optionsStore.set(nextOptions);
     } catch (error) {
-      errorStore.set(error?.message || 'Unable to refresh AI actions.');
+      const message = error instanceof Error ? error.message : 'Unable to refresh AI actions.';
+      errorStore.set(message);
       dispatchClientWarning({ message: 'Unable to refresh AI actions.', error });
     } finally {
       delete inflight[cacheKey];

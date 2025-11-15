@@ -8,6 +8,8 @@ export interface MailboxStateSnapshotResult {
   folderCounts: Record<string, number>;
   placements: Record<string, string>;
   effectiveFolders: Record<string, string>;
+  selectedEmailId?: string | null;
+  emails?: EmailMessage[];
 }
 
 export interface MessageMoveResult {
@@ -20,6 +22,8 @@ export interface MessageMoveResult {
   placements: Record<string, string>;
   messages: EmailMessage[];
   effectiveFolders: Record<string, string>;
+  selectedEmailId?: string | null;
+  emails?: EmailMessage[];
 }
 
 interface MoveMailboxMessageParams {
