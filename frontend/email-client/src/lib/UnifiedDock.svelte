@@ -4,6 +4,10 @@
    * Ensures consistent styling, proper spacing, and no overlapping.
    */
   export let items = [];
+  export let maxItems = 10; // Maximum number of items to show before warning
+
+  $: displayItems = items.slice(0, maxItems);
+  $: hasOverflow = items.length > maxItems;
 
   function handleRestore(item, event) {
     event?.stopPropagation();
@@ -20,9 +24,9 @@
   }
 </script>
 
-{#if items.length}
+{#if displayItems.length}
   <div class="unified-dock">
-    {#each items as item (item.id)}
+    {#each displayItems as item (item.id)}
       <button
         type="button"
         class="dock-pill"
@@ -43,6 +47,12 @@
         {/if}
       </button>
     {/each}
+
+    {#if hasOverflow}
+      <div class="dock-overflow-indicator" title="{items.length - maxItems} more minimized">
+        +{items.length - maxItems}
+      </div>
+    {/if}
   </div>
 {/if}
 
@@ -58,11 +68,16 @@
     left: 16px;
     right: 16px;
     bottom: 16px;
+    max-height: 200px; /* Allow up to ~4 rows of pills */
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    align-content: flex-end; /* Align rows to bottom */
+    overflow-y: auto;
+    overflow-x: hidden;
     z-index: var(--z-toolbar-surface, 150);
     pointer-events: none; /* Allow clicks to pass through empty space */
+    padding-top: 8px; /* Extra padding for scroll */
   }
 
   /**
@@ -139,6 +154,29 @@
 
   .pill-close:hover {
     background: rgba(0, 0, 0, 0.08);
+  }
+
+  /**
+   * Overflow indicator - shows count of hidden items when max limit reached.
+   * @usage - Displayed when items.length > maxItems
+   */
+  .dock-overflow-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.5rem;
+    height: 2rem;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    background: rgba(248, 250, 252, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 0 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    pointer-events: auto;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   }
 
   /**
