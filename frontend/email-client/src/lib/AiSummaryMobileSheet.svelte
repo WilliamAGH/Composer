@@ -101,14 +101,15 @@
     flex-direction: column;
     background: linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(15, 23, 42, 0.1));
     backdrop-filter: blur(12px);
+    padding: 0.5rem 1rem 1rem;
   }
 
   @supports (padding: env(safe-area-inset-top)) {
     .ai-summary-mobile-sheet {
-      padding-top: env(safe-area-inset-top);
-      padding-right: env(safe-area-inset-right);
-      padding-bottom: env(safe-area-inset-bottom);
-      padding-left: env(safe-area-inset-left);
+      padding-top: max(0.5rem, env(safe-area-inset-top));
+      padding-right: max(1rem, env(safe-area-inset-right));
+      padding-bottom: max(1rem, env(safe-area-inset-bottom));
+      padding-left: max(1rem, env(safe-area-inset-left));
     }
   }
 
