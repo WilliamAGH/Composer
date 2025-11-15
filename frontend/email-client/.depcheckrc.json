@@ -1,0 +1,17 @@
+{
+  "ignores": [
+    "lucide-svelte",
+    "postcss-html",
+    "stylelint",
+    "stylelint-config-html",
+    "stylelint-config-standard",
+    "oxlint"
+  ],
+  "skip-missing": true,
+  "detectors": [
+    "importDeclaration"
+  ],
+  "specials": [
+    "svelte"
+  ]
+}

@@ -2,6 +2,7 @@ package com.composerai.api.service;
 
 import com.composerai.api.ai.AiFunctionCatalogHelper;
 import com.composerai.api.ai.AiFunctionDefinition;
+import org.springframework.beans.factory.annotation.Autowired;
 import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
 import com.composerai.api.config.MagicEmailProperties;
@@ -10,6 +11,9 @@ import com.composerai.api.dto.ChatResponse;
 import com.composerai.api.dto.ChatResponse.EmailContext;
 import com.composerai.api.dto.SseEventType;
 import com.composerai.api.service.email.HtmlConverter;
+import com.composerai.api.shared.ledger.ChatLedgerRecorder;
+import com.composerai.api.shared.ledger.UsageMetrics;
+import com.openai.models.responses.ResponseCreateParams;
 import com.composerai.api.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,23 +48,41 @@ public class ChatService {
     private final OpenAiProperties openAiProperties;
     private final ErrorMessagesProperties errorMessages;
     private final ContextBuilder contextBuilder;
-    private final ContextBuilder.EmailContextRegistry emailContextRegistry;
+    private final ContextBuilder.EmailContextCache emailContextRegistry;
     private final ConversationRegistry conversationRegistry;
     private final ExecutorService streamingExecutor;
     private final MagicEmailProperties magicEmailProperties;
     private final AiFunctionCatalogHelper aiFunctionCatalogHelper;
+    private final ChatLedgerRecorder chatLedgerRecorder;
 
     private static final String INSIGHTS_TRIGGER = "__INSIGHTS_TRIGGER__";
     private static final Pattern MARKDOWN_LINK_PATTERN = Pattern.compile("\\[([^\\]]+)\\]\\(([^\\)]*)\\)");
     private static final Pattern BARE_URL_PATTERN = Pattern.compile("(?i)(?:https?://|www\\.)\\S+");
+    private static final String CONVERSATION_GUIDANCE = """
+Interaction style:
+- Sound like a thoughtful colleague: use concise sentences, contractions, and acknowledge the user.
+- Ask short clarifying questions when the request is ambiguous before assuming intent.
 
+Nicknames & tone:
+- Users may greet you casually ("hey homey"); treat it as a friendly salutation, stay professional, and keep the focus on the inbox content.
+
+Evidence handling:
+- Cite concrete names, figures, deadlines, and links from the email. Call out when information is missing rather than guessing.
+
+Response craft:
+- Lead with the direct answer or summary, then add supporting bullets or brief paragraphs.
+- Offer a relevant next step or follow-up help when it adds value.
+""";
+
+    @Autowired
     public ChatService(VectorSearchService vectorSearchService, OpenAiChatService openAiChatService,
                        OpenAiProperties openAiProperties, ErrorMessagesProperties errorMessages,
-                       ContextBuilder contextBuilder, ContextBuilder.EmailContextRegistry emailContextRegistry,
+                       ContextBuilder contextBuilder, ContextBuilder.EmailContextCache emailContextRegistry,
                        ConversationRegistry conversationRegistry,
                        MagicEmailProperties magicEmailProperties,
                        AiFunctionCatalogHelper aiFunctionCatalogHelper,
-                       @Qualifier("chatStreamExecutor") ExecutorService streamingExecutor) {
+                       @Qualifier("chatStreamExecutor") ExecutorService streamingExecutor,
+                       ChatLedgerRecorder chatLedgerRecorder) {
         this.vectorSearchService = vectorSearchService;
         this.openAiChatService = openAiChatService;
         this.openAiProperties = openAiProperties;
@@ -70,6 +93,7 @@ public class ChatService {
         this.streamingExecutor = streamingExecutor;
         this.magicEmailProperties = magicEmailProperties;
         this.aiFunctionCatalogHelper = aiFunctionCatalogHelper;
+        this.chatLedgerRecorder = chatLedgerRecorder;
     }
 
     private record ChatContext(float[] embedding, List<EmailContext> emailContext, String contextString) {}
@@ -98,6 +122,24 @@ public class ChatService {
         return new ChatContext(queryVector, emailContext, contextBuilder.buildFromEmailList(emailContext));
     }
 
+    private Optional<AiFunctionDefinition> findCommandDefinition(ChatRequest request) {
+        if (request == null) {
+            return Optional.empty();
+        }
+        String command = request.getAiCommand();
+        if (StringUtils.isBlank(command)) {
+            return Optional.empty();
+        }
+        return aiFunctionCatalogHelper.find(command, request.getCommandVariant());
+    }
+
+    private boolean isIsolatedCommand(Optional<AiFunctionDefinition> definition) {
+        return definition
+            .map(def -> def.category() == AiFunctionDefinition.Category.SUMMARY
+                || def.category() == AiFunctionDefinition.Category.TRANSLATION)
+            .orElse(false);
+    }
+
     private String resolvePromptForModel(ChatRequest request, String mergedContext) {
         String originalMessage = request.getMessage();
         if (INSIGHTS_TRIGGER.equals(originalMessage)) {
@@ -117,14 +159,14 @@ public class ChatService {
                 String template = resolveTemplate(definition, variant);
                 String instruction = resolveInstruction(originalMessage, definition, variant);
                 String rendered = renderFunctionTemplate(template, instruction, request.getSubject(), definition,
-                    mergeFunctionArgs(definition, variant, request.getCommandArgs()));
+                    mergeFunctionArgs(definition, variant, request.getCommandArgs(), request));
                 if (!StringUtils.isBlank(rendered)) {
                     return rendered;
                 }
             }
         }
 
-        return formatMessageForOutput(originalMessage, request.isJsonOutput());
+        return formatMessageForOutput(request, originalMessage);
     }
 
     private String sanitizeInsightsContext(String context) {
@@ -206,7 +248,8 @@ public class ChatService {
      */
     private Map<String, String> mergeFunctionArgs(AiFunctionDefinition definition,
                                                   AiFunctionDefinition.AiFunctionVariant variant,
-                                                  Map<String, String> requestArgs) {
+                                                  Map<String, String> requestArgs,
+                                                  ChatRequest request) {
         Map<String, String> merged = new LinkedHashMap<>();
         if (definition.defaultArgs() != null) {
             merged.putAll(definition.defaultArgs());
@@ -221,15 +264,133 @@ public class ChatService {
                 }
             });
         }
+        applyRecipientArguments(merged, definition, request);
         return merged;
+    }
+
+    /**
+     * Enriches compose/tone commands with recipient metadata so prompt templates can produce
+     * consistent greetings and closings regardless of where the request originated.
+     */
+    private void applyRecipientArguments(Map<String, String> target,
+                                         AiFunctionDefinition definition,
+                                         ChatRequest request) {
+        if (target == null || definition == null || request == null) {
+            return;
+        }
+        if (!isComposeLike(definition.category())) {
+            return;
+        }
+
+        String providedName = StringUtils.sanitize(request.getRecipientName());
+        String providedEmail = StringUtils.sanitize(request.getRecipientEmail());
+        String resolvedName = providedName;
+        boolean inferredFromEmail = false;
+
+        if (StringUtils.isBlank(resolvedName) && !StringUtils.isBlank(providedEmail)) {
+            resolvedName = inferNameFromEmail(providedEmail);
+            inferredFromEmail = !StringUtils.isBlank(resolvedName);
+        }
+
+        if (StringUtils.isBlank(resolvedName)) {
+            resolvedName = "Unknown recipient";
+        }
+
+        target.put("recipientName", resolvedName);
+        if (!StringUtils.isBlank(providedEmail)) {
+            target.put("recipientEmail", providedEmail);
+        }
+        target.put("recipientGreetingDirective",
+            buildGreetingDirective(providedName, providedEmail, resolvedName, inferredFromEmail && StringUtils.isBlank(providedName)));
+    }
+
+    private boolean isComposeLike(AiFunctionDefinition.Category category) {
+        return category == AiFunctionDefinition.Category.COMPOSE || category == AiFunctionDefinition.Category.TONE;
+    }
+
+    private String inferNameFromEmail(String email) {
+        if (StringUtils.isBlank(email)) {
+            return null;
+        }
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 0) {
+            return null;
+        }
+        String localPart = email.substring(0, atIndex)
+            .replace('.', ' ')
+            .replace('_', ' ')
+            .replace('-', ' ')
+            .trim();
+        if (localPart.isBlank() || localPart.length() < 2) {
+            return null;
+        }
+        String[] tokens = localPart.split("\\s+");
+        StringBuilder builder = new StringBuilder();
+        for (String token : tokens) {
+            if (token == null || token.isBlank()) {
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append(' ');
+            }
+            builder.append(Character.toUpperCase(token.charAt(0)));
+            if (token.length() > 1) {
+                builder.append(token.substring(1).toLowerCase(Locale.ROOT));
+            }
+        }
+        String result = builder.toString().trim();
+        return result.length() < 2 ? null : result;
+    }
+
+    /**
+     * Produces inline instructions consumed by prompt templates to keep greetings deterministic.
+     * The directive explains whether a name is trustworthy, inferred, or unavailable so the model
+     * knows when to fall back to generic pleasantries.
+     */
+    private String buildGreetingDirective(String providedName,
+                                          String providedEmail,
+                                          String resolvedName,
+                                          boolean inferred) {
+        if (!StringUtils.isBlank(providedName)) {
+            return "Open with a warm, professional greeting that addresses \"" + providedName + "\" by name.";
+        }
+        if (inferred && !StringUtils.isBlank(resolvedName)) {
+            return "Recipient name was inferred as \"" + resolvedName + "\" from the email address. Use it for the salutation if it feels natural; otherwise keep the greeting neutral.";
+        }
+        if (!StringUtils.isBlank(providedEmail)) {
+            return "Recipient name is unknown and could not be inferred from " + providedEmail + "; begin with a friendly generic greeting such as \"Hello there\" or \"Hi team\".";
+        }
+        return "Recipient identity is unavailable; start with a polite generic greeting (e.g., \"Hello there\").";
     }
 
     /**
      * Pass-through method for message formatting.
      * JSON instructions are added downstream in OpenAiChatService to avoid duplication.
      */
-    private String formatMessageForOutput(String message, boolean jsonOutput) {
-        return message;
+    private boolean shouldApplyConversationGuidance(ChatRequest request) {
+        if (request == null) {
+            return true;
+        }
+        if (!StringUtils.isBlank(request.getAiCommand())) {
+            return false;
+        }
+        if (request.isJsonOutput()) {
+            return false;
+        }
+        return true;
+    }
+
+    private String formatMessageForOutput(ChatRequest request, String message) {
+        String base = message == null ? "" : message;
+        String sanitized = base.trim();
+        if (!shouldApplyConversationGuidance(request)) {
+            return base;
+        }
+        if (StringUtils.isBlank(sanitized)) {
+            return CONVERSATION_GUIDANCE;
+        }
+        String separator = base.endsWith("\n") ? "" : "\n\n";
+        return base + separator + CONVERSATION_GUIDANCE;
     }
 
     public ChatResponse processChat(ChatRequest request) {
@@ -246,6 +407,8 @@ public class ChatService {
             logger.info("Action menu request: convId={}, contextId={}, subject={}, journeyTarget={}",
                 conversationId, request.getContextId(), request.getSubject(), request.getJourneyScopeTarget());
         }
+        Optional<AiFunctionDefinition> commandDefinition = findCommandDefinition(request);
+        boolean isolatedCommand = isIsolatedCommand(commandDefinition);
         try {
             String intent = INSIGHTS_TRIGGER.equals(originalMessage)
                 ? "insights"
@@ -258,7 +421,7 @@ public class ChatService {
                 fullContext = sanitizeInsightsContext(fullContext);
             }
             String userMessageForModel = resolvePromptForModel(request, fullContext);
-            List<OpenAiChatService.ConversationTurn> history = conversationRegistry.history(conversationId);
+            List<OpenAiChatService.ConversationTurn> history = isolatedCommand ? List.of() : conversationRegistry.history(conversationId);
 
             // Debug log context structure for troubleshooting
             if (logger.isDebugEnabled()) {
@@ -271,17 +434,21 @@ public class ChatService {
                 }
             }
             
-            OpenAiChatService.ChatCompletionResult aiResult = openAiChatService.generateResponse(
+            OpenAiChatService.Invocation invocation = openAiChatService.invokeChatResponse(
                 userMessageForModel, fullContext, history,
                 request.isThinkingEnabled(), request.getThinkingLevel(), jsonOutput);
+            OpenAiChatService.ChatCompletionResult aiResult = invocation.result();
             if (isActionMenuCommand) {
                 int responseChars = aiResult.rawText() == null ? 0 : aiResult.rawText().length();
                 logger.info("Action menu response: convId={}, contextId={}, chars={}", conversationId, request.getContextId(), responseChars);
             }
             logger.info("Successfully processed chat request for conversation: {}", conversationId);
-            conversationRegistry.append(conversationId,
-                OpenAiChatService.ConversationTurn.userWithId(userMessageId, originalMessage),
-                OpenAiChatService.ConversationTurn.assistantWithId(assistantMessageId, aiResult.rawText()));
+            if (!isolatedCommand) {
+                conversationRegistry.append(conversationId,
+                    OpenAiChatService.ConversationTurn.userWithId(userMessageId, originalMessage),
+                    OpenAiChatService.ConversationTurn.assistantWithId(assistantMessageId, aiResult.rawText()));
+            }
+            chatLedgerRecorder.recordChatCompletion(request, conversationId, invocation, aiResult.rawText());
             String sanitized = jsonOutput ? null : aiResult.sanitizedHtml();
             return new ChatResponse(aiResult.rawText(), conversationId, ctx.emailContext(), intent, sanitized, userMessageId, assistantMessageId);
         } catch (Exception e) {
@@ -291,19 +458,22 @@ public class ChatService {
             }
             logger.error("Error processing chat request", e);
             String fallback = errorMessages.getChat().getProcessingError();
-            conversationRegistry.append(conversationId,
-                OpenAiChatService.ConversationTurn.userWithId(userMessageId, originalMessage),
-                OpenAiChatService.ConversationTurn.assistantWithId(assistantMessageId, fallback));
+            if (!isolatedCommand) {
+                conversationRegistry.append(conversationId,
+                    OpenAiChatService.ConversationTurn.userWithId(userMessageId, originalMessage),
+                    OpenAiChatService.ConversationTurn.assistantWithId(assistantMessageId, fallback));
+            }
             return new ChatResponse(fallback, conversationId, List.of(), "error", HtmlConverter.markdownToSafeHtml(fallback), userMessageId, assistantMessageId);
         }
     }
 
 
     /** Internal helper for streaming chat with consolidated timing and error handling. */
-    private void doStreamChat(String messageForModel, String persistedMessage,
+    private void doStreamChat(ChatRequest request, String messageForModel, String persistedMessage,
                               String conversationId, String contextString,
                               List<OpenAiChatService.ConversationTurn> conversationHistory,
                               boolean thinkingEnabled, String thinkingLevel, boolean jsonOutput,
+                              boolean isolatedCommand,
                               String userMessageId, String assistantMessageId,
                               Consumer<String> onHtmlChunk, Consumer<String> onJsonChunk,
                               Consumer<ReasoningStreamAdapter.ReasoningMessage> onReasoning,
@@ -313,13 +483,15 @@ public class ChatService {
             ? ReasoningStreamAdapter.normalizeThinkingLabel(thinkingLevel)
             : null;
         long startNanos = System.nanoTime();
+        long startMillis = System.currentTimeMillis();
         StringBuilder assistantBuffer = new StringBuilder();
+        final ResponseCreateParams[] requestParamsHolder = new ResponseCreateParams[1];
         logger.info("Dispatching LLM stream: convId={}, contextChars={}, historySize={}, jsonOutput={}, thinkingEnabled={}",
             conversationId, contextString == null ? 0 : contextString.length(),
             conversationHistory == null ? 0 : conversationHistory.size(),
             jsonOutput, thinkingEnabled);
         try {
-            openAiChatService.streamResponse(messageForModel, contextString, conversationHistory,
+            ResponseCreateParams params = openAiChatService.streamResponse(messageForModel, contextString, conversationHistory,
                 thinkingEnabled, thinkingLevel, jsonOutput,
                 event -> {
                     if (event instanceof OpenAiChatService.StreamEvent.RawText rawText) {
@@ -332,13 +504,26 @@ public class ChatService {
                     handleStreamEvent(event, onHtmlChunk, onJsonChunk, onReasoning, normalizedThinkingLabel);
                 },
                 () -> {
-                    conversationRegistry.append(conversationId,
-                        OpenAiChatService.ConversationTurn.userWithId(userMessageId, persistedMessage),
-                        OpenAiChatService.ConversationTurn.assistantWithId(assistantMessageId, assistantBuffer.toString()));
+                    if (!isolatedCommand) {
+                        conversationRegistry.append(conversationId,
+                            OpenAiChatService.ConversationTurn.userWithId(userMessageId, persistedMessage),
+                            OpenAiChatService.ConversationTurn.assistantWithId(assistantMessageId, assistantBuffer.toString()));
+                    }
                     logger.info("Stream completed: {}ms", (System.nanoTime() - startNanos) / 1_000_000L);
                     if (onComplete != null) onComplete.run();
+                    UsageMetrics usage = new UsageMetrics(0, 0, 0, System.currentTimeMillis() - startMillis);
+                    OpenAiChatService.Invocation invocation = new OpenAiChatService.Invocation(
+                        OpenAiChatService.ChatCompletionResult.fromRaw(assistantBuffer.toString(), jsonOutput),
+                        requestParamsHolder[0],
+                        null,
+                        usage
+                    );
+                    chatLedgerRecorder.recordChatCompletion(request, conversationId, invocation, assistantBuffer.toString());
                 },
                 err -> { logger.warn("Stream failed: {}ms", (System.nanoTime() - startNanos) / 1_000_000L, err); safeOnError.accept(err); });
+            if (params != null) {
+                requestParamsHolder[0] = params;
+            }
         } catch (Exception e) {
             logger.error("Error initiating stream", e);
             safeOnError.accept(e);
@@ -351,6 +536,8 @@ public class ChatService {
                            Runnable onComplete, Consumer<Throwable> onError) {
         // Backward-compatibility overload: generate IDs internally
         String conversationId = StringUtils.ensureConversationId(request.getConversationId());
+        Optional<AiFunctionDefinition> definition = findCommandDefinition(request);
+        boolean isolatedCommand = isIsolatedCommand(definition);
         int maxResults = applyMaxResultsDefault(request.getMaxResults());
         ChatContext ctx = prepareChatContext(request.getMessage(), maxResults);
         String uploadedContext = resolveUploadedContext(conversationId, request);
@@ -363,11 +550,11 @@ public class ChatService {
         String userMessageForModel = resolvePromptForModel(request, fullContext);
         Consumer<String> htmlConsumer = jsonOutput ? null : onToken;
         Consumer<String> jsonConsumer = jsonOutput ? onToken : null;
-        List<OpenAiChatService.ConversationTurn> history = conversationRegistry.history(conversationId);
+        List<OpenAiChatService.ConversationTurn> history = isolatedCommand ? List.of() : conversationRegistry.history(conversationId);
         String userMessageId = com.composerai.api.util.IdGenerator.uuidV7();
         String assistantMessageId = com.composerai.api.util.IdGenerator.uuidV7();
-        doStreamChat(userMessageForModel, originalMessage, conversationId, fullContext, history,
-            request.isThinkingEnabled(), request.getThinkingLevel(), jsonOutput,
+        doStreamChat(request, userMessageForModel, originalMessage, conversationId, fullContext, history,
+            request.isThinkingEnabled(), request.getThinkingLevel(), jsonOutput, isolatedCommand,
             userMessageId, assistantMessageId,
             htmlConsumer, jsonConsumer, onReasoning, onComplete, onError);
     }
@@ -378,6 +565,8 @@ public class ChatService {
                            Consumer<ReasoningStreamAdapter.ReasoningMessage> onReasoning,
                            Runnable onComplete, Consumer<Throwable> onError) {
         String conversationId = StringUtils.ensureConversationId(request.getConversationId());
+        Optional<AiFunctionDefinition> definition = findCommandDefinition(request);
+        boolean isolatedCommand = isIsolatedCommand(definition);
         int maxResults = applyMaxResultsDefault(request.getMaxResults());
         ChatContext ctx = prepareChatContext(request.getMessage(), maxResults);
         String uploadedContext = resolveUploadedContext(conversationId, request);
@@ -390,9 +579,9 @@ public class ChatService {
         String userMessageForModel = resolvePromptForModel(request, fullContext);
         Consumer<String> htmlConsumer = jsonOutput ? null : onToken;
         Consumer<String> jsonConsumer = jsonOutput ? onToken : null;
-        List<OpenAiChatService.ConversationTurn> history = conversationRegistry.history(conversationId);
-        doStreamChat(userMessageForModel, originalMessage, conversationId, fullContext, history,
-            request.isThinkingEnabled(), request.getThinkingLevel(), jsonOutput,
+        List<OpenAiChatService.ConversationTurn> history = isolatedCommand ? List.of() : conversationRegistry.history(conversationId);
+        doStreamChat(request, userMessageForModel, originalMessage, conversationId, fullContext, history,
+            request.isThinkingEnabled(), request.getThinkingLevel(), jsonOutput, isolatedCommand,
             userMessageId, assistantMessageId,
             htmlConsumer, jsonConsumer, onReasoning, onComplete, onError);
     }
@@ -410,6 +599,8 @@ public class ChatService {
         emitter.onError(e -> logger.error("SSE error: {}", conversationId, e));
         streamingExecutor.execute(() -> {
             try {
+                Optional<AiFunctionDefinition> definition = findCommandDefinition(request);
+                boolean isolatedCommand = isIsolatedCommand(definition);
                 int maxResults = applyMaxResultsDefault(request.getMaxResults());
                 ChatContext ctx = prepareChatContext(request.getMessage(), maxResults);
                 String uploadedContext = resolveUploadedContext(conversationId, request);
@@ -420,7 +611,7 @@ public class ChatService {
                     fullContext = sanitizeInsightsContext(fullContext);
                 }
                 String userMessageForModel = resolvePromptForModel(request, fullContext);
-                List<OpenAiChatService.ConversationTurn> history = conversationRegistry.history(conversationId);
+                List<OpenAiChatService.ConversationTurn> history = isolatedCommand ? List.of() : conversationRegistry.history(conversationId);
                 String userMessageId = com.composerai.api.util.IdGenerator.uuidV7();
                 String assistantMessageId = com.composerai.api.util.IdGenerator.uuidV7();
                 Consumer<String> chunkSender = chunk -> { 
@@ -431,11 +622,11 @@ public class ChatService {
                         emitter.completeWithError(e); 
                     } 
                 };
-                doStreamChat(userMessageForModel, originalMessage, conversationId, fullContext, history,
-                    request.isThinkingEnabled(), request.getThinkingLevel(), jsonOutput,
+                doStreamChat(request, userMessageForModel, originalMessage, conversationId, fullContext, history,
+                    request.isThinkingEnabled(), request.getThinkingLevel(), jsonOutput, isolatedCommand,
                     userMessageId, assistantMessageId,
                     chunkSender, chunkSender,
-                    message -> sendReasoning(emitter, conversationId, message), 
+                    message -> sendReasoning(emitter, conversationId, message),
                     emitter::complete, emitter::completeWithError);
             } catch (Exception e) {
                 logger.error("Async processing failed: {}", conversationId, e);

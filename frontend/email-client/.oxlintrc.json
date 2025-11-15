@@ -1,0 +1,17 @@
+{
+  "rules": {
+    "no-debugger": "error",
+    "no-console": "warn",
+    "no-unused-vars": "warn",
+    "no-unused-expressions": "warn",
+    "no-unused-labels": "error",
+    "no-unused-private-class-members": "warn",
+    "no-unreachable": "error",
+    "eqeqeq": "error"
+  },
+  "env": {
+    "browser": true,
+    "es2021": true,
+    "node": true
+  }
+}

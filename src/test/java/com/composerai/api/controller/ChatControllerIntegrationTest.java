@@ -1,5 +1,7 @@
 package com.composerai.api.controller;
 
+import com.composerai.api.ai.AiFunctionCatalogHelper;
+import com.composerai.api.config.AiFunctionCatalogProperties;
 import com.composerai.api.dto.ChatRequest;
 import com.composerai.api.dto.ChatResponse;
 import com.composerai.api.service.ChatService;
@@ -9,6 +11,9 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -24,12 +29,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(ChatController.class)
+@WebMvcTest({ChatController.class, SystemController.class})
+@Import(ChatControllerIntegrationTest.TestConfig.class)
 class ChatControllerIntegrationTest {
 
     private static final String BASE_API_PATH = "/api";
     private static final String CHAT_ENDPOINT = BASE_API_PATH + "/chat";
-    private static final String HEALTH_ENDPOINT = CHAT_ENDPOINT + "/health";
+    private static final String HEALTH_ENDPOINT = BASE_API_PATH + "/health";
 
     @Autowired
     private MockMvc mockMvc;
@@ -57,7 +63,7 @@ class ChatControllerIntegrationTest {
         mockMvc.perform(get(HEALTH_ENDPOINT))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.status").value("UP"));
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.status").value("ok"));
     }
 
     @Test
@@ -71,14 +77,18 @@ class ChatControllerIntegrationTest {
     }
 
     @Test
-    void chatEndpoint_WithContextButNoContextId_ShouldReturnBadRequest() throws Exception {
+    void chatEndpoint_WithEmailContextOnly_ShouldSucceed() throws Exception {
         ChatRequest request = new ChatRequest("Hi", null, 5);
-        request.setEmailContext("malicious raw");
+        request.setEmailContext("markdown context");
+
+        ChatResponse chatResponse = new ChatResponse("Hi", "conv-1", java.util.List.of(), "answer", "<p>Hi</p>");
+        Mockito.when(chatService.processChat(any())).thenReturn(chatResponse);
 
         mockMvc.perform(post(CHAT_ENDPOINT)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.response").value("Hi"));
     }
 
     @Test
@@ -165,5 +175,17 @@ class ChatControllerIntegrationTest {
             any(Runnable.class),
             org.mockito.ArgumentMatchers.<java.util.function.Consumer<Throwable>>any()
         );
+    }
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        AiFunctionCatalogProperties aiFunctionCatalogProperties() {
+            return new AiFunctionCatalogProperties();
+        }
+
+        @Bean
+        AiFunctionCatalogHelper aiFunctionCatalogHelper(AiFunctionCatalogProperties properties) {
+            return new AiFunctionCatalogHelper(properties);
+        }
     }
 }

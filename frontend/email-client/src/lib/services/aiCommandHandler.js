@@ -2,6 +2,8 @@ import { get } from 'svelte/store';
 import { createComposeWindow, WindowKind } from '../window/windowTypes.js';
 import { mergeDefaultArgs, resolveDefaultInstruction, getFunctionMeta } from './aiCatalog';
 import { parseSubjectAndBody } from './emailUtils';
+import { normalizeReplySubject } from './emailSubjectPrefixHandler.js';
+import { deriveRecipientContext } from './emailContextConstructor';
 
 /**
  * Centralizes AI-command handling so App.svelte can delegate compose/summary logic. By isolating this in
@@ -32,7 +34,7 @@ export async function handleAiCommand({
     const existingCompose = findMatchingComposeWindow(windowManager, selectedEmail?.id || null);
     const descriptor = existingCompose || createComposeWindow(selectedEmail, {
       to: selectedEmail.fromEmail || '',
-      subject: `Re: ${selectedEmail.subject || ''}`,
+      subject: normalizeReplySubject(selectedEmail.subject || ''),
       isReply: true,
       title: selectedEmail.subject ? `Reply: ${selectedEmail.subject}` : fn.label || 'AI Compose'
     });
@@ -55,7 +57,11 @@ export async function handleAiCommand({
       instructionOverride,
       windowManager,
       callAiCommand,
-      commandArgs
+      commandArgs,
+      recipientContext: {
+        name: descriptor.payload?.recipientName || '',
+        email: descriptor.payload?.recipientEmail || ''
+      }
     });
     return { type: WindowKind.COMPOSE, id: descriptor.id };
   }
@@ -71,7 +77,7 @@ export async function handleAiCommand({
     commandVariant: variant?.key || null,
     commandArgs
   });
-  const html = (data?.response && window.ComposerAI?.renderMarkdown ? window.ComposerAI.renderMarkdown(data.response) : '')
+  const html = (data?.response && window.Composer?.renderMarkdown ? window.Composer.renderMarkdown(data.response) : '')
     || (data?.sanitizedHtml || data?.sanitizedHTML || '')
     || '<div class="text-sm text-slate-500">No response received.</div>';
   const contextId = selectedEmail.contextId || selectedEmail.id || null;
@@ -94,7 +100,7 @@ function findMatchingComposeWindow(windowManager, contextId) {
   ) || null;
 }
 
-async function draftWithAi({ descriptor, command, selectedEmail, fn, variant, instructionOverride = null, windowManager, callAiCommand, commandArgs }) {
+async function draftWithAi({ descriptor, command, selectedEmail, fn, variant, instructionOverride = null, windowManager, callAiCommand, commandArgs, recipientContext = null }) {
   const instruction = instructionOverride || resolveDefaultInstruction(fn, variant);
   const data = await callAiCommand(command, instruction, {
     contextId: selectedEmail.contextId,
@@ -104,7 +110,8 @@ async function draftWithAi({ descriptor, command, selectedEmail, fn, variant, in
     journeyLabel: descriptor.payload.subject || selectedEmail.subject || 'reply',
     journeyHeadline: deriveHeadline(command, fn.label || 'AI Assistant'),
     commandVariant: variant?.key || null,
-    commandArgs
+    commandArgs,
+    recipientContext
   });
   let draftText = (data?.response && data.response.trim()) || '';
   if (!draftText && data?.sanitizedHtml) {
@@ -121,7 +128,7 @@ async function draftWithAi({ descriptor, command, selectedEmail, fn, variant, in
   }
 }
 
-function deriveHeadline(command, fallback) {
+export function deriveHeadline(command, fallback) {
   switch (command) {
     case 'summarize':
       return 'Summarizing this email';
@@ -140,4 +147,87 @@ function deriveHeadline(command, fallback) {
 function resolveVariant(meta, variantKey) {
   if (!variantKey || !meta || !Array.isArray(meta.variants)) return null;
   return meta.variants.find((variant) => variant.key === variantKey) || null;
+}
+
+export function buildComposeInstruction(command, currentDraft, isReply, meta) {
+  const fallback = resolveDefaultInstruction(meta, null);
+  if (command === 'draft') {
+    if (currentDraft && currentDraft.length > 0) {
+      return `Improve this ${isReply ? 'reply' : 'draft'} while preserving the intent:\n\n${currentDraft}`;
+    }
+    return isReply ? fallback : `${fallback}`;
+  }
+  if (command === 'compose') {
+    return currentDraft && currentDraft.length > 0
+      ? `Polish this email draft and make it clear and concise:\n\n${currentDraft}`
+      : fallback;
+  }
+  if (command === 'tone') {
+    return currentDraft && currentDraft.length > 0
+      ? `Adjust the tone of this email to be friendly but professional:\n\n${currentDraft}`
+      : fallback;
+  }
+  return fallback;
+}
+
+export async function runComposeWindowAi({
+  windowManager,
+  windowConfig,
+  detail,
+  catalogStore,
+  ensureCatalogLoaded,
+  callAiCommand,
+  resolveEmailById,
+  selectedEmail
+}) {
+  if (!windowConfig || !detail?.command) {
+    throw new Error('Compose window unavailable.');
+  }
+  const ready = await ensureCatalogLoaded();
+  if (!ready) {
+    throw new Error('AI helpers are unavailable. Please try again.');
+  }
+  const catalog = get(catalogStore);
+  const fn = getFunctionMeta(catalog, detail.command);
+  if (!fn) {
+    throw new Error('Command unavailable.');
+  }
+  const instruction = detail.instructionOverride || buildComposeInstruction(detail.command, detail.draft || '', detail.isReply, fn);
+  const relatedEmail = windowConfig.contextId ? resolveEmailById?.(windowConfig.contextId) : selectedEmail || null;
+  const commandArgs = mergeDefaultArgs(fn, null);
+  const recipientContext = deriveRecipientContext({
+    toInput: detail.to,
+    composePayload: windowConfig.payload,
+    fallbackEmail: relatedEmail
+  });
+
+  const data = await callAiCommand(detail.command, instruction, {
+    contextId: relatedEmail?.contextId || relatedEmail?.id || null,
+    subject: detail.subject || relatedEmail?.subject,
+    journeyScope: 'compose',
+    journeyScopeTarget: windowConfig.id,
+    journeyLabel: detail.subject || relatedEmail?.subject || 'draft',
+    journeyHeadline: deriveHeadline(detail.command, fn.label || 'AI Assistant'),
+    commandArgs,
+    recipientContext
+  });
+  let draftText = (data?.response && data.response.trim()) || '';
+  if (!draftText && data?.sanitizedHtml) {
+    const temp = document.createElement('div');
+    temp.innerHTML = data.sanitizedHtml;
+    draftText = temp.textContent.trim();
+  }
+  if (draftText) {
+    const parsed = parseSubjectAndBody(draftText);
+    let updatedBody = parsed.body || draftText;
+    const quote = windowConfig.payload?.quotedContext;
+    if (quote && !updatedBody.includes(quote.trim())) {
+      updatedBody = `${updatedBody.trimEnd()}\n\n${quote}`;
+    }
+    windowManager.updateComposeDraft(windowConfig.id, {
+      subject: parsed.subject || detail.subject,
+      body: updatedBody
+    });
+  }
+  return data;
 }

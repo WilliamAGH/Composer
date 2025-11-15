@@ -19,7 +19,7 @@ export function createAiJourneyStore() {
       activeStepId: null,
       completed: new Set(),
       headline: 'Working on your request',
-      subhead: 'ComposerAI assistant',
+      subhead: 'Composer assistant',
       scope: 'global',
       scopeTarget: null
     };
@@ -38,7 +38,7 @@ export function createAiJourneyStore() {
       completed: new Set(),
       activeStepId: steps[0]?.id || null,
       headline: headline || 'Working on your request',
-      subhead: subhead || (scope === 'global' ? 'ComposerAI assistant' : 'Mailbox assistant')
+      subhead: subhead || (scope === 'global' ? 'Composer assistant' : 'Mailbox assistant')
     });
     return token;
   }

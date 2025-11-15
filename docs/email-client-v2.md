@@ -1,6 +1,6 @@
 # Email Client v2 (Svelte) — Architecture and Flow
 
-Status: Canonical client served at /email-client-v2 (legacy route /email-client redirects here)
+Status: Canonical client served at /email-client-v2 (legacy route /email-client redirects here; home URLs `/` and `/index` forward internally to this route so it's always the default landing page).
 
 Overview
 - Host: Thymeleaf template `templates/email-client-v2.html` injects bootstrap data and CSP/nonce.
@@ -24,6 +24,7 @@ Email safety model
 ### Rendering compatibility guardrails
 - The iframe stylesheet is *compatibility-first*: it only enforces container sizing, image down-scaling, and reverts accidental `tbody`/`thead` display overrides. We intentionally avoid blanket resets such as `box-sizing: border-box` or `table-layout: fixed` so fragile newsletter markup retains its intended geometry.
 - The wrapper element (`.email-wrapper`) adds only a light 16px padding buffer so messages never touch the frame edge, while letting content dictate width/height and simply exposing a horizontal scrollbar if an email genuinely needs to exceed the viewport.
+- Emails rendered through the iframe now clamp tables, block-level elements, and inline `style="width:..."` declarations to `max-width: 100%` so tablet/mobile breakpoints no longer bleed wider desktop layouts into the viewport. The clamp keeps newsletters readable on 640–960px widths while preserving original layout ratios when space allows.
 - Never add global selectors that touch `table`, `td`, `tr`, etc. inside the iframe unless there is a documented client break. Prefer targeted fixes (e.g., `.email-wrapper table > tbody { display: table-row-group !important; }`) and record the reasoning here when changes are required.
 - Do not style the rendered HTML from Svelte/Tailwind—treat the iframe as an opaque boundary and only communicate via `EmailRenderer`.
 
@@ -53,4 +54,15 @@ File map
 
 Cutover
 - Validate `/email-client-v2` in staging (legacy path already redirects here).
+- Verify `/` (and `/index`) forward server-side to `/email-client-v2` so every environment loads the same bootstrap template by default.
 - `/email-client` remains as a redirect only; there is no separate fallback template.
+
+## Mobile acceptance checklist
+
+Use this quick sweep whenever mobile UX changes ship (compose, AI summary, drawers):
+
+1. **Email selection + nav** – On ≤640px width, select an email and verify the shared mobile top navigation renders (back + menu + search) and toggles the drawer correctly.
+2. **Summary modal** – Trigger an AI summary/translation; the mobile modal should take the full viewport, show the AI journey, and close via the nav back button.
+3. **Docking** – Tap the dock/minimize action inside the summary modal and confirm the AI panel dock chip appears for restoration.
+4. **Compose parity** – Open Compose (new, reply, forward) and ensure the same nav chrome appears with the close control and send CTA, even while AI drafts run inline.
+5. **Breakpoint sanity** – Rotate the simulator or drag DevTools to switch between mobile/tablet widths to make sure compose + summary overlays adapt without clipping and AI journeys remain visible.

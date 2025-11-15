@@ -6,8 +6,10 @@ export function mapEmailMessage(message, index = 0) {
     contextId: message?.contextId || null,
     from: message?.senderName || message?.senderEmail || 'Unknown sender',
     fromEmail: message?.senderEmail || '',
+    senderName: message?.senderName || '',
     to: message?.recipientName || message?.recipientEmail || '',
     toEmail: message?.recipientEmail || '',
+    recipientName: message?.recipientName || '',
     subject: message?.subject || 'No subject',
     preview,
     contentText: message?.emailBodyTransformedText || '',
@@ -19,7 +21,8 @@ export function mapEmailMessage(message, index = 0) {
     starred: Boolean(message?.starred),
     avatar: message?.avatarUrl || message?.companyLogoUrl || '',
     labels: Array.isArray(message?.labels) ? message.labels : [],
-    companyLogoUrl: message?.companyLogoUrl || null
+    companyLogoUrl: message?.companyLogoUrl || null,
+    contextForAi: message?.contextForAi || message?.contextForAI || null
   };
 }
 

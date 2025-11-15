@@ -3,6 +3,7 @@ package com.composerai.api.service;
 import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
 import com.composerai.api.config.ProviderCapabilities;
+import com.composerai.api.shared.ledger.UsageMetrics;
 import com.composerai.api.util.StringUtils;
 import com.composerai.api.util.TemporalUtils;
 import com.composerai.api.util.IdGenerator;
@@ -12,6 +13,7 @@ import com.openai.models.ChatModel;
 import com.openai.models.Reasoning;
 import com.openai.models.ReasoningEffort;
 import com.openai.models.responses.EasyInputMessage;
+import com.openai.models.responses.Response;
 import com.openai.models.responses.ResponseCreateParams;
 import com.openai.models.responses.ResponseInputItem;
 import com.openai.models.responses.ResponseFailedEvent;
@@ -36,6 +38,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 public class OpenAiChatService {
@@ -63,6 +66,11 @@ public class OpenAiChatService {
             return new ChatCompletionResult(safeRaw, sanitized);
         }
     }
+
+    public record Invocation(ChatCompletionResult result,
+                              ResponseCreateParams requestParams,
+                              Response response,
+                              UsageMetrics usage) {}
 
     public record ConversationTurn(String messageId, EasyInputMessage.Role role, String content) {
         public ConversationTurn {
@@ -129,35 +137,48 @@ public class OpenAiChatService {
         this.errorMessages = errorMessages;
     }
 
+    public Invocation invokeChatResponse(String userMessage, String emailContext,
+                                         List<ConversationTurn> conversationHistory,
+                                         boolean thinkingEnabled, String thinkingLevel,
+                                         boolean jsonOutput) {
+        if (openAiClient == null) {
+            return new Invocation(
+                ChatCompletionResult.fromRaw(errorMessages.getOpenai().getMisconfigured(), jsonOutput),
+                null,
+                null,
+                new UsageMetrics(0, 0, 0, 0)
+            );
+        }
+
+        Invocation fallback = new Invocation(
+            ChatCompletionResult.fromRaw(errorMessages.getOpenai().getUnavailable(), jsonOutput),
+            null,
+            null,
+            new UsageMetrics(0, 0, 0, 0)
+        );
+
+        return executeWithFallback(() -> {
+            PreparedRequest prepared = prepareResponseRequest(userMessage, emailContext, conversationHistory,
+                thinkingEnabled, thinkingLevel, jsonOutput);
+            ResponseCreateParams params = prepared.builder().build();
+            String modelId = openAiProperties.getModel().getChat();
+            logLlmInvocation("chat-sync", modelId, false, jsonOutput, thinkingEnabled, prepared.config().effort());
+
+            long start = System.currentTimeMillis();
+            Response apiResponse = openAiClient.responses().create(params);
+            String aiResponse = flattenResponseText(apiResponse, jsonOutput);
+            UsageMetrics usage = toUsageMetrics(apiResponse, start);
+            logger.info("Chat completion: model={} promptTokens={} completionTokens={}",
+                modelId, usage.promptTokens(), usage.completionTokens());
+            return new Invocation(ChatCompletionResult.fromRaw(aiResponse, jsonOutput), params, apiResponse, usage);
+        }, fallback, "OpenAI error while generating response");
+    }
+
     public ChatCompletionResult generateResponse(String userMessage, String emailContext,
                                                  List<ConversationTurn> conversationHistory,
                                                  boolean thinkingEnabled, String thinkingLevel,
                                                  boolean jsonOutput) {
-        return executeWithFallback(() -> {
-            if (openAiClient == null) {
-                return ChatCompletionResult.fromRaw(errorMessages.getOpenai().getMisconfigured(), jsonOutput);
-            }
-
-            List<ResponseInputItem> messages = buildEmailAssistantMessages(emailContext, userMessage, conversationHistory, jsonOutput);
-            String modelId = openAiProperties.getModel().getChat();
-            logLlmInvocation("chat-sync", modelId, false, jsonOutput, thinkingEnabled, null);
-
-            String aiResponse = openAiClient.responses().create(ResponseCreateParams.builder()
-                .model(resolveChatModel())
-                .inputOfResponse(messages)
-                .build()).output().stream()
-                .flatMap(item -> item.message().stream())
-                .flatMap(message -> message.content().stream())
-                .flatMap(content -> content.outputText().stream())
-                .map(outputText -> outputText.text())
-                .collect(java.util.stream.Collectors.joining());
-
-            logger.info("Chat completion: model={} inputTokens={} outputTokens={}",
-                modelId,
-                (long)(userMessage != null ? userMessage.split("\\s+").length * 1.25 : 0),
-                (long)(aiResponse != null ? aiResponse.split("\\s+").length * 1.25 : 0));
-            return ChatCompletionResult.fromRaw(aiResponse, jsonOutput);
-        }, ChatCompletionResult.fromRaw(errorMessages.getOpenai().getUnavailable(), jsonOutput), "OpenAI error while generating response");
+        return invokeChatResponse(userMessage, emailContext, conversationHistory, thinkingEnabled, thinkingLevel, jsonOutput).result();
     }
 
     /**
@@ -190,71 +211,22 @@ public class OpenAiChatService {
         }, openAiProperties.getIntent().getDefaultCategory(), "OpenAI error while analyzing intent");
     }
 
-    public void streamResponse(String userMessage, String emailContext,
-                               List<ConversationTurn> conversationHistory,
-                               boolean thinkingEnabled, String thinkingLevel,
-                               boolean jsonOutput,
-                               Consumer<StreamEvent> onEvent, Runnable onComplete, Consumer<Throwable> onError) {
+    public ResponseCreateParams streamResponse(String userMessage, String emailContext,
+                                               List<ConversationTurn> conversationHistory,
+                                               boolean thinkingEnabled, String thinkingLevel,
+                                               boolean jsonOutput,
+                                               Consumer<StreamEvent> onEvent, Runnable onComplete, Consumer<Throwable> onError) {
         if (openAiClient == null) {
             onError.accept(new IllegalStateException(errorMessages.getOpenai().getMisconfigured()));
-            return;
+            return null;
         }
 
         String modelId = openAiProperties.getModel().getChat();
+        PreparedRequest prepared = prepareResponseRequest(userMessage, emailContext, conversationHistory,
+            thinkingEnabled, thinkingLevel, jsonOutput);
+        ResponseCreateParams params = prepared.builder().build();
 
-        ResponseCreateParams.Builder builder = ResponseCreateParams.builder()
-            .model(resolveChatModel())
-            .inputOfResponse(buildEmailAssistantMessages(emailContext, userMessage, conversationHistory, jsonOutput));
-
-        // Add temperature if configured
-        if (openAiProperties.getModel().getTemperature() != null) {
-            builder.temperature(openAiProperties.getModel().getTemperature());
-        }
-
-        // Add topP if configured
-        if (openAiProperties.getModel().getTopP() != null) {
-            builder.topP(openAiProperties.getModel().getTopP());
-        }
-
-        // Add maxOutputTokens if configured
-        if (openAiProperties.getModel().getMaxOutputTokens() != null) {
-            builder.maxOutputTokens(openAiProperties.getModel().getMaxOutputTokens());
-        }
-
-        ValidatedThinkingConfig config = ValidatedThinkingConfig.resolve(openAiProperties, modelId, thinkingEnabled, thinkingLevel);
-        if (config.enabled() && config.effort() != null) {
-            builder.reasoning(Reasoning.builder().effort(config.effort()).build());
-            logger.info("Reasoning enabled: {} (provider: {})", config.effort(), openAiProperties.getProviderCapabilities().getType());
-        } else if (thinkingEnabled && !openAiProperties.getProviderCapabilities().supportsReasoning()) {
-            logger.debug("Reasoning requested but provider {} does not support it", openAiProperties.getProviderCapabilities().getType());
-        }
-
-        logLlmInvocation("chat-stream", modelId, true, jsonOutput, thinkingEnabled, config.effort());
-
-        // Add OpenRouter provider routing via SDK's additionalBodyProperties if configured
-        if (openAiProperties.getProviderCapabilities().getType() == ProviderCapabilities.ProviderType.OPENROUTER
-            && openAiProperties.getProvider().getOrder() != null
-            && !openAiProperties.getProvider().getOrder().isEmpty()) {
-
-            Map<String, Object> provider = new LinkedHashMap<>();
-            
-            if (openAiProperties.getProvider().getSort() != null && !openAiProperties.getProvider().getSort().isBlank()) {
-                provider.put("sort", openAiProperties.getProvider().getSort());
-            }
-            
-            provider.put("order", openAiProperties.getProvider().getOrder());
-            provider.put("allow_fallbacks", openAiProperties.getProvider().getAllowFallbacks());
-            
-            // Use SDK's additionalBodyProperties to inject OpenRouter's "provider" field
-            builder.putAdditionalBodyProperty("provider", com.openai.core.JsonValue.from(provider));
-            
-            logger.info("OpenRouter provider routing enabled: order={}, sort={}, allow_fallbacks={}",
-                openAiProperties.getProvider().getOrder(), 
-                openAiProperties.getProvider().getSort(),
-                openAiProperties.getProvider().getAllowFallbacks());
-        }
-        
-        ResponseCreateParams params = builder.build();
+        logLlmInvocation("chat-stream", modelId, true, jsonOutput, thinkingEnabled, prepared.config().effort());
 
         boolean streamingDebugEnabled = logger.isDebugEnabled() && openAiProperties.isLocalDebugEnabled();
         MarkdownStreamAssembler assembler = jsonOutput ? null : new MarkdownStreamAssembler(streamingDebugEnabled);
@@ -304,6 +276,7 @@ public class OpenAiChatService {
                 : errorMessages.getOpenai().getUnavailable();
             onError.accept(new RuntimeException(fallbackMessage, e));
         }
+        return params;
     }
 
     public sealed interface StreamEvent permits StreamEvent.RenderedHtml, StreamEvent.RawJson, StreamEvent.Reasoning, StreamEvent.Failed, StreamEvent.RawText {
@@ -349,6 +322,89 @@ public class OpenAiChatService {
         for (ReasoningStreamAdapter.ReasoningEvent reasoningEvent : ReasoningStreamAdapter.extract(event))
             onEvent.accept(StreamEvent.reasoning(reasoningEvent));
     }
+
+    private PreparedRequest prepareResponseRequest(String userMessage, String emailContext,
+                                                   List<ConversationTurn> conversationHistory,
+                                                   boolean thinkingEnabled, String thinkingLevel,
+                                                   boolean jsonOutput) {
+        ResponseCreateParams.Builder builder = ResponseCreateParams.builder()
+            .model(resolveChatModel())
+            .inputOfResponse(buildEmailAssistantMessages(emailContext, userMessage, conversationHistory, jsonOutput));
+
+        if (openAiProperties.getModel().getTemperature() != null) {
+            builder.temperature(openAiProperties.getModel().getTemperature());
+        }
+        if (openAiProperties.getModel().getTopP() != null) {
+            builder.topP(openAiProperties.getModel().getTopP());
+        }
+        if (openAiProperties.getModel().getMaxOutputTokens() != null) {
+            builder.maxOutputTokens(openAiProperties.getModel().getMaxOutputTokens());
+        }
+
+        String modelId = openAiProperties.getModel().getChat();
+        ValidatedThinkingConfig config = ValidatedThinkingConfig.resolve(openAiProperties, modelId, thinkingEnabled, thinkingLevel);
+        if (config.enabled() && config.effort() != null) {
+            builder.reasoning(Reasoning.builder().effort(config.effort()).build());
+            logger.info("Reasoning enabled: {} (provider: {})", config.effort(), openAiProperties.getProviderCapabilities().getType());
+        } else if (thinkingEnabled && !openAiProperties.getProviderCapabilities().supportsReasoning()) {
+            logger.debug("Reasoning requested but provider {} does not support it", openAiProperties.getProviderCapabilities().getType());
+        }
+
+        if (openAiProperties.getProviderCapabilities().getType() == ProviderCapabilities.ProviderType.OPENROUTER
+            && openAiProperties.getProvider().getOrder() != null
+            && !openAiProperties.getProvider().getOrder().isEmpty()) {
+
+            Map<String, Object> provider = new LinkedHashMap<>();
+            if (openAiProperties.getProvider().getSort() != null && !openAiProperties.getProvider().getSort().isBlank()) {
+                provider.put("sort", openAiProperties.getProvider().getSort());
+            }
+            provider.put("order", openAiProperties.getProvider().getOrder());
+            provider.put("allow_fallbacks", openAiProperties.getProvider().getAllowFallbacks());
+            builder.putAdditionalBodyProperty("provider", com.openai.core.JsonValue.from(provider));
+
+            logger.info("OpenRouter provider routing enabled: order={}, sort={}, allow_fallbacks={}",
+                openAiProperties.getProvider().getOrder(),
+                openAiProperties.getProvider().getSort(),
+                openAiProperties.getProvider().getAllowFallbacks());
+        }
+
+        return new PreparedRequest(builder, config);
+    }
+
+    private String flattenResponseText(Response response, boolean jsonOutput) {
+        if (response == null || response.output() == null) {
+            return jsonOutput ? "{}" : "";
+        }
+        return response.output().stream()
+            .flatMap(item -> item.message().stream())
+            .flatMap(message -> message.content().stream())
+            .flatMap(content -> content.outputText().stream())
+            .map(outputText -> outputText.text())
+            .collect(Collectors.joining());
+    }
+
+    private UsageMetrics toUsageMetrics(Response response, long startMillis) {
+        long latency = Math.max(0, System.currentTimeMillis() - startMillis);
+        if (response == null || response.usage().isEmpty()) {
+            return new UsageMetrics(0, 0, 0, latency);
+        }
+
+        var usage = response.usage().get();
+        long prompt = safeTokenCount(usage.inputTokens());
+        long completion = safeTokenCount(usage.outputTokens());
+        long total = safeTokenCount(usage.totalTokens());
+        if (total == 0) {
+            total = prompt + completion;
+        }
+        return new UsageMetrics(prompt, completion, total, latency);
+    }
+
+    private long safeTokenCount(Long value) {
+        return value == null ? 0L : value;
+    }
+
+    private record PreparedRequest(ResponseCreateParams.Builder builder,
+                                   ValidatedThinkingConfig config) {}
 
     /**
      * Generates vector embeddings for the given text.

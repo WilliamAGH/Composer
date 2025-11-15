@@ -66,9 +66,9 @@ buildNumber.properties
 # .project
 # .settings/
 
-# Build outputs
-out/
-bin/
+# Build outputs (root-level folders only)
+/out/
+/bin/
 
 # IDE-specific and temp files
 *.iml

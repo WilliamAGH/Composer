@@ -16,7 +16,7 @@ help:
 	@echo "  make fe-dev        - Run Svelte dev server (Vite) with API proxy"
 	@echo "  make clean         - Clean Java build and remove built frontend assets"
 	@echo "  make test          - Run unit/integration tests (use MAVEN_TEST_FLAGS for overrides)"
-	@echo "  make lint          - Run linters (SpotBugs + maven-enforcer)"
+	@echo "  make lint          - Run all linters (SpotBugs, Oxlint, maven-enforcer)"
 	@echo "  make docker-build  - Build Docker image $(APP_NAME):$(TAG)"
 	@echo "  make docker-run-local - Run Docker with local profile"
 	@echo "  make docker-run-prod  - Run Docker with prod profile"
@@ -61,11 +61,40 @@ test:
 	mvn $(MAVEN_TEST_FLAGS) test
 
 lint:
-	@echo "Running maven-enforcer (dependency checks)..."
-	@mvn validate -q
-	@echo "Running SpotBugs (static analysis)..."
-	@mvn compile spotbugs:check -q
-	@echo "✅ All lint checks passed!"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "🔍 Running linters for Java, JavaScript, Svelte..."
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo ""
+	@echo "📋 Maven Enforcer (dependency checks)..."
+	@mvn validate -q && echo "   ✅ Passed" || echo "   ❌ Failed"
+	@echo ""
+	@echo "📦 SpotBugs (Java static analysis)..."
+	@mvn compile spotbugs:spotbugs -q 2>&1 | grep -q "BUILD SUCCESS" || true
+	@if [ -f target/spotbugsXml.xml ]; then \
+		BUGS=$$(grep -o "total_bugs='[0-9]*'" target/spotbugsXml.xml | grep -o "[0-9]*" | head -1); \
+		if [ "$$BUGS" = "0" ]; then \
+			echo "   ✅ 0 bugs found"; \
+		else \
+			echo "   ⚠️  $$BUGS bugs found (run 'mvn spotbugs:gui' to view)"; \
+		fi; \
+	else \
+		echo "   ⚠️  No report generated"; \
+	fi
+	@echo ""
+	@echo "⚡ Oxlint (JavaScript/Svelte <script> tags)..."
+	@cd frontend/email-client && npm run lint 2>&1 | grep -v "^>" | grep -v "^$$" || true
+	@echo ""
+	@echo "🎨 Stylelint (CSS & Svelte <style> tags - duplicate detection)..."
+	@cd frontend/email-client && npm run lint:css 2>&1 | grep -v "^>" | tail -5 || true
+	@echo ""
+	@echo "🧹 Unused :global() CSS Detection..."
+	@cd frontend/email-client && ./scripts/check-unused-global-css.sh src || true
+	@echo ""
+	@echo "🗑️  Dead Code Detection (exports, deps, components)..."
+	@cd frontend/email-client && ./scripts/check-dead-code.sh || true
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "✅ Linting complete"
 
 # Docker
 

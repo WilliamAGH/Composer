@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import { Languages, ChevronDown, Sparkles, Wand2, Highlighter, ListChecks, ListTodo } from 'lucide-svelte';
+import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck, Wand2 } from 'lucide-svelte';
 
   /**
    * Renders the AI command buttons (summary/translate/etc.) so App.svelte only passes metadata.
@@ -8,22 +8,33 @@
   export let commands = [];
   export let actionOptions = [];
   export let actionMenuLoading = false;
+  export let mobile = false;
+  export let layout = 'stacked';
+  export let compact = false;
   const dispatch = createEventDispatcher();
   const preferredVariantOrder = ['es', 'pt', 'nl'];
+  const FALLBACK_ACTION_OPTIONS = [
+    { id: 'summarize-thread', label: 'Summarize thread', actionType: 'default', defaultPlaceholder: true, aiGenerated: false },
+    { id: 'suggest-reply', label: 'Suggest reply ideas', actionType: 'default', defaultPlaceholder: true, aiGenerated: false },
+    { id: 'cleanup', label: 'Cleanup + tone pass', actionType: 'default', defaultPlaceholder: true, aiGenerated: false }
+  ];
 
   let translateMenuOpen = false;
-  let translateDropdownEl;
-  let translateButtonEl;
+  let translateDropdownEl = null;
+  let translateButtonEl = null;
   let actionMenuOpen = false;
-  let actionDropdownEl;
-  let actionButtonEl;
+  let actionDropdownEl = null;
+  let actionButtonEl = null;
 
   $: commandsList = Array.isArray(commands) ? commands : [];
+  $: summarizeEntry = commandsList.find((entry) => entry?.key === 'summarize');
   $: draftEntry = commandsList.find((entry) => entry?.key === 'draft');
   $: translateEntry = commandsList.find((entry) => entry?.key === 'translate');
   $: orderedVariants = buildVariantOptions(translateEntry?.meta?.variants || []);
-  $: otherEntries = commandsList.filter((entry) => entry?.key !== 'draft' && entry?.key !== 'translate');
+  $: otherEntries = commandsList.filter((entry) => !['draft', 'translate', 'summarize'].includes(entry?.key));
   $: actionOptionList = Array.isArray(actionOptions) && actionOptions.length ? actionOptions : [];
+  $: actionMenuEntries = actionOptionList.length ? actionOptionList : FALLBACK_ACTION_OPTIONS;
+  $: trayMode = layout === 'tray';
 
   function handleClick(key) {
     dispatch('select', { key });
@@ -37,6 +48,11 @@
 
   function handleActionSelect(option) {
     if (!option) return;
+    if (option.defaultPlaceholder) {
+      triggerComingSoon(option.label);
+      setActionMenuOpen(false);
+      return;
+    }
     dispatch('actionSelect', { option });
     setActionMenuOpen(false);
   }
@@ -51,7 +67,6 @@
   }
 
   function toggleActionMenu() {
-    if (!actionOptionList.length) return;
     setActionMenuOpen(!actionMenuOpen);
   }
 
@@ -97,10 +112,12 @@
   function resolveIconComponent(key) {
     const normalized = (key || '').toLowerCase();
     switch (normalized) {
+      case 'summarize':
+        return BookOpenCheck;
       case 'draft':
         return Wand2;
-      case 'summarize':
-        return ListChecks;
+      case 'compose':
+        return MailPlus;
       case 'tone':
         return Highlighter;
       default:
@@ -108,119 +125,357 @@
     }
   }
 
-  function buttonClasses() {
-    return 'inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200/70 bg-white/80 px-3 text-sm font-medium text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur hover:bg-white';
+  function labelForEntry(entry) {
+    const key = (entry?.key || '').toLowerCase();
+    switch (key) {
+      case 'summarize':
+        return 'Summarize';
+      case 'draft':
+        return 'Reply';
+      case 'compose':
+        return 'Compose';
+      case 'tone':
+        return 'Tone';
+      default:
+        return entry?.meta?.label || entry?.key;
+    }
   }
 </script>
 
-<div class="mt-4 flex flex-wrap gap-3">
+<div class={`ai-action-toolbar ${mobile ? 'mobile' : ''} ${trayMode ? 'tray-mode' : ''} ${compact ? 'compact' : ''}`}>
   {#if !commandsList.length}
-    <button class={buttonClasses()} on:click={() => handleClick('summarize')}>
-      Run AI Assistant
+    <button
+      type="button"
+      class="btn btn--secondary btn--compact action-pill"
+      aria-label="Run AI Assistant"
+      title="Run AI Assistant"
+      on:click={() => handleClick('summarize')}>
+      <span class="action-pill__icon">
+        <Sparkles class="h-4 w-4 text-slate-500" aria-hidden="true" />
+      </span>
+      <span class="action-pill__label">Run AI Assistant</span>
     </button>
   {:else}
-    <div class="relative">
-      <button
-        type="button"
-        class={`inline-flex items-center gap-2 rounded-full border border-white/40 bg-gradient-to-br from-slate-50/85 via-white/30 to-emerald-50/30 px-4 py-2 text-sm font-semibold text-slate-900 shadow-[0_25px_55px_-25px_rgba(16,185,129,0.7)] backdrop-blur-xl transition ${!actionOptionList.length ? 'opacity-60 cursor-not-allowed' : 'hover:border-emerald-200'}`}
-        on:click={toggleActionMenu}
-        aria-haspopup="menu"
-        aria-expanded={actionMenuOpen}
-        aria-label="AI Actions"
-        bind:this={actionButtonEl}
-        disabled={!actionOptionList.length}>
-        <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400/35 via-emerald-300/20 to-white/20 text-emerald-700 shadow-inner shadow-emerald-500/40">
-          <ListTodo class="h-4 w-4" />
-        </span>
-        <span class="tracking-wide">Actions</span>
-        <ChevronDown class={`h-4 w-4 transition ${actionMenuOpen ? 'text-emerald-600 rotate-180' : 'text-slate-500'}`} />
-        {#if actionMenuLoading}
-          <span class="ml-2 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400"></span>
-        {/if}
-      </button>
+      <div class="relative" class:span-2={mobile && !trayMode}>
+        <button
+          type="button"
+          class="btn"
+          class:action-pill={!trayMode}
+          class:btn--icon={trayMode}
+          class:btn--ghost={!trayMode}
+          class:btn--compact={!trayMode}
+          class:w-full={mobile && !trayMode}
+          class:justify-center={mobile && !trayMode}
+          on:click={toggleActionMenu}
+          aria-haspopup="menu"
+          aria-expanded={actionMenuOpen}
+          aria-label="AI Actions"
+          title="AI Actions"
+          aria-busy={actionMenuLoading}
+          bind:this={actionButtonEl}>
+          {#if trayMode}
+            <Sparkles class="h-4 w-4" aria-hidden="true" />
+          {:else}
+            <span class="action-pill__icon btn-icon-chip">
+              <Sparkles class="h-4 w-4" aria-hidden="true" />
+            </span>
+            <span class="action-pill__label tracking-wide">Actions</span>
+            <ChevronDown
+              class={`action-pill__chevron h-4 w-4 transition ${actionMenuOpen ? 'text-slate-700 rotate-180' : 'text-slate-500'}`}
+              aria-hidden="true" />
+          {/if}
+        </button>
       {#if actionMenuOpen}
         <div
-          class="absolute z-[200] mt-2 w-72 rounded-2xl border border-white/40 bg-white/95 p-4 shadow-[0_35px_65px_-20px_rgba(15,23,42,0.55)] backdrop-blur-xl"
+          class="absolute mt-2 menu-surface"
+          data-layer="nested"
           bind:this={actionDropdownEl}>
-          <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400 mb-3">Suggested Actions</div>
-          <div class="space-y-2">
-            {#each actionOptionList as option (option.id || option.label)}
+          <span class="menu-eyebrow">Suggested Actions</span>
+          <div class="menu-list">
+            {#each actionMenuEntries as option (option.id || option.label)}
               <button
                 type="button"
-                class="flex w-full items-center justify-between rounded-xl border border-transparent bg-slate-50/80 px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-200 hover:bg-white"
+                class="menu-item"
                 on:click={() => handleActionSelect(option)}>
-                <span>{option.label}</span>
-                <span class="text-xs text-slate-400">{option.actionType === 'comingSoon' ? 'Coming soon' : 'AI'}</span>
+                <div class="flex items-center min-w-0 gap-2">
+                  {#if option.aiGenerated}
+                    <span class="menu-item-icon" aria-hidden="true">
+                      <Sparkles class="h-4 w-4" />
+                    </span>
+                  {/if}
+                  <span class="truncate">{option.label}</span>
+                </div>
               </button>
             {/each}
-          </div>
-          <div class="mt-4 rounded-xl border border-dashed border-slate-200/80 bg-slate-50/70 p-3 text-center text-xs text-slate-400">
-            {#if actionMenuLoading}
-              Refreshing ideas...
-            {:else}
-              AI refreshes these suggestions automatically.
-            {/if}
           </div>
         </div>
       {/if}
     </div>
 
-    {#if draftEntry}
+    {#if summarizeEntry}
       <button
         type="button"
-        class={buttonClasses()}
-        on:click={() => handleClick(draftEntry.key)}>
-        <svelte:component this={resolveIconComponent(draftEntry.key)} class="h-4 w-4 text-slate-500" />
-        {draftEntry.meta?.label || draftEntry.key}
+        class="btn"
+        class:action-pill={!trayMode}
+        class:btn--icon={trayMode}
+        class:btn--secondary={!trayMode}
+        class:btn--compact={!trayMode}
+        aria-label={labelForEntry(summarizeEntry)}
+        title={labelForEntry(summarizeEntry)}
+        on:click={() => handleClick(summarizeEntry.key)}>
+        {#if trayMode}
+          <svelte:component this={resolveIconComponent(summarizeEntry.key)} class="h-4 w-4" aria-hidden="true" />
+        {:else}
+          <span class="action-pill__icon">
+            <svelte:component this={resolveIconComponent(summarizeEntry.key)} class="h-4 w-4 text-slate-500" aria-hidden="true" />
+          </span>
+          <span class="action-pill__label">{labelForEntry(summarizeEntry)}</span>
+        {/if}
       </button>
     {/if}
 
-    {#if translateEntry && orderedVariants.length}
+    {#if draftEntry}
+      <button
+        type="button"
+        class="btn"
+        class:action-pill={!trayMode}
+        class:btn--icon={trayMode}
+        class:btn--secondary={!trayMode}
+        class:btn--compact={!trayMode}
+        aria-label={labelForEntry(draftEntry)}
+        title={labelForEntry(draftEntry)}
+        on:click={() => handleClick(draftEntry.key)}>
+        {#if trayMode}
+          <svelte:component this={resolveIconComponent(draftEntry.key)} class="h-4 w-4" aria-hidden="true" />
+        {:else}
+          <span class="action-pill__icon">
+            <svelte:component this={resolveIconComponent(draftEntry.key)} class="h-4 w-4 text-slate-500" aria-hidden="true" />
+          </span>
+          <span class="action-pill__label">{labelForEntry(draftEntry)}</span>
+        {/if}
+      </button>
+    {/if}
+
+    {#if translateEntry && orderedVariants.length && !mobile}
       <div class="relative">
         <button
           type="button"
-        class={buttonClasses()}
-        on:click={toggleTranslateMenu}
-        aria-haspopup="menu"
-        aria-expanded={translateMenuOpen}
+          class={`btn btn--ghost btn--compact action-pill justify-between ${mobile ? 'w-full' : ''}`}
+          class:action-pill--tray={trayMode}
+          on:click={toggleTranslateMenu}
+          aria-haspopup="menu"
+          aria-expanded={translateMenuOpen}
+          aria-label="Translate"
+          title="Translate"
           bind:this={translateButtonEl}>
-          <Languages class="h-4 w-4 text-slate-500" />
-          Translate
-          <ChevronDown class="h-4 w-4 text-slate-500" />
+          <div class="flex items-center gap-2">
+            <span class="action-pill__icon">
+              <Languages class="h-4 w-4 text-slate-500" aria-hidden="true" />
+            </span>
+            <span class="action-pill__label">Translate</span>
+          </div>
+          <ChevronDown
+            class={`action-pill__chevron h-4 w-4 text-slate-500 transition ${translateMenuOpen ? 'rotate-180' : ''}`}
+            aria-hidden="true" />
         </button>
         {#if translateMenuOpen}
-          <div class="absolute z-[200] mt-2 w-64 rounded-2xl border border-white/40 bg-white/95 p-4 shadow-[0_35px_65px_-20px_rgba(15,23,42,0.55)] backdrop-blur-xl" bind:this={translateDropdownEl}>
-            <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400 mb-3">Translate To</div>
-            <div class="space-y-2">
+          <div class="absolute mt-2 menu-surface" data-layer="nested" bind:this={translateDropdownEl}>
+            <span class="menu-eyebrow">Translate To</span>
+            <div class="menu-list">
               {#each orderedVariants as variant (variant.key)}
                 <button
                   type="button"
-                  class="flex w-full items-center justify-between rounded-xl border border-transparent bg-slate-50/80 px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-200 hover:bg-white"
+                  class="menu-item"
                   on:click={() => handleVariantSelect(variant.key)}>
-                  <span>{variant.label}</span>
-                  <span class="text-xs text-slate-400">Instant</span>
+                  <div class="flex items-center min-w-0">
+                    <span class="menu-item-icon">
+                      <Languages class="h-4 w-4" />
+                    </span>
+                    <span class="truncate">{variant.label}</span>
+                  </div>
                 </button>
               {/each}
             </div>
-            <div class="mt-4 rounded-xl border border-dashed border-slate-200/80 bg-slate-50/70 p-3 text-center">
-              <button
-                type="button"
-                class="flex w-full items-center justify-center gap-1 text-sm font-semibold text-slate-400 hover:text-slate-500"
-                on:click={() => { triggerComingSoon('Translate customization'); translateMenuOpen = false; }}>
-                <Sparkles class="h-4 w-4" />
-                Customize (coming soon)
-              </button>
-            </div>
+            <button
+              type="button"
+              class="mt-4 panel-chip justify-center w-full"
+              on:click={() => { triggerComingSoon('Translate customization'); translateMenuOpen = false; }}>
+              <Sparkles class="h-4 w-4" />
+              Customize
+            </button>
           </div>
         {/if}
       </div>
     {/if}
 
     {#each otherEntries as entry (entry.key)}
-      <button class={buttonClasses()} on:click={() => handleClick(entry.key)}>
-        <svelte:component this={resolveIconComponent(entry.key)} class="h-4 w-4 text-slate-500" />
-        {entry.meta?.label || entry.key}
+      <button
+        type="button"
+        class="btn btn--secondary btn--compact action-pill"
+        class:action-pill--tray={trayMode}
+        aria-label={labelForEntry(entry)}
+        title={labelForEntry(entry)}
+        on:click={() => handleClick(entry.key)}>
+        <span class="action-pill__icon">
+          <svelte:component this={resolveIconComponent(entry.key)} class="h-4 w-4 text-slate-500" aria-hidden="true" />
+        </span>
+        <span class="action-pill__label">{labelForEntry(entry)}</span>
       </button>
     {/each}
   {/if}
 </div>
+
+<style>
+  /**
+   * AI toolbar wrapper keeps dropdowns clickable above the AI summary card while enabling responsive layouts.
+   * @usage - Surrounds AI action buttons in EmailActionToolbar contexts
+   * @z-index-warning - Maintains z-index 150 to float over DrawerBackdrop (z-50) and content iframe
+   * @related - .ai-action-toolbar.mobile, .ai-action-toolbar.mobile.tray-mode
+   */
+  .ai-action-toolbar {
+    margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    position: relative;
+    z-index: 150;
+    overflow: visible;
+  }
+
+  .ai-action-toolbar.mobile {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+
+  /**
+   * Icon + label pairing for AI action pills.
+   * @usage - Wrap icon components and text spans in AiCommandButtons markup
+   * @related - .ai-action-toolbar.compact for responsive collapsing
+   */
+  .action-pill__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  .action-pill__label {
+    white-space: nowrap;
+  }
+
+  .action-pill__chevron {
+    margin-left: 0.35rem;
+  }
+
+  /**
+   * Compact tier (≤960px desktop width) collapses AI button labels to icons so the toolbar
+   * fits alongside the desktop action row without clipping.
+   * @usage - Applied when App.svelte passes compact={true}
+   * @related - .action-pill__label, .action-pill__icon
+   */
+  .ai-action-toolbar.compact {
+    gap: 0.35rem;
+  }
+
+  .ai-action-toolbar.compact :global(.btn.btn--compact) {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    gap: 0;
+    min-width: 42px;
+  }
+
+  .ai-action-toolbar.compact .action-pill__label {
+    display: none;
+  }
+
+  .ai-action-toolbar.compact .action-pill__icon {
+    margin-right: 0;
+  }
+
+  .ai-action-toolbar.mobile:not(.tray-mode) :global(.btn.btn--compact) {
+    width: 100%;
+  }
+
+  .ai-action-toolbar.mobile:not(.tray-mode) .span-2 {
+    grid-column: 1 / -1;
+  }
+
+  .ai-action-toolbar.mobile :global(.btn-icon-chip) {
+    width: 20px;
+    height: 20px;
+  }
+
+  .ai-action-toolbar.mobile :global(.btn svg) {
+    width: 16px;
+    height: 16px;
+  }
+
+  .ai-action-toolbar.mobile .relative {
+    width: 100%;
+  }
+
+  /**
+   * Tray variant renders inside the horizontal action lane on mobile.
+   * @usage - Activated when layout="tray" and mobile flag is true
+   * @related - .action-tray__ai wrapper in EmailActionToolbar.svelte
+   */
+  .ai-action-toolbar.mobile.tray-mode {
+    display: flex;
+    align-items: center;
+    overflow: visible;
+  }
+
+  .ai-action-toolbar.mobile.tray-mode > * + * {
+    margin-left: 0.5rem; /* Use margin for consistent spacing in nested flex */
+  }
+
+  .ai-action-toolbar.mobile.tray-mode > * {
+    flex: 0 0 auto;
+    min-width: auto;
+  }
+
+  .ai-action-toolbar.mobile.tray-mode .relative {
+    width: auto;
+  }
+
+  .ai-action-toolbar.mobile.tray-mode :global(.btn.btn--compact) {
+    width: auto;
+  }
+
+  .ai-action-toolbar.mobile.tray-mode .span-2 {
+    grid-column: auto;
+  }
+
+  /**
+   * Action pills normalize icon sizing between AI actions and native controls.
+   * REMOVED: min-height and padding now inherit from global .btn--compact for consistency.
+   * @usage - Base class for AI action buttons regardless of viewport
+   * @related - .action-pill--tray for compact variant
+   */
+
+  .action-pill :global(svg) {
+    width: 16px;
+    height: 16px;
+  }
+
+  .action-pill :global(.btn-icon-chip) {
+    width: 16px;
+    height: 16px;
+  }
+
+  /**
+   * Tray modifier tightens width + padding so AI pills blend with the mobile action chips.
+   * @usage - Applied via class:action-pill--tray when layout="tray"
+   * @related - .action-tray__ai in EmailActionToolbar.svelte
+   */
+  .action-pill--tray {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    min-height: 34px;
+    font-size: 0.8rem;
+  }
+</style>

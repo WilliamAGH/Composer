@@ -6,7 +6,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="shortcut icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <meta name="apple-mobile-web-app-title" content="ComposerAI" />
+    <meta name="apple-mobile-web-app-title" content="Composer" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
@@ -35,7 +35,7 @@
         };
     </script>
     <link rel="stylesheet" href="/css/layout.css" />
-    <title th:text="${pageTitle}">ComposerAI</title>
+    <title th:text="${pageTitle}">Composer</title>
     <th:block th:if="${headContent} != null" th:replace="${headContent}"></th:block>
 </head>
 <body>
@@ -44,13 +44,13 @@
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js" integrity="sha256-0kaYYq3qitkkVZpP/6uKTJwfTpqFNM6OHDbsaYzw9Uw=" crossorigin="anonymous"></script>
     <script>
         // Minimal shared utilities available to all pages
-        window.ComposerAI = window.ComposerAI || {};
+        window.Composer = window.Composer || {};
         
         /**
          * Safely render markdown to HTML with XSS protection
          * Uses marked.js for parsing and DOMPurify for sanitization
          */
-        window.ComposerAI.renderMarkdown = function(markdown) {
+        window.Composer.renderMarkdown = function(markdown) {
             if (!markdown || typeof markdown !== 'string') return '';
             try {
                 // Preserve single newlines as <br> and enable GFM for lists/tables
@@ -72,7 +72,7 @@
         /**
          * Safely escape HTML for plain text display
          */
-        window.ComposerAI.escapeHtml = function(text) {
+        window.Composer.escapeHtml = function(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
@@ -81,7 +81,7 @@
         /**
          * Format file size in human-readable format
          */
-        window.ComposerAI.formatFileSize = function(bytes) {
+        window.Composer.formatFileSize = function(bytes) {
             if (bytes === 0) return '0 Bytes';
             const k = 1024;
             const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -93,7 +93,7 @@
          * DRY: central email parsing used by chat and backend tools
          * Requires UI_NONCE to be set globally before calling (typically from page template)
          */
-        window.ComposerAI.parseEmailFile = async function(file, uiNonce) {
+        window.Composer.parseEmailFile = async function(file, uiNonce) {
             const formData = new FormData();
             formData.append('file', file);
             const headers = {};
@@ -117,9 +117,9 @@
         
         /**
          * Shared file upload handler for drag-and-drop and click-to-upload
-         * Usage: new window.ComposerAI.FileUploadHandler(options)
+         * Usage: new window.Composer.FileUploadHandler(options)
          */
-        window.ComposerAI.FileUploadHandler = class {
+        window.Composer.FileUploadHandler = class {
             constructor(options) {
                 this.dropArea = options.dropArea;
                 this.fileInput = options.fileInput;

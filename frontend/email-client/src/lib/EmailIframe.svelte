@@ -43,8 +43,35 @@
   onMount(tryRender);
 </script>
 
-<div class="email-html-container w-full max-w-full overflow-x-hidden" bind:this={container}>
+<div class="email-html-container" bind:this={container}>
   {#if !rendered && fallback}
-    <div class="email-text-panel prose prose-sm max-w-full text-slate-700 break-words">{@html fallback}</div>
+    <div class="email-html-fallback prose prose-sm text-slate-700">{@html fallback}</div>
   {/if}
 </div>
+
+<style>
+  /**
+   * Email HTML container keeps iframe/fallback content constrained and prevents overflow on mobile.
+   * @usage - Wraps EmailRenderer iframe plus fallback markup within EmailIframe.svelte
+   * @related - .email-html-fallback inside this component
+   */
+  .email-html-container {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /**
+   * Sanitized fallback rendering mirrors iframe padding and wraps content to fit mobile viewport.
+   * @usage - Applied to the fallback div rendered when EmailRenderer fails or is unavailable
+   * @related - .email-html-container to inherit width constraints
+   */
+  .email-html-fallback {
+    width: 100%;
+    max-width: 100%;
+    padding: 0.75rem;
+    background: transparent;
+    overflow-wrap: anywhere;
+  }
+</style>

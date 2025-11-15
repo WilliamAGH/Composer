@@ -3,13 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ComposerAI Email Client v2 (Dev)</title>
+    <title>Composer Email Client v2 (Dev)</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
     <script>
-      window.ComposerAI = window.ComposerAI || {};
-      window.ComposerAI.renderMarkdown = function (markdown) {
+      window.Composer = window.Composer || {};
+      window.Composer.renderMarkdown = function (markdown) {
         try {
           const raw = marked.parse(markdown || '', { breaks: true, gfm: true });
           return DOMPurify.sanitize(raw, {
@@ -18,7 +18,7 @@
           });
         } catch (e) { return ''; }
       }
-      window.ComposerAI.escapeHtml = function (text) { const d = document.createElement('div'); d.textContent = text || ''; return d.innerHTML; }
+      window.Composer.escapeHtml = function (text) { const d = document.createElement('div'); d.textContent = text || ''; return d.innerHTML; }
       window.__EMAIL_CLIENT_BOOTSTRAP__ = { uiNonce: null, messages: [], aiFunctions: {} };
     </script>
     <style> body{background:linear-gradient(180deg,#f8fafc 0%,#f5f5f7 100%);} </style>

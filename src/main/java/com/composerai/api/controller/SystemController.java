@@ -14,10 +14,19 @@ public class SystemController {
 
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> health() {
-        return ResponseEntity.ok(Map.of(
-            "status", "ok",
-            "service", "ComposerAI API",
+        return ResponseEntity.ok(statusBody("ok"));
+    }
+
+    @GetMapping("/chat/health")
+    public ResponseEntity<Map<String, String>> chatHealth() {
+        return ResponseEntity.ok(statusBody("UP"));
+    }
+
+    private Map<String, String> statusBody(String statusValue) {
+        return Map.of(
+            "status", statusValue,
+            "service", "Composer API",
             "timestamp", LocalDateTime.now().toString()
-        ));
+        );
     }
 }

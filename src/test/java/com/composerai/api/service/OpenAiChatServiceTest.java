@@ -7,8 +7,10 @@ import com.composerai.api.config.AiFunctionCatalogProperties;
 import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
 import com.composerai.api.config.MagicEmailProperties;
+import com.composerai.api.shared.ledger.UsageMetrics;
 import com.composerai.api.dto.ChatRequest;
 import com.composerai.api.dto.ChatResponse;
+import com.composerai.api.shared.ledger.ChatLedgerRecorder;
 import com.openai.client.OpenAIClient;
 import com.openai.models.embeddings.CreateEmbeddingResponse;
 import com.openai.models.embeddings.Embedding;
@@ -18,6 +20,8 @@ import com.openai.models.responses.ResponseCreateParams;
 import com.openai.models.responses.ResponseOutputItem;
 import com.openai.models.responses.ResponseOutputMessage;
 import com.openai.models.responses.ResponseOutputText;
+import com.openai.models.responses.Tool;
+import com.openai.models.responses.ToolChoiceOptions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -93,13 +97,21 @@ class OpenAiChatServiceTest {
 
     @Test
     void generateEmbedding_returnsValidEmbedding() {
-        // Mock embeddings API response
-        CreateEmbeddingResponse mockResponse = Mockito.mock(CreateEmbeddingResponse.class);
-        Embedding mockEmbedding = Mockito.mock(Embedding.class);
-        
-        when(openAIClient.embeddings().create(any(EmbeddingCreateParams.class))).thenReturn(mockResponse);
-        when(mockResponse.data()).thenReturn(List.of(mockEmbedding));
-        when(mockEmbedding.embedding()).thenReturn(List.of(0.1f, 0.2f, 0.3f));
+        Embedding embedding = Embedding.builder()
+            .index(0)
+            .embedding(List.of(0.1f, 0.2f, 0.3f))
+            .build();
+
+        CreateEmbeddingResponse response = CreateEmbeddingResponse.builder()
+            .model("text-embedding-3-small")
+            .data(List.of(embedding))
+            .usage(CreateEmbeddingResponse.Usage.builder()
+                .promptTokens(3)
+                .totalTokens(3)
+                .build())
+            .build();
+
+        when(openAIClient.embeddings().create(any(EmbeddingCreateParams.class))).thenReturn(response);
 
         float[] result = service.generateEmbedding("test text");
 
@@ -201,20 +213,35 @@ class OpenAiChatServiceTest {
     }
 
     private Response buildResponseWithText(String text) {
-        // Mock Response API object hierarchy
-        Response mockResponse = Mockito.mock(Response.class);
-        ResponseOutputItem mockOutputItem = Mockito.mock(ResponseOutputItem.class);
-        ResponseOutputMessage mockMessage = Mockito.mock(ResponseOutputMessage.class);
-        ResponseOutputMessage.Content mockContent = Mockito.mock(ResponseOutputMessage.Content.class);
-        ResponseOutputText mockOutputText = Mockito.mock(ResponseOutputText.class);
-        
-        Mockito.lenient().when(mockResponse.output()).thenReturn(List.of(mockOutputItem));
-        Mockito.lenient().when(mockOutputItem.message()).thenReturn(Optional.of(mockMessage));
-        Mockito.lenient().when(mockMessage.content()).thenReturn(List.of(mockContent));
-        Mockito.lenient().when(mockContent.outputText()).thenReturn(Optional.of(mockOutputText));
-        Mockito.lenient().when(mockOutputText.text()).thenReturn(text);
-        
-        return mockResponse;
+        ResponseOutputText outputText = ResponseOutputText.builder()
+            .text(text)
+            .annotations(List.of())
+            .build();
+
+        ResponseOutputMessage message = ResponseOutputMessage.builder()
+            .id("msg-" + Math.abs(text.hashCode()))
+            .content(List.of(ResponseOutputMessage.Content.ofOutputText(outputText)))
+            .status(ResponseOutputMessage.Status.COMPLETED)
+            .build();
+
+        ResponseOutputItem outputItem = ResponseOutputItem.ofMessage(message);
+
+        return Response.builder()
+            .id("resp-" + Math.abs(text.hashCode()))
+            .createdAt(System.currentTimeMillis() / 1000.0)
+            .model("gpt-4o-mini")
+            .error(Optional.empty())
+            .incompleteDetails(Optional.empty())
+            .instructions(Optional.empty())
+            .metadata(Optional.empty())
+            .output(List.of(outputItem))
+            .parallelToolCalls(false)
+            .temperature(Optional.of(0.7))
+            .topP(1.0)
+            .tools(List.<Tool>of())
+            // TODO: add a regression test that uses one of our real tool-call responses.
+            .toolChoice(ToolChoiceOptions.NONE)
+            .build();
     }
 }
 
@@ -223,19 +250,21 @@ class ChatServiceContextPropagationTest {
     private VectorSearchService vectorSearchService;
     private OpenAiChatService openAiChatService;
     private ContextBuilder contextBuilder;
-    private ContextBuilder.EmailContextRegistry emailContextRegistry;
+    private ContextBuilder.EmailContextCache emailContextRegistry;
     private ChatService.ConversationRegistry conversationRegistry;
     private OpenAiProperties openAiProperties;
     private ChatService chatService;
+    private ChatLedgerRecorder chatLedgerRecorder;
 
     @BeforeEach
     void setUp() {
         vectorSearchService = Mockito.mock(VectorSearchService.class);
         openAiChatService = Mockito.mock(OpenAiChatService.class);
         contextBuilder = new ContextBuilder();
-        emailContextRegistry = new ContextBuilder.EmailContextRegistry();
+        emailContextRegistry = new ContextBuilder.InMemoryEmailContextCache();
         conversationRegistry = new ChatService.ConversationRegistry();
         ExecutorService executorService = Mockito.mock(ExecutorService.class);
+        chatLedgerRecorder = Mockito.mock(ChatLedgerRecorder.class);
 
         openAiProperties = new OpenAiProperties();
         ErrorMessagesProperties errorMessagesProperties = new ErrorMessagesProperties();
@@ -252,7 +281,8 @@ class ChatServiceContextPropagationTest {
             conversationRegistry,
             magicEmailProperties,
             catalogHelper,
-            executorService
+            executorService,
+            chatLedgerRecorder
         );
     }
 
@@ -274,19 +304,26 @@ class ChatServiceContextPropagationTest {
             .thenReturn(List.of(emailContext));
 
         Mockito.when(openAiChatService.analyzeIntent("Review email")).thenReturn("question");
-        Mockito.when(openAiChatService.generateResponse(
+        OpenAiChatService.ChatCompletionResult completionResult = new OpenAiChatService.ChatCompletionResult("raw", "<p>raw</p>");
+        OpenAiChatService.Invocation invocationResult = new OpenAiChatService.Invocation(
+            completionResult,
+            null,
+            null,
+            new UsageMetrics(0, 0, 0, 0)
+        );
+        Mockito.when(openAiChatService.invokeChatResponse(
             any(String.class),
             any(String.class),
             anyList(),
             anyBoolean(),
             any(),
             anyBoolean()
-        )).thenReturn(new OpenAiChatService.ChatCompletionResult("raw", "<p>raw</p>"));
+        )).thenReturn(invocationResult);
 
         chatService.processChat(request);
 
         ArgumentCaptor<String> contextCaptor = ArgumentCaptor.forClass(String.class);
-        Mockito.verify(openAiChatService).generateResponse(
+        Mockito.verify(openAiChatService).invokeChatResponse(
             any(String.class),
             contextCaptor.capture(),
             anyList(),

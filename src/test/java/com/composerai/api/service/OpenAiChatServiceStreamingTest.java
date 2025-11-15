@@ -291,13 +291,16 @@ class OpenAiChatServiceStreamingTest {
     }
 
     private ResponseStreamEvent createMockEvent(String content) {
-        ResponseStreamEvent event = Mockito.mock(ResponseStreamEvent.class);
-        ResponseTextDeltaEvent textDelta = Mockito.mock(ResponseTextDeltaEvent.class);
-        
-        Mockito.when(textDelta.delta()).thenReturn(content);
-        Mockito.when(event.outputTextDelta()).thenReturn(Optional.of(textDelta));
-        
-        return event;
+        ResponseTextDeltaEvent textDelta = ResponseTextDeltaEvent.builder()
+            .delta(content)
+            .contentIndex(0)
+            .outputIndex(0)
+            .sequenceNumber(0)
+            .itemId("msg-" + Math.abs(content.hashCode()))
+            .logprobs(List.of())
+            .build();
+
+        return ResponseStreamEvent.ofOutputTextDelta(textDelta);
     }
 
     private StreamResponse<ResponseStreamEvent> streamResponse(Stream<ResponseStreamEvent> events) {

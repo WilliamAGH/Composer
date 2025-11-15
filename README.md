@@ -1,6 +1,6 @@
-# ComposerAI API
+# Composer API
 
-Java 21 Spring Boot backend that powers the ComposerAI: a chat interface for reasoning over email mailbox data with LLM assistance and retrieval-augmented context.
+Java 21 Spring Boot backend that powers the Composer: a chat interface for reasoning over email mailbox data with LLM assistance and retrieval-augmented context.
 
 ## Developer Routes
 
@@ -39,20 +39,45 @@ Compose drafts and AI summary panels share a reusable window shell:
 
 Add new AI windows by creating a feature component that wraps `WindowFrame` and registering it with the window store rather than building bespoke panels.
 
+### Reply & Forward Compose Behavior
+
+- Reply and forward buttons live in `EmailActionToolbar.svelte` and delegate to helper logic in `App.svelte` via `composePrefill.js`.
+- Both flows prefill compose windows with the correct subject prefix (`Re:`/`Fwd:`) and append the selected email's metadata/body at the bottom so greetings and signatures sit above the quoted context.
+- Reply automatically queues an AI helper (current `draft` command) that focuses on greeting/closing lines only; the helper re-attaches the quoted context after the model responds.
+- Forward opens the same compose window but skips the auto-AI call while still including the sanitized quote block.
+- Forward windows intentionally leave the `To` field blank (no auto-fill from the original sender) so users can choose a new recipient without accidentally emailing the prior sender.
+- Compose payloads now carry `quotedContext` metadata so future helpers can guarantee the prior thread stays intact even after AI edits.
+
+#### Recipient Metadata in Chat Requests
+
+`ChatRequest` accepts optional `recipientName` and `recipientEmail` fields. The UI populates these whenever a compose surface triggers an AI command so the backend prompt templates can:
+
+- Personalize salutations (falls back to generic greetings when no name is available).
+- Infer friendly names from email addresses when needed.
+- Emit explicit instructions (via `recipientGreetingDirective`) guiding models to use or avoid names/signatures appropriately.
+
+Client integrations should send the best-known recipient metadata alongside AI compose/draft/tone commands to keep greeting behavior consistent with the main UI.
+
 ## Feature Highlights
 
 - **Chat Orchestration** – Routes chat requests through OpenAI-compatible models, classifies user intent, and stitches email snippets into responses.
 - **AI Request Journey Loader** – `frontend/email-client/src/lib/AiLoadingJourney.svelte` renders the deterministic lifecycle defined in `aiJourney.ts`, mirroring `ChatService.prepareChatContext` → `VectorSearchService.searchSimilarEmails` → `OpenAiChatService.generateResponse` so UI copy stays in sync with backend stages.
 - **Mailbox AI Actions** – The email list header now exposes an "AI Actions" dropdown that targets mailbox-wide workflows (e.g., Smart triage & cleanup). The control appears next to the search bar on desktop/tablet and in the mobile toolbar so users can trigger scoped batch actions against the currently filtered messages, reusing the existing AI journey overlay and catalog metadata.
+- **Folder controls & drafts** – Every list row now surfaces Archive / Move / Delete hover actions, all wired to the new `/api/messages/{id}/move` endpoint. Compose windows auto-save to the Drafts folder and moving to Sent/Trash simply reuses the same API contract, keeping UI + API behavior identical even before SMTP wiring lands.
 - **Vector Retrieval Stub** – Integrates with Qdrant for similarity search; ships with placeholder extraction logic so teams can map real payloads incrementally.
 - **Email Parsing Workspace (QA)** – Provides an interactive HTML workspace for uploading `.eml`/`.txt` files and returning cleaned text output via the `/api/qa/parse-email` endpoint.
 - **Diagnostics Control Panel** – Ships a rich, static diagnostics dashboard tailored for observing health checks, mock retrieval responses, and LLM outputs.
 - **CLI Utilities** – Includes `HtmlToText` tooling for converting raw email sources to Markdown or plain text, enabling batch processing workflows.
 
+### Responsive Sidebar Modes
+
+The email client sidebar now derives a single `sidebarVariant` in `App.svelte` (`inline-wide`, `inline-desktop`, `inline-collapsed`, `drawer-visible`, `drawer-hidden`) instead of juggling raw viewport booleans. `MailboxSidebar.svelte` consumes that variant to decide width, positioning, and pointer/aria visibility so desktop collapses actually remove the navigation rail while mobile/tablet builds rely on the drawer overlay. This simplification makes the hamburger toggle deterministic across breakpoints and prevents conflicting Tailwind class bindings.
+
 ## Email Rendering & Isolation
 
 - All `EmailMessage.emailBodyHtml` values are sanitized server-side via `EmailHtmlSanitizer`.
 - The Svelte client at `/email-client-v2` renders sanitized HTML inside a sandboxed iframe (scripts disabled, same-origin enabled for sizing, inner scrollbars suppressed). If no HTML remains, it falls back to Markdown text.
+- `/` and `/index` now forward internally to `/email-client-v2`, so the default home route loads the same Thymeleaf host regardless of environment.
 - `/email-client` now redirects to `/email-client-v2` so bookmarks continue working while the legacy view is removed.
 
 ## Technology Stack
@@ -129,7 +154,7 @@ To use OpenRouter, Groq, LM Studio, or other providers, set `OPENAI_BASE_URL`, `
 
 ### OpenRouter Configuration
 
-ComposerAI supports [OpenRouter](https://openrouter.ai) for multi-provider LLM access.
+Composer supports [OpenRouter](https://openrouter.ai) for multi-provider LLM access.
 
 #### Basic Setup
 
@@ -192,6 +217,17 @@ export LLM_REASONING="medium"
 
 \* `minimal` only supported by OpenAI. Automatically converts to `low` for other providers.
 
+### Mailbox state & move endpoints
+
+All mailbox interactions are scoped to an ephemeral `X-Mailbox-Session` header so each browser tab maintains its own local folder overrides until refresh.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/mailboxes/{mailboxId}/state` | Returns the resolved message list, folder counts, and placement map for the caller's session. Accepts optional `session` query parameter when the header is unavailable. |
+| `POST` | `/api/mailboxes/{mailboxId}/messages/{messageId}/move` | Moves a single message into `targetFolderId` (`inbox`, `archive`, `trash`) and returns updated counts + placements. Body: `{ mailboxId, targetFolderId, sessionId? }`. |
+
+These endpoints power `mailboxLayoutStore` in the Svelte client today and will be reused when we swap the file-system adapter for a real mailbox provider (IMAP/Graph).
+
 ## Local Development
 
 ```bash
@@ -213,6 +249,7 @@ Helpful Makefile targets:
 - `make build-java` – Build only the Spring Boot JAR
 - `make fe-dev` – Start Vite dev server with API proxy
 - `make test` – Run the full Maven test suite (override with `MAVEN_TEST_FLAGS="-DskipITs"` etc.)
+- `make lint` – Run all linters: SpotBugs (Java bugs), Oxlint (JS/Svelte scripts), Stylelint (CSS duplicates), Maven Enforcer (dependencies)
 - `make docker-build` – Build `composerai-api:local`
 - `make docker-run-local` – Run container with local profile variables
 

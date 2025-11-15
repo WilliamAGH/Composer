@@ -18,7 +18,7 @@ import org.springframework.test.context.TestPropertySource;
     "openai.stream.timeout-seconds=120",
     "openai.reasoning.default-effort=minimal",
     "openai.reasoning.supported-model-prefixes=o1,o3,o4,gpt-5",
-    "openai.prompts.email-assistant-system=You are ComposerAI.",
+    "openai.prompts.email-assistant-system=You are Composer.",
     "openai.prompts.intent-analysis-system=Classify."
 })
 class ComposerAiApiApplicationTests {

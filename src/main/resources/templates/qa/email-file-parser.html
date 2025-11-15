@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout :: layout(~{::body/content}, 'ComposerAI - Email Backend Parser', ~{::head/extraHead})}">
+      th:replace="~{layout :: layout(~{::body/content}, 'Composer - Email Backend Parser', ~{::head/extraHead})}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ComposerAI - Email Backend Parser</title>
+    <title>Composer - Email Backend Parser</title>
     <th:block th:fragment="extraHead"></th:block>
 </head>
 <body>
@@ -13,7 +13,7 @@
             <header class="relative overflow-hidden rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-ultra shadow-slate-900/10 backdrop-blur">
                 <div class="absolute inset-0 bg-subtle-glow"></div>
                 <div class="relative z-10 flex flex-col gap-4">
-                    <h1 class="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">ComposerAI Email Parser</h1>
+                    <h1 class="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">Composer Email Parser</h1>
                     <p class="max-w-2xl text-base text-slate-600">Upload email archives, preview raw content, and run them through the backend parsing pipeline with a tailored experience inspired by the diagnostics workspace.</p>
                     <div class="flex flex-wrap items-center gap-3">
                         <span class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">Parser</span>
@@ -92,7 +92,7 @@
                 const statusMessage = document.getElementById('statusMessage');
 
                 // Use shared FileUploadHandler for DRY file upload logic
-                new window.ComposerAI.FileUploadHandler({
+                new window.Composer.FileUploadHandler({
                     dropArea: fileInputWrapper,
                     fileInput: fileInput,
                     onFileSelected: processSelectedFile,
@@ -113,9 +113,9 @@
                     // Update file info display
                     fileInfo.classList.remove('hidden');
                     fileInfo.innerHTML = `
-                        <strong>Selected file:</strong> ${window.ComposerAI.escapeHtml(file.name)}<br>
-                        <strong>Size:</strong> ${window.ComposerAI.formatFileSize(file.size)}<br>
-                        <strong>Type:</strong> ${window.ComposerAI.escapeHtml(file.type || 'Unknown')}
+                        <strong>Selected file:</strong> ${window.Composer.escapeHtml(file.name)}<br>
+                        <strong>Size:</strong> ${window.Composer.formatFileSize(file.size)}<br>
+                        <strong>Type:</strong> ${window.Composer.escapeHtml(file.type || 'Unknown')}
                     `;
 
                     // Enable buttons
@@ -165,7 +165,7 @@
                     parsedContent.value = 'Processing...';
 
                     try {
-                        const result = await window.ComposerAI.parseEmailFile(selectedFile, UI_NONCE);
+                        const result = await window.Composer.parseEmailFile(selectedFile, UI_NONCE);
                         if (result.status === 'success') {
                             parsedContent.value = result.parsedPlain || '';
                             parsedContent.dataset.markdown = result.parsedMarkdown || '';

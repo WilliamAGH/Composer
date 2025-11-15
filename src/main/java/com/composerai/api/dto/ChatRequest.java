@@ -1,25 +1,28 @@
 package com.composerai.api.dto;
 
-import jakarta.validation.constraints.AssertTrue;
-import jakarta.validation.constraints.Min;
+import com.composerai.api.validation.AiCommandValid;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-
-import com.composerai.api.util.StringUtils;
-import com.composerai.api.validation.AiCommandValid;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+/**
+ * Canonical chat payload shared by both free-form chat and catalog-driven AI commands.
+ * Unknown JSON properties are tolerated so the frontend can attach telemetry fields
+ * without breaking server-side validation on older builds.
+ */
 @AiCommandValid
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ChatRequest {
 
     @NotBlank(message = "Message cannot be blank")
@@ -43,8 +46,11 @@ public class ChatRequest {
     private boolean thinkingEnabled = false;
 
     // Optional: Thinking level/reasoning effort (minimal, low, medium, high)
-    @Pattern(regexp = "^(minimal|low|medium|high)$", flags = {Pattern.Flag.CASE_INSENSITIVE},
-             message = "thinkingLevel must be one of: minimal, low, medium, high")
+    @Pattern(
+        regexp = "^(minimal|low|medium|high)$",
+        flags = { Pattern.Flag.CASE_INSENSITIVE },
+        message = "thinkingLevel must be one of: minimal, low, medium, high"
+    )
     private String thinkingLevel;
 
     // Optional: Request JSON output instead of rendered HTML
@@ -72,20 +78,18 @@ public class ChatRequest {
     @Size(max = 128, message = "journeyScopeTarget cannot exceed 128 characters")
     private String journeyScopeTarget;
 
+    @Size(max = 320, message = "recipientName cannot exceed 320 characters")
+    private String recipientName;
+
+    @Size(max = 320, message = "recipientEmail cannot exceed 320 characters")
+    private String recipientEmail;
+
     // Custom constructor for common test case: message, conversationId, maxResults
     public ChatRequest(String message, String conversationId, int maxResults) {
         this.message = message;
         this.conversationId = conversationId;
         this.maxResults = maxResults;
         this.commandArgs = new LinkedHashMap<>();
-    }
-
-    @AssertTrue(message = "contextId is required when emailContext is provided")
-    public boolean isContextSubmissionValid() {
-        if (StringUtils.isBlank(emailContext)) {
-            return true;
-        }
-        return !StringUtils.isBlank(contextId);
     }
 
     public void setCommandArgs(Map<String, String> commandArgs) {
