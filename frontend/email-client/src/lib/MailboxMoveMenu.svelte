@@ -36,7 +36,7 @@
         type="button"
         class="menu-item"
         role="menuitem"
-        aria-current={currentFolderId === target.id}
+        aria-current={currentFolderId === target.id ? "true" : undefined}
         disabled={currentFolderId === target.id || pending}
         on:click={() => handleSelect(target.id)}>
         <span class="menu-item-icon">
