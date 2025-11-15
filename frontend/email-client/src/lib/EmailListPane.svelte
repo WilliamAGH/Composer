@@ -443,7 +443,9 @@
                   <button
                     type="button"
                     class="mobile-action-zone"
+                    class:mobile-action-zone--active={rowActionMenuFor === email.id}
                     aria-label="Open actions menu for {escapeHtmlFn(email.from)}"
+                    aria-expanded={rowActionMenuFor === email.id}
                     data-row-action-menu="true"
                     on:click|stopPropagation={(e) => toggleRowActionMenu(email.id, e.currentTarget, e)}
                   >
@@ -713,7 +715,8 @@
   }
 
   /**
-   * Mobile-specific overflow trigger inherits row action styling while remaining thumb-friendly.
+   * Mobile-specific overflow trigger - minimal by default, revealed on row interaction.
+   * Creates a clean, uncluttered list view while maintaining discoverability.
    * @usage - Only rendered when `mobile` is true in the list view
    * @related - .row-action-btn for base gradients, .row-action-menu-portal for dropdown contents
    */
@@ -724,16 +727,35 @@
     height: 2rem;
     width: 2rem;
     border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid transparent;
+    background: transparent;
+    color: #94a3b8;
+    box-shadow: none;
+    margin-left: auto;
+    opacity: 0.4;
+    transform: scale(0.9);
+    transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                background 0.2s ease,
+                border-color 0.2s ease,
+                box-shadow 0.2s ease;
+  }
+
+  /* Reveal and enhance button when row is touched, focused, or has active menu */
+  .list-row:active .mobile-action-zone,
+  .list-row:focus-within .mobile-action-zone,
+  .mobile-action-zone--active {
+    opacity: 1;
+    transform: scale(1);
+    border-color: rgba(148, 163, 184, 0.35);
+    background: rgba(255, 255, 255, 0.95);
     color: #475569;
     box-shadow: 0 10px 18px -10px rgba(15, 23, 42, 0.35);
-    margin-left: auto;
-    transition: background 0.15s ease;
   }
 
   .mobile-action-zone:active {
-    background: rgba(148, 163, 184, 0.1);
+    background: rgba(148, 163, 184, 0.15);
+    transform: scale(0.95);
   }
 
   .mobile-action-zone:focus-visible {
