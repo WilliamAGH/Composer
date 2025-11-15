@@ -10,7 +10,7 @@ WORKDIR /workspace
 # Copy entire repo so Vite outDir relative path resolves to src/main/resources/static/...
 COPY . .
 WORKDIR /workspace/frontend/email-client
-RUN npm install && npm run build
+RUN npm ci && npm run build
 
 # 2) Build backend (Spring Boot) with Maven, including built frontend assets
 FROM ${MAVEN_IMAGE} AS builder

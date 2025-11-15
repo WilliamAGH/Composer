@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "npm run dev:css & vite",
     "dev:css": "tailwindcss -i ./src/app.css -o ./src/generated/tailwind.css --content './src/**/*.{js,ts,svelte}' --watch",
-    "build": "npm run build:css && cp ./src/generated/tailwind.css ../../src/main/resources/static/app/email-client/assets/tailwind.css && vite build",
+    "build": "npm run build:css && vite build --emptyOutDir",
+    "postbuild": "mkdir -p ../../src/main/resources/static/app/email-client/assets && cp ./src/generated/tailwind.css ../../src/main/resources/static/app/email-client/assets/tailwind.css",
     "build:css": "tailwindcss -i ./src/app.css -o ./src/generated/tailwind.css --content './src/**/*.{js,ts,svelte}'",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig tsconfig.json",
