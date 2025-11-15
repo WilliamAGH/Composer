@@ -78,6 +78,11 @@ Provide your response in this exact format:
 Subject: [your subject line]
 
 [email body]
+
+Formatting rules:
+- Bullet points must not end with trailing periods.
+- Signature lines (names, titles) must not end with a period.
+- Keep names (salutation or closing) free of trailing periods.
 """);
         compose.setDefaultInstruction("Compose a helpful email response based on the selected email.");
         compose.setOutputFormat(AiFunctionDefinition.OutputFormat.EMAIL);
@@ -103,6 +108,11 @@ Provide your response in this exact format:
 Subject: [your subject line]
 
 [email body]
+
+Formatting rules:
+- Bullet points must not end with trailing periods.
+- Signature lines (names, titles) must not end with a period.
+- Keep names (salutation or closing) free of trailing periods.
 """);
         draft.setDefaultInstruction("Draft a courteous reply to the selected email outlining next steps.");
         draft.setOutputFormat(AiFunctionDefinition.OutputFormat.EMAIL);
@@ -120,7 +130,7 @@ You are summarizing a single email message taken from the context above. Follow 
 - Capture concrete decisions, requests, commitments, deadlines, and any next steps mentioned in the message.
 - Keep the summary factual and avoid speculation outside the provided email content.
 - Return 2-4 short paragraphs or bullet points that read like an executive brief for this email alone. Do not output empty or placeholder bullet lines.
-- Treat metadata (subject line, sender, recipient, timestamps) as reference-only; do NOT restate send timestamps, elapsed-time metadata, or the original subject line unless the user specifically asks for those details or they are central to the summary.
+- Treat metadata (subject line, sender/recipient names, email addresses, timestamps) as reference-only; do NOT restate them unless the user explicitly asks or the metadata itself is central to the summary.
 - Examine metadata (sender, recipient, subject, timing) and the full body to surface both explicit statements and implicit insights that can be inferred directly from the facts—call out patterns, urgency, or relational context only when grounded in the provided content.
 - Offer actionable commentary about why the email matters (e.g., upcoming deadlines, decisions requested, follow-up expectations) while clearly differentiating facts from reasoned observations.
 - Draw valuable insights without assumptions: every inference must be traceable to the supplied context.
@@ -202,6 +212,11 @@ Provide your response in this exact format:
 Subject: [your subject line]
 
 [email body]
+
+Formatting rules:
+- Bullet points must not end with trailing periods.
+- Signature lines (names, titles) must not end with a period.
+- Keep names (salutation or closing) free of trailing periods.
 """);
         tone.setDefaultInstruction("Adjust the email to a friendly but professional tone.");
         tone.setOutputFormat(AiFunctionDefinition.OutputFormat.EMAIL);
