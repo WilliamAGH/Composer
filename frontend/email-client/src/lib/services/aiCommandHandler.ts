@@ -270,6 +270,11 @@ export async function ensureDraftContext({
   return contextId;
 }
 
+/**
+ * Computes a non-cryptographic fingerprint for draft change detection using the djb2 algorithm.
+ * This is NOT suitable for security-sensitive purposes. Hash collisions are acceptable for this use case
+ * (detecting whether a draft's subject/body has changed since the last AI command).
+ */
 function computeDraftFingerprint(subject: string | null | undefined, body: string) {
   const source = `${subject || ''}\u0000${body || ''}`;
   let hash = 0;
