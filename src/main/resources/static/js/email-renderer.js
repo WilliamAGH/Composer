@@ -21,6 +21,8 @@ const EmailRenderer = (() => {
    */
   const MAX_ELEMENTS_FOR_SIZING = 5000;
 
+  const SAFE_LINK_REL = "noopener noreferrer nofollow";
+
   /**
    * Renders email HTML content in a fully isolated sandboxed iframe.
    *
@@ -103,6 +105,7 @@ const EmailRenderer = (() => {
         }
         // Resize once the content is ready
         scheduleIframeAutosize(iframe);
+        enforceSafeExternalLinks(iframe);
       };
 
       const fullHtml = buildIframeDocument(htmlString);
@@ -120,6 +123,8 @@ const EmailRenderer = (() => {
       scheduleIframeAutosize(iframe);
       attachContentReadyListener(iframe, handleReady);
       iframe.addEventListener("load", handleReady, { once: true });
+      // Proactively apply safe link handling even before DOM ready in case content is synchronous
+      enforceSafeExternalLinks(iframe);
     } catch (error) {
       console.error("EmailRenderer failed to render sanitized HTML.", error);
       throw error;
@@ -315,6 +320,92 @@ const EmailRenderer = (() => {
     } catch (err) {
       console.warn("Unable to auto-resize email iframe height.", err);
       iframe.style.height = "100%";
+    }
+  }
+
+  function isExternalHttpUrl(href) {
+    if (!href || typeof href !== "string") {
+      return false;
+    }
+    try {
+      const url = new URL(href, window.location.href);
+      return url.protocol === "http:" || url.protocol === "https:";
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function openSafeExternalUrl(href) {
+    try {
+      const url = new URL(href, window.location.href);
+      window.open(url.href, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      console.debug("EmailRenderer: unable to open external link", error);
+    }
+  }
+
+  function findAnchorElement(node, doc) {
+    let current = node;
+    while (current && current !== doc) {
+      if (current.nodeType === 1 && current.tagName && current.tagName.toLowerCase() === "a") {
+        return current;
+      }
+      current = current.parentElement || current.parentNode;
+    }
+    return null;
+  }
+
+  function enforceSafeExternalLinks(iframe) {
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) {
+        return;
+      }
+
+      const tagAnchors = () => {
+        if (!doc.body) return;
+        const anchors = doc.body.querySelectorAll("a[href]");
+        anchors.forEach((anchor) => {
+          const href = anchor.getAttribute("href");
+          if (!isExternalHttpUrl(href)) {
+            return;
+          }
+          anchor.setAttribute("target", "_blank");
+          anchor.setAttribute("rel", SAFE_LINK_REL);
+        });
+      };
+
+      if (!doc.__composerExternalLinkHandlerAttached) {
+        const handler = (event) => {
+          const anchor = findAnchorElement(event.target, doc);
+          if (!anchor) {
+            return;
+          }
+          const href = anchor.getAttribute("href");
+          if (!isExternalHttpUrl(href)) {
+            return;
+          }
+          event.preventDefault();
+          openSafeExternalUrl(href);
+        };
+        doc.addEventListener("click", handler);
+        doc.__composerExternalLinkHandlerAttached = true;
+      }
+
+      tagAnchors();
+
+      if (!doc.__composerExternalLinkObserver && typeof MutationObserver !== "undefined" && doc.body) {
+        const observer = new MutationObserver(tagAnchors);
+        observer.observe(doc.body, {
+          subtree: true,
+          childList: true,
+          attributes: true,
+          attributeFilter: ["href"],
+        });
+        doc.__composerExternalLinkObserver = observer;
+      }
+    } catch (error) {
+      console.debug("EmailRenderer: unable to enforce safe external link behavior", error);
     }
   }
 

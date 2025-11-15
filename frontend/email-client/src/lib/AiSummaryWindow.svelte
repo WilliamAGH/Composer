@@ -18,7 +18,7 @@
   $: title = rawTitle?.replace(/^AI\s+/i, '') || 'Summary';
   $: rawHtml = panelState?.html || '';
   $: html = sanitizeHtml(rawHtml);
-  $: lastCommand = panelState?.commandKey || 'summarize';
+  $: lastCommand = panelState?.commandKey || journeyOverlay?.commandKey || 'summarize';
   $: commandCode = (lastCommand || '').toUpperCase();
   $: updatedLabel = panelState?.updatedAt
     ? new Date(panelState.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
