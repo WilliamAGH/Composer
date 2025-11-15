@@ -1,4 +1,7 @@
 {
+  "ignoreFiles": [
+    "src/generated/tailwind.css"
+  ],
   "extends": [
     "stylelint-config-standard",
     "stylelint-config-html/svelte"
