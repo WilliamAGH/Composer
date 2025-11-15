@@ -23,6 +23,6 @@
     border-radius: 999px;
     font-size: 0.85rem;
     z-index: var(--z-window-notice, 120);
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   }
 </style>

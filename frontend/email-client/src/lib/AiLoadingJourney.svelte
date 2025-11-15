@@ -15,9 +15,9 @@
   $: primaryText = headline || activeStep?.title || '';
   $: secondaryText = activeStep?.title && activeStep.title !== primaryText ? activeStep.title : '';
   $: sectionClasses = [
-    'rounded-2xl border px-4 py-3 transition-all duration-300 flex flex-col gap-1 text-slate-900',
+    'rounded-lg border px-4 py-3 transition-all duration-300 flex flex-col gap-1 text-slate-900',
     inline ? 'w-full' : 'max-w-sm',
-    subdued ? 'border-slate-200 bg-white/85 backdrop-blur' : 'border-white/40 bg-white/95 shadow-xl backdrop-blur-xl',
+    subdued ? 'border-slate-200 bg-white' : 'border-slate-200 bg-white shadow-md',
     className
   ].filter(Boolean).join(' ');
 </script>
@@ -25,12 +25,12 @@
 {#if show && activeStep}
 <section class={sectionClasses} role="status" aria-live="polite">
   <div class="flex items-center gap-3">
-    <div class="h-10 w-10 rounded-2xl bg-slate-900 text-white grid place-items-center shadow-lg shadow-slate-900/20">
-      <Loader2 class="h-5 w-5 animate-spin" style="animation-duration:1.05s" />
+    <div class="h-10 w-10 rounded-lg bg-slate-100 grid place-items-center border border-slate-200">
+      <Loader2 class="h-5 w-5 animate-spin text-slate-700" style="animation-duration:1.05s" />
     </div>
     <div class="min-w-0">
       {#if subhead}
-        <p class="text-[11px] uppercase tracking-[0.3em] text-slate-400">{subhead}</p>
+        <p class="text-[11px] uppercase tracking-[0.3em] text-slate-500">{subhead}</p>
       {/if}
       <p class="text-sm font-semibold leading-tight text-slate-900 truncate">{primaryText}</p>
     </div>

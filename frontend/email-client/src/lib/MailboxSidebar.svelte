@@ -150,7 +150,7 @@
     align-items: center;
     gap: 0.75rem;
     width: 100%;
-    border-radius: 18px;
+    border-radius: 8px;
     padding: 0.55rem 0.85rem;
     color: #475569;
     transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;

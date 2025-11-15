@@ -35,7 +35,7 @@
     border-radius: 999px;
     border: 1px solid rgba(148, 163, 184, 0.5);
     background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 15px 30px -18px rgba(15, 23, 42, 0.35);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
     padding: 0.45rem 0.95rem;
     font-size: 0.85rem;
     color: #0f172a;

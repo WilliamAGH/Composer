@@ -34,7 +34,6 @@
 
 <section class={`error-card ${size === 'compact' ? 'error-card--compact' : ''}`} aria-live="polite">
   <div class="error-card__surface">
-    <div class="error-card__aura" aria-hidden="true"></div>
     <div class="error-card__content">
       {#if eyebrow}
         <p class="error-card__eyebrow">
@@ -95,25 +94,15 @@
   .error-card__surface {
     position: relative;
     width: 100%;
-    border-radius: clamp(20px, 2vw, 28px);
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 252, 0.82));
-    box-shadow: 0 45px 90px -55px rgba(15, 23, 42, 0.55);
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
     overflow: hidden;
   }
 
   .error-card--compact .error-card__surface {
-    border-radius: 18px;
-  }
-
-  .error-card__aura {
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 20% 20%, rgba(79, 70, 229, 0.25), transparent 55%),
-      radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.2), transparent 50%);
-    filter: blur(12px);
-    opacity: 0.9;
-    pointer-events: none;
+    border-radius: 12px;
   }
 
   .error-card__content {
@@ -199,7 +188,7 @@
 
   @media (max-width: 640px) {
     .error-card__surface {
-      border-radius: 18px;
+      border-radius: 12px;
     }
 
     .error-card__actions {

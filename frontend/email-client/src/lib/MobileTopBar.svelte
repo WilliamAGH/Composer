@@ -68,7 +68,7 @@
             placeholder={searchPlaceholder}
             value={searchValue}
             on:input={handleSearch}
-            class="mailbox-search-input w-full rounded-2xl border border-slate-200 bg-white/90 pl-4 py-2 text-base text-slate-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-slate-200"
+            class="mailbox-search-input w-full rounded-lg border border-slate-200 bg-white pl-4 py-2 text-base text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-200"
             class:pr-28={compactActions && showMenuButton}
             class:pr-16={compactActions && !showMenuButton}
             class:pr-44={!compactActions && showMenuButton}
@@ -166,9 +166,8 @@
    */
   .mobile-top-bar {
     padding: 1rem;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.4);
-    background: rgba(255, 255, 255, 0.96);
-    backdrop-filter: blur(10px);
+    border-bottom: 1px solid #e2e8f0;
+    background: #ffffff;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;

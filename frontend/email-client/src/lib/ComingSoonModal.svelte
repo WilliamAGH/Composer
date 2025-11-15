@@ -85,12 +85,12 @@
   .coming-soon-modal__card {
     position: relative;
     width: min(100%, 420px);
-    border-radius: 32px;
+    border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.15);
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(6, 95, 70, 0.85));
     color: white;
     padding: 1.5rem;
-    box-shadow: 0 35px 80px rgba(15, 23, 42, 0.55);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   }
 
   /**
