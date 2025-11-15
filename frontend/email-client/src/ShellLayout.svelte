@@ -1002,6 +1002,9 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
   <UnifiedDock items={dockItems} />
 
   <OverlayStack controller={overlayController} />
+
+  <!-- Portal target for mailbox row menus -->
+  <div id="mailbox-row-menu-root"></div>
 </WindowProvider>
 
 <WindowNotice message={$windowNoticeStore} />
