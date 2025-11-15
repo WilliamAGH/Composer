@@ -30,7 +30,7 @@
       <span>Updating…</span>
     </div>
   {/if}
-  <div class="menu-list">
+  <div class="menu-list" role="menu">
     {#each visibleTargets as target (target.id)}
       <button
         type="button"
