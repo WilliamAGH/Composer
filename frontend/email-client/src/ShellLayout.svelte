@@ -35,7 +35,7 @@ import { escapeHtmlContent, renderMarkdownContent, formatRelativeTimestamp, form
 import { createAiPanelStore } from './lib/stores/aiPanelStore';
   import { launchMailboxAutomation } from './lib/services/mailboxAutomationClient';
   import EmailDetailMobileSheet from './lib/EmailDetailMobileSheet.svelte';
-import { recordClientDiagnostic, showWindowNotice } from './lib/services/clientDiagnosticsService';
+import { processClientWarning, recordClientDiagnostic, showWindowNotice } from './lib/services/clientDiagnosticsService';
 import { CLIENT_WARNING_EVENT } from './lib/services/sessionNonceClient';
 
   /**
@@ -310,7 +310,9 @@ const overlayRegistrations = [
 ];
 
 onDestroy(() => {
-  overlayRegistrations.forEach((dispose) => dispose());
+  for (const dispose of overlayRegistrations) {
+    dispose();
+  }
 });
   // Viewport responsive
   $: mobile = $isMobile;
