@@ -7,8 +7,11 @@
   export let panelState = null;
   export let journeyOverlay = null;
   export let error = '';
-  export let visible = false;
   export let showMenuButton = true;
+  export let onClose = null;
+  export let onToggleMenu = null;
+  export let onMinimize = null;
+  export let onRunCommand = null;
 
   const dispatch = createEventDispatcher();
 
@@ -25,22 +28,26 @@
 
   function handleClose() {
     dispatch('close');
+    onClose?.();
   }
 
   function handleMenuToggle() {
     dispatch('toggleMenu');
+    onToggleMenu?.();
   }
 
   function handleMinimize() {
     dispatch('minimize');
+    onMinimize?.();
   }
 
   function handleRefresh() {
-    dispatch('runCommand', { command: panelState?.commandKey || 'summarize' });
+    const detail = { command: panelState?.commandKey || 'summarize' };
+    dispatch('runCommand', detail);
+    onRunCommand?.(detail);
   }
 </script>
 
-{#if visible}
   <div class="ai-summary-mobile-sheet">
     <MobileTopBar
       variant="custom"
@@ -84,7 +91,6 @@
       />
     </section>
   </div>
-{/if}
 
 <style>
   .ai-summary-mobile-sheet {

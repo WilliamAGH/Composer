@@ -1,20 +1,41 @@
-import { writable } from 'svelte/store';
-import { ACTION_MENU_COMMAND_KEY, DEFAULT_ACTION_OPTIONS } from '../constants/catalogActions';
+import { writable, type Writable } from 'svelte/store';
+import { ACTION_MENU_COMMAND_KEY, DEFAULT_ACTION_OPTIONS, type ActionMenuOption } from '../constants/catalogActions';
 import { dispatchClientWarning } from '../services/sessionNonceClient';
+import type { ChatResponsePayload } from '../services/catalogCommandClient';
+
+type EmailSummary = {
+  id?: string | null;
+  contextId?: string | null;
+  subject?: string | null;
+  from?: string | null;
+  preview?: string | null;
+  contentText?: string | null;
+};
+
+type CallCatalogCommandFn = (
+  commandKey: string,
+  instruction: string,
+  options: Record<string, unknown>
+) => Promise<ChatResponsePayload | null>;
+
+interface ActionMenuStoreConfig {
+  ensureCatalogReady: () => Promise<boolean>;
+  callCatalogCommand: CallCatalogCommandFn;
+}
 
 /**
  * Generates mailbox action menu suggestions per selected email and caches results by context key.
  * Keeps App.svelte unaware of throttling, JSON parsing, and pending states.
  */
-export function createActionMenuSuggestionsStore({ ensureCatalogReady, callCatalogCommand }) {
-  const optionsStore = writable(cloneDefaults());
+export function createActionMenuSuggestionsStore({ ensureCatalogReady, callCatalogCommand }: ActionMenuStoreConfig) {
+  const optionsStore: Writable<(ActionMenuOption & { aiGenerated: boolean })[]> = writable(cloneDefaults());
   const loadingStore = writable(false);
   const errorStore = writable('');
 
-  const cache = {};
-  const inflight = {};
+  const cache: Record<string, (ActionMenuOption & { aiGenerated: boolean })[]> = {};
+  const inflight: Record<string, boolean> = {};
 
-  async function loadSuggestions(email, cacheKey) {
+  async function loadSuggestions(email: EmailSummary | null | undefined, cacheKey: string | null | undefined) {
     if (!email || !cacheKey || inflight[cacheKey]) return;
     if (cache[cacheKey]) {
       optionsStore.set(cache[cacheKey]);
@@ -52,14 +73,14 @@ export function createActionMenuSuggestionsStore({ ensureCatalogReady, callCatal
     optionsStore.set(cloneDefaults());
   }
 
-  function buildInstruction(email) {
+  function buildInstruction(email: EmailSummary) {
     const subject = (email.subject || 'No subject').trim();
     const from = (email.from || 'Unknown sender').trim();
     const preview = ((email.preview || email.contentText || '').replace(/\s+/g, ' ').trim()).slice(0, 240);
     return `Subject: ${subject}\nFrom: ${from}\nPreview: ${preview || 'No preview provided.'}\nFocus on concise, high-value actions.`;
   }
 
-  function parseResponse(data) {
+  function parseResponse(data: ChatResponsePayload | null) {
     const raw = typeof data?.response === 'string' ? data.response : null;
     const fallbackHtml = typeof data?.sanitizedHtml === 'string' ? data.sanitizedHtml : null;
     const jsonBlock = extractJsonBlock(raw || fallbackHtml);
@@ -74,7 +95,7 @@ export function createActionMenuSuggestionsStore({ ensureCatalogReady, callCatal
     }
   }
 
-  function sanitizeOption(option) {
+  function sanitizeOption(option: any) {
     if (!option || typeof option !== 'object') return null;
     const rawLabel = typeof option.label === 'string' ? option.label.trim() : '';
     if (!rawLabel) return null;
@@ -102,7 +123,7 @@ export function createActionMenuSuggestionsStore({ ensureCatalogReady, callCatal
     };
   }
 
-  function extractJsonBlock(raw) {
+  function extractJsonBlock(raw: string | null) {
     if (!raw) return null;
     const trimmed = raw.trim();
     if (trimmed.startsWith('{') && trimmed.endsWith('}')) return trimmed;

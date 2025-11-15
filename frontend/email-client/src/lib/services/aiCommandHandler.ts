@@ -1,9 +1,24 @@
 import { get } from 'svelte/store';
-import { createComposeWindow, WindowKind } from '../window/windowTypes.js';
-import { mergeDefaultArgs, resolveDefaultInstruction, getFunctionMeta } from './aiCatalog';
+import { createComposeWindow, WindowKind, type ComposeWindowDescriptor } from '../window/windowTypes';
+import type { WindowManager } from '../window/windowStore';
+import { mergeDefaultArgs, resolveDefaultInstruction, getFunctionMeta, type AiFunctionSummary, type AiFunctionVariantSummary } from './aiCatalog';
 import { parseSubjectAndBody } from './emailUtils';
-import { normalizeReplySubject } from './emailSubjectPrefixHandler.js';
+import { normalizeReplySubject } from './emailSubjectPrefixHandler';
 import { deriveRecipientContext } from './emailContextConstructor';
+import type { Readable } from 'svelte/store';
+import type { AiFunctionCatalogDto } from '../../main';
+import type { ChatResponsePayload } from './catalogCommandClient';
+import type { EmailMessage } from '../../main';
+
+type CatalogStore = Readable<AiFunctionCatalogDto | null>;
+
+type SelectedEmail = (EmailMessage & {
+  from?: string | null;
+  fromEmail?: string | null;
+  preview?: string | null;
+}) | null;
+
+type CallAiCommandFn = (command: string, instruction: string, options: Record<string, unknown>) => Promise<ChatResponsePayload | null>;
 
 /**
  * Centralizes AI-command handling so App.svelte can delegate compose/summary logic. By isolating this in
@@ -18,12 +33,21 @@ export async function handleAiCommand({
   windowManager,
   callAiCommand,
   ensureCatalogLoaded
+}: {
+  command: string;
+  commandVariant?: string | null;
+  instructionOverride?: string | null;
+  selectedEmail: SelectedEmail;
+  catalogStore: CatalogStore;
+  windowManager: WindowManager;
+  callAiCommand: CallAiCommandFn;
+  ensureCatalogLoaded: () => Promise<boolean>;
 }) {
   if (!selectedEmail) throw new Error('Select an email first.');
   const ready = await ensureCatalogLoaded();
   if (!ready) throw new Error('AI helpers are unavailable. Please refresh and try again.');
   const catalog = get(catalogStore);
-  const fn = getFunctionMeta(catalog, command);
+  const fn = getFunctionMeta(catalog, command) as AiFunctionSummary | null;
   if (!fn) throw new Error('Command unavailable.');
   const variant = resolveVariant(fn, commandVariant);
   const commandArgs = mergeDefaultArgs(fn, variant);
@@ -92,7 +116,7 @@ export async function handleAiCommand({
   };
 }
 
-function findMatchingComposeWindow(windowManager, contextId) {
+function findMatchingComposeWindow(windowManager: WindowManager, contextId: string | null) {
   const openWindows = get(windowManager.windows);
   if (!Array.isArray(openWindows) || openWindows.length === 0) return null;
   return openWindows.find((win) =>
@@ -100,7 +124,29 @@ function findMatchingComposeWindow(windowManager, contextId) {
   ) || null;
 }
 
-async function draftWithAi({ descriptor, command, selectedEmail, fn, variant, instructionOverride = null, windowManager, callAiCommand, commandArgs, recipientContext = null }) {
+async function draftWithAi({
+  descriptor,
+  command,
+  selectedEmail,
+  fn,
+  variant,
+  instructionOverride = null,
+  windowManager,
+  callAiCommand,
+  commandArgs,
+  recipientContext = null
+}: {
+  descriptor: ComposeWindowDescriptor;
+  command: string;
+  selectedEmail: SelectedEmail;
+  fn: AiFunctionSummary;
+  variant: AiFunctionVariantSummary | null;
+  instructionOverride?: string | null;
+  windowManager: WindowManager;
+  callAiCommand: CallAiCommandFn;
+  commandArgs: Record<string, unknown> | null;
+  recipientContext?: { name?: string; email?: string } | null;
+}) {
   const instruction = instructionOverride || resolveDefaultInstruction(fn, variant);
   const data = await callAiCommand(command, instruction, {
     contextId: selectedEmail.contextId,
@@ -129,7 +175,7 @@ async function draftWithAi({ descriptor, command, selectedEmail, fn, variant, in
   }
 }
 
-export function deriveHeadline(command, fallback) {
+export function deriveHeadline(command: string, fallback?: string | null) {
   switch (command) {
     case 'summarize':
       return 'Summarizing this email';
@@ -145,12 +191,12 @@ export function deriveHeadline(command, fallback) {
   }
 }
 
-function resolveVariant(meta, variantKey) {
+function resolveVariant(meta: AiFunctionSummary, variantKey?: string | null) {
   if (!variantKey || !meta || !Array.isArray(meta.variants)) return null;
   return meta.variants.find((variant) => variant.key === variantKey) || null;
 }
 
-export function buildComposeInstruction(command, currentDraft, isReply, meta) {
+export function buildComposeInstruction(command: string, currentDraft: string, isReply: boolean, meta: AiFunctionSummary) {
   const fallback = resolveDefaultInstruction(meta, null);
   if (command === 'draft') {
     if (currentDraft && currentDraft.length > 0) {
@@ -180,6 +226,22 @@ export async function runComposeWindowAi({
   callAiCommand,
   resolveEmailById,
   selectedEmail
+}: {
+  windowManager: WindowManager;
+  windowConfig: ComposeWindowDescriptor | null;
+  detail: {
+    command: string;
+    instructionOverride?: string | null;
+    draft?: string;
+    isReply?: boolean;
+    to?: string;
+    subject?: string;
+  };
+  catalogStore: CatalogStore;
+  ensureCatalogLoaded: () => Promise<boolean>;
+  callAiCommand: CallAiCommandFn;
+  resolveEmailById?: (id: string) => SelectedEmail;
+  selectedEmail?: SelectedEmail;
 }) {
   if (!windowConfig || !detail?.command) {
     throw new Error('Compose window unavailable.');

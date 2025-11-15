@@ -1,7 +1,18 @@
+export type FilterableEmail = {
+  [key: string]: unknown;
+  subject?: string | null;
+  preview?: string | null;
+  from?: string | null;
+  labels?: string[];
+  starred?: boolean;
+};
+
+export type FolderResolver<T extends FilterableEmail = FilterableEmail> = (message: T) => string | null | undefined;
+
 /**
  * Returns true when the message belongs in the currently selected mailbox bucket.
  */
-export function matchesMailbox(mailbox, email, folderResolver) {
+export function matchesMailbox<T extends FilterableEmail>(mailbox: string | null | undefined, email: T, folderResolver?: FolderResolver<T>) {
   const normalizedMailbox = `${mailbox || 'inbox'}`.toLowerCase();
   const labels = (email.labels || []).map((label) => String(label).toLowerCase());
   const folderIdRaw = typeof folderResolver === 'function' ? folderResolver(email) : 'inbox';
@@ -29,7 +40,12 @@ export function matchesMailbox(mailbox, email, folderResolver) {
 /**
  * Applies the active mailbox filter first, then performs a simple substring search across subject/from/preview.
  */
-export function filterEmailsByMailbox(emails, mailbox, searchQuery, folderResolver) {
+export function filterEmailsByMailbox<T extends FilterableEmail>(
+  emails: T[],
+  mailbox: string | null | undefined,
+  searchQuery: string | null | undefined,
+  folderResolver?: FolderResolver<T>
+) {
   const base = emails.filter((email) => matchesMailbox(mailbox, email, folderResolver));
   if (!searchQuery || !searchQuery.trim()) {
     return base;
@@ -40,3 +56,4 @@ export function filterEmailsByMailbox(emails, mailbox, searchQuery, folderResolv
     return haystack.includes(needle);
   });
 }
+

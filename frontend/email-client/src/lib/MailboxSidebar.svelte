@@ -15,7 +15,6 @@
       overflowHidden: false,
       pointerNone: false,
       fixed: false,
-      drawerClass: '',
       hidden: false
     },
     'inline-desktop': {
@@ -24,7 +23,6 @@
       overflowHidden: false,
       pointerNone: false,
       fixed: false,
-      drawerClass: '',
       hidden: false
     },
     'inline-collapsed': {
@@ -33,7 +31,6 @@
       overflowHidden: true,
       pointerNone: true,
       fixed: false,
-      drawerClass: '',
       hidden: true
     },
     'drawer-visible': {
@@ -42,7 +39,6 @@
       overflowHidden: false,
       pointerNone: false,
       fixed: true,
-      drawerClass: 'mailbox-sidebar--drawer-visible',
       hidden: false
     },
     'drawer-hidden': {
@@ -51,7 +47,6 @@
       overflowHidden: false,
       pointerNone: true,
       fixed: true,
-      drawerClass: 'mailbox-sidebar--drawer-hidden',
       hidden: true
     }
   };
@@ -60,7 +55,7 @@
   $: collapsed = variant === 'inline-collapsed';
   $: ariaHidden = (variantConfig.hidden || collapsed) ? 'true' : 'false';
   $: pointerEventsValue = variantConfig.pointerNone ? 'none' : 'auto';
-  $: drawerStateClass = variantConfig.drawerClass || '';
+  // Keep transform inline so Tailwind utilities (translate/transform) can't override drawer state.
   $: transformValue = (() => {
     if (variant === 'drawer-hidden') {
       return 'translate3d(-100%, 0, 0)';
@@ -77,7 +72,7 @@
   }
 </script>
 
-<aside class={`mailbox-sidebar shrink-0 border-slate-200 bg-white/80 backdrop-blur transition-all duration-200 will-change-transform ${variantConfig.widthClass} ${drawerStateClass}`}
+<aside class={`mailbox-sidebar shrink-0 border-slate-200 bg-white/80 backdrop-blur transition-all duration-200 will-change-transform ${variantConfig.widthClass}`}
        data-style-usage="mailbox-sidebar"
        class:border-r={!variantConfig.hideBorder}
        class:border-r-0={variantConfig.hideBorder}

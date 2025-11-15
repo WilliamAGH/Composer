@@ -1,27 +1,25 @@
-/**
- * Canonical AI request lifecycle identifiers.
- *
- * WHY THIS LIVES IN JS:
- * - Keeps Svelte components declarative: they import shared copy + backend references instead of
- *   duplicating strings or wiring details inline.
- * - Java remains the behavioral source of truth. Storing UI copy in backend code would require
- *   additional serialization and invites drift; here we simply document which backend class owns
- *   each phase so both sides stay aligned.
- *
- * WHAT IT DEFINES:
- * - The ordered list of lifecycle events, each with an icon token, copy template, and direct pointer
- *   to the backend subsystem that handles that phase.
- * - Helper exports (`buildAiJourney`, `AI_JOURNEY_EVENTS`) so any UI surface can render the journey
- *   consistently while swapping labels or steps without losing the shared model.
- *
- * @typedef {'ai:payload-prep'|'ai:context-search'|'ai:llm-thinking'|'ai:writing-summary'} AiJourneyEvent
- * @typedef {{ targetLabel?: string, command?: string }} AiJourneyContext
- * @typedef {'sparkles'|'search'|'brain'|'pen'} JourneyIconToken
- * @typedef {{ title: string|function, detail?: string|function }} JourneyCopyTemplate
- * @typedef {{ id: AiJourneyEvent, icon: JourneyIconToken, sourceOfTruth: string, copy: JourneyCopyTemplate }} JourneyStepTemplate
- */
+export type AiJourneyEvent = 'ai:payload-prep' | 'ai:context-search' | 'ai:llm-thinking' | 'ai:writing-summary';
+export type JourneyIconToken = 'sparkles' | 'search' | 'brain' | 'pen';
+export type JourneyContext = { targetLabel?: string | null; command?: string | null };
+export type JourneyCopyTemplate = {
+  title: string | ((ctx: JourneyContext) => string);
+  detail?: string | ((ctx: JourneyContext) => string);
+};
+export type JourneyStepTemplate = {
+  id: AiJourneyEvent;
+  icon: JourneyIconToken;
+  sourceOfTruth: string;
+  copy: JourneyCopyTemplate;
+};
+export type JourneyStep = {
+  id: AiJourneyEvent;
+  icon: JourneyIconToken;
+  title: string;
+  detail?: string;
+  sourceOfTruth: string;
+};
 
-const baseSteps = [
+const baseSteps: JourneyStepTemplate[] = [
   {
     id: 'ai:payload-prep',
     icon: 'sparkles',
@@ -60,12 +58,15 @@ const baseSteps = [
   },
 ];
 
-function resolveTemplateValue(template, ctx) {
+function resolveTemplateValue(template: string | ((ctx: JourneyContext) => string) | undefined, ctx: JourneyContext) {
   if (!template) return undefined;
   return typeof template === 'function' ? template(ctx) : template;
 }
 
-function normalizeOverride(override, ctx) {
+function normalizeOverride(
+  override: JourneyCopyTemplate | string | ((ctx: JourneyContext) => JourneyCopyTemplate | string) | undefined,
+  ctx: JourneyContext
+) {
   if (!override) return undefined;
   if (typeof override === 'function') {
     const result = override(ctx);
@@ -80,7 +81,7 @@ function normalizeOverride(override, ctx) {
   return override;
 }
 
-export function buildAiJourney(ctx = {}, overrides) {
+export function buildAiJourney(ctx: JourneyContext = {}, overrides?: Partial<Record<AiJourneyEvent, JourneyCopyTemplate | string | ((ctx: JourneyContext) => JourneyCopyTemplate | string)>>): JourneyStep[] {
   return baseSteps.map((step) => {
     const override = normalizeOverride(overrides?.[step.id], ctx);
     const effective = {
@@ -98,4 +99,4 @@ export function buildAiJourney(ctx = {}, overrides) {
   });
 }
 
-export const AI_JOURNEY_EVENTS = baseSteps.map((step) => step.id);
+export const AI_JOURNEY_EVENTS: AiJourneyEvent[] = baseSteps.map((step) => step.id);

@@ -1,5 +1,31 @@
-import { writable, derived, get } from 'svelte/store';
-import { WindowKind, WindowMode } from './windowTypes';
+import { writable, derived, get, type Writable, type Readable } from 'svelte/store';
+import { WindowKind, WindowMode, type WindowDescriptor } from './windowTypes';
+
+export interface WindowManagerConfig {
+  maxFloating?: number;
+  maxDocked?: number;
+}
+
+export interface WindowManagerError {
+  type: string;
+  message: string;
+  at: number;
+}
+
+export interface WindowManager {
+  windows: Writable<WindowDescriptor[]>;
+  floating: Readable<WindowDescriptor[]>;
+  docked: Readable<WindowDescriptor[]>;
+  minimized: Readable<WindowDescriptor[]>;
+  lastError: Writable<WindowManagerError | null>;
+  open: (descriptor: WindowDescriptor) => { ok: boolean; replaced?: boolean; reason?: string };
+  close: (id: string | null | undefined) => void;
+  toggleMinimize: (id: string | null | undefined) => void;
+  focus: (id: string | null | undefined) => void;
+  clearError: () => void;
+  updateSummaryHtml: (contextId: string | null | undefined, html: string) => void;
+  updateComposeDraft: (id: string | null | undefined, payload: { subject?: string | null; body?: string | null }) => void;
+}
 
 /**
  * Client-side window manager implemented as a plain JS module to keep shared state logic reusable across
@@ -7,9 +33,9 @@ import { WindowKind, WindowMode } from './windowTypes';
  * windows exist purely in the browser, and putting it in a .svelte file would require dummy components
  * just to expose helper functions.
  */
-export function createWindowManager({ maxFloating = 4, maxDocked = 3 } = {}) {
-  const windows = writable([]);
-  const lastError = writable(null);
+export function createWindowManager({ maxFloating = 4, maxDocked = 3 }: WindowManagerConfig = {}): WindowManager {
+  const windows = writable<WindowDescriptor[]>([]);
+  const lastError = writable<WindowManagerError | null>(null);
 
   const floating = derived(windows, ($windows) =>
     $windows.filter((win) => win.mode === WindowMode.FLOATING)
@@ -23,7 +49,7 @@ export function createWindowManager({ maxFloating = 4, maxDocked = 3 } = {}) {
     $windows.filter((win) => win.minimized)
   );
 
-  function setError(type, message) {
+  function setError(type: string, message: string) {
     lastError.set({ type, message, at: Date.now() });
   }
 
@@ -31,14 +57,14 @@ export function createWindowManager({ maxFloating = 4, maxDocked = 3 } = {}) {
     lastError.set(null);
   }
 
-  function enforceLimit(mode) {
+  function enforceLimit(mode: typeof WindowMode.FLOATING | typeof WindowMode.DOCKED) {
     const list = get(windows);
     const cap = mode === WindowMode.FLOATING ? maxFloating : maxDocked;
     const count = list.filter((win) => win.mode === mode).length;
     return count < cap;
   }
 
-  function open(descriptor) {
+  function open(descriptor: WindowDescriptor) {
     if (!descriptor) return { ok: false };
 
     // Replace existing summary window for the same email/context.
@@ -81,13 +107,13 @@ export function createWindowManager({ maxFloating = 4, maxDocked = 3 } = {}) {
     return { ok: true };
   }
 
-  function close(id) {
+  function close(id: string | null | undefined) {
     if (!id) return;
     windows.update((list) => list.filter((win) => win.id !== id));
     clearError();
   }
 
-  function toggleMinimize(id) {
+  function toggleMinimize(id: string | null | undefined) {
     if (!id) return;
     windows.update((list) => list.map((win) => {
       if (win.id !== id) return win;
@@ -95,7 +121,7 @@ export function createWindowManager({ maxFloating = 4, maxDocked = 3 } = {}) {
     }));
   }
 
-  function focus(id) {
+  function focus(id: string | null | undefined) {
     if (!id) return;
     windows.update((list) => {
       const idx = list.findIndex((win) => win.id === id);
@@ -106,7 +132,7 @@ export function createWindowManager({ maxFloating = 4, maxDocked = 3 } = {}) {
     });
   }
 
-  function updateSummaryHtml(contextId, html) {
+  function updateSummaryHtml(contextId: string | null | undefined, html: string) {
     if (!contextId) return;
     windows.update((list) => list.map((win) => {
       if (win.kind !== WindowKind.SUMMARY || win.contextId !== contextId) {
@@ -119,7 +145,7 @@ export function createWindowManager({ maxFloating = 4, maxDocked = 3 } = {}) {
     }));
   }
 
-  function updateComposeDraft(id, { subject, body }) {
+  function updateComposeDraft(id: string | null | undefined, { subject, body }: { subject?: string | null; body?: string | null }) {
     if (!id) return;
     windows.update((list) => list.map((win) => {
       if (win.id !== id || win.kind !== WindowKind.COMPOSE) return win;

@@ -1,22 +1,25 @@
-import { writable, get } from 'svelte/store';
+import { writable, get, type Writable } from 'svelte/store';
+
+type PanelResponseMap = Record<string, unknown>;
+type PanelErrorMap = Record<string, string>;
 
 /**
  * Centralizes AI panel state (responses, errors, window chrome) so App.svelte can
  * focus on layout. Each contextId/email id maps to a cached response entry.
  */
 export function createAiPanelStore() {
-  const responses = writable({});
-  const errors = writable({});
+  const responses: Writable<PanelResponseMap> = writable({});
+  const errors: Writable<PanelErrorMap> = writable({});
   const sessionActive = writable(false);
   const minimized = writable(false);
   const maximized = writable(false);
-  const activeKey = writable(null);
+  const activeKey = writable<string | null>(null);
 
-  function setActiveKey(key) {
+  function setActiveKey(key: string | null) {
     activeKey.set(key || null);
   }
 
-  function beginSession(key) {
+  function beginSession(key?: string | null) {
     sessionActive.set(true);
     minimized.set(false);
     maximized.set(false);
@@ -43,41 +46,41 @@ export function createAiPanelStore() {
     maximized.update((value) => !value);
   }
 
-  function closePanel(key) {
+  function closePanel(key?: string | null) {
     const target = key || get(activeKey);
     resetSessionState();
     clearEntry(target);
   }
 
-  function recordResponse(key, payload) {
+  function recordResponse(key: string | null, payload: unknown) {
     if (!key) return;
     responses.update((map) => ({ ...map, [key]: payload }));
     clearError(key);
   }
 
-  function recordError(key, message) {
+  function recordError(key: string | null, message?: string | null) {
     if (!key) return;
     errors.update((map) => ({ ...map, [key]: message || 'Unable to complete request.' }));
   }
 
-  function clearEntry(key) {
+  function clearEntry(key: string | null) {
     if (!key) return;
     responses.update((map) => removeKey(map, key));
     errors.update((map) => removeKey(map, key));
   }
 
-  function clearError(key) {
+  function clearError(key: string | null) {
     if (!key) return;
     errors.update((map) => removeKey(map, key));
   }
 
-  function responseFor(key) {
+  function responseFor(key: string | null) {
     if (!key) return null;
     const snapshot = get(responses);
     return snapshot[key] || null;
   }
 
-  function errorFor(key) {
+  function errorFor(key: string | null) {
     if (!key) return '';
     const snapshot = get(errors);
     return snapshot[key] || '';
@@ -107,12 +110,11 @@ export function createAiPanelStore() {
   };
 }
 
-function removeKey(map, key) {
+function removeKey<T extends Record<string, unknown>>(map: T, key: string) {
   if (!map || !(key in map)) {
-    return map || {};
+    return (map || {}) as T;
   }
-  const next = { ...map };
+  const next = { ...map } as Record<string, unknown>;
   delete next[key];
-  return next;
+  return next as T;
 }
-

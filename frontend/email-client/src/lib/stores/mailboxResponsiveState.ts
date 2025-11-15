@@ -48,7 +48,7 @@ export function createMailboxResponsiveState({ chromeStore, viewportStore = view
     return 'mobile';
   });
 
-  const inlineSidebar = derived([viewportState, viewportTier], ([$viewport, $tier]) => {
+  const inlineSidebar = derived([viewportStore, viewportTier], ([$viewport, $tier]) => {
     const width = $viewport?.layoutWidth ?? $viewport?.width ?? 0;
     return width >= HAMBURGER_COLLAPSE_BREAKPOINT && ($tier === 'desktop' || $tier === 'wide');
   });
@@ -67,7 +67,7 @@ export function createMailboxResponsiveState({ chromeStore, viewportStore = view
   );
 
   const sidebarWidth = derived(sidebarVariant, ($variant) => SIDEBAR_WIDTH_MAP[$variant] ?? 0);
-  const availableContentWidth = derived([viewportState, sidebarWidth], ([$viewport, $sidebarWidth]) => {
+  const availableContentWidth = derived([viewportStore, sidebarWidth], ([$viewport, $sidebarWidth]) => {
     const width = $viewport?.layoutWidth ?? $viewport?.width ?? 0;
     return Math.max(0, width - $sidebarWidth);
   });

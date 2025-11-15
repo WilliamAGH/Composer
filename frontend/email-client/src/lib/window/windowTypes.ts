@@ -1,23 +1,63 @@
-/**
- * Window descriptor helpers live in plain JS (not Svelte/Java) because they are shared across multiple
- * components and Svelte stores without rendering anything on their own. Keeping them here avoids
- * bootstrapping empty components just to import helper logic and keeps the state purely client-side.
- */
-import { formatRecipientDisplay } from '../services/emailContextConstructor.js';
-import { normalizeReplySubject } from '../services/emailSubjectPrefixHandler.js';
+import { formatRecipientDisplay } from '../services/emailContextConstructor';
+import { normalizeReplySubject } from '../services/emailSubjectPrefixHandler';
+import type { EmailMessage } from '../../main';
 
-function toTrimmed(value) {
-  return typeof value === 'string' ? value.trim() : '';
-}
+export type WindowKindType = 'compose' | 'summary';
+export type WindowModeType = 'floating' | 'docked';
+
 export const WindowKind = Object.freeze({
   COMPOSE: 'compose',
   SUMMARY: 'summary'
-});
+}) satisfies Record<'COMPOSE' | 'SUMMARY', WindowKindType>;
 
 export const WindowMode = Object.freeze({
   FLOATING: 'floating',
   DOCKED: 'docked'
-});
+}) satisfies Record<'FLOATING' | 'DOCKED', WindowModeType>;
+
+export type ComposeWindowPayload = {
+  to: string;
+  recipientName: string;
+  recipientEmail: string;
+  subject: string;
+  body: string;
+  hasQuotedContext: boolean;
+  quotedContext: string;
+  bodyVersion: number;
+  isReply: boolean;
+  isForward: boolean;
+};
+
+export type SummaryWindowPayload = {
+  emailId: string | null;
+  html: string;
+};
+
+export type ComposeWindowDescriptor = {
+  id: string;
+  kind: typeof WindowKind.COMPOSE;
+  mode: typeof WindowMode.FLOATING;
+  minimized: boolean;
+  contextId: string | null;
+  title: string;
+  payload: ComposeWindowPayload;
+};
+
+export type SummaryWindowDescriptor = {
+  id: string;
+  kind: typeof WindowKind.SUMMARY;
+  mode: typeof WindowMode.DOCKED;
+  minimized: boolean;
+  contextId: string | null;
+  title: string;
+  payload: SummaryWindowPayload;
+};
+
+export type WindowDescriptor = ComposeWindowDescriptor | SummaryWindowDescriptor;
+
+function toTrimmed(value: string | null | undefined) {
+  return typeof value === 'string' ? value.trim() : '';
+}
 
 function fallbackUuid() {
   return 'win-' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
@@ -30,7 +70,14 @@ export function createWindowId() {
   return fallbackUuid();
 }
 
-export function createComposeWindow(email = {}, overrides = {}) {
+export type ComposeWindowOverrides = Partial<ComposeWindowPayload> & {
+  title?: string;
+  recipientName?: string;
+  recipientEmail?: string;
+  contextId?: string | null;
+};
+
+export function createComposeWindow(email: Partial<EmailMessage> = {}, overrides: ComposeWindowOverrides = {}): ComposeWindowDescriptor {
   const safeRecipientName = toTrimmed(overrides.recipientName ?? email.senderName ?? email.from ?? '');
   const safeRecipientEmail = toTrimmed(overrides.recipientEmail ?? email.fromEmail ?? '');
   const defaultToValue = formatRecipientDisplay(safeRecipientName, safeRecipientEmail);
@@ -56,7 +103,7 @@ export function createComposeWindow(email = {}, overrides = {}) {
   };
 }
 
-export function createSummaryWindow(email = {}, html = '', title = 'AI Summary') {
+export function createSummaryWindow(email: Partial<EmailMessage> = {}, html = '', title = 'AI Summary'): SummaryWindowDescriptor {
   const contextId = email.id || email.contextId || createWindowId();
   return {
     id: createWindowId(),

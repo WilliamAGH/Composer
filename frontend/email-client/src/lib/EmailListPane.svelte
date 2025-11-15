@@ -5,7 +5,7 @@
   import { fly } from 'svelte/transition';
   import { Sparkles, Loader2, Menu, Archive, Trash2, FolderSymlink } from 'lucide-svelte';
   import MailboxMoveMenu from './MailboxMoveMenu.svelte';
-  import { getLetterAvatarData } from './services/letterAvatarGenerator.js';
+  import { getLetterAvatarData } from './services/letterAvatarGenerator';
 
   /**
    * Desktop + tablet mailbox list pane. Handles search, AI action trigger, and message selection.

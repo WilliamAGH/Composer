@@ -2,9 +2,18 @@
  * Escapes HTML using the server-provided helper when available.
  * Falls back to local escaping to prevent XSS when the helper is unavailable.
  */
-const isNil = (value) => value === null || value === undefined;
+const isNil = (value: unknown): value is null | undefined => value === null || value === undefined;
 
-export function escapeHtmlContent(value) {
+declare global {
+  interface Window {
+    Composer?: {
+      escapeHtml?: (value: string) => string;
+      renderMarkdown?: (value: string) => string;
+    };
+  }
+}
+
+export function escapeHtmlContent(value: string | null | undefined) {
   const safeValue = isNil(value) ? '' : String(value);
   if (window.Composer?.escapeHtml) {
     return window.Composer.escapeHtml(safeValue);
@@ -22,7 +31,7 @@ export function escapeHtmlContent(value) {
  * Renders markdown content into HTML using the bootstrap helper.
  * Falls back to safe HTML escaping to prevent XSS when the helper is unavailable.
  */
-export function renderMarkdownContent(markdown) {
+export function renderMarkdownContent(markdown: string | null | undefined) {
   const safeMarkdown = isNil(markdown) ? '' : String(markdown);
   if (window.Composer?.renderMarkdown) {
     return window.Composer.renderMarkdown(safeMarkdown);
@@ -33,7 +42,7 @@ export function renderMarkdownContent(markdown) {
 
 const relativeTimeFormatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 
-function parseDate(value) {
+function parseDate(value: string | Date | null | undefined) {
   if (!value) return null;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
@@ -42,9 +51,9 @@ function parseDate(value) {
 /**
  * Returns a friendly “x minutes ago” string or falls back to the provided label.
  */
-export function formatRelativeTimestamp(primary, fallback) {
+export function formatRelativeTimestamp(primary?: string | Date | null, fallback?: string | Date | null) {
   const date = parseDate(primary) || parseDate(fallback);
-  if (!date) return escapeHtmlContent(fallback || '');
+  if (!date) return escapeHtmlContent(fallback ? String(fallback) : '');
   const now = new Date();
   const diffMs = date.getTime() - now.getTime();
   const minute = 60 * 1000;
@@ -64,9 +73,9 @@ export function formatRelativeTimestamp(primary, fallback) {
 /**
  * Formats a full timestamp for the email detail header.
  */
-export function formatFullTimestamp(primary, fallback) {
+export function formatFullTimestamp(primary?: string | Date | null, fallback?: string | Date | null) {
   const date = parseDate(primary) || parseDate(fallback);
-  if (!date) return escapeHtmlContent(fallback || '');
+  if (!date) return escapeHtmlContent(fallback ? String(fallback) : '');
   return date.toLocaleString(undefined, {
     year: 'numeric',
     month: 'short',

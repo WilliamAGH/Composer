@@ -15,9 +15,57 @@
   export let renderMarkdownFn = (value) => value ?? '';
 
   const dispatch = createEventDispatcher();
+  export let onBack = null;
+  export let onToggleMenu = null;
+  export let onReply = null;
+  export let onForward = null;
+  export let onArchive = null;
+  export let onDelete = null;
+  export let onMove = null;
+  export let onCommandSelect = null;
+  export let onActionSelect = null;
+  export let onActionMenuToggle = null;
+  export let onComingSoon = null;
 
   function emit(type, detail = undefined) {
     dispatch(type, detail);
+    switch (type) {
+      case 'back':
+        onBack?.(detail);
+        break;
+      case 'toggleMenu':
+        onToggleMenu?.({ detail });
+        break;
+      case 'reply':
+        onReply?.(detail);
+        break;
+      case 'forward':
+        onForward?.(detail);
+        break;
+      case 'archive':
+        onArchive?.(detail);
+        break;
+      case 'delete':
+        onDelete?.(detail);
+        break;
+      case 'move':
+        onMove?.({ detail });
+        break;
+      case 'commandSelect':
+        onCommandSelect?.({ detail });
+        break;
+      case 'actionSelect':
+        onActionSelect?.({ detail });
+        break;
+      case 'actionMenuToggle':
+        onActionMenuToggle?.({ detail });
+        break;
+      case 'comingSoon':
+        onComingSoon?.({ detail });
+        break;
+      default:
+        break;
+    }
   }
 
   function handleBack() {

@@ -1,6 +1,7 @@
 import { derived, get, writable, type Readable } from 'svelte/store';
 import { computeMailboxCounts, mapEmailMessage } from '../services/emailUtils';
 import { filterEmailsByMailbox } from '../services/mailboxFiltering';
+import type { FilterableEmail } from '../services/mailboxFiltering';
 import { fetchMailboxStateSnapshot, moveMailboxMessage, type MailboxStateSnapshotResult, type MessageMoveResult } from '../services/mailboxStateClient';
 
 type Message = ReturnType<typeof mapEmailMessage>;
@@ -45,8 +46,8 @@ export function createMailboxDataStore(
   const pendingMoves = writable<Set<string>>(new Set());
   const moveErrors = writable<Record<string, string>>({});
 
-  const filteredEmails = derived([emails, mailbox, search, messageFolders], ([$emails, $mailbox, $search, $folders]) =>
-    filterEmailsByMailbox($emails, $mailbox, $search, (email: Message) => resolveFolderFromMap($folders, email))
+  const filteredEmails: Readable<Message[]> = derived([emails, mailbox, search, messageFolders], ([$emails, $mailbox, $search, $folders]) =>
+    filterEmailsByMailbox<Message>($emails, $mailbox, $search, (email) => resolveFolderFromMap($folders, email))
   );
 
   function initializeSnapshot(snapshot: any) {

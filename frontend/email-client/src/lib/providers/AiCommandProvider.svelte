@@ -19,7 +19,7 @@
   import { createAiJourneyStore } from '../services/aiJourneyStore';
   import { createConversationLedger } from '../services/conversationLedger';
   import { createAiCommandClient } from '../services/aiCommandClient';
-  import { windowNoticeStore, processClientWarning } from '../services/clientDiagnosticsService.js';
+  import { windowNoticeStore, processClientWarning } from '../services/clientDiagnosticsService';
   import { initializeUiNonce, startChatHeartbeat, CLIENT_WARNING_EVENT } from '../services/sessionNonceClient';
 
   export let bootstrap = {};

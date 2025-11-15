@@ -12,7 +12,23 @@
  * For NEW functionality, create a specifically-named file that describes its purpose.
  * See AGENTS.md for guidance on avoiding generic "utils" files.
  */
-export function mapEmailMessage(message, index = 0) {
+import type { EmailMessage } from '../../main';
+
+export type FrontendEmailMessage = ReturnType<typeof mapEmailMessage>;
+
+type MessageLike = Partial<EmailMessage> & {
+  contextId?: string | null;
+  senderName?: string | null;
+  senderEmail?: string | null;
+  recipientName?: string | null;
+  recipientEmail?: string | null;
+  emailBodyTransformedText?: string | null;
+  emailBodyTransformedMarkdown?: string | null;
+  emailBodyHtml?: string | null;
+  contextForAI?: string | null;
+};
+
+export function mapEmailMessage(message: MessageLike = {}, index = 0) {
   const preview = coalescePreview(message);
   return {
     id: message?.id || message?.contextId || `email-${index + 1}`,
@@ -39,14 +55,14 @@ export function mapEmailMessage(message, index = 0) {
   };
 }
 
-export function coalescePreview(message) {
+export function coalescePreview(message: MessageLike) {
   const text = typeof message?.emailBodyTransformedText === 'string' ? message.emailBodyTransformedText.trim() : '';
   if (!text) return '';
   const normalized = text.replace(/\s+/g, ' ');
   return normalized.length <= 180 ? normalized : `${normalized.slice(0, 177)}...`;
 }
 
-export function parseSubjectAndBody(text) {
+export function parseSubjectAndBody(text: string | null | undefined) {
   if (!text || !text.trim()) return { subject: '', body: '' };
   const trimmed = text.trim();
   const match = trimmed.match(/^Subject:\s*(.+?)$/m);
@@ -59,7 +75,7 @@ export function parseSubjectAndBody(text) {
   return { subject: '', body: trimmed };
 }
 
-export function computeMailboxCounts(list) {
+export function computeMailboxCounts(list: FrontendEmailMessage[]) {
   const totals = { inbox: list.length, starred: 0, snoozed: 0, sent: 0, drafts: 0, archive: 0, trash: 0 };
   for (const email of list) {
     const labels = (email.labels || []).map((label) => String(label).toLowerCase());

@@ -1,8 +1,24 @@
 import { createWindowNoticeStore } from '../window/WindowNoticeStore';
 
+type DiagnosticLevel = 'info' | 'warn' | 'error';
+
+export type ClientDiagnosticEntry = {
+  level: DiagnosticLevel;
+  message: string;
+  detail: string | null;
+  stack: string | null;
+  at: number;
+};
+
 const MAX_DIAGNOSTICS = 200;
-const diagnosticsBuffer = [];
+const diagnosticsBuffer: ClientDiagnosticEntry[] = [];
 const noticeStore = createWindowNoticeStore();
+
+declare global {
+  interface Window {
+    __COMPOSER_DIAGNOSTICS__?: ClientDiagnosticEntry[];
+  }
+}
 
 /**
  * Persists diagnostic events in-memory (and on window) so support can inspect them.
@@ -10,8 +26,8 @@ const noticeStore = createWindowNoticeStore();
  * @param {string} message
  * @param {Error|undefined} error
  */
-export function recordClientDiagnostic(level = 'info', message = '', error = null) {
-  const entry = {
+export function recordClientDiagnostic(level: DiagnosticLevel = 'info', message = '', error: Error | null = null) {
+  const entry: ClientDiagnosticEntry = {
     level,
     message: message || '',
     detail: error?.message || null,
@@ -39,7 +55,7 @@ export function recordClientDiagnostic(level = 'info', message = '', error = nul
  * Broadcasts client warnings and optionally surfaces them via a toast.
  * @param {{message?: string, error?: Error, silent?: boolean, level?: 'info'|'warn'|'error'}} detail
  */
-export function processClientWarning(detail = {}) {
+export function processClientWarning(detail: { message?: string; error?: Error; silent?: boolean; level?: DiagnosticLevel } = {}) {
   const { message, error, silent = false, level = 'warn' } = detail || {};
   recordClientDiagnostic(level, message || 'Client warning', error);
   if (!silent && message) {
@@ -57,7 +73,7 @@ export const windowNoticeStore = {
 /**
  * Shows a toast/notice for the provided duration.
  */
-export function showWindowNotice(message, duration = 4000) {
+export function showWindowNotice(message: string, duration = 4000) {
   noticeStore.show(message, duration);
 }
 
@@ -68,4 +84,3 @@ export function clearWindowNotice() {
 export function getDiagnosticsSnapshot() {
   return diagnosticsBuffer.slice();
 }
-

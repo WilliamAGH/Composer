@@ -1,6 +1,6 @@
 <script>
-import { onMount } from 'svelte';
-import { get, writable } from 'svelte/store';
+import { onDestroy, onMount } from 'svelte';
+import { derived, get, writable } from 'svelte/store';
 import { useMailboxDataStore, useMailboxChromeStore, useMailboxResponsiveState } from './lib/providers/MailboxChromeProvider.svelte';
 import { useAiCommandContext } from './lib/providers/AiCommandProvider.svelte';
   import ComposeWindow from './lib/ComposeWindow.svelte';
@@ -14,18 +14,20 @@ import { useAiCommandContext } from './lib/providers/AiCommandProvider.svelte';
   import AiLoadingJourney from './lib/AiLoadingJourney.svelte';
   import DrawerBackdrop from './lib/DrawerBackdrop.svelte';
 import MobileTopBar from './lib/MobileTopBar.svelte';
-import { createMobileOverlayCoordinator } from './lib/MobileOverlayCoordinator';
   import AiPanelDockChip from './lib/AiPanelDockChip.svelte';
   import AiSummaryMobileSheet from './lib/AiSummaryMobileSheet.svelte';
   import ComingSoonModal from './lib/ComingSoonModal.svelte';
   import WindowNotice from './lib/WindowNotice.svelte';
+import OverlayStack from './lib/overlay/OverlayStack.svelte';
+import { createOverlayController } from './lib/overlay/OverlayController';
+import { provideOverlayController } from './lib/overlay/overlayContext';
 import { isMobile, isTablet, isDesktop, isWide, viewport, viewportSize } from './lib/viewportState';
   import { createWindowManager } from './lib/window/windowStore'; // temp use
   import { createComposeWindow, WindowKind } from './lib/window/windowTypes';
 import { getFunctionMeta, mergeDefaultArgs, resolveDefaultInstruction } from './lib/services/aiCatalog';
 import { handleAiCommand, deriveHeadline, runComposeWindowAi } from './lib/services/aiCommandHandler';
 import { deriveRecipientContext } from './lib/services/emailContextConstructor';
-import { buildReplyPrefill, buildForwardPrefill } from './lib/services/composePrefill.js';
+  import { buildReplyPrefill, buildForwardPrefill } from './lib/services/composePrefill';
 import { ChevronLeft, ChevronRight } from 'lucide-svelte';
 import { MAILBOX_ACTION_FALLBACKS, PRIMARY_TOOLBAR_PREFERENCE } from './lib/constants/catalogActions';
 import { escapeHtmlContent, renderMarkdownContent, formatRelativeTimestamp, formatFullTimestamp } from './lib/services/emailFormatting';
@@ -33,7 +35,7 @@ import { escapeHtmlContent, renderMarkdownContent, formatRelativeTimestamp, form
 import { createAiPanelStore } from './lib/stores/aiPanelStore';
   import { launchMailboxAutomation } from './lib/services/mailboxAutomationClient';
   import EmailDetailMobileSheet from './lib/EmailDetailMobileSheet.svelte';
-import { recordClientDiagnostic, showWindowNotice } from './lib/services/clientDiagnosticsService.js';
+import { recordClientDiagnostic, showWindowNotice } from './lib/services/clientDiagnosticsService';
 
   /**
    * ShellLayout consumes provider contexts and drives the interactive shell. Keep it as
@@ -49,6 +51,38 @@ const mailboxDataStore = useMailboxDataStore();
 const mailboxChromeStore = useMailboxChromeStore();
 const responsiveState = useMailboxResponsiveState();
 const ACTIVE_MAILBOX_ID = 'primary';
+const overlayController = createOverlayController();
+provideOverlayController(overlayController);
+
+function buildPrimaryCommandEntries(catalogData) {
+  const functionsByKey = catalogData?.functionsByKey || {};
+  const primaryKeys = Array.isArray(catalogData?.primaryCommands) && catalogData.primaryCommands.length
+    ? catalogData.primaryCommands
+    : Object.keys(functionsByKey);
+
+  const entries = primaryKeys
+    .map((key) => ({ key, meta: functionsByKey[key] }))
+    .filter((entry) => !!entry.meta && entry.key !== 'compose' && entry.key !== 'tone');
+
+  const prioritized = [];
+  const consumed = new Set();
+
+  for (const preferredKey of PRIMARY_TOOLBAR_PREFERENCE) {
+    const match = entries.find((entry) => entry.key === preferredKey);
+    if (match) {
+      prioritized.push(match);
+      consumed.add(match.key);
+    }
+  }
+
+  for (const entry of entries) {
+    if (!consumed.has(entry.key)) {
+      prioritized.push(entry);
+    }
+  }
+
+  return prioritized;
+}
   const mailboxStores = mailboxDataStore.stores;
   const chromeStores = mailboxChromeStore.stores;
   const responsiveStores = responsiveState.stores;
@@ -68,6 +102,16 @@ const ACTIVE_MAILBOX_ID = 'primary';
   const compactActionsStore = responsiveStores.compactActions;
   const viewportTierStore = responsiveStores.viewportTier;
   const viewportStateStore = responsiveStores.viewport;
+const mobileDetailOverlayVisibleStore = derived([isMobile, selectedEmailStore], ([$mobile, $selected]) => Boolean($mobile && $selected));
+const composeOverlayVisibleStore = derived([isMobile, floatingStore], ([$mobile, $floating]) => {
+  if (!$mobile || !Array.isArray($floating)) return false;
+  return $floating.some((win) => win.kind === WindowKind.COMPOSE && !win.minimized);
+});
+const mobilePanelVisibleStore = derived([isMobile, panelReadyStore], ([$mobile, $panelReady]) => Boolean($mobile && $panelReady));
+const overlayBackdropVisibleStore = derived(
+  [drawerVisibleStore, mobileDetailOverlayVisibleStore, mobilePanelVisibleStore, composeOverlayVisibleStore, comingSoonModalStore],
+  ([$drawer, $detail, $panel, $compose, $modal]) => Boolean($drawer || $detail || $panel || $compose || $modal.open)
+);
 const resolveFolderForMessage = (email) => mailboxDataStore.resolveFolderForMessage(email);
 let emails = [];
 mailboxStores.emails.subscribe((value) => {
@@ -80,26 +124,149 @@ mailboxStores.emails.subscribe((value) => {
   const minimizedStore = windowManager.minimized;
   const windowErrorStore = windowManager.lastError;
   const panelReadyStore = writable(false);
-  const mobileOverlayCoordinator = createMobileOverlayCoordinator({
-    mobileStore: isMobile,
-    selectedEmailStore,
-    floatingWindowsStore: floatingStore,
-    drawerVisibleStore,
-    panelReadyStore,
-    windowManager
-  });
-  const mobileDetailOverlayVisibleStore = mobileOverlayCoordinator.detailVisible;
-  const mobilePanelVisibleStore = mobileOverlayCoordinator.panelVisible;
-  const overlayBackdropVisibleStore = mobileOverlayCoordinator.overlayVisible;
   const actionMenuStore = createActionMenuSuggestionsStore({
     ensureCatalogReady: ensureCatalog,
     callCatalogCommand: (commandKey, instruction, context) => callAiCommand(commandKey, instruction, context)
   });
   const actionMenuOptionsStore = actionMenuStore.options;
   const actionMenuLoadingStore = actionMenuStore.loading;
+  const detailSheetInstances = derived(
+    [
+      mobileDetailOverlayVisibleStore,
+      selectedEmailStore,
+      actionMenuOptionsStore,
+      actionMenuLoadingStore,
+      pendingMovesStore,
+      compactActionsStore,
+      primaryCommandEntriesStore
+    ],
+    ([$visible, $selected, $actionOptions, $actionLoading, $pendingMoves, $compact, $primaryCommands]) => {
+      if (!$visible || !$selected) {
+        return [];
+      }
+      return [
+        {
+          id: 'email-detail-sheet',
+          component: EmailDetailMobileSheet,
+          props: {
+            email: $selected,
+            commands: $primaryCommands,
+            actionMenuOptions: $actionOptions,
+            actionMenuLoading: $actionLoading,
+            compactActions: $compact,
+            currentFolderId: resolveFolderForMessage($selected),
+            pendingMove: $pendingMoves.has?.($selected.id),
+            escapeHtmlFn: escapeHtml,
+            formatFullDateFn: formatFullTimestamp,
+            renderMarkdownFn: renderMarkdown,
+            onBack: () => mailboxChromeStore.selectEmailById(null),
+            onToggleMenu: handleMenuClick,
+            onReply: openReply,
+            onForward: openForward,
+            onArchive: () => archiveEmail($selected),
+            onDelete: () => deleteEmail($selected),
+            onMove: (event) => moveEmailToFolder($selected, event?.detail?.targetFolderId),
+            onCommandSelect: (event) => runMainAiCommand(event?.detail),
+            onActionSelect: (event) => handleActionSelect(event),
+            onActionMenuToggle: (event) => handleActionMenuToggle(event),
+            onComingSoon: (event) => handleComingSoon(event?.detail)
+          }
+        }
+      ];
+    }
+  );
+
+  const aiSheetInstances = derived(
+    [mobilePanelVisibleStore, activePanelStateStore, activePanelErrorStore, aiJourneyOverlayStore],
+    ([$visible, $state, $error, $journey]) => {
+      if (!$visible) {
+        return [];
+      }
+      return [
+        {
+          id: 'ai-summary-mobile',
+          component: AiSummaryMobileSheet,
+          props: {
+            panelState: $state,
+            journeyOverlay: $journey,
+            error: $error,
+            showMenuButton: true,
+            onClose: handlePanelClose,
+            onToggleMenu: handleMenuClick,
+            onMinimize: handlePanelMinimize,
+            onRunCommand: (detail) => runMainAiCommand(detail?.detail || detail)
+          }
+        }
+      ];
+    }
+  );
+
+  const comingSoonOverlayInstances = derived(comingSoonModalStore, ($modal) => {
+    if (!$modal.open) {
+      return [];
+    }
+    return [
+      {
+        id: 'coming-soon-modal',
+        component: ComingSoonModal,
+        props: {
+          open: true,
+          sourceLabel: $modal.sourceLabel,
+          onCloseCallback: closeComingSoonModal
+        }
+      }
+    ];
+  });
+
+  const drawerBackdropInstances = derived(overlayBackdropVisibleStore, ($visible) => {
+    if (!$visible) {
+      return [];
+    }
+    return [
+      {
+        id: 'drawer-backdrop',
+        component: DrawerBackdrop,
+        props: {
+          onClose: handleOverlayBackdropClose
+        }
+      }
+    ];
+  });
+
+  const overlayRegistrations = [
+    overlayController.registerOverlay({
+      key: 'drawer-backdrop',
+      presenter: 'backdrop',
+      priority: 10,
+      source: drawerBackdropInstances
+    }),
+    overlayController.registerOverlay({
+      key: 'detail-sheet',
+      presenter: 'sheet',
+      priority: 20,
+      source: detailSheetInstances
+    }),
+    overlayController.registerOverlay({
+      key: 'ai-sheet',
+      presenter: 'sheet',
+      priority: 30,
+      source: aiSheetInstances
+    }),
+    overlayController.registerOverlay({
+      key: 'coming-soon',
+      presenter: 'modal',
+      priority: 50,
+      source: comingSoonOverlayInstances
+    })
+  ];
+
+  onDestroy(() => {
+    overlayRegistrations.forEach((dispose) => dispose());
+  });
   let selectedActionKey = null;
   let isActionMenuOpen = false;
-  let comingSoonModal = { open: false, sourceLabel: '' };
+  const comingSoonModalStore = writable({ open: false, sourceLabel: '' });
+  $: comingSoonModal = $comingSoonModalStore;
   let mailbox = get(mailboxStore);
   let search = get(searchStore);
   let mailboxCounts = get(mailboxCountsStore);
@@ -118,6 +285,9 @@ const panelMinimizedStore = panelStores.minimized;
 const panelMaximizedStore = panelStores.maximized;
 const panelResponsesStore = panelStores.responses;
 const panelErrorsStore = panelStores.errors;
+const panelActiveKeyStore = panelStores.activeKey;
+const activePanelStateStore = derived([panelResponsesStore, panelActiveKeyStore], ([$responses, $key]) => ($key ? $responses[$key] || null : null));
+const activePanelErrorStore = derived([panelErrorsStore, panelActiveKeyStore], ([$errors, $key]) => ($key ? $errors[$key] || '' : ''));
   $: mailbox = $mailboxStore;
   $: search = $searchStore;
   $: mailboxCounts = $mailboxCountsStore;
@@ -159,7 +329,6 @@ const panelErrorsStore = panelStores.errors;
   $: panelReadyStore.set(panelRenderReady);
   $: mobilePanelVisible = $mobilePanelVisibleStore;
   $: mobileDetailOverlayVisible = $mobileDetailOverlayVisibleStore;
-  $: overlayBackdropVisible = $overlayBackdropVisibleStore;
   $: if (selectedPanelKey !== previousPanelKey) {
     previousPanelKey = selectedPanelKey;
     panelStore.resetSessionState();
@@ -174,33 +343,8 @@ const panelErrorsStore = panelStores.errors;
   let mailboxMenuMobileRef = null;
 
   // Derived
-  $: primaryCommandEntries = (() => {
-    const sourceKeys = aiPrimaryCommandKeys.length ? aiPrimaryCommandKeys : Object.keys(aiFunctionsByKey || {});
-    if (!sourceKeys || sourceKeys.length === 0) return [];
-
-    const entries = sourceKeys
-      .map((key) => ({ key, meta: aiFunctionsByKey[key] }))
-      .filter((entry) => !!entry.meta && entry.key !== 'compose' && entry.key !== 'tone');
-
-    const prioritized = [];
-    const consumed = new Set();
-
-    for (const preferredKey of PRIMARY_TOOLBAR_PREFERENCE) {
-      const match = entries.find((entry) => entry.key === preferredKey);
-      if (match) {
-        prioritized.push(match);
-        consumed.add(match.key);
-      }
-    }
-
-    for (const entry of entries) {
-      if (!consumed.has(entry.key)) {
-        prioritized.push(entry);
-      }
-    }
-
-    return prioritized;
-  })();
+  const primaryCommandEntriesStore = derived(catalog, ($catalog) => buildPrimaryCommandEntries($catalog));
+  $: primaryCommandEntries = $primaryCommandEntriesStore;
   $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
     .filter((fn) => Array.isArray(fn.scopes) && fn.scopes.includes('compose'));
   $: mailboxCommandEntries = deriveMailboxCommands();
@@ -363,12 +507,34 @@ const panelErrorsStore = panelStores.errors;
     toggleSidebar();
   }
 
+  function closeTopComposeWindow() {
+    const floatingWindows = get(floatingStore) || [];
+    const composeWindows = floatingWindows.filter((win) => win.kind === WindowKind.COMPOSE && !win.minimized);
+    if (composeWindows.length === 0) return false;
+    const latest = composeWindows[composeWindows.length - 1];
+    if (latest?.id) {
+      windowManager.close(latest.id);
+      return true;
+    }
+    return false;
+  }
+
   function handleOverlayBackdropClose() {
-    mobileOverlayCoordinator.handleBackdropClose({
-      onClosePanel: handlePanelClose,
-      onClearSelection: () => mailboxChromeStore.selectEmailById(null),
-      onCloseDrawer: () => mailboxChromeStore.closeDrawer()
-    });
+    if (closeTopComposeWindow()) return;
+
+    if (get(mobilePanelVisibleStore)) {
+      handlePanelClose();
+      return;
+    }
+
+    if (get(mobileDetailOverlayVisibleStore)) {
+      mailboxChromeStore.selectEmailById(null);
+      return;
+    }
+
+    if (get(drawerVisibleStore)) {
+      mailboxChromeStore.closeDrawer();
+    }
   }
 
   function showWindowLimitMessage() {
@@ -622,11 +788,11 @@ const panelErrorsStore = panelStores.errors;
   }
 
   function openComingSoonModal(sourceLabel = 'This feature') {
-    comingSoonModal = { open: true, sourceLabel };
+    comingSoonModalStore.set({ open: true, sourceLabel });
   }
 
   function closeComingSoonModal() {
-    comingSoonModal = { open: false, sourceLabel: '' };
+    comingSoonModalStore.set({ open: false, sourceLabel: '' });
   }
 
   function handleComingSoon(detail) {
@@ -649,9 +815,6 @@ const panelErrorsStore = panelStores.errors;
         }
       }}
     />
-    <!-- Mobile overlays + drawer share a single backdrop to keep context visible. -->
-    <DrawerBackdrop visible={overlayBackdropVisible} on:close={handleOverlayBackdropClose} />
-
     <EmailListPane
       search={search}
       {filtered}
@@ -781,46 +944,6 @@ const panelErrorsStore = panelStores.errors;
     {/if}
   </section>
   </div>
-
-  {#if mobileDetailOverlayVisible && selected}
-    <EmailDetailMobileSheet
-      email={selected}
-      commands={primaryCommandEntries}
-      actionMenuOptions={$actionMenuOptionsStore}
-      actionMenuLoading={$actionMenuLoadingStore}
-      compactActions={compactActions}
-      currentFolderId={resolveFolderForMessage(selected)}
-      pendingMove={pendingMoves.has(selected?.id)}
-      escapeHtmlFn={escapeHtml}
-      formatFullDateFn={formatFullTimestamp}
-      renderMarkdownFn={renderMarkdown}
-      on:back={() => mailboxChromeStore.selectEmailById(null)}
-      on:toggleMenu={handleMenuClick}
-      on:reply={openReply}
-      on:forward={openForward}
-      on:archive={() => archiveEmail(selected)}
-      on:delete={() => deleteEmail(selected)}
-      on:move={(event) => moveEmailToFolder(selected, event.detail.targetFolderId)}
-      on:commandSelect={(event) => runMainAiCommand(event.detail)}
-      on:actionSelect={handleActionSelect}
-      on:actionMenuToggle={handleActionMenuToggle}
-      on:comingSoon={(event) => handleComingSoon(event.detail)}
-    />
-  {/if}
-
-  {#if mobilePanelVisible}
-    <AiSummaryMobileSheet
-      panelState={activePanelState}
-      journeyOverlay={activePanelJourneyOverlay}
-      error={activePanelError}
-      visible={true}
-      on:close={handlePanelClose}
-      on:minimize={handlePanelMinimize}
-      on:toggleMenu={handleMenuClick}
-      on:runCommand={(event) => runMainAiCommand(event.detail.command)}
-    />
-  {/if}
-
   {#each floatingWindows as win, index}
     {#if win.kind === WindowKind.COMPOSE}
       <ComposeWindow
@@ -838,24 +961,11 @@ const panelErrorsStore = panelStores.errors;
 
   <WindowDock windows={minimizedWindows} />
   <AiPanelDockChip visible={$panelSessionActiveStore && $panelMinimizedStore} on:restore={restorePanelFromDock} />
+
+  <OverlayStack controller={overlayController} />
 </WindowProvider>
 
 <WindowNotice message={$windowNoticeStore} />
-
-{#if aiJourneyOverlay.visible && aiJourneyOverlay.scope === 'global'}
-  <div class="fixed bottom-6 left-1/2 z-[80] -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0">
-    <AiLoadingJourney
-      steps={aiJourneyOverlay.steps}
-      activeStepId={aiJourneyOverlay.activeStepId}
-      headline={aiJourneyOverlay.headline}
-      subhead={aiJourneyOverlay.subhead}
-      show={true}
-      inline={false}
-      subdued={false} />
-  </div>
-{/if}
-
-<ComingSoonModal open={comingSoonModal.open} sourceLabel={comingSoonModal.sourceLabel} on:close={closeComingSoonModal} />
 
 <style>
   /**

@@ -9,16 +9,16 @@
  */
 
 /** Build a normalized reply subject: one "Re:" first, keep one "Fwd:" if it existed. */
-export function normalizeReplySubject(original) {
+export function normalizeReplySubject(original: string | null | undefined) {
   return buildNormalizedSubject(original, 're');
 }
 
 /** Build a normalized forward subject: one "Fwd:" first, keep one "Re:" if it existed. */
-export function normalizeForwardSubject(original) {
+export function normalizeForwardSubject(original: string | null | undefined) {
   return buildNormalizedSubject(original, 'fwd');
 }
 
-function buildNormalizedSubject(original, target) {
+function buildNormalizedSubject(original: string | null | undefined, target: string) {
   const base = typeof original === 'string' ? original.trim() : '';
   if (!base) return '';
   const { tokens, subject } = extractLeadingPrefixes(base);
@@ -30,9 +30,9 @@ function buildNormalizedSubject(original, target) {
   return `${finalTokens.map(toLabel).join(' ')} ${subject}`.trim();
 }
 
-function extractLeadingPrefixes(text) {
+function extractLeadingPrefixes(text: string) {
   let s = text;
-  const tokens = [];
+  const tokens: string[] = [];
   // Peel off leading prefixes like re, r, fw, fwd (case-insensitive),
   // with optional trailing dot, optional count in [] or (), and optional colon or hyphen.
   // Examples matched: "RE:", "Re :", "Re-", "Re[2]:", "Re (3) -", "FW:", "Fwd.", "Fw[10] :"
@@ -49,22 +49,22 @@ function extractLeadingPrefixes(text) {
   return { tokens, subject: s.trim() };
 }
 
-function normalizeToken(t) {
+function normalizeToken(t: string) {
   const v = String(t || '').toLowerCase();
   if (v === 're' || v === 'r') return 're';
   if (v === 'fw' || v === 'fwd') return 'fwd';
   return v;
 }
 
-function toLabel(t) {
+function toLabel(t: string) {
   if (t === 're') return 'Re:';
   if (t === 'fwd') return 'Fwd:';
   return `${t}:`;
 }
 
-function dedupe(arr) {
-  const out = [];
-  const seen = new Set();
+function dedupe(arr: string[]) {
+  const out: string[] = [];
+  const seen = new Set<string>();
   for (const x of arr) {
     if (!seen.has(x)) {
       seen.add(x);

@@ -5,11 +5,13 @@
 
   export let open = false;
   export let sourceLabel = 'This feature';
+  export let onCloseCallback = null;
 
   const dispatch = createEventDispatcher();
 
   function close() {
     dispatch('close');
+    onCloseCallback?.();
   }
 </script>
 

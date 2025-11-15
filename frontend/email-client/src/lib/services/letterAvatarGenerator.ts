@@ -30,7 +30,7 @@ const AVATAR_COLORS = [
  * @param {string} str - String to hash
  * @returns {number} Hash value
  */
-function hashString(str) {
+function hashString(str: string) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
@@ -49,7 +49,7 @@ function hashString(str) {
  * extractInitials('Alice', '') // => 'AL'
  * extractInitials('', 'bob@example.com') // => 'BO'
  */
-function extractInitials(name, email) {
+function extractInitials(name: string | null | undefined, email: string | null | undefined) {
   const source = (name && name.trim()) || (email && email.trim()) || '??';
 
   // Remove email domain if using email as source
@@ -91,7 +91,7 @@ function extractInitials(name, email) {
  * getLetterAvatarData('', 'bob@example.com')
  * // => { initials: 'BO', colorClass: 'bg-green-500' }
  */
-export function getLetterAvatarData(name, email) {
+export function getLetterAvatarData(name: string | null | undefined, email: string | null | undefined) {
   const initials = extractInitials(name, email);
 
   // Use name or email for color selection (prefer name for consistency)

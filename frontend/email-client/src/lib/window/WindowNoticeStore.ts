@@ -1,15 +1,20 @@
-import { writable } from 'svelte/store';
+import { writable, type Readable } from 'svelte/store';
+
+export interface WindowNoticeStore extends Readable<string> {
+  show: (message: string, duration?: number) => void;
+  clear: () => void;
+}
 
 /**
  * Creates a shared toast/notice store used by the floating window system.
  * Keeps a single message visible at a time and clears it after the timeout elapses.
  * @returns {{subscribe: import('svelte/store').Readable<string>['subscribe'], show: (message: string, duration?: number) => void, clear: () => void}}
  */
-export function createWindowNoticeStore() {
+export function createWindowNoticeStore(): WindowNoticeStore {
   const notice = writable('');
-  let timer = null;
+  let timer: ReturnType<typeof setTimeout> | null = null;
 
-  function show(message, duration = 4000) {
+  function show(message: string, duration = 4000) {
     if (!message) {
       clear();
       return;
@@ -38,4 +43,3 @@ export function createWindowNoticeStore() {
     clear
   };
 }
-

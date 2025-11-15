@@ -1,6 +1,31 @@
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function formatRecipientDisplay(name, email) {
+export type Recipient = { name: string; email: string };
+
+type RecipientSource = {
+  from?: string | null;
+  fromEmail?: string | null;
+  to?: string | null;
+  toEmail?: string | null;
+  contentMarkdown?: string | null;
+  contentText?: string | null;
+  timestamp?: string | null;
+  timestampIso?: string | null;
+};
+
+type EmailContextSource = RecipientSource & {
+  subject?: string | null;
+  timestamp?: string | null;
+  timestampIso?: string | null;
+  contentMarkdown?: string | null;
+  contentText?: string | null;
+  senderName?: string | null;
+  senderEmail?: string | null;
+  recipientName?: string | null;
+  recipientEmail?: string | null;
+};
+
+export function formatRecipientDisplay(name: string | null | undefined, email: string | null | undefined) {
   const safeName = (name || '').trim();
   const safeEmail = (email || '').trim();
   if (safeName && safeEmail) {
@@ -9,7 +34,7 @@ export function formatRecipientDisplay(name, email) {
   return safeName || safeEmail || '';
 }
 
-export function parseRecipientInput(value) {
+export function parseRecipientInput(value: string | null | undefined): Recipient {
   const trimmed = (value || '').trim();
   if (!trimmed) {
     return { name: '', email: '' };
@@ -26,7 +51,7 @@ export function parseRecipientInput(value) {
   return { name: trimmed, email: '' };
 }
 
-export function recipientFromEmail(email) {
+export function recipientFromEmail(email: EmailContextSource | null | undefined): Recipient {
   if (!email) {
     return { name: '', email: '' };
   }
@@ -35,13 +60,27 @@ export function recipientFromEmail(email) {
   return { name, email: address };
 }
 
-export function normalizeRecipient(recipient = {}) {
-  const name = typeof recipient.name === 'string' ? recipient.name.trim() : '';
-  const email = typeof recipient.email === 'string' ? recipient.email.trim() : '';
+export function normalizeRecipient(recipient: Partial<Recipient> | null | undefined = {}): Recipient {
+  const source = recipient ?? {};
+  const name = typeof source.name === 'string' ? source.name.trim() : '';
+  const email = typeof source.email === 'string' ? source.email.trim() : '';
   return { name, email };
 }
 
-export function deriveRecipientContext({ toInput, composePayload, fallbackEmail } = {}) {
+export function deriveRecipientContext({
+  toInput,
+  composePayload,
+  fallbackEmail
+}: {
+  toInput?: string | null;
+  composePayload?: {
+    recipientName?: string | null;
+    recipientEmail?: string | null;
+    toEmail?: string | null;
+    to?: string | null;
+  };
+  fallbackEmail?: EmailContextSource | null;
+} = {}): Recipient {
   const fromInput = normalizeRecipient(parseRecipientInput(toInput));
   if (fromInput.name || fromInput.email) {
     return fromInput;
@@ -73,7 +112,7 @@ export function deriveRecipientContext({ toInput, composePayload, fallbackEmail 
   return { name: '', email: '' };
 }
 
-function formatParticipant(name, email, fallback) {
+function formatParticipant(name: string | null | undefined, email: string | null | undefined, fallback: string) {
   const safeName = (name || '').trim();
   const safeEmail = (email || '').trim();
   const label = safeName || fallback;
@@ -83,7 +122,7 @@ function formatParticipant(name, email, fallback) {
   return label;
 }
 
-export function buildEmailContextString(email) {
+export function buildEmailContextString(email: EmailContextSource | null | undefined) {
   if (!email) return '';
   const markdown = typeof email.contentMarkdown === 'string' ? email.contentMarkdown.trim() : '';
   if (markdown) {
