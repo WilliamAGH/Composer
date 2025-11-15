@@ -179,6 +179,8 @@
   .mobile-top-bar--no-divider {
     border-bottom: none;
     padding-bottom: 0.75rem;
+    padding-left: 0;
+    padding-right: 0;
   }
 
   .mobile-top-bar__row {

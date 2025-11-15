@@ -41,9 +41,38 @@ export function buildForwardPrefill(email: FrontendEmailMessage | null | undefin
 export function quoteEmailContext(email: FrontendEmailMessage | null | undefined, includeHeaders = false) {
   if (!email) return '';
   const context = buildEmailContextString(email);
-  if (!context) return '';
+  const pieces = [];
   if (includeHeaders) {
-    return `Forwarded message:\n${context}`;
+    pieces.push('Forwarded message:');
+    const header = formatForwardHeader(email);
+    if (header) {
+      pieces.push(header);
+    }
+  } else {
+    pieces.push('Previous message:');
   }
-  return `Previous message:\n${context}`;
+  if (context) {
+    pieces.push(context);
+  }
+  return pieces.join('\n').trim();
+}
+
+function formatForwardHeader(email: FrontendEmailMessage | null | undefined) {
+  if (!email) return '';
+  const rows = [];
+  if (email.senderName || email.senderEmail) {
+    rows.push(`From: ${email.senderName || ''}${email.senderEmail ? ` <${email.senderEmail}>` : ''}`.trim());
+  }
+  if (email.recipientName || email.recipientEmail) {
+    rows.push(`To: ${email.recipientName || ''}${email.recipientEmail ? ` <${email.recipientEmail}>` : ''}`.trim());
+  }
+  if (email.timestamp) {
+    rows.push(`Sent: ${email.timestamp}`);
+  } else if (email.timestampIso) {
+    rows.push(`Sent: ${email.timestampIso}`);
+  }
+  if (email.subject) {
+    rows.push(`Subject: ${email.subject}`);
+  }
+  return rows.join('\n');
 }

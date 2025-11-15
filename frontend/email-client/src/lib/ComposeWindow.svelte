@@ -34,6 +34,7 @@
   let subject = '';
   let body = '';
   let isReply = false;
+  let isForward = false;
   let lastBodyVersion = 0;
   let saveTimeout = null;
   let lastSavedSignature = null;
@@ -54,6 +55,7 @@
     subject = windowConfig.payload?.subject || '';
     body = windowConfig.payload?.body || '';
     isReply = Boolean(windowConfig.payload?.isReply);
+    isForward = Boolean(windowConfig.payload?.isForward);
     lastBodyVersion = windowConfig.payload?.bodyVersion || 0;
     initialized = true;
   }
@@ -63,6 +65,7 @@
     subject = windowConfig.payload.subject ?? subject;
     lastBodyVersion = windowConfig.payload.bodyVersion;
   }
+  $: isForward = Boolean(windowConfig?.payload?.isForward);
 
   onMount(() => {
     setTimeout(() => (isReply ? inputSubject?.focus() : (inputTo || inputSubject)?.focus()), 50);
@@ -99,6 +102,7 @@
   }
 
   function requestAi(command, instructionOverride = null) {
+    if (isForward) return;
     dispatch('requestAi', { id: windowConfig.id, command, draft: body, subject, isReply, to, instructionOverride });
   }
 
@@ -163,10 +167,14 @@
   ];
 
   $: derivedDraftOptions = deriveDraftOptions(aiFunctions);
-  $: draftOptions = isReply ? derivedDraftOptions : [composeDraftOption];
+  $: draftOptions = isForward ? [] : (isReply ? derivedDraftOptions : [composeDraftOption]);
   $: primaryDraftOption = draftOptions.find((option) => option.key === 'draft') || draftOptions[0] || composeDraftOption;
   $: if (!isReply && draftMenuOpen) {
     draftMenuOpen = false;
+  }
+  $: if (isForward) {
+    draftMenuOpen = false;
+    toneMenuOpen = false;
   }
   // Simple title for window header (not minimized), full subject used for dock (minimized)
   $: displayTitle = windowConfig?.payload?.isForward ? 'Forward' : (isReply ? 'Reply' : 'New Message');
@@ -201,6 +209,7 @@
   }
 
   function runPrimaryDraft() {
+    if (isForward) return;
     const target = primaryDraftOption?.key || 'draft';
     if (target === 'compose') {
       openComposePrompt();
@@ -210,6 +219,7 @@
   }
 
   async function toggleDraftMenu() {
+    if (isForward) return;
     draftMenuOpen = !draftMenuOpen;
     if (draftMenuOpen) {
       toneMenuOpen = false;
@@ -219,6 +229,7 @@
   }
 
   async function toggleToneMenu() {
+    if (isForward) return;
     toneMenuOpen = !toneMenuOpen;
     if (toneMenuOpen) {
       draftMenuOpen = false;
@@ -228,6 +239,7 @@
   }
 
   function invokeDraftOption(option) {
+    if (isForward) return;
     if (!option) return;
     if (option.key === 'compose') {
       draftMenuOpen = false;
@@ -490,7 +502,8 @@
         journeyOverlay={journeyOverlay}
         journeyInlineActive={journeyInlineActive}
         showDraftMenu={isReply}
-        canUndo={undoAvailable}
+        showAiRow={!isForward}
+        canUndo={undoAvailable && !isForward}
         onUndo={undoAiChange}
         onSend={send}
         onDeleteDraft={deleteDraft}
@@ -587,54 +600,56 @@
         <Trash2 class="h-4 w-4" />
       </button>
     </div>
-    <div class="compose-footer-ai">
-      <div class="compose-ai-cluster">
-        <button
-          type="button"
-          class="btn btn--ghost btn--icon compose-ai-pill"
-          aria-label="Undo last AI change"
-          title="Undo last AI change"
-          on:click={undoAiChange}
-          disabled={undoDisabled}>
-          <RotateCcw class={`h-4 w-4 ${undoDisabled ? 'text-slate-400' : ''}`} />
-        </button>
-      </div>
-      <div class="compose-ai-cluster">
-        {#if isReply}
-          <div class="compose-ai-split">
-            <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill compose-ai-pill--main" on:click={runPrimaryDraft}>
-              <Wand2 class="h-4 w-4" /> <span class="compose-ai-label">{primaryDraftOption?.label || 'Draft'}</span>
-            </button>
-            <button
-              type="button"
-              class="btn btn--ghost btn--icon compose-ai-pill compose-ai-pill--toggle"
-              aria-haspopup="menu"
-              aria-expanded={draftMenuOpen}
-              bind:this={draftToggleButton}
-              on:click={toggleDraftMenu}
-              aria-label="More drafting options">
-              <ChevronDown class={`h-4 w-4 transition ${draftMenuOpen ? 'rotate-180' : ''}`} />
-            </button>
-          </div>
-        {:else}
-          <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill" on:click={runPrimaryDraft}>
-            <Wand2 class="h-4 w-4" /> <span class="compose-ai-label">AI Compose</span>
+    {#if !isForward}
+      <div class="compose-footer-ai">
+        <div class="compose-ai-cluster">
+          <button
+            type="button"
+            class="btn btn--ghost btn--icon compose-ai-pill"
+            aria-label="Undo last AI change"
+            title="Undo last AI change"
+            on:click={undoAiChange}
+            disabled={undoDisabled}>
+            <RotateCcw class={`h-4 w-4 ${undoDisabled ? 'text-slate-400' : ''}`} />
           </button>
-        {/if}
+        </div>
+        <div class="compose-ai-cluster">
+          {#if isReply}
+            <div class="compose-ai-split">
+              <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill compose-ai-pill--main" on:click={runPrimaryDraft}>
+                <Wand2 class="h-4 w-4" /> <span class="compose-ai-label">{primaryDraftOption?.label || 'Draft'}</span>
+              </button>
+              <button
+                type="button"
+                class="btn btn--ghost btn--icon compose-ai-pill compose-ai-pill--toggle"
+                aria-haspopup="menu"
+                aria-expanded={draftMenuOpen}
+                bind:this={draftToggleButton}
+                on:click={toggleDraftMenu}
+                aria-label="More drafting options">
+                <ChevronDown class={`h-4 w-4 transition ${draftMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+          {:else}
+            <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill" on:click={runPrimaryDraft}>
+              <Wand2 class="h-4 w-4" /> <span class="compose-ai-label">AI Compose</span>
+            </button>
+          {/if}
+        </div>
+        <div class="compose-ai-cluster">
+          <button
+            type="button"
+            class="btn btn--ghost btn--labelled btn--compact compose-ai-pill tone-trigger"
+            aria-haspopup="menu"
+            aria-expanded={toneMenuOpen}
+            bind:this={toneToggleButton}
+            on:click={toggleToneMenu}>
+            <Highlighter class="h-4 w-4" /> <span class="compose-ai-label">Tone</span>
+            <ChevronDown class={`h-4 w-4 text-slate-500 transition ${toneMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
       </div>
-      <div class="compose-ai-cluster">
-        <button
-          type="button"
-          class="btn btn--ghost btn--labelled btn--compact compose-ai-pill tone-trigger"
-          aria-haspopup="menu"
-          aria-expanded={toneMenuOpen}
-          bind:this={toneToggleButton}
-          on:click={toggleToneMenu}>
-          <Highlighter class="h-4 w-4" /> <span class="compose-ai-label">Tone</span>
-          <ChevronDown class={`h-4 w-4 text-slate-500 transition ${toneMenuOpen ? 'rotate-180' : ''}`} />
-        </button>
-      </div>
-    </div>
+    {/if}
   </div>
     </WindowFrame>
   {/if}

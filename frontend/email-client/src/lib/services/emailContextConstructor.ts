@@ -128,7 +128,7 @@ export function buildEmailContextString(email: EmailContextSource | null | undef
   if (!email) return '';
   const markdown = typeof email.contentMarkdown === 'string' ? email.contentMarkdown.trim() : '';
   if (markdown) {
-    return markdown;
+    return sanitizeQuotedContextBlock(markdown);
   }
   const lines = [];
   lines.push('=== Email Metadata ===');
@@ -144,6 +144,55 @@ export function buildEmailContextString(email: EmailContextSource | null | undef
   lines.push('');
   lines.push('=== Email Body ===');
   const body = typeof email.contentText === 'string' ? email.contentText.trim() : '';
-  lines.push(body || '(Email body is empty)');
-  return lines.join('\n');
+  const sanitizedBody = sanitizeQuotedContextBlock(body);
+  lines.push(sanitizedBody || '(Email body is empty)');
+  return lines.join('\n').trim();
+}
+
+function sanitizeQuotedContextBlock(input: string | null | undefined) {
+  if (!input) return '';
+  let working = input
+    .replace(/\r\n/g, '\n')
+    // Drop anchor fragments appended to markdown links
+    .replace(/\{#[^}\s]+\}/g, '');
+
+  // Normalize markdown links; if text == href, keep a single href, otherwise keep "text (href)"
+  working = working.replace(/\[([^\]]+)]\((\S+?)(?:\s+"[^"]*")?\)/g, (m, text, href) => {
+    if (text && href && text.trim() === href.trim()) {
+      return href;
+    }
+    return `${text} (${href})`;
+  });
+
+  // Remove markdown escapes for common punctuation
+  working = working.replace(/\\([\\`*_[\]{}()#+.!>])/g, '$1');
+
+  const lines = working.split(/\n/);
+  const kept: string[] = [];
+  let blankRun = 0;
+  for (const raw of lines) {
+    const trimmed = raw.replace(/^\uFEFF/, '').trim();
+    if (isDividerLine(trimmed)) {
+      continue;
+    }
+    if (trimmed.length === 0) {
+      blankRun += 1;
+      if (blankRun > 2) continue;
+      kept.push('');
+      continue;
+    }
+    blankRun = 0;
+    kept.push(raw);
+  }
+  return kept.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function isDividerLine(line: string) {
+  if (!line) return false;
+  const withoutQuote = line.replace(/^>+\s*/, '');
+  const normalized = withoutQuote
+    .replace(/\s+/g, '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '');
+  if (normalized.length >= 3 && /^[-*_]+$/.test(normalized)) return true;
+  return false;
 }
