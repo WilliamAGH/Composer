@@ -174,7 +174,7 @@ export function createAiCommandClient({
       const data = await executeCatalogCommand(command, payload);
       journey.advance(journeyToken, 'ai:llm-thinking');
       journey.complete(journeyToken);
-      if (data?.conversationId) {
+      if (conversationKey && data?.conversationId) {
         ledger.write(conversationKey, data.conversationId);
       }
       return data;
