@@ -34,7 +34,9 @@
         aria-label="Restore {item.title}"
       >
         {#if item.icon}
-          <svelte:component this={item.icon} class="pill-icon" aria-hidden="true" />
+          <span class="pill-icon" aria-hidden="true">
+            <svelte:component this={item.icon} />
+          </span>
         {/if}
         <span class="pill-title">{item.title}</span>
         {#if item.closeable && item.onClose}
@@ -114,9 +116,17 @@
    * @usage - Rendered when item.icon is provided
    */
   .pill-icon {
+    display: inline-flex;
     width: 16px;
     height: 16px;
     flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .pill-icon :global(svg) {
+    width: 100%;
+    height: 100%;
   }
 
   /**
