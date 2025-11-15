@@ -30,27 +30,25 @@
       <span>Updating…</span>
     </div>
   {/if}
-  <ul>
+  <div class="menu-list">
     {#each visibleTargets as target (target.id)}
-      <li>
-        <button
-          type="button"
-          class={`move-menu__item ${target.destructive ? 'move-menu__item--destructive' : ''}`}
-          role="menuitem"
-          aria-current={currentFolderId === target.id}
-          disabled={currentFolderId === target.id || pending}
-          on:click={() => handleSelect(target.id)}>
-          <span class="move-menu__icon">
-            <svelte:component this={iconMap[target.icon] || Inbox} class="h-4 w-4" aria-hidden="true" />
-          </span>
-          <span class="move-menu__label">{target.label}</span>
-          {#if currentFolderId === target.id}
-            <Check class="h-4 w-4 text-slate-500" aria-hidden="true" />
-          {/if}
-        </button>
-      </li>
+      <button
+        type="button"
+        class="menu-item"
+        role="menuitem"
+        aria-current={currentFolderId === target.id}
+        disabled={currentFolderId === target.id || pending}
+        on:click={() => handleSelect(target.id)}>
+        <span class="menu-item-icon">
+          <svelte:component this={iconMap[target.icon] || Inbox} class="h-4 w-4" aria-hidden="true" />
+        </span>
+        <span class="move-menu__label" class:move-menu__label--destructive={target.destructive}>{target.label}</span>
+        {#if currentFolderId === target.id}
+          <Check class="h-4 w-4 text-slate-500" aria-hidden="true" />
+        {/if}
+      </button>
     {/each}
-  </ul>
+  </div>
 </div>
 
 <style>
@@ -67,50 +65,12 @@
     color: #475569;
     padding: 0.35rem 0.75rem;
   }
-  /* Stack options vertically */
-  .move-menu ul {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-  }
-  /* Base button styles */
-  .move-menu__item {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.65rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.45rem;
-    background: transparent;
-    border: 0;
-    text-align: left;
-    font-size: 0.85rem;
-    color: #0f172a;
-    transition: background 0.15s ease, color 0.15s ease;
-  }
-  .move-menu__item:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
-  .move-menu__item:focus-visible {
-    background: rgba(148, 163, 184, 0.15);
-  }
-  .move-menu__item:hover:not(:disabled) {
-    background: rgba(148, 163, 184, 0.15);
-  }
-  /* Highlight destructive options */
-  .move-menu__item--destructive {
-    color: #b91c1c;
-  }
-  /* Icon alignment */
-  .move-menu__icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: #475569;
-  }
   .move-menu__label {
     flex: 1;
+    text-align: left;
+  }
+
+  .move-menu__label--destructive {
+    color: #b91c1c;
   }
 </style>

@@ -1,10 +1,11 @@
 <script>
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import { flip } from 'svelte/animate';
   import { quintOut } from 'svelte/easing';
   import { fly } from 'svelte/transition';
-  import { Sparkles, Loader2, Menu, Archive, Trash2, FolderSymlink } from 'lucide-svelte';
+  import { Sparkles, Loader2, Menu, Archive, Trash2, FolderSymlink, MoreVertical } from 'lucide-svelte';
   import MailboxMoveMenu from './MailboxMoveMenu.svelte';
+  import Portal from './components/Portal.svelte';
   import { getLetterAvatarData } from './services/letterAvatarGenerator';
 
   /**
@@ -31,23 +32,15 @@
   export let mailboxMenuListRef = null;
   export let resolveFolderFn = () => 'inbox';
   export let pendingMoveIds = new Set();
-  export let compactActions = false;
 
   const dispatch = createEventDispatcher();
   let rowMoveMenuFor = null;
+  let rowMoveMenuAnchor = null;
+  let rowMoveMenuCoords = null;
+  let rowActionMenuFor = null; // Which email row has the action menu open (mobile)
+  let rowActionMenuAnchor = null;
+  let rowActionMenuCoords = null;
   let avatarFailures = new Set(); // Track which email IDs failed to load pravatar
-
-  // Swipe gesture state
-  let swipedRowId = null;
-  let touchStartX = 0;
-  let touchStartY = 0;
-  let currentSwipeOffset = 0;
-  let isDragging = false;
-  let preventNextClick = false;
-
-  // Detect touch capability rather than relying on viewport width
-  const hasTouchSupport = typeof window !== 'undefined' &&
-    ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
   function emit(type, detail) {
     dispatch(type, detail);
@@ -66,12 +59,6 @@
   }
 
   function handleSelectEmail(email, event) {
-    // If we just finished swiping, prevent the click from opening the email
-    if (preventNextClick) {
-      if (event) event.preventDefault();
-      return;
-    }
-    closeSwipedRow(); // Close any swiped row when selecting an email
     emit('selectEmail', { email });
   }
 
@@ -100,12 +87,18 @@
   /**
    * Opens/closes the contextual move menu for the requested row.
    */
-  function openRowMoveMenu(emailId) {
-    rowMoveMenuFor = rowMoveMenuFor === emailId ? null : emailId;
+  function toggleRowMoveMenu(emailId, anchorEl) {
+    if (rowMoveMenuFor === emailId) {
+      closeRowMoveMenu();
+      return;
+    }
+    rowMoveMenuFor = emailId;
+    rowMoveMenuAnchor = anchorEl || null;
+    updateRowMoveMenuCoords();
   }
 
   function handleRowMove(email, targetFolderId) {
-    rowMoveMenuFor = null;
+    closeRowMoveMenu();
     emit('moveEmail', { email, targetFolderId });
   }
 
@@ -116,126 +109,154 @@
       if (target instanceof Element && target.closest('[data-row-move-control="true"]')) {
         return;
       }
-      rowMoveMenuFor = null;
+      closeRowMoveMenu();
     }
-
-    // Close swiped row if tapping outside on touch devices
-    if (swipedRowId && hasTouchSupport) {
+    // Close action menu if clicking outside
+    if (rowActionMenuFor) {
       const target = event.target;
-      if (target instanceof Element) {
-        const clickedRow = target.closest('.list-row-container');
-        const swipedRow = document.querySelector(`[data-email-id="${swipedRowId}"]`);
-
-        // If clicking outside the swiped row or on the row content (not actions), close swipe
-        if (!clickedRow || clickedRow !== swipedRow?.parentElement) {
-          closeSwipedRow();
-        }
+      if (target instanceof Element && target.closest('[data-row-action-menu="true"]')) {
+        return;
       }
+      closeRowActionMenu();
     }
   }
 
   /**
-   * Swipe gesture handlers for mobile touch interactions
+   * Toggles the mobile action menu for a specific email row.
    */
-  function handleTouchStart(event, emailId) {
-    if (!hasTouchSupport) {
-      console.log('[Touch] No touch support, skipping');
+  function toggleRowActionMenu(emailId, anchorEl, event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    if (rowActionMenuFor === emailId) {
+      closeRowActionMenu();
       return;
     }
-
-    const touch = event.touches[0];
-    if (!touch) return;
-
-    console.log('[Touch] Start:', emailId, touch.clientX, touch.clientY);
-    touchStartX = touch.clientX;
-    touchStartY = touch.clientY;
-    isDragging = false;
+    rowActionMenuFor = emailId;
+    rowActionMenuAnchor = anchorEl || null;
+    updateRowActionMenuCoords();
   }
 
-  function handleTouchMove(event, emailId) {
-    if (!hasTouchSupport) return;
+  function closeRowActionMenu() {
+    rowActionMenuFor = null;
+    rowActionMenuAnchor = null;
+    rowActionMenuCoords = null;
+  }
 
-    const touch = event.touches[0];
-    if (!touch) return;
-
-    const deltaX = touchStartX - touch.clientX;
-    const deltaY = Math.abs(touch.clientY - touchStartY);
-
-    // Only register horizontal swipe if it's more horizontal than vertical
-    if (Math.abs(deltaX) > 10 && Math.abs(deltaX) > deltaY * 1.5) {
-      if (!isDragging) {
-        isDragging = true;
-        swipedRowId = emailId;
-        console.log('[Touch] Started dragging:', emailId);
-      }
-      event.preventDefault(); // Prevent scroll while swiping
-
-      // Limit swipe distance to reasonable bounds (max 120px)
-      const maxSwipe = 120;
-      // Allow swipe left (negative) to reveal actions
-      currentSwipeOffset = Math.max(-maxSwipe, Math.min(0, -deltaX));
-      console.log('[Touch] Move offset:', currentSwipeOffset);
+  /**
+   * Handle archive from action menu
+   */
+  function handleActionMenuArchive(email, event) {
+    if (event) {
+      event.stopPropagation();
     }
+    closeRowActionMenu();
+    handleArchiveEmail(email);
   }
 
-  function handleTouchEnd(event, emailId) {
-    if (!hasTouchSupport) {
+  /**
+   * Handle delete from action menu
+   */
+  function handleActionMenuDelete(email, event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    closeRowActionMenu();
+    handleDeleteEmail(email);
+  }
+
+  /**
+   * Handle opening move menu from action menu
+   */
+  function handleActionMenuMove(emailId, anchorEl, event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    closeRowActionMenu();
+    toggleRowMoveMenu(emailId, anchorEl);
+  }
+
+  function closeRowMoveMenu() {
+    rowMoveMenuFor = null;
+    rowMoveMenuAnchor = null;
+    rowMoveMenuCoords = null;
+  }
+
+  function updateRowMoveMenuCoords() {
+    if (!rowMoveMenuAnchor || typeof window === 'undefined' || !rowMoveMenuAnchor.isConnected) {
+      closeRowMoveMenu();
       return;
     }
+    const rect = rowMoveMenuAnchor.getBoundingClientRect();
+    const viewportWidth = Math.max(window.innerWidth || 0, 1);
+    const viewportHeight = Math.max(window.innerHeight || 0, 1);
+    const horizontalPadding = 12;
+    const defaultWidth = 280;
+    const width = Math.min(defaultWidth, viewportWidth - horizontalPadding * 2);
+    const maxLeft = viewportWidth - horizontalPadding - width;
+    const desiredLeft = rect.right - width;
+    const left = Math.max(horizontalPadding, Math.min(desiredLeft, maxLeft));
+    const belowSpace = viewportHeight - rect.bottom;
+    const estimatedMenuHeight = 320;
+    const shouldShowAbove = belowSpace < estimatedMenuHeight && rect.top > estimatedMenuHeight;
+    const top = shouldShowAbove
+      ? Math.max(horizontalPadding, rect.top - 8 - estimatedMenuHeight)
+      : rect.bottom + 8;
 
-    if (isDragging) {
-      event.preventDefault(); // Prevent the synthetic click event
-      preventNextClick = true; // Prevent click event after swipe
-      setTimeout(() => { preventNextClick = false; }, 350);
+    rowMoveMenuCoords = {
+      left: Math.round(left),
+      top: Math.round(top),
+      width: Math.round(width),
+      placement: shouldShowAbove ? 'above' : 'below'
+    };
+  }
 
-      const threshold = -40; // Minimum swipe distance to keep actions visible
-
-      if (currentSwipeOffset < threshold) {
-        // Swipe was far enough - snap to revealed state
-        swipedRowId = emailId;
-        currentSwipeOffset = -120; // Snap to full reveal
-      } else {
-        // Swipe wasn't far enough - snap back closed
-        swipedRowId = null;
-        currentSwipeOffset = 0;
-      }
+  function updateRowActionMenuCoords() {
+    if (!rowActionMenuAnchor || typeof window === 'undefined') {
+      rowActionMenuCoords = null;
+      return;
     }
-
-    isDragging = false;
+    const rect = rowActionMenuAnchor.getBoundingClientRect();
+    const viewportWidth = Math.max(window.innerWidth || 0, 1);
+    const horizontalPadding = 12;
+    const menuWidth = Math.min(260, viewportWidth - horizontalPadding * 2);
+    const maxLeft = viewportWidth - horizontalPadding - menuWidth;
+    const left = Math.max(horizontalPadding, Math.min(rect.left, maxLeft));
+    const top = rect.bottom + 8;
+    rowActionMenuCoords = {
+      left: Math.round(left),
+      top: Math.round(top),
+      width: Math.round(menuWidth)
+    };
   }
 
-  function closeSwipedRow() {
-    swipedRowId = null;
-    currentSwipeOffset = 0;
-  }
-
-  function getRowTransform(emailId, isSelected) {
-    // If swiped, apply swipe transform (takes precedence over selected state)
-    if (swipedRowId === emailId) {
-      const swipeOffset = isDragging ? currentSwipeOffset : -120;
-      const baseOffset = isSelected ? 8 : 0; // Account for selected state offset
-      const scale = isSelected ? 1.02 : 1; // Account for selected state scale
-      return `translateX(${baseOffset + swipeOffset}px) scale(${scale})`;
+  function handleViewportShift() {
+    if (rowMoveMenuFor) {
+      updateRowMoveMenuCoords();
     }
-    // If selected but not swiped, the CSS class handles the transform
-    // Return empty string to let CSS take over
-    return '';
-  }
-
-  // Debug logging to help troubleshoot (can be removed later)
-  $: if (typeof window !== 'undefined' && swipedRowId) {
-    console.log('[Swipe Debug]', {
-      swipedRowId,
-      currentSwipeOffset,
-      isDragging,
-      hasTouchSupport
-    });
+    if (rowActionMenuFor) {
+      updateRowActionMenuCoords();
+    }
   }
 
   onMount(() => {
-    console.log('[EmailListPane] Touch support:', hasTouchSupport);
     document.addEventListener('pointerdown', handleGlobalPointer);
-    return () => document.removeEventListener('pointerdown', handleGlobalPointer);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleViewportShift);
+      window.addEventListener('scroll', handleViewportShift, true);
+    }
+    return () => {
+      document.removeEventListener('pointerdown', handleGlobalPointer);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', handleViewportShift);
+        window.removeEventListener('scroll', handleViewportShift, true);
+      }
+    };
+  });
+
+  onDestroy(() => {
+    closeRowMoveMenu();
+    closeRowActionMenu();
   });
 </script>
 
@@ -259,33 +280,23 @@
             placeholder="Search emails..."
             value={search}
             on:input={handleSearch}
-            class="mailbox-search-input w-full rounded-lg border border-slate-200 bg-white pl-4 py-2 text-base text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-200"
-            class:pr-16={compactActions}
-            class:pr-32={!compactActions}
+            class="mailbox-search-input w-full rounded-lg border border-slate-200 bg-white pl-4 py-2 text-base text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-200 pr-12"
           />
           <button
             type="button"
-            class="absolute inset-y-0 right-0 btn btn--primary btn--compact mailbox-ai-trigger"
-            class:mailbox-ai-trigger--compact={compactActions}
+            class="absolute inset-y-0 right-0 btn btn--primary btn--compact mailbox-ai-trigger mailbox-ai-trigger--icon-only"
+            aria-label={mailboxCommandPendingKey ? (activeMailboxActionLabel ? `${activeMailboxActionLabel}…` : 'Working…') : 'AI Actions'}
             aria-haspopup="menu"
             aria-expanded={mailboxActionsOpen && mailboxActionsHost === 'list'}
+            title={mailboxCommandPendingKey ? (activeMailboxActionLabel ? `${activeMailboxActionLabel}…` : 'Working…') : 'AI Actions'}
             on:click={() => handleToggleActions('list')}
             disabled={!hasMailboxCommands || filtered.length === 0 || !!mailboxCommandPendingKey}
           >
-            <span class="flex items-center gap-1">
-              {#if mailboxCommandPendingKey}
-                <Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
-              {:else}
-                <Sparkles class="h-4 w-4" aria-hidden="true" />
-              {/if}
-            </span>
-            <span class="mailbox-ai-trigger__label" class:hidden={compactActions}>
-              {#if mailboxCommandPendingKey}
-                {activeMailboxActionLabel ? `${activeMailboxActionLabel}…` : 'Working…'}
-              {:else}
-                AI Actions
-              {/if}
-            </span>
+            {#if mailboxCommandPendingKey}
+              <Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
+            {:else}
+              <Sparkles class="h-4 w-4" aria-hidden="true" />
+            {/if}
           </button>
           {#if mailboxActionsOpen && mailboxActionsHost === 'list'}
             <div
@@ -332,7 +343,7 @@
       </div>
     </div>
   </div>
-  <div class="flex-1 overflow-y-auto">
+  <div class="flex-1 mailbox-list-scroll">
     {#if !filtered || filtered.length === 0}
       <div class="p-6 text-sm text-slate-500">No emails match your filter.</div>
     {:else}
@@ -344,25 +355,13 @@
             in:fly={{ y: 18, duration: 180, easing: quintOut }}
             out:fly={{ y: -18, duration: 220, opacity: 0.1, easing: quintOut }}
           >
-            <!-- Swipe action background (visible on touch devices when swiped) -->
-            {#if hasTouchSupport && swipedRowId === email.id}
-              <div class="swipe-actions-background">
-                <div class="swipe-action-hint">
-                  {#if resolveFolderFn(email) !== 'archive'}
-                    <Archive class="h-5 w-5" />
-                  {/if}
-                  <FolderSymlink class="h-5 w-5" />
-                  <Trash2 class="h-5 w-5 text-rose-600" />
-                </div>
-              </div>
-            {/if}
             <button
               type="button"
-              data-email-id={email.id}
-              class="list-row w-full text-left px-4 py-3 border-b border-slate-200 hover:bg-slate-50 cursor-pointer"
+              class="list-row w-full px-4 py-3 border-b border-slate-200 hover:bg-slate-50 cursor-pointer text-left"
               class:list-row--selected={selected?.id === email.id}
               class:list-row--unread={!email.read}
-              style="{getRowTransform(email.id, selected?.id === email.id) ? `transform: ${getRowTransform(email.id, selected?.id === email.id)};` : ''} transition: {isDragging && swipedRowId === email.id ? 'none' : 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'}; will-change: {isDragging && swipedRowId === email.id ? 'transform' : 'auto'};"
+              aria-pressed={selected?.id === email.id}
+              aria-label={`Open email from ${escapeHtmlFn(email.from)}`}
               on:click={(event) => handleSelectEmail(email, event)}
               on:keydown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
@@ -370,9 +369,6 @@
                   handleSelectEmail(email, event);
                 }
               }}
-              on:touchstart={(event) => handleTouchStart(event, email.id)}
-              on:touchmove={(event) => handleTouchMove(event, email.id)}
-              on:touchend={(event) => handleTouchEnd(event, email.id)}
             >
           <div class="flex items-start gap-3">
             {#if email.avatar || email.companyLogoUrl}
@@ -403,7 +399,20 @@
               <div class="flex items-center gap-2">
                 <span class="font-semibold truncate" class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.from)}</span>
                 <span class="text-xs text-slate-400 whitespace-nowrap">{formatRelativeTimestampFn(email.timestampIso, email.timestamp)}</span>
-                <div class="row-actions ml-auto" class:row-actions--visible={rowMoveMenuFor === email.id || swipedRowId === email.id}>
+                <!-- Mobile: Touch zone for action menu -->
+                {#if mobile}
+                  <button
+                    type="button"
+                    class="mobile-action-zone ml-auto"
+                    aria-label="Open actions menu for {escapeHtmlFn(email.from)}"
+                    data-row-action-menu="true"
+                    on:click|stopPropagation={(e) => toggleRowActionMenu(email.id, e.currentTarget, e)}
+                  >
+                    <MoreVertical class="h-4 w-4" aria-hidden="true" />
+                  </button>
+                {/if}
+                <!-- Desktop: Inline action buttons -->
+                <div class="row-actions ml-auto" class:hidden={mobile} class:row-actions--visible={rowMoveMenuFor === email.id}>
                   {#if resolveFolderFn(email) !== 'archive'}
                     <button
                       type="button"
@@ -422,7 +431,7 @@
                       aria-label="Move email"
                       aria-expanded={rowMoveMenuFor === email.id}
                       data-row-move-control="true"
-                      on:click|stopPropagation={() => openRowMoveMenu(email.id)}>
+                      on:click|stopPropagation={(e) => toggleRowMoveMenu(email.id, e.currentTarget)}>
                       {#if pendingMoveIds.has(email.id)}
                         <Loader2 class="h-4 w-4 animate-spin" />
                       {:else}
@@ -451,7 +460,6 @@
               <p class="text-sm truncate" class:font-medium={!email.read} class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.subject)}</p>
               <p class="text-sm text-slate-500 truncate">{escapeHtmlFn(email.preview)}</p>
             </div>
-          </div>
             </button>
           </div>
         {/each}
@@ -459,6 +467,86 @@
     {/if}
   </div>
 </section>
+
+{#if rowMoveMenuFor && rowMoveMenuCoords}
+  {@const activeMoveEmail = filtered.find((item) => item?.id === rowMoveMenuFor)}
+  {#if activeMoveEmail}
+    <Portal target="mailbox-row-menu-root">
+      <div
+        class="row-move-portal menu-surface"
+        data-row-move-control="true"
+        style={`top:${rowMoveMenuCoords.top}px;left:${rowMoveMenuCoords.left}px;width:${rowMoveMenuCoords.width}px;position:fixed;`}
+      >
+        <MailboxMoveMenu
+          currentFolderId={resolveFolderFn(activeMoveEmail)}
+          pending={pendingMoveIds.has(activeMoveEmail.id)}
+          on:select={(event) => handleRowMove(activeMoveEmail, event.detail.targetId)} />
+      </div>
+    </Portal>
+  {/if}
+{/if}
+
+<!-- Mobile action menu portal -->
+{#if rowActionMenuFor && rowActionMenuCoords}
+  {@const activeActionEmail = filtered.find((item) => item?.id === rowActionMenuFor)}
+  {#if activeActionEmail}
+    <Portal target="mailbox-row-menu-root">
+      <div
+        class="row-action-menu-portal menu-surface"
+        data-row-action-menu="true"
+        style={`top:${rowActionMenuCoords.top}px;left:${rowActionMenuCoords.left}px;width:${rowActionMenuCoords.width}px;position:fixed;`}
+      >
+        <div class="menu-list">
+          {#if resolveFolderFn(activeActionEmail) !== 'archive'}
+            <button
+              type="button"
+              class="menu-item text-left w-full"
+              data-row-action-menu="true"
+              on:click={(e) => handleActionMenuArchive(activeActionEmail, e)}
+            >
+              <div class="flex items-center gap-3">
+                <div class="menu-item-icon">
+                  <Archive class="h-4 w-4" />
+                </div>
+                <span class="font-medium text-slate-900">Archive</span>
+              </div>
+            </button>
+          {/if}
+          <button
+            type="button"
+            class="menu-item text-left w-full"
+            data-row-action-menu="true"
+            on:click={(e) => handleActionMenuMove(activeActionEmail.id, rowActionMenuAnchor, e)}
+          >
+            <div class="flex items-center gap-3">
+              <div class="menu-item-icon">
+                {#if pendingMoveIds.has(activeActionEmail.id)}
+                  <Loader2 class="h-4 w-4 animate-spin" />
+                {:else}
+                  <FolderSymlink class="h-4 w-4" />
+                {/if}
+              </div>
+              <span class="font-medium text-slate-900">Move to...</span>
+            </div>
+          </button>
+          <button
+            type="button"
+            class="menu-item text-left w-full"
+            data-row-action-menu="true"
+            on:click={(e) => handleActionMenuDelete(activeActionEmail, e)}
+          >
+            <div class="flex items-center gap-3">
+              <div class="menu-item-icon text-rose-600">
+                <Trash2 class="h-4 w-4" />
+              </div>
+              <span class="font-medium text-rose-600">Delete</span>
+            </div>
+          </button>
+        </div>
+      </div>
+    </Portal>
+  {/if}
+{/if}
 
 <style>
   /**
@@ -474,39 +562,31 @@
     z-index: var(--z-toolbar-surface, 150);
   }
 
-  /* List row container wrapper for swipe support */
+  /**
+   * Scroll container for the list maintains vertical scrolling while allowing dropdown portals to overflow horizontally.
+   * @usage - Wrapper div around the .list-rows stack
+   * @overflow - y: auto for scrolling, x: visible so dropdown portals are not clipped
+   */
+  .mailbox-list-scroll {
+    overflow-y: auto;
+    overflow-x: visible;
+  }
+
+  /**
+   * List row container provides an anchoring context without clipping overlays.
+   * @usage - Wrapper div around each mailbox row item
+   * @overflow - Must remain visible on both axes so dropdown portals can align
+   * @related - .row-move-portal for external dropdown positioning
+   */
   .list-row-container {
     position: relative;
-    overflow: hidden;
-  }
-
-  /* Swipe actions background (visible behind sliding content on mobile) */
-  .swipe-actions-background {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 120px;
-    background: linear-gradient(to left, rgba(248, 113, 113, 0.1), transparent);
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding-right: 1rem;
-    pointer-events: none;
-  }
-
-  .swipe-action-hint {
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
-    color: #64748b;
+    overflow: visible;
   }
 
   /* Base list row for hover actions */
   .list-row {
     position: relative;
     background: white;
-    touch-action: pan-y; /* Allow vertical scroll but capture horizontal gestures */
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* Springy animation */
   }
 
@@ -569,18 +649,73 @@
   .row-action-menu {
     position: relative;
   }
-  /* Per-row move dropdown */
-  .row-move-surface {
+
+  /* Mobile action zone - right-side touch area to open action menu */
+  .mobile-action-zone {
     position: absolute;
+    top: 0;
     right: 0;
-    top: calc(100% + 0.35rem);
-    z-index: 25;
-    background: white;
-    border-radius: 0.6rem;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    padding: 0.35rem;
-    min-width: 12rem;
+    bottom: 0;
+    width: 100px; /* Slightly wider than the three button area */
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    z-index: 5;
+    /* Visual feedback on press */
+    transition: background 0.15s ease;
+  }
+
+  .mobile-action-zone:active {
+    background: rgba(148, 163, 184, 0.1);
+  }
+
+  /* Mobile action menu portal */
+  .row-action-menu-portal {
+    z-index: var(--z-dropdown, 200);
+  }
+
+  /**
+   * Portaled move dropdown inherits .menu-surface tokens but tracks viewport positioning here.
+   * @usage - Applied to the div rendered inside Portal for row move controls
+   * @z-index-warning - Uses var(--z-dropdown); avoid nesting additional z-index contexts inside list rows
+   * @related - .menu-surface in app-shared.css, Portal.svelte
+   */
+  .row-move-portal {
+    max-height: min(360px, 65vh);
+    pointer-events: auto;
+  }
+
+  /**
+   * Mobile-specific overflow trigger inherits row action styling while remaining thumb-friendly.
+   * @usage - Only rendered when `mobile` is true in the list view
+   * @related - .row-action-btn for base gradients, .row-action-menu-portal for dropdown contents
+   */
+  .mobile-action-zone {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2rem;
+    width: 2rem;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: rgba(255, 255, 255, 0.9);
+    color: #475569;
+    box-shadow: 0 10px 18px -10px rgba(15, 23, 42, 0.35);
+  }
+
+  .mobile-action-zone:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.35), 0 10px 18px -10px rgba(15, 23, 42, 0.35);
+  }
+
+  /**
+   * Portal shell for the mobile action dropdown follows the shared menu-surface tokens with fixed positioning.
+   * @usage - Surrounds Archive/Move/Delete buttons when the mobile overflow trigger is tapped
+   * @z-index-warning - inherits var(--z-dropdown) via menu-surface so other overlays must avoid the same tier
+   */
+  .row-action-menu-portal {
+    pointer-events: auto;
+    max-height: min(360px, 70vh);
   }
 
   .list-rows {
