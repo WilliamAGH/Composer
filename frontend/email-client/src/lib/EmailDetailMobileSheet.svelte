@@ -119,7 +119,7 @@
 
 <style>
   /**
-   * Mobile detail sheet mirrors Compose/Ai sheets so reading view shares the same frosted layering.
+   * Mobile detail sheet mirrors Compose/Ai sheets so reading view shares the same solid white background.
    * @usage - Rendered from App.svelte when mobile detail overlay is visible
    * @related - ComposeMobileSheet.svelte, AiSummaryMobileSheet.svelte
    */
@@ -129,8 +129,7 @@
     z-index: 80;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(15, 23, 42, 0.08));
-    backdrop-filter: blur(12px);
+    background: #ffffff;
   }
 
   @supports (padding: env(safe-area-inset-top)) {

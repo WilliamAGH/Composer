@@ -146,7 +146,7 @@
     }
   }
 
-  const composeDraftOption = { key: 'compose', label: 'AI Compose' };
+  const composeDraftOption = { key: 'compose', label: 'Compose' };
   const fallbackDraftOptions = [
     { key: 'draft', label: 'Draft Reply' },
     composeDraftOption
@@ -202,7 +202,7 @@
       seen.add(fn.key);
       const label = fn.key === 'draft'
         ? 'Draft Reply'
-        : fn.label || (fn.key === 'compose' ? 'AI Compose' : fn.key);
+        : fn.label || (fn.key === 'compose' ? 'Compose' : fn.key);
       entries.push({ key: fn.key, label });
     }
     return entries.length ? entries : fallbackDraftOptions;
@@ -543,17 +543,19 @@
           placeholder="Subject"
           class="field" />
 
-        {#if journeyOverlay?.visible}
-          <AiLoadingJourney
-            steps={journeyOverlay.steps || []}
-            activeStepId={journeyOverlay.activeStepId}
-            headline={journeyOverlay.headline}
-            subhead={journeyOverlay.subhead}
-            show={journeyOverlay.visible}
-            inline={true}
-            subdued={true}
-            className="border-slate-200" />
-        {/if}
+        <div class="compose-journey-slot" class:has-journey={journeyOverlay?.visible}>
+          {#if journeyOverlay?.visible}
+            <AiLoadingJourney
+              steps={journeyOverlay.steps || []}
+              activeStepId={journeyOverlay.activeStepId}
+              headline={journeyOverlay.headline}
+              subhead={journeyOverlay.subhead}
+              show={journeyOverlay.visible}
+              inline={true}
+              subdued={true}
+              className="border-slate-200" />
+          {/if}
+        </div>
 
         <textarea
           bind:this={inputMessage}
@@ -632,7 +634,7 @@
             </div>
           {:else}
             <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill" on:click={runPrimaryDraft}>
-              <Wand2 class="h-4 w-4" /> <span class="compose-ai-label">AI Compose</span>
+              <Wand2 class="h-4 w-4" /> <span class="compose-ai-label">Compose</span>
             </button>
           {/if}
         </div>
@@ -699,7 +701,7 @@
         aria-labelledby="composePromptTitle"
         aria-describedby="composePromptDescription"
         bind:this={composePromptCard}>
-        <p class="compose-prompt-eyebrow">AI Compose</p>
+        <p class="compose-prompt-eyebrow">Compose</p>
         <h3 id="composePromptTitle">What should we write?</h3>
         <p id="composePromptDescription">Give the assistant a quick brief—who it's for, the outcome, or any details we should weave in.</p>
         <div class="compose-prompt-suggestions" aria-label="Prompt suggestions">
@@ -743,6 +745,19 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+  }
+
+  .compose-journey-slot {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out, opacity 0.2s ease-in-out, margin 0.3s ease-in-out;
+  }
+
+  .compose-journey-slot.has-journey {
+    max-height: 200px;
+    opacity: 1;
+    margin-bottom: 0.75rem;
   }
   /**
    * Shared input look keeps iOS 16px minimum font while trimming desktop padding for a lighter feel.
@@ -929,8 +944,8 @@
   .compose-prompt-backdrop {
     position: fixed;
     inset: 0;
-    background: radial-gradient(circle at top, rgba(148, 163, 184, 0.15), rgba(15, 23, 42, 0.45));
-    backdrop-filter: blur(16px) saturate(110%);
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -939,10 +954,10 @@
   }
   .compose-prompt-card {
     width: min(480px, 100%);
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.92));
-    border-radius: 24px;
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    box-shadow: 0 25px 60px -25px rgba(15, 23, 42, 0.4);
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     padding: 1.75rem;
     display: flex;
     flex-direction: column;
@@ -953,7 +968,7 @@
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.3em;
-    color: rgba(99, 102, 241, 0.7);
+    color: #64748b;
     margin-bottom: -0.25rem;
   }
   .compose-prompt-card h3 {
@@ -981,7 +996,7 @@
     cursor: pointer;
   }
   .compose-prompt-chip:hover {
-    border-color: rgba(99, 102, 241, 0.5);
+    border-color: rgba(100, 116, 139, 0.6);
     background: white;
   }
   .compose-prompt-textarea {
@@ -1002,7 +1017,7 @@
 
   @media (max-width: 640px) {
     .compose-prompt-card {
-      border-radius: 20px;
+      border-radius: 12px;
       padding: 1.25rem;
       gap: 0.75rem;
     }

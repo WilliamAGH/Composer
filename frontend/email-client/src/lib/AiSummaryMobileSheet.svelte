@@ -15,9 +15,10 @@
 
   const dispatch = createEventDispatcher();
 
-  $: title = panelState?.title || 'AI Summary';
-  $: commandKey = (panelState?.commandKey || 'summarize').toLowerCase();
+  $: rawTitle = panelState?.title || 'Summary';
+  $: commandKey = (panelState?.commandKey || journeyOverlay?.commandKey || 'summarize').toLowerCase();
   $: badgeLabel = commandKey === 'translate' ? 'Translation' : 'Summary';
+  $: title = rawTitle?.replace(/^AI\s+/i, '') || badgeLabel;
   $: updatedLabel = panelState?.updatedAt
     ? new Date(panelState.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : null;
@@ -57,7 +58,6 @@
       on:toggleMenu={handleMenuToggle}>
       <div slot="center" class="ai-summary-mobile-sheet__title">
         <p class="ai-summary-mobile-sheet__eyebrow">{badgeLabel}</p>
-        <p class="ai-summary-mobile-sheet__headline">{title}</p>
         {#if updatedLabel}
           <p class="ai-summary-mobile-sheet__meta">Updated at {updatedLabel}</p>
         {/if}
@@ -99,8 +99,7 @@
     z-index: 90;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(15, 23, 42, 0.1));
-    backdrop-filter: blur(12px);
+    background: #ffffff;
     padding: 0.5rem 1rem 1rem;
   }
 
@@ -120,21 +119,12 @@
     min-width: 0;
   }
 
+
   .ai-summary-mobile-sheet__eyebrow {
     font-size: 0.65rem;
     letter-spacing: 0.35em;
     text-transform: uppercase;
-    color: rgba(99, 102, 241, 0.7);
-  }
-
-  .ai-summary-mobile-sheet__headline {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #0f172a;
-    line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    color: #64748b;
   }
 
   .ai-summary-mobile-sheet__meta {

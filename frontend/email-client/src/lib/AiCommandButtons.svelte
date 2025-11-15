@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
 import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck, Wand2 } from 'lucide-svelte';
+import Portal from './components/Portal.svelte';
 
   /**
    * Renders the AI command buttons (summary/translate/etc.) so App.svelte only passes metadata.
@@ -136,29 +137,20 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   }
 
   /**
-   * Positions the action menu below the trigger button on mobile.
+   * Positions a dropdown menu below its trigger button on mobile tray mode.
    */
-  function positionActionMenu() {
-    if (!mobile || !trayMode || !actionButtonEl || !actionDropdownEl) return;
-    const buttonRect = actionButtonEl.getBoundingClientRect();
-    actionDropdownEl.style.top = `${buttonRect.bottom + 8}px`;
-  }
-
-  /**
-   * Positions the translate menu below the trigger button on mobile.
-   */
-  function positionTranslateMenu() {
-    if (!mobile || !trayMode || !translateButtonEl || !translateDropdownEl) return;
-    const buttonRect = translateButtonEl.getBoundingClientRect();
-    translateDropdownEl.style.top = `${buttonRect.bottom + 8}px`;
+  function positionMenu(buttonEl, dropdownEl) {
+    if (!mobile || !trayMode || !buttonEl || !dropdownEl) return;
+    const buttonRect = buttonEl.getBoundingClientRect();
+    dropdownEl.style.top = `${buttonRect.bottom + 8}px`;
   }
 
   $: if (actionMenuOpen && mobile && trayMode && actionButtonEl && actionDropdownEl) {
-    positionActionMenu();
+    positionMenu(actionButtonEl, actionDropdownEl);
   }
 
   $: if (translateMenuOpen && mobile && trayMode && translateButtonEl && translateDropdownEl) {
-    positionTranslateMenu();
+    positionMenu(translateButtonEl, translateDropdownEl);
   }
 
   function resolveIconComponent(key) {
@@ -199,13 +191,13 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
     <button
       type="button"
       class="btn btn--secondary btn--compact action-pill"
-      aria-label="Run AI Assistant"
-      title="Run AI Assistant"
+      aria-label="Run Assistant"
+      title="Run Assistant"
       on:click={() => handleClick('summarize')}>
       <span class="action-pill__icon">
         <Sparkles class="h-4 w-4 text-slate-500" aria-hidden="true" />
       </span>
-      <span class="action-pill__label">Run AI Assistant</span>
+      <span class="action-pill__label">Assistant</span>
     </button>
   {:else}
       <div class="relative action-pill__dropdown" class:span-2={mobile && !trayMode}>
@@ -238,29 +230,57 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
           {/if}
         </button>
       {#if actionMenuOpen}
-        <div
-          class="absolute menu-surface action-dropdown"
-          data-layer="nested"
-          bind:this={actionDropdownEl}>
-          <span class="menu-eyebrow">Suggested Actions</span>
-          <div class="menu-list">
-            {#each actionMenuEntries as option (option.id || option.label)}
-              <button
-                type="button"
-                class="menu-item"
-                on:click={() => handleActionSelect(option)}>
-                <div class="flex items-center min-w-0 gap-2">
-                  {#if option.aiGenerated}
-                    <span class="menu-item-icon" aria-hidden="true">
-                      <Sparkles class="h-4 w-4" />
-                    </span>
-                  {/if}
-                  <span class="truncate">{option.label}</span>
-                </div>
-              </button>
-            {/each}
+        {#if mobile && trayMode}
+          <Portal target="body">
+            <div
+              class="menu-surface action-dropdown mobile-tray-dropdown"
+              data-layer="nested"
+              bind:this={actionDropdownEl}>
+              <span class="menu-eyebrow">Suggested Actions</span>
+              <div class="menu-list">
+                {#each actionMenuEntries as option (option.id || option.label)}
+                  <button
+                    type="button"
+                    class="menu-item mobile-tray-menu-item"
+                    on:click={() => handleActionSelect(option)}>
+                    <div class="flex items-center min-w-0 gap-2">
+                      {#if option.aiGenerated}
+                        <span class="menu-item-icon" aria-hidden="true">
+                          <Sparkles class="h-4 w-4" />
+                        </span>
+                      {/if}
+                      <span class="truncate">{option.label}</span>
+                    </div>
+                  </button>
+                {/each}
+              </div>
+            </div>
+          </Portal>
+        {:else}
+          <div
+            class="absolute menu-surface action-dropdown"
+            data-layer="nested"
+            bind:this={actionDropdownEl}>
+            <span class="menu-eyebrow">Suggested Actions</span>
+            <div class="menu-list">
+              {#each actionMenuEntries as option (option.id || option.label)}
+                <button
+                  type="button"
+                  class="menu-item"
+                  on:click={() => handleActionSelect(option)}>
+                  <div class="flex items-center min-w-0 gap-2">
+                    {#if option.aiGenerated}
+                      <span class="menu-item-icon" aria-hidden="true">
+                        <Sparkles class="h-4 w-4" />
+                      </span>
+                    {/if}
+                    <span class="truncate">{option.label}</span>
+                  </div>
+                </button>
+              {/each}
+            </div>
           </div>
-        </div>
+        {/if}
       {/if}
     </div>
 
@@ -331,31 +351,61 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
             aria-hidden="true" />
         </button>
         {#if translateMenuOpen}
-          <div class="absolute menu-surface translate-dropdown" data-layer="nested" bind:this={translateDropdownEl}>
-            <span class="menu-eyebrow">Translate To</span>
-            <div class="menu-list">
-              {#each orderedVariants as variant (variant.key)}
+          {#if mobile && trayMode}
+            <Portal target="body">
+              <div class="menu-surface translate-dropdown mobile-tray-dropdown" data-layer="nested" bind:this={translateDropdownEl}>
+                <span class="menu-eyebrow">Translate To</span>
+                <div class="menu-list">
+                  {#each orderedVariants as variant (variant.key)}
+                    <button
+                      type="button"
+                      class="menu-item mobile-tray-menu-item"
+                      on:click={() => handleVariantSelect(variant.key)}>
+                      <div class="flex items-center min-w-0">
+                        <span class="menu-item-icon">
+                          <Languages class="h-4 w-4" />
+                        </span>
+                        <span class="truncate">{variant.label}</span>
+                      </div>
+                    </button>
+                  {/each}
+                </div>
                 <button
                   type="button"
-                  class="menu-item"
-                  on:click={() => handleVariantSelect(variant.key)}>
-                  <div class="flex items-center min-w-0">
-                    <span class="menu-item-icon">
-                      <Languages class="h-4 w-4" />
-                    </span>
-                    <span class="truncate">{variant.label}</span>
-                  </div>
+                  class="mt-4 panel-chip justify-center w-full"
+                  on:click={() => { triggerComingSoon('Translate customization'); translateMenuOpen = false; }}>
+                  <Sparkles class="h-4 w-4" />
+                  Customize
                 </button>
-              {/each}
+              </div>
+            </Portal>
+          {:else}
+            <div class="absolute menu-surface translate-dropdown" data-layer="nested" bind:this={translateDropdownEl}>
+              <span class="menu-eyebrow">Translate To</span>
+              <div class="menu-list">
+                {#each orderedVariants as variant (variant.key)}
+                  <button
+                    type="button"
+                    class="menu-item"
+                    on:click={() => handleVariantSelect(variant.key)}>
+                    <div class="flex items-center min-w-0">
+                      <span class="menu-item-icon">
+                        <Languages class="h-4 w-4" />
+                      </span>
+                      <span class="truncate">{variant.label}</span>
+                    </div>
+                  </button>
+                {/each}
+              </div>
+              <button
+                type="button"
+                class="mt-4 panel-chip justify-center w-full"
+                on:click={() => { triggerComingSoon('Translate customization'); translateMenuOpen = false; }}>
+                <Sparkles class="h-4 w-4" />
+                Customize
+              </button>
             </div>
-            <button
-              type="button"
-              class="mt-4 panel-chip justify-center w-full"
-              on:click={() => { triggerComingSoon('Translate customization'); translateMenuOpen = false; }}>
-              <Sparkles class="h-4 w-4" />
-              Customize
-            </button>
-          </div>
+          {/if}
         {/if}
       </div>
     {/if}
@@ -549,8 +599,31 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
     z-index: 250;
     background: white;
     border-radius: 0.85rem;
-    border: 1px solid rgba(148, 163, 184, 0.4);
-    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.18);
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    padding: 0.5rem;
+    min-width: 11rem;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  /**
+   * Standalone class for mobile tray dropdowns when using Portal.
+   * This class works independently of parent context, necessary because Portal
+   * moves the element to document.body, breaking descendant selectors.
+   * @usage - Applied to dropdowns rendered inside Portal on mobile tray mode
+   * @related - .ai-action-toolbar.mobile.tray-mode .action-dropdown (non-portal version)
+   */
+  .mobile-tray-dropdown {
+    position: fixed;
+    right: 1rem;
+    top: auto;
+    bottom: auto;
+    z-index: 250;
+    background: white;
+    border-radius: 0.85rem;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     padding: 0.5rem;
     min-width: 11rem;
     max-height: 80vh;
@@ -584,6 +657,32 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   }
 
   /**
+   * Standalone class for menu items inside portaled dropdowns.
+   * @usage - Applied to menu items when using Portal on mobile tray mode
+   * @related - .ai-action-toolbar.mobile.tray-mode .menu-item (non-portal version)
+   */
+  .mobile-tray-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    border-radius: 0.5rem;
+    background: transparent;
+    border: none;
+    color: #0f172a;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .mobile-tray-menu-item:hover {
+    background: rgba(248, 250, 252, 0.9);
+  }
+
+  /**
    * Mobile tray mode eyebrow styling matches mobile-overflow-menu__eyebrow.
    * @usage - Section headers inside dropdowns when mobile + tray-mode are active
    */
@@ -593,6 +692,19 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
     text-transform: uppercase;
     color: #94a3b8;
     padding: 0.5rem 0.75rem;
+  }
+
+  /**
+   * Standalone class for eyebrow headers inside portaled dropdowns.
+   * @usage - Applied to section headers when using Portal on mobile tray mode
+   */
+  .mobile-tray-dropdown .menu-eyebrow {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    padding: 0.5rem 0.75rem;
+    display: block;
   }
 
   /**
@@ -607,6 +719,21 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   }
 
   .ai-action-toolbar.mobile.tray-mode .menu-item :global(svg) {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  /**
+   * Icon styling for portaled menu items.
+   */
+  .mobile-tray-menu-item .menu-item-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .mobile-tray-menu-item :global(svg) {
     width: 1rem;
     height: 1rem;
   }

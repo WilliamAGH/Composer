@@ -47,7 +47,7 @@ File map
   - `src/lib/window/windowTypes.js` – factory helpers (JS module for reuse across stores/components)
   - `src/lib/window/windowStore.js` – Svelte store managing open/minimized windows
   - `src/lib/window/WindowFrame.svelte` – shared chrome
-  - `src/lib/window/WindowDock.svelte` – minimized dock UI
+  - `src/lib/UnifiedDock.svelte` – unified dock for all minimized components
 - Feature windows: `ComposeWindow.svelte`, `AiSummaryWindow.svelte`
 - Sidebar & message UI: `MailboxSidebar.svelte`, `EmailActionToolbar.svelte`, `EmailDetailView.svelte`
 - Message UI components: `EmailActionToolbar.svelte`, `EmailDetailView.svelte`

@@ -21,7 +21,8 @@ export function createAiPanelStore() {
 
   function beginSession(key?: string | null) {
     sessionActive.set(true);
-    minimized.set(false);
+    // Don't auto-unminimize - preserve minimize state to allow accumulation in dock
+    // User can restore from dock manually if they want to see the updated content
     maximized.set(false);
     if (key) {
       activeKey.set(key);

@@ -243,7 +243,6 @@ Each bullet lists a real file (tracked in git) and what it does so you can quick
 #### UI Components & Lib Files (`frontend/email-client/src/lib`)
 - `AiCommandButtons.svelte` — Renders AI command buttons for launching catalog actions from panels.
 - `AiLoadingJourney.svelte` — Loading-state visualization while AI responses stream back.
-- `AiPanelDockChip.svelte` — Docked chip that toggles the AI side panel visibility.
 - `AiSummaryMobileSheet.svelte` — Mobile bottom sheet showing AI summaries on small screens.
 - `AiSummaryWindow.svelte` — Desktop floating window summarizing AI output.
 - `ComingSoonModal.svelte` — Modal component used for unreleased feature callouts.
@@ -260,6 +259,7 @@ Each bullet lists a real file (tracked in git) and what it does so you can quick
 - `MobileOverlayCoordinator.ts` — Utility that coordinates drawer/backdrop behavior across mobile sheets.
 - `MobileTopBar.svelte` — Mobile header with navigation + account controls.
 - `Modal.svelte` — Generic modal wrapper that handles focus traps and transitions.
+- `UnifiedDock.svelte` — Unified dock for all minimized components (compose windows, AI panels) with consistent styling and automatic spacing.
 - `WindowNotice.svelte` — Non-dismissable notice element pinned within the window manager.
 - `aiJourney.ts` — Helper functions describing AI journey steps and statuses.
 - `constants/catalogActions.ts` — Catalog of actionable AI commands exposed in the UI.
@@ -298,7 +298,6 @@ Each bullet lists a real file (tracked in git) and what it does so you can quick
 
 #### Windowing System (`frontend/email-client/src/lib/window`)
 - `WindowActionControls.svelte` — Buttons for minimizing/maximizing/closing window instances.
-- `WindowDock.svelte` — Dock container showing minimized windows or pinned notices.
 - `WindowFrame.svelte` — Chrome around each floating window, handling drag/resize.
 - `WindowProvider.svelte` — Context provider that spawns, updates, and destroys window instances.
 - `windowContext.ts` — Exports the Svelte context contract used by window child components.

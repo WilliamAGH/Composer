@@ -15,6 +15,7 @@
   } from 'lucide-svelte';
   import AiCommandButtons from './AiCommandButtons.svelte';
   import MailboxMoveMenu from './MailboxMoveMenu.svelte';
+  import Portal from './components/Portal.svelte';
 
   /**
    * Header for the selected email: shows sender info, quick actions, and AI command buttons.
@@ -220,6 +221,9 @@
             on:actionMenuToggle={(event) => emit('actionMenuToggle', event.detail)}
             on:comingSoon={(event) => emit('comingSoon', event.detail)}
           />
+        </div>
+
+        <div class="action-tray__overflow">
           <button
             bind:this={moreMenuButton}
             type="button"
@@ -231,58 +235,59 @@
             <MoreVertical class="h-4 w-4" />
           </button>
         </div>
+      </div>
+      <!-- Move menu positioned absolutely, outside the button flow -->
+      {#if moveMenuOpen}
+        <div class="move-menu-surface" bind:this={moveMenuRef}>
+          <MailboxMoveMenu currentFolderId={currentFolderId} pending={pendingMove} on:select={handleMoveSelect} />
+        </div>
+      {/if}
 
-        <!-- Move menu positioned absolutely, outside the button flow -->
-        {#if moveMenuOpen}
-          <div class="move-menu-surface" bind:this={moveMenuRef}>
-            <MailboxMoveMenu currentFolderId={currentFolderId} pending={pendingMove} on:select={handleMoveSelect} />
-          </div>
-        {/if}
-
-        <!-- Overflow menu positioned absolutely, outside the button flow -->
-        {#if moreMenuOpen}
+      <!-- Overflow menu positioned absolutely, outside the button flow -->
+      {#if moreMenuOpen}
+        <Portal target="body">
           <div class="mobile-overflow-menu" bind:this={moreMenuRef}>
-            {#if translateMenuOpen}
-              <button type="button" class="mobile-overflow-menu__item mobile-overflow-menu__item--header" on:click={() => translateMenuOpen = false}>
-                <ChevronLeft class="h-4 w-4" />
-                <span>Back</span>
-              </button>
-              <div class="mobile-overflow-menu__divider" />
-              <div class="mobile-overflow-menu__eyebrow">Translate To</div>
-              {#each orderedVariants as variant (variant.key)}
-                <button type="button" class="mobile-overflow-menu__item" on:click={() => handleVariantSelect(variant.key)}>
-                  <Languages class="h-4 w-4" />
-                  <span>{variant.label}</span>
+              {#if translateMenuOpen}
+                <button type="button" class="mobile-overflow-menu__item mobile-overflow-menu__item--header" on:click={() => translateMenuOpen = false}>
+                  <ChevronLeft class="h-4 w-4" />
+                  <span>Back</span>
                 </button>
-              {/each}
-              <div class="mobile-overflow-menu__divider" />
-              <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('comingSoon', { label: 'Translate customization' }); closeMoreMenu(); }}>
-                <Sparkles class="h-4 w-4" />
-                <span>Customize</span>
-              </button>
-            {:else}
-              <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('forward'); closeMoreMenu(); }}>
-                <Forward class="h-4 w-4" />
-                <span>Forward</span>
-              </button>
-              {#if translateEntry && orderedVariants.length}
-                <button type="button" class="mobile-overflow-menu__item" on:click={() => translateMenuOpen = true}>
-                  <Languages class="h-4 w-4" />
-                  <span>Translate</span>
+                <div class="mobile-overflow-menu__divider" />
+                <div class="mobile-overflow-menu__eyebrow">Translate To</div>
+                {#each orderedVariants as variant (variant.key)}
+                  <button type="button" class="mobile-overflow-menu__item" on:click={() => handleVariantSelect(variant.key)}>
+                    <Languages class="h-4 w-4" />
+                    <span>{variant.label}</span>
+                  </button>
+                {/each}
+                <div class="mobile-overflow-menu__divider" />
+                <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('comingSoon', { label: 'Translate customization' }); closeMoreMenu(); }}>
+                  <Sparkles class="h-4 w-4" />
+                  <span>Customize</span>
+                </button>
+              {:else}
+                <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('forward'); closeMoreMenu(); }}>
+                  <Forward class="h-4 w-4" />
+                  <span>Forward</span>
+                </button>
+                {#if translateEntry && orderedVariants.length}
+                  <button type="button" class="mobile-overflow-menu__item" on:click={() => translateMenuOpen = true}>
+                    <Languages class="h-4 w-4" />
+                    <span>Translate</span>
+                  </button>
+                {/if}
+                <button type="button" class="mobile-overflow-menu__item" on:click={() => { toggleMoveMenu(); closeMoreMenu(); }}>
+                  <FolderSymlink class="h-4 w-4" />
+                  <span>Move to folder</span>
+                </button>
+                <button type="button" class="mobile-overflow-menu__item mobile-overflow-menu__item--destructive" on:click={() => { emit('delete'); closeMoreMenu(); }}>
+                  <Trash2 class="h-4 w-4" />
+                  <span>Delete</span>
                 </button>
               {/if}
-              <button type="button" class="mobile-overflow-menu__item" on:click={() => { toggleMoveMenu(); closeMoreMenu(); }}>
-                <FolderSymlink class="h-4 w-4" />
-                <span>Move to folder</span>
-              </button>
-              <button type="button" class="mobile-overflow-menu__item mobile-overflow-menu__item--destructive" on:click={() => { emit('delete'); closeMoreMenu(); }}>
-                <Trash2 class="h-4 w-4" />
-                <span>Delete</span>
-              </button>
-            {/if}
-          </div>
+            </div>
+          </Portal>
         {/if}
-      </div>
     </div>
   {:else}
     <div class="flex items-start gap-3">
@@ -387,8 +392,8 @@
     z-index: 30;
     background: white;
     border-radius: 0.65rem;
-    border: 1px solid rgba(148, 163, 184, 0.4);
-    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.18);
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     padding: 0.35rem;
     min-width: 13rem;
   }
@@ -437,7 +442,7 @@
     border-radius: 999px;
     object-fit: cover;
     flex-shrink: 0;
-    box-shadow: 0 12px 30px -18px rgba(15, 23, 42, 0.35);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   }
 
   /**
@@ -531,8 +536,9 @@
   .action-tray {
     position: relative; /* Positioning context for absolutely positioned menus */
     width: 100%;
-    display: flex; /* Establish a flex context to control alignment of the scroller */
-    justify-content: flex-end; /* Push the scroller to the far right */
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
   }
 
   /**
@@ -542,13 +548,26 @@
    * @related - .action-tray__buttons
    */
   .action-tray__scroller {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 0.75rem; /* Consistent spacing between all buttons, works with display: contents */
-    margin-left: auto; /* Aligns the entire button group to the right */
+    gap: 0.75rem;
+    flex: 1 1 auto;
     overflow-x: auto;
     padding-bottom: 0.25rem;
+    padding-right: clamp(32px, 8vw, 56px);
     -webkit-overflow-scrolling: touch;
+  }
+
+  .action-tray__scroller::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: clamp(32px, 8vw, 56px);
+    height: 100%;
+    pointer-events: none;
+    background: linear-gradient(90deg, rgba(248, 250, 252, 0), rgba(248, 250, 252, 0.98));
   }
   /**
    * High-specificity override to guarantee all icon buttons in the tray are perfectly circular.
@@ -561,6 +580,10 @@
     height: 42px;
     padding: 0;
     flex-shrink: 0;
+  }
+
+  .action-tray__overflow {
+    flex: 0 0 auto;
   }
 
 
@@ -576,12 +599,16 @@
     top: auto;
     bottom: auto;
     z-index: 250;
-    background: white;
-    border-radius: 0.85rem;
-    border: 1px solid rgba(148, 163, 184, 0.4);
-    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.18);
-    padding: 0.5rem;
-    min-width: 11rem;
+    background: rgba(255, 255, 255, 0.88);
+    border-radius: 0.65rem;
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    box-shadow:
+      0 18px 40px -28px rgba(15, 23, 42, 0.45),
+      0 10px 25px -30px rgba(15, 23, 42, 0.35);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 0.35rem;
+    min-width: 9rem;
     max-height: 80vh;
     overflow-y: auto;
   }

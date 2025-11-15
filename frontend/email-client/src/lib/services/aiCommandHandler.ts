@@ -16,6 +16,15 @@ type SelectedEmail = FrontendEmailMessage;
 
 type CallAiCommandFn = (command: string, instruction: string, options: Record<string, unknown>) => Promise<ChatResponsePayload | null>;
 
+// Type for panel store to avoid circular dependency
+type PanelStore = {
+  stores: {
+    sessionActive: Readable<boolean>;
+    minimized: Readable<boolean>;
+  };
+  minimize: () => void;
+};
+
 /**
  * Centralizes AI-command handling so App.svelte can delegate compose/summary logic. By isolating this in
  * JS we avoid duplicate logic when other components need to trigger AI helpers.
@@ -28,7 +37,8 @@ export async function handleAiCommand({
   catalogStore,
   windowManager,
   callAiCommand,
-  ensureCatalogLoaded
+  ensureCatalogLoaded,
+  panelStore
 }: {
   command: string;
   commandVariant?: string | null;
@@ -38,6 +48,7 @@ export async function handleAiCommand({
   windowManager: WindowManager;
   callAiCommand: CallAiCommandFn;
   ensureCatalogLoaded: () => Promise<boolean>;
+  panelStore: PanelStore;
 }) {
   const ready = await ensureCatalogLoaded();
   if (!ready) throw new Error('AI helpers are unavailable. Please refresh and try again.');
@@ -46,7 +57,7 @@ export async function handleAiCommand({
   if (!fn) throw new Error('Command unavailable.');
   const variant = resolveVariant(fn, commandVariant);
   const commandArgs = mergeDefaultArgs(fn, variant);
-  const title = fn.label || 'AI Assistant';
+  const title = fn.label || 'Assistant';
   const targetsCompose = Array.isArray(fn.scopes) && fn.scopes.includes('compose');
 
   if (targetsCompose) {
@@ -55,7 +66,7 @@ export async function handleAiCommand({
       to: selectedEmail.fromEmail || '',
       subject: normalizeReplySubject(selectedEmail.subject || ''),
       isReply: true,
-      title: selectedEmail.subject ? `Reply: ${selectedEmail.subject}` : fn.label || 'AI Compose'
+      title: selectedEmail.subject ? `Reply: ${selectedEmail.subject}` : fn.label || 'Compose'
     });
 
     if (existingCompose) {
@@ -155,7 +166,7 @@ async function draftWithAi({
     journeyScope: 'compose',
     journeyScopeTarget: descriptor.id,
     journeyLabel: descriptor.payload.subject || selectedEmail.subject || 'reply',
-    journeyHeadline: deriveHeadline(command, fn.label || 'AI Assistant'),
+    journeyHeadline: deriveHeadline(command, fn.label || 'Assistant'),
     commandVariant: variant?.key || null,
     commandArgs,
     recipientContext
@@ -356,7 +367,7 @@ export async function runComposeWindowAi({
     journeyScope: 'compose',
     journeyScopeTarget: windowConfig.id,
     journeyLabel: effectiveSubject || 'draft',
-    journeyHeadline: deriveHeadline(detail.command, fn.label || 'AI Assistant'),
+    journeyHeadline: deriveHeadline(detail.command, fn.label || 'Assistant'),
     commandArgs,
     recipientContext
   });

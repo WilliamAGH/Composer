@@ -11,6 +11,7 @@ export type AiJourneyOverlayState = {
   subhead: string;
   scope: string;
   scopeTarget: string | null;
+  commandKey: string | null;
 };
 
 export type AiJourneyStore = {
@@ -48,7 +49,8 @@ export function createAiJourneyStore(): AiJourneyStore {
       headline: 'Working on your request',
       subhead: 'Composer assistant',
       scope: 'global',
-      scopeTarget: null
+      scopeTarget: null,
+      commandKey: null
     };
   }
 
@@ -80,7 +82,8 @@ export function createAiJourneyStore(): AiJourneyStore {
       completed: new Set(),
       activeStepId: steps[0]?.id || null,
       headline: headline || 'Working on your request',
-      subhead: subhead || (scope === 'global' ? 'Composer assistant' : 'Mailbox assistant')
+      subhead: subhead || (scope === 'global' ? 'Composer assistant' : 'Mailbox assistant'),
+      commandKey
     });
     return token;
   }
