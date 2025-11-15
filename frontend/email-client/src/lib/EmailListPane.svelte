@@ -37,6 +37,14 @@
   let rowMoveMenuFor = null;
   let avatarFailures = new Set(); // Track which email IDs failed to load pravatar
 
+  // Swipe gesture state
+  let swipedRowId = null;
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let currentSwipeOffset = 0;
+  let isDragging = false;
+  let preventNextClick = false;
+
   function emit(type, detail) {
     dispatch(type, detail);
   }
@@ -53,7 +61,13 @@
     emit('mailboxAction', { entry });
   }
 
-  function handleSelectEmail(email) {
+  function handleSelectEmail(email, event) {
+    // If we just finished swiping, prevent the click from opening the email
+    if (preventNextClick) {
+      if (event) event.preventDefault();
+      return;
+    }
+    closeSwipedRow(); // Close any swiped row when selecting an email
     emit('selectEmail', { email });
   }
 
@@ -92,12 +106,102 @@
   }
 
   function handleGlobalPointer(event) {
-    if (!rowMoveMenuFor) return;
-    const target = event.target;
-    if (target instanceof Element && target.closest('[data-row-move-control="true"]')) {
+    // Close move menu if clicking outside
+    if (rowMoveMenuFor) {
+      const target = event.target;
+      if (target instanceof Element && target.closest('[data-row-move-control="true"]')) {
+        return;
+      }
+      rowMoveMenuFor = null;
+    }
+
+    // Close swiped row if tapping outside on mobile
+    if (swipedRowId && mobile) {
+      const target = event.target;
+      if (target instanceof Element) {
+        const clickedRow = target.closest('.list-row-container');
+        const swipedRow = document.querySelector(`[data-email-id="${swipedRowId}"]`);
+
+        // If clicking outside the swiped row or on the row content (not actions), close swipe
+        if (!clickedRow || clickedRow !== swipedRow?.parentElement) {
+          closeSwipedRow();
+        }
+      }
+    }
+  }
+
+  /**
+   * Swipe gesture handlers for mobile touch interactions
+   */
+  function handleTouchStart(event, emailId) {
+    if (!mobile) return; // Only enable swipe on mobile
+
+    const touch = event.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    isDragging = false;
+  }
+
+  function handleTouchMove(event, emailId) {
+    if (!mobile) return;
+
+    const touch = event.touches[0];
+    const deltaX = touchStartX - touch.clientX;
+    const deltaY = Math.abs(touch.clientY - touchStartY);
+
+    // Only register horizontal swipe if it's more horizontal than vertical
+    if (Math.abs(deltaX) > 10 && Math.abs(deltaX) > deltaY * 1.5) {
+      if (!isDragging) {
+        isDragging = true;
+        swipedRowId = emailId;
+      }
+      event.preventDefault(); // Prevent scroll while swiping
+
+      // Limit swipe distance to reasonable bounds (max 120px)
+      const maxSwipe = 120;
+      // Allow swipe left (negative) to reveal actions
+      currentSwipeOffset = Math.max(-maxSwipe, Math.min(0, -deltaX));
+
+      // Force reactivity update
+      swipedRowId = swipedRowId;
+    }
+  }
+
+  function handleTouchEnd(event, emailId) {
+    if (!mobile) {
       return;
     }
-    rowMoveMenuFor = null;
+
+    if (isDragging) {
+      preventNextClick = true; // Prevent click event after swipe
+      setTimeout(() => { preventNextClick = false; }, 300);
+
+      const threshold = -40; // Minimum swipe distance to keep actions visible
+
+      if (currentSwipeOffset < threshold) {
+        // Swipe was far enough - snap to revealed state
+        swipedRowId = emailId;
+        currentSwipeOffset = -120; // Snap to full reveal
+      } else {
+        // Swipe wasn't far enough - snap back closed
+        swipedRowId = null;
+        currentSwipeOffset = 0;
+      }
+    }
+
+    isDragging = false;
+  }
+
+  function closeSwipedRow() {
+    swipedRowId = null;
+    currentSwipeOffset = 0;
+  }
+
+  function getRowTransform(emailId) {
+    if (swipedRowId === emailId) {
+      return isDragging ? `translateX(${currentSwipeOffset}px)` : 'translateX(-120px)';
+    }
+    return 'translateX(0)';
   }
 
   onMount(() => {
@@ -205,20 +309,40 @@
     {:else}
       <div class="list-rows">
         {#each filtered as email (email.id)}
-          <button
-            type="button"
-            class="list-row w-full text-left px-4 py-3 border-b border-slate-200 hover:bg-slate-50 cursor-pointer {selected?.id===email.id?'bg-slate-100':''} {email.read?'':'bg-blue-50/30'}"
+          <div
+            class="list-row-container"
             animate:flip={{ duration: 220, easing: quintOut }}
             in:fly={{ y: 18, duration: 180, easing: quintOut }}
             out:fly={{ y: -18, duration: 220, opacity: 0.1, easing: quintOut }}
-            on:click={() => handleSelectEmail(email)}
-            on:keydown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                handleSelectEmail(email);
-              }
-            }}
           >
+            <!-- Swipe action background (visible on mobile when swiped) -->
+            {#if mobile && swipedRowId === email.id}
+              <div class="swipe-actions-background">
+                <div class="swipe-action-hint">
+                  {#if resolveFolderFn(email) !== 'archive'}
+                    <Archive class="h-5 w-5" />
+                  {/if}
+                  <FolderSymlink class="h-5 w-5" />
+                  <Trash2 class="h-5 w-5 text-rose-600" />
+                </div>
+              </div>
+            {/if}
+            <button
+              type="button"
+              data-email-id={email.id}
+              class="list-row w-full text-left px-4 py-3 border-b border-slate-200 hover:bg-slate-50 cursor-pointer {selected?.id===email.id?'bg-slate-100':''} {email.read?'':'bg-blue-50/30'}"
+              style="transform: {getRowTransform(email.id)}; transition: {isDragging && swipedRowId === email.id ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'}; will-change: {isDragging && swipedRowId === email.id ? 'transform' : 'auto'};"
+              on:click={(event) => handleSelectEmail(email, event)}
+              on:keydown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  handleSelectEmail(email, event);
+                }
+              }}
+              on:touchstart={(event) => handleTouchStart(event, email.id)}
+              on:touchmove={(event) => handleTouchMove(event, email.id)}
+              on:touchend={(event) => handleTouchEnd(event, email.id)}
+            >
           <div class="flex items-start gap-3">
             {#if email.avatar || email.companyLogoUrl}
               <img
@@ -248,7 +372,7 @@
               <div class="flex items-center gap-2">
                 <span class="font-semibold truncate" class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.from)}</span>
                 <span class="text-xs text-slate-400 whitespace-nowrap">{formatRelativeTimestampFn(email.timestampIso, email.timestamp)}</span>
-                <div class="row-actions ml-auto" class:row-actions--visible={rowMoveMenuFor === email.id}>
+                <div class="row-actions ml-auto" class:row-actions--visible={rowMoveMenuFor === email.id || swipedRowId === email.id}>
                   {#if resolveFolderFn(email) !== 'archive'}
                     <button
                       type="button"
@@ -297,7 +421,8 @@
               <p class="text-sm text-slate-500 truncate">{escapeHtmlFn(email.preview)}</p>
             </div>
           </div>
-          </button>
+            </button>
+          </div>
         {/each}
       </div>
     {/if}
@@ -318,10 +443,41 @@
     z-index: var(--z-toolbar-surface, 150);
   }
 
-  /* Base list row container for hover actions */
+  /* List row container wrapper for swipe support */
+  .list-row-container {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Swipe actions background (visible behind sliding content on mobile) */
+  .swipe-actions-background {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 120px;
+    background: linear-gradient(to left, rgba(248, 113, 113, 0.1), transparent);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 1rem;
+    pointer-events: none;
+  }
+
+  .swipe-action-hint {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    color: #64748b;
+  }
+
+  /* Base list row for hover actions */
   .list-row {
     position: relative;
+    background: white;
+    touch-action: pan-y; /* Allow vertical scroll but capture horizontal gestures */
   }
+
   /* Hover/focus action group */
   .row-actions {
     display: flex;
@@ -330,6 +486,7 @@
     opacity: 0;
     transition: opacity 0.15s ease;
   }
+
   .row-actions--visible,
   .list-row:hover .row-actions,
   .list-row:focus-within .row-actions {
