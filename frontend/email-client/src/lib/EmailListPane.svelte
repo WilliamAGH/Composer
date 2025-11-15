@@ -45,6 +45,10 @@
   let isDragging = false;
   let preventNextClick = false;
 
+  // Detect touch capability rather than relying on viewport width
+  const hasTouchSupport = typeof window !== 'undefined' &&
+    ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+
   function emit(type, detail) {
     dispatch(type, detail);
   }
@@ -115,8 +119,8 @@
       rowMoveMenuFor = null;
     }
 
-    // Close swiped row if tapping outside on mobile
-    if (swipedRowId && mobile) {
+    // Close swiped row if tapping outside on touch devices
+    if (swipedRowId && hasTouchSupport) {
       const target = event.target;
       if (target instanceof Element) {
         const clickedRow = target.closest('.list-row-container');
@@ -134,18 +138,26 @@
    * Swipe gesture handlers for mobile touch interactions
    */
   function handleTouchStart(event, emailId) {
-    if (!mobile) return; // Only enable swipe on mobile
+    if (!hasTouchSupport) {
+      console.log('[Touch] No touch support, skipping');
+      return;
+    }
 
     const touch = event.touches[0];
+    if (!touch) return;
+
+    console.log('[Touch] Start:', emailId, touch.clientX, touch.clientY);
     touchStartX = touch.clientX;
     touchStartY = touch.clientY;
     isDragging = false;
   }
 
   function handleTouchMove(event, emailId) {
-    if (!mobile) return;
+    if (!hasTouchSupport) return;
 
     const touch = event.touches[0];
+    if (!touch) return;
+
     const deltaX = touchStartX - touch.clientX;
     const deltaY = Math.abs(touch.clientY - touchStartY);
 
@@ -154,6 +166,7 @@
       if (!isDragging) {
         isDragging = true;
         swipedRowId = emailId;
+        console.log('[Touch] Started dragging:', emailId);
       }
       event.preventDefault(); // Prevent scroll while swiping
 
@@ -161,20 +174,19 @@
       const maxSwipe = 120;
       // Allow swipe left (negative) to reveal actions
       currentSwipeOffset = Math.max(-maxSwipe, Math.min(0, -deltaX));
-
-      // Force reactivity update
-      swipedRowId = swipedRowId;
+      console.log('[Touch] Move offset:', currentSwipeOffset);
     }
   }
 
   function handleTouchEnd(event, emailId) {
-    if (!mobile) {
+    if (!hasTouchSupport) {
       return;
     }
 
     if (isDragging) {
+      event.preventDefault(); // Prevent the synthetic click event
       preventNextClick = true; // Prevent click event after swipe
-      setTimeout(() => { preventNextClick = false; }, 300);
+      setTimeout(() => { preventNextClick = false; }, 350);
 
       const threshold = -40; // Minimum swipe distance to keep actions visible
 
@@ -199,12 +211,24 @@
 
   function getRowTransform(emailId) {
     if (swipedRowId === emailId) {
-      return isDragging ? `translateX(${currentSwipeOffset}px)` : 'translateX(-120px)';
+      const offset = isDragging ? currentSwipeOffset : -120;
+      return `translateX(${offset}px)`;
     }
     return 'translateX(0)';
   }
 
+  // Debug logging to help troubleshoot (can be removed later)
+  $: if (typeof window !== 'undefined' && swipedRowId) {
+    console.log('[Swipe Debug]', {
+      swipedRowId,
+      currentSwipeOffset,
+      isDragging,
+      hasTouchSupport
+    });
+  }
+
   onMount(() => {
+    console.log('[EmailListPane] Touch support:', hasTouchSupport);
     document.addEventListener('pointerdown', handleGlobalPointer);
     return () => document.removeEventListener('pointerdown', handleGlobalPointer);
   });
@@ -230,7 +254,7 @@
             placeholder="Search emails..."
             value={search}
             on:input={handleSearch}
-            class="mailbox-search-input w-full rounded-2xl border border-slate-200 bg-white/90 pl-4 py-2 text-base text-slate-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-slate-200"
+            class="mailbox-search-input w-full rounded-lg border border-slate-200 bg-white pl-4 py-2 text-base text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-200"
             class:pr-16={compactActions}
             class:pr-32={!compactActions}
           />
@@ -315,8 +339,8 @@
             in:fly={{ y: 18, duration: 180, easing: quintOut }}
             out:fly={{ y: -18, duration: 220, opacity: 0.1, easing: quintOut }}
           >
-            <!-- Swipe action background (visible on mobile when swiped) -->
-            {#if mobile && swipedRowId === email.id}
+            <!-- Swipe action background (visible on touch devices when swiped) -->
+            {#if hasTouchSupport && swipedRowId === email.id}
               <div class="swipe-actions-background">
                 <div class="swipe-action-hint">
                   {#if resolveFolderFn(email) !== 'archive'}
@@ -522,8 +546,8 @@
     z-index: 25;
     background: white;
     border-radius: 0.6rem;
-    border: 1px solid rgba(148, 163, 184, 0.4);
-    box-shadow: 0 20px 45px -12px rgba(15, 23, 42, 0.2);
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     padding: 0.35rem;
     min-width: 12rem;
   }
