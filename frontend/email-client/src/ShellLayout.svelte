@@ -576,15 +576,6 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
   }
 
   function openCompose() {
-    // Minimize panel if open before creating new compose window
-    const sessionActive = get(panelSessionActiveStore);
-    const panelMinimized = get(panelMinimizedStore);
-    console.log('[openCompose] Panel state check:', { sessionActive, panelMinimized });
-    if (sessionActive && !panelMinimized) {
-      console.log('[openCompose] Minimizing panel');
-      panelStore.minimize();
-    }
-
     const result = windowManager.open(createComposeWindow());
     if (!result.ok) {
       showWindowLimitMessage();
@@ -593,15 +584,6 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
 
   function openReply(withAi = true) {
     if (!selected) return alert('Select an email first.');
-
-    // Minimize panel if open before creating new compose window
-    const sessionActive = get(panelSessionActiveStore);
-    const panelMinimized = get(panelMinimizedStore);
-    console.log('[openReply] Panel state check:', { sessionActive, panelMinimized });
-    if (sessionActive && !panelMinimized) {
-      console.log('[openReply] Minimizing panel');
-      panelStore.minimize();
-    }
 
     const prefills = buildReplyPrefill(selected);
     const descriptor = createComposeWindow(selected, {
@@ -624,15 +606,6 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
 
   function openForward() {
     if (!selected) return alert('Select an email first.');
-
-    // Minimize panel if open before creating new compose window
-    const sessionActive = get(panelSessionActiveStore);
-    const panelMinimized = get(panelMinimizedStore);
-    console.log('[openForward] Panel state check:', { sessionActive, panelMinimized });
-    if (sessionActive && !panelMinimized) {
-      console.log('[openForward] Minimizing panel');
-      panelStore.minimize();
-    }
 
     const prefills = buildForwardPrefill(selected);
     const descriptor = createComposeWindow(selected, {
@@ -769,15 +742,6 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
     const targetsCompose = Array.isArray(fnMeta?.scopes) && fnMeta.scopes.includes('compose');
 
     if (!targetsCompose && selectedContextKey) {
-      // Minimize all non-minimized compose windows before opening panel
-      const composeToMinimize = windows.filter(win => win.kind === WindowKind.COMPOSE && !win.minimized);
-      console.log('[runMainAiCommand] Panel command - minimizing compose windows:', composeToMinimize.length);
-      composeToMinimize.forEach((win) => {
-        console.log('[runMainAiCommand] Minimizing compose window:', win.id);
-        windowManager.toggleMinimize(win.id);
-      });
-
-      console.log('[runMainAiCommand] Beginning panel session');
       panelStore.beginSession(selectedContextKey);
       panelStore.clearError(selectedContextKey);
     }

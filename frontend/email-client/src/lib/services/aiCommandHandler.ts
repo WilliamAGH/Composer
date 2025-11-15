@@ -61,15 +61,6 @@ export async function handleAiCommand({
   const targetsCompose = Array.isArray(fn.scopes) && fn.scopes.includes('compose');
 
   if (targetsCompose) {
-    // Minimize panel if open before opening compose window
-    const sessionActive = get(panelStore.stores.sessionActive);
-    const minimized = get(panelStore.stores.minimized);
-    console.log('[handleAiCommand] Compose command - panel state:', { sessionActive, minimized });
-    if (sessionActive && !minimized) {
-      console.log('[handleAiCommand] Minimizing panel before opening compose');
-      panelStore.minimize();
-    }
-
     const existingCompose = findMatchingComposeWindow(windowManager, selectedEmail?.id || null);
     const descriptor = existingCompose || createComposeWindow(selectedEmail, {
       to: selectedEmail.fromEmail || '',
@@ -79,10 +70,8 @@ export async function handleAiCommand({
     });
 
     if (existingCompose) {
-      console.log('[handleAiCommand] Focusing existing compose window');
       windowManager.focus(descriptor.id);
     } else {
-      console.log('[handleAiCommand] Opening new compose window');
       const result = windowManager.open(descriptor);
       if (!result.ok) {
         throw new Error('Close or minimize an existing draft before opening another.');
