@@ -25,8 +25,7 @@ public class GlobalModelAttributes {
 
     private static final String SITE_NAME = "Composer";
     private static final String DEFAULT_PAGE_TITLE = "Composer - AI email that drafts and manages your mailbox";
-    private static final String META_DESCRIPTION = "AI webmail that triages your inbox, summarizes threads, drafts replies, schedules meetings, pulls historical context, and ensures follow-up.";
-    private static final String OG_DESCRIPTION = "AI webmail that triages your inbox, summarizes threads, drafts replies, schedules meetings, pulls historical context, and ensures follow-up.";
+    private static final String DEFAULT_DESCRIPTION = "AI webmail that triages your inbox, summarizes threads, drafts replies, schedules meetings, pulls historical context, and ensures follow-up.";
     private static final String OG_IMAGE_ALT = "Composer UI showing AI triage labels, thread summary, and one-click reply suggestions.";
     private static final int OG_IMAGE_WIDTH = 1900;
     private static final int OG_IMAGE_HEIGHT = 1000;
@@ -55,12 +54,12 @@ public class GlobalModelAttributes {
 
     @ModelAttribute("metaDescription")
     public String metaDescription() {
-        return META_DESCRIPTION;
+        return DEFAULT_DESCRIPTION;
     }
 
     @ModelAttribute("ogDescription")
     public String ogDescription() {
-        return OG_DESCRIPTION;
+        return DEFAULT_DESCRIPTION;
     }
 
     @ModelAttribute("ogImageAlt")
