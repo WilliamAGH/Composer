@@ -1,11 +1,13 @@
 <script>
   import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
-  import { Paperclip, Send, Wand2, Highlighter, Trash2, ChevronDown } from 'lucide-svelte';
+  import { Paperclip, Send, Wand2, Highlighter, Trash2, ChevronDown, RotateCcw } from 'lucide-svelte';
   import { isMobile } from './viewportState';
   import WindowFrame from './window/WindowFrame.svelte';
   import { useWindowContext } from './window/windowContext';
   import AiLoadingJourney from './AiLoadingJourney.svelte';
   import ComposeMobileSheet from './ComposeMobileSheet.svelte';
+  import { ensureDraftContext } from './services/aiCommandHandler';
+  import { recordClientDiagnostic } from './services/clientDiagnosticsService';
 
   /**
    * Compose window leveraging the shared WindowFrame chrome. Keeps feature-specific controls here while
@@ -43,6 +45,9 @@
   let composePromptTextarea = null;
   let composePromptCard = null;
   $: composePromptReady = (composePromptValue || '').trim().length > 0;
+  let pendingContextSync = null;
+  $: undoAvailable = Boolean(windowConfig?.payload?.draftHistory && windowConfig.payload.draftHistory.length > 0);
+  $: undoDisabled = !undoAvailable || journeyInlineActive;
 
   $: if (!initialized && windowConfig) {
     to = windowConfig.payload?.to || '';
@@ -153,7 +158,7 @@
 
   const composePromptSuggestions = [
     'Welcome a new lead and highlight our concierge onboarding',
-    'Summarize today's call with next steps and deadlines',
+    'Summarize today\'s call with next steps and deadlines',
     'Introduce the Fall release with friendly excitement'
   ];
 
@@ -164,7 +169,7 @@
     draftMenuOpen = false;
   }
   // Simple title for window header (not minimized), full subject used for dock (minimized)
-  $: displayTitle = windowConfig.payload?.isForward ? 'Forward' : (isReply ? 'Reply' : 'New Message');
+  $: displayTitle = windowConfig?.payload?.isForward ? 'Forward' : (isReply ? 'Reply' : 'New Message');
 
   let draftMenuOpen = false;
   let toneMenuOpen = false;
@@ -408,6 +413,30 @@
     };
   }
 
+  async function syncDraftContextWithAutosave() {
+    if (!windowConfig?.id || !windowManager) return;
+    const currentSubject = subject || '';
+    const currentBody = body || '';
+    try {
+      if (pendingContextSync) {
+        await pendingContextSync;
+      }
+      pendingContextSync = ensureDraftContext({
+        windowManager,
+        windowConfig,
+        draft: currentBody,
+        subject: currentSubject,
+        recipientContext: null,
+        fallbackEmail: null
+      });
+      await pendingContextSync;
+    } catch (error) {
+      recordClientDiagnostic('warn', 'Unable to sync draft context.', error instanceof Error ? error : undefined);
+    } finally {
+      pendingContextSync = null;
+    }
+  }
+
   /**
    * Throttles draft persistence so autosave happens without spamming dispatch events.
    */
@@ -419,6 +448,7 @@
     const persist = () => {
       lastSavedSignature = signature;
       dispatch('saveDraft', snapshotDraftPayload());
+      syncDraftContextWithAutosave();
     };
     if (immediate) {
       persist();
@@ -426,6 +456,16 @@
     }
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(persist, 400);
+  }
+
+  function undoAiChange() {
+    if (!windowConfig?.id) return;
+    if (undoDisabled) return;
+    const restored = windowManager.restoreDraftHistory(windowConfig.id);
+    if (!restored) return;
+    requestAnimationFrame(() => {
+      inputMessage?.focus();
+    });
   }
 
   $: draftSignature = `${to}||${subject}||${body}`;
@@ -450,6 +490,8 @@
         journeyOverlay={journeyOverlay}
         journeyInlineActive={journeyInlineActive}
         showDraftMenu={isReply}
+        canUndo={undoAvailable}
+        onUndo={undoAiChange}
         onSend={send}
         onDeleteDraft={deleteDraft}
         onRunPrimaryDraft={runPrimaryDraft}
@@ -546,6 +588,17 @@
       </button>
     </div>
     <div class="compose-footer-ai">
+      <div class="compose-ai-cluster">
+        <button
+          type="button"
+          class="btn btn--ghost btn--icon compose-ai-pill"
+          aria-label="Undo last AI change"
+          title="Undo last AI change"
+          on:click={undoAiChange}
+          disabled={undoDisabled}>
+          <RotateCcw class={`h-4 w-4 ${undoDisabled ? 'text-slate-400' : ''}`} />
+        </button>
+      </div>
       <div class="compose-ai-cluster">
         {#if isReply}
           <div class="compose-ai-split">
@@ -797,6 +850,8 @@
    */
   .compose-ai-cluster {
     position: relative;
+    display: flex;
+    align-items: center;
   }
   /**
    * Split button wrapper keeps primary draft action + toggle visually merged.
