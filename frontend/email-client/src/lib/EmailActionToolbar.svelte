@@ -548,26 +548,13 @@
    * @related - .action-tray__buttons
    */
   .action-tray__scroller {
-    position: relative;
     display: flex;
     align-items: center;
     gap: 0.75rem;
     flex: 1 1 auto;
     overflow-x: auto;
     padding-bottom: 0.25rem;
-    padding-right: clamp(32px, 8vw, 56px);
     -webkit-overflow-scrolling: touch;
-  }
-
-  .action-tray__scroller::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: clamp(32px, 8vw, 56px);
-    height: 100%;
-    pointer-events: none;
-    background: linear-gradient(90deg, rgba(248, 250, 252, 0), rgba(248, 250, 252, 0.98));
   }
   /**
    * High-specificity override to guarantee all icon buttons in the tray are perfectly circular.
