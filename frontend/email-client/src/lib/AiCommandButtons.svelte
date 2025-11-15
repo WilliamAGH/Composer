@@ -191,13 +191,13 @@ import Portal from './components/Portal.svelte';
     <button
       type="button"
       class="btn btn--secondary btn--compact action-pill"
-      aria-label="Run AI Assistant"
-      title="Run AI Assistant"
+      aria-label="Run Assistant"
+      title="Run Assistant"
       on:click={() => handleClick('summarize')}>
       <span class="action-pill__icon">
         <Sparkles class="h-4 w-4 text-slate-500" aria-hidden="true" />
       </span>
-      <span class="action-pill__label">Run AI Assistant</span>
+      <span class="action-pill__label">Assistant</span>
     </button>
   {:else}
       <div class="relative action-pill__dropdown" class:span-2={mobile && !trayMode}>
@@ -599,8 +599,8 @@ import Portal from './components/Portal.svelte';
     z-index: 250;
     background: white;
     border-radius: 0.85rem;
-    border: 1px solid rgba(148, 163, 184, 0.4);
-    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.18);
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     padding: 0.5rem;
     min-width: 11rem;
     max-height: 80vh;
@@ -622,8 +622,8 @@ import Portal from './components/Portal.svelte';
     z-index: 250;
     background: white;
     border-radius: 0.85rem;
-    border: 1px solid rgba(148, 163, 184, 0.4);
-    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.18);
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     padding: 0.5rem;
     min-width: 11rem;
     max-height: 80vh;

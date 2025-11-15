@@ -46,7 +46,7 @@ export async function handleAiCommand({
   if (!fn) throw new Error('Command unavailable.');
   const variant = resolveVariant(fn, commandVariant);
   const commandArgs = mergeDefaultArgs(fn, variant);
-  const title = fn.label || 'AI Assistant';
+  const title = fn.label || 'Assistant';
   const targetsCompose = Array.isArray(fn.scopes) && fn.scopes.includes('compose');
 
   if (targetsCompose) {
@@ -55,7 +55,7 @@ export async function handleAiCommand({
       to: selectedEmail.fromEmail || '',
       subject: normalizeReplySubject(selectedEmail.subject || ''),
       isReply: true,
-      title: selectedEmail.subject ? `Reply: ${selectedEmail.subject}` : fn.label || 'AI Compose'
+      title: selectedEmail.subject ? `Reply: ${selectedEmail.subject}` : fn.label || 'Compose'
     });
 
     if (existingCompose) {
@@ -155,7 +155,7 @@ async function draftWithAi({
     journeyScope: 'compose',
     journeyScopeTarget: descriptor.id,
     journeyLabel: descriptor.payload.subject || selectedEmail.subject || 'reply',
-    journeyHeadline: deriveHeadline(command, fn.label || 'AI Assistant'),
+    journeyHeadline: deriveHeadline(command, fn.label || 'Assistant'),
     commandVariant: variant?.key || null,
     commandArgs,
     recipientContext
@@ -356,7 +356,7 @@ export async function runComposeWindowAi({
     journeyScope: 'compose',
     journeyScopeTarget: windowConfig.id,
     journeyLabel: effectiveSubject || 'draft',
-    journeyHeadline: deriveHeadline(detail.command, fn.label || 'AI Assistant'),
+    journeyHeadline: deriveHeadline(detail.command, fn.label || 'Assistant'),
     commandArgs,
     recipientContext
   });

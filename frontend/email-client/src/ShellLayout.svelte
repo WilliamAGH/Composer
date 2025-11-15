@@ -736,9 +736,9 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
         if (key) {
           panelStore.recordResponse(key, {
             html: result.html,
-            title: result.title || fnMeta?.label || 'AI Summary',
+            title: (result.title || fnMeta?.label || 'Summary').replace(/^AI\s+/i, ''),
             commandKey: result.command || command,
-            commandLabel: result.commandLabel || fnMeta?.label || 'AI Summary',
+            commandLabel: (result.commandLabel || fnMeta?.label || 'Summary').replace(/^AI\s+/i, ''),
             updatedAt: Date.now()
           });
         }

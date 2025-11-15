@@ -214,7 +214,7 @@ export function createAiCommandClient({
       : null;
     const mergedArgs = overrideArgs || mergeDefaultArgs(meta, variant);
     const instruction = instructionOverride || resolveDefaultInstruction(meta, variant);
-    const headline = deriveHeadline(command, meta.label || 'AI Assistant');
+    const headline = deriveHeadline(command, meta.label || 'Assistant');
 
     const result = await call(command, instruction, {
       contextId: selectedEmail?.contextId,
@@ -252,7 +252,7 @@ export function createAiCommandClient({
       throw new Error('Command unavailable.');
     }
     const instruction = detail.instructionOverride || resolveDefaultInstruction(fn, null);
-    const journeyHeadline = deriveHeadline(command, fn.label || 'AI Assistant');
+    const journeyHeadline = deriveHeadline(command, fn.label || 'Assistant');
     const commandArgs = mergeDefaultArgs(fn, null);
     const related = relatedEmail || selectedEmail || null;
     const recipientContext = deriveRecipientContext({

@@ -252,19 +252,21 @@
       disabled={journeyInlineActive}
       aria-busy={journeyInlineActive}></textarea>
 
-    {#if journeyOverlay?.visible}
-      <div class="compose-mobile__journey">
-        <AiLoadingJourney
-          steps={journeyOverlay.steps || []}
-          activeStepId={journeyOverlay.activeStepId}
-          headline={journeyOverlay.headline}
-          subhead={journeyOverlay.subhead}
-          show={journeyOverlay.visible}
-          inline={true}
-          subdued={true}
-          className="border-slate-200" />
-      </div>
-    {/if}
+    <div class="compose-mobile__journey-slot" class:has-journey={journeyOverlay?.visible}>
+      {#if journeyOverlay?.visible}
+        <div class="compose-mobile__journey">
+          <AiLoadingJourney
+            steps={journeyOverlay.steps || []}
+            activeStepId={journeyOverlay.activeStepId}
+            headline={journeyOverlay.headline}
+            subhead={journeyOverlay.subhead}
+            show={journeyOverlay.visible}
+            inline={true}
+            subdued={true}
+            className="border-slate-200" />
+        </div>
+      {/if}
+    </div>
 
     {#if hasAttachments()}
       <div class="compose-mobile__attachments">
@@ -310,7 +312,7 @@
     font-size: 0.65rem;
     letter-spacing: 0.35em;
     text-transform: uppercase;
-    color: rgba(99, 102, 241, 0.7);
+    color: #64748b;
     margin-bottom: 0.15rem;
   }
   /**
@@ -342,8 +344,8 @@
   outline: none;
 }
 .compose-mobile__field:focus {
-  border-color: rgba(99, 102, 241, 0.7);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
   /**
    * AI action rows present buttons side-by-side while collapsing menus underneath.
@@ -433,9 +435,25 @@
   outline: none;
 }
 .compose-mobile__textarea:focus {
-  border-color: rgba(99, 102, 241, 0.7);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
+  /**
+   * Journey slot wrapper with smooth transitions to prevent layout shifts.
+   * @usage - Wraps journey component with smooth show/hide transitions
+   */
+  .compose-mobile__journey-slot {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out, opacity 0.2s ease-in-out;
+  }
+
+  .compose-mobile__journey-slot.has-journey {
+    max-height: 200px;
+    opacity: 1;
+  }
+
   /**
    * Journey card inherits spacing from body but adds subtle border for readability.
    * @usage - compose-mobile inline AI journey readout
@@ -495,8 +513,8 @@
     z-index: 250;
     background: white;
     border-radius: 0.85rem;
-    border: 1px solid rgba(148, 163, 184, 0.4);
-    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.18);
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     padding: 0.5rem;
     min-width: 11rem;
   }

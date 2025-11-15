@@ -14,7 +14,8 @@
 
   const dispatch = createEventDispatcher();
 
-  $: title = panelState?.title || 'AI Summary';
+  $: rawTitle = panelState?.title || 'Summary';
+  $: title = rawTitle?.replace(/^AI\s+/i, '') || 'Summary';
   $: rawHtml = panelState?.html || '';
   $: html = sanitizeHtml(rawHtml);
   $: lastCommand = panelState?.commandKey || 'summarize';
@@ -151,12 +152,11 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(145deg, rgba(248, 250, 252, 0.95), rgba(255, 255, 255, 0.88));
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: clamp(20px, 2vw, 26px);
-    box-shadow: 0 30px 70px -35px rgba(15, 23, 42, 0.45);
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
     padding: clamp(0.75rem, 0.7rem + 0.5vw, 1rem);
-    backdrop-filter: blur(18px);
   }
 
   /**
@@ -177,9 +177,8 @@
    */
   .ai-summary-panel.maximized:not(.ai-summary-panel--sheet) {
     background: #ffffff;
-    border-color: rgba(15, 23, 42, 0.15);
-    box-shadow: 0 60px 140px -55px rgba(15, 23, 42, 0.5);
-    backdrop-filter: none;
+    border-color: #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   }
 
   /**
@@ -315,6 +314,7 @@
     flex: 1;
     display: flex;
     overflow: hidden;
+    min-height: 280px;
   }
 
   /**
@@ -335,6 +335,22 @@
     flex: 1;
     min-height: 220px;
     overflow-y: auto;
+    transition: opacity 0.2s ease-in-out;
+  }
+
+  .panel-scroll > * {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   /**
@@ -502,7 +518,6 @@
     box-shadow: none;
     padding: 0;
     background: #ffffff !important;
-    backdrop-filter: none;
     border-radius: 1rem;
   }
 </style>
