@@ -288,7 +288,6 @@
             </div>
           </Portal>
         {/if}
-      </div>
     </div>
   {:else}
     <div class="flex items-start gap-3">
