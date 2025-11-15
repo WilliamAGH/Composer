@@ -15,6 +15,12 @@ export const WindowMode = Object.freeze({
   DOCKED: 'docked'
 }) satisfies Record<'FLOATING' | 'DOCKED', WindowModeType>;
 
+export type DraftSnapshot = {
+  subject: string;
+  body: string;
+  timestamp: number;
+};
+
 export type ComposeWindowPayload = {
   to: string;
   recipientName: string;
@@ -26,6 +32,9 @@ export type ComposeWindowPayload = {
   bodyVersion: number;
   isReply: boolean;
   isForward: boolean;
+  draftContextId: string | null;
+  draftContextFingerprint: string | null;
+  draftHistory: DraftSnapshot[];
 };
 
 export type SummaryWindowPayload = {
@@ -98,7 +107,10 @@ export function createComposeWindow(email: Partial<FrontendEmailMessage> = {}, o
       quotedContext: overrides.quotedContext ?? '',
       bodyVersion: overrides.bodyVersion ?? 0,
       isReply: overrides.isReply ?? Boolean(email && email.id),
-      isForward: overrides.isForward ?? false
+      isForward: overrides.isForward ?? false,
+      draftContextId: overrides.draftContextId ?? null,
+      draftContextFingerprint: overrides.draftContextFingerprint ?? null,
+      draftHistory: overrides.draftHistory ?? []
     }
   };
 }

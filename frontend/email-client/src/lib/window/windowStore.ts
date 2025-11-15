@@ -1,5 +1,5 @@
 import { writable, derived, get, type Writable, type Readable } from 'svelte/store';
-import { WindowKind, WindowMode, type WindowDescriptor } from './windowTypes';
+import { WindowKind, WindowMode, type WindowDescriptor, type DraftSnapshot } from './windowTypes';
 
 export interface WindowManagerConfig {
   maxFloating?: number;
@@ -25,6 +25,9 @@ export interface WindowManager {
   clearError: () => void;
   updateSummaryHtml: (contextId: string | null | undefined, html: string) => void;
   updateComposeDraft: (id: string | null | undefined, payload: { subject?: string | null; body?: string | null }) => void;
+  syncComposeContext: (id: string | null | undefined, payload: { contextId: string; fingerprint: string | null }) => void;
+  pushDraftHistory: (id: string | null | undefined, snapshot: { subject: string; body: string }) => void;
+  restoreDraftHistory: (id: string | null | undefined) => { subject: string; body: string } | null;
 }
 
 /**
@@ -33,6 +36,8 @@ export interface WindowManager {
  * windows exist purely in the browser, and putting it in a .svelte file would require dummy components
  * just to expose helper functions.
  */
+const DRAFT_HISTORY_LIMIT = 5;
+
 export function createWindowManager({ maxFloating = 4, maxDocked = 3 }: WindowManagerConfig = {}): WindowManager {
   const windows = writable<WindowDescriptor[]>([]);
   const lastError = writable<WindowManagerError | null>(null);
@@ -162,6 +167,77 @@ export function createWindowManager({ maxFloating = 4, maxDocked = 3 }: WindowMa
     }));
   }
 
+  function syncComposeContext(id: string | null | undefined, { contextId, fingerprint }: { contextId: string; fingerprint: string | null }) {
+    if (!id || !contextId) return;
+    windows.update((list) => list.map((win) => {
+      if (win.id !== id || win.kind !== WindowKind.COMPOSE) return win;
+      return {
+        ...win,
+        payload: {
+          ...win.payload,
+          draftContextId: contextId,
+          draftContextFingerprint: fingerprint
+        }
+      };
+    }));
+  }
+
+  function pushDraftHistory(id: string | null | undefined, snapshot: { subject: string; body: string }) {
+    if (!id) return;
+    const safeSubject = typeof snapshot?.subject === 'string' ? snapshot.subject : '';
+    const safeBody = typeof snapshot?.body === 'string' ? snapshot.body : '';
+    windows.update((list) => list.map((win) => {
+      if (win.id !== id || win.kind !== WindowKind.COMPOSE) return win;
+      const history = Array.isArray(win.payload?.draftHistory) ? [...win.payload.draftHistory] : [];
+      const lastEntry = history[history.length - 1];
+      if (lastEntry && lastEntry.subject === safeSubject && lastEntry.body === safeBody) {
+        return win;
+      }
+      const nextEntry: DraftSnapshot = {
+        subject: safeSubject,
+        body: safeBody,
+        timestamp: Date.now()
+      };
+      history.push(nextEntry);
+      if (history.length > DRAFT_HISTORY_LIMIT) {
+        history.shift();
+      }
+      return {
+        ...win,
+        payload: {
+          ...win.payload,
+          draftHistory: history
+        }
+      };
+    }));
+  }
+
+  function restoreDraftHistory(id: string | null | undefined) {
+    if (!id) return null;
+    let restored: { subject: string; body: string } | null = null;
+    windows.update((list) => list.map((win) => {
+      if (win.id !== id || win.kind !== WindowKind.COMPOSE) return win;
+      const history = Array.isArray(win.payload?.draftHistory) ? [...win.payload.draftHistory] : [];
+      const snapshot = history.pop();
+      if (!snapshot) {
+        return win;
+      }
+      restored = { subject: snapshot.subject, body: snapshot.body };
+      const nextVersion = (win.payload?.bodyVersion || 0) + 1;
+      return {
+        ...win,
+        payload: {
+          ...win.payload,
+          subject: snapshot.subject,
+          body: snapshot.body,
+          bodyVersion: nextVersion,
+          draftHistory: history
+        }
+      };
+    }));
+    return restored;
+  }
+
   return {
     windows,
     floating,
@@ -174,6 +250,9 @@ export function createWindowManager({ maxFloating = 4, maxDocked = 3 }: WindowMa
     focus,
     clearError,
     updateSummaryHtml,
-    updateComposeDraft
+    updateComposeDraft,
+    syncComposeContext,
+    pushDraftHistory,
+    restoreDraftHistory
   };
 }

@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { Wand2, Highlighter, ChevronDown, Send, Paperclip, Trash2, MoreVertical } from 'lucide-svelte';
+  import { Wand2, Highlighter, ChevronDown, Send, Paperclip, Trash2, MoreVertical, RotateCcw } from 'lucide-svelte';
   import AiLoadingJourney from './AiLoadingJourney.svelte';
   import MobileTopBar from './MobileTopBar.svelte';
 
@@ -13,11 +13,13 @@
   export let tonePresets = [];
   export let journeyOverlay = null;
   export let journeyInlineActive = false;
+  export let canUndo = false;
   export let onSend = () => {};
   export let onDeleteDraft = () => {};
   export let onRunPrimaryDraft = () => {};
   export let onInvokeDraftOption = () => {};
   export let onInvokeTonePreset = () => {};
+  export let onUndo = () => {};
   export let onAttach = () => {};
   export let onClose = () => {};
   export let registerInputRefs = () => {};
@@ -109,6 +111,11 @@
     overflowMenuRef.style.top = `${rect.bottom + offset}px`;
   }
 
+  function handleUndo() {
+    if (!canUndo || journeyInlineActive) return;
+    onUndo?.();
+  }
+
   $: if (overflowMenuOpen && overflowMenuButton && overflowMenuRef) {
     positionOverflowMenu();
   }
@@ -166,6 +173,14 @@
       class="compose-mobile__field" />
 
     <div class="compose-mobile__ai-row">
+      <button
+        type="button"
+        class="btn btn--ghost btn--icon compose-mobile__pill compose-mobile__pill--icon"
+        aria-label="Undo last AI change"
+        on:click={handleUndo}
+        disabled={!canUndo || journeyInlineActive}>
+        <RotateCcw class={`h-4 w-4 ${!canUndo || journeyInlineActive ? 'text-slate-400' : ''}`} />
+      </button>
       <div class="compose-mobile__draft-split">
         <button type="button" class="btn btn--ghost btn--labelled compose-mobile__pill compose-mobile__pill--main" on:click={runPrimaryDraft}>
           <Wand2 class="h-4 w-4" /> {primaryDraftOption?.label || 'Draft Reply'}
@@ -339,6 +354,11 @@
   }
   .compose-mobile__draft-split {
     display: flex;
+  }
+  .compose-mobile__pill--icon {
+    width: 42px;
+    justify-content: center;
+    padding: 0;
   }
   .compose-mobile__pill--main {
     border-top-right-radius: 0;

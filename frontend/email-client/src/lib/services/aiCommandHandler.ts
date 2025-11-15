@@ -4,10 +4,10 @@ import type { WindowManager } from '../window/windowStore';
 import { mergeDefaultArgs, resolveDefaultInstruction, getFunctionMeta, type AiFunctionSummary, type AiFunctionVariantSummary } from './aiCatalog';
 import { parseSubjectAndBody } from './emailUtils';
 import { normalizeReplySubject } from './emailSubjectPrefixHandler';
-import { deriveRecipientContext } from './emailContextConstructor';
+import { deriveRecipientContext, buildEmailContextString } from './emailContextConstructor';
 import type { Readable } from 'svelte/store';
 import type { AiFunctionCatalogDto } from '../../main';
-import type { ChatResponsePayload } from './catalogCommandClient';
+import { uploadDraftContext, type ChatResponsePayload } from './catalogCommandClient';
 import type { FrontendEmailMessage } from './emailUtils';
 
 type CatalogStore = Readable<AiFunctionCatalogDto | null>;
@@ -169,10 +169,21 @@ async function draftWithAi({
   }
   if (draftText) {
     const parsed = parseSubjectAndBody(draftText);
-    windowManager.updateComposeDraft(descriptor.id, {
-      subject: parsed.subject || descriptor.payload.subject,
-      body: parsed.body || draftText
-    });
+    const previousSubject = descriptor.payload?.subject || '';
+    const previousBody = descriptor.payload?.body || '';
+    const nextSubject = parsed.subject || descriptor.payload.subject || previousSubject;
+    const nextBody = parsed.body || draftText;
+    const hasChanges = nextSubject !== previousSubject || nextBody !== previousBody;
+    if (hasChanges) {
+      windowManager.pushDraftHistory(descriptor.id, {
+        subject: previousSubject,
+        body: previousBody
+      });
+      windowManager.updateComposeDraft(descriptor.id, {
+        subject: nextSubject,
+        body: nextBody
+      });
+    }
   }
 }
 
@@ -216,6 +227,64 @@ export function buildComposeInstruction(command: string, currentDraft: string, i
       : fallback;
   }
   return fallback;
+}
+
+export async function ensureDraftContext({
+  windowManager,
+  windowConfig,
+  draft,
+  subject,
+  recipientContext,
+  fallbackEmail
+}: {
+  windowManager: WindowManager;
+  windowConfig: ComposeWindowDescriptor;
+  draft: string;
+  subject: string;
+  recipientContext: { name?: string; email?: string } | null;
+  fallbackEmail?: SelectedEmail | null;
+}) {
+  const currentDraft = typeof draft === 'string' ? draft : '';
+  const fingerprint = computeDraftFingerprint(subject, currentDraft);
+  const existingId = windowConfig.payload?.draftContextId || null;
+  const existingFingerprint = windowConfig.payload?.draftContextFingerprint || null;
+  if (existingId && existingFingerprint === fingerprint) {
+    return existingId;
+  }
+
+  const contextId = existingId || createDraftContextId();
+  const safeRecipient = recipientContext || deriveRecipientContext({
+    composePayload: windowConfig.payload,
+    fallbackEmail
+  });
+  const contextContent = buildEmailContextString({
+    subject: subject || fallbackEmail?.subject || 'Draft',
+    senderName: 'Current draft author',
+    recipientName: safeRecipient?.name || '',
+    recipientEmail: safeRecipient?.email || '',
+    contentMarkdown: currentDraft,
+    contentText: currentDraft
+  });
+  await uploadDraftContext({ contextId, content: contextContent });
+  windowManager.syncComposeContext(windowConfig.id, { contextId, fingerprint });
+  return contextId;
+}
+
+function computeDraftFingerprint(subject: string | null | undefined, body: string) {
+  const source = `${subject || ''}\u0000${body || ''}`;
+  let hash = 0;
+  for (let i = 0; i < source.length; i += 1) {
+    hash = (hash << 5) - hash + source.charCodeAt(i);
+    hash |= 0;
+  }
+  return `${hash}:${source.length}`;
+}
+
+function createDraftContextId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `draft-${crypto.randomUUID()}`;
+  }
+  return `draft-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
 }
 
 export async function runComposeWindowAi({
@@ -264,13 +333,24 @@ export async function runComposeWindowAi({
     composePayload: windowConfig.payload,
     fallbackEmail: relatedEmail
   });
+  const draftBody = typeof detail.draft === 'string' ? detail.draft : (windowConfig.payload?.body || '');
+  const effectiveSubject = detail.subject || windowConfig.payload?.subject || relatedEmail?.subject || '';
+  const draftContextId = await ensureDraftContext({
+    windowManager,
+    windowConfig,
+    draft: draftBody,
+    subject: effectiveSubject,
+    recipientContext,
+    fallbackEmail: relatedEmail
+  });
+  const contextIdForCommand = draftContextId || relatedEmail?.contextId || relatedEmail?.id || null;
 
   const data = await callAiCommand(detail.command, instruction, {
-    contextId: relatedEmail?.contextId || relatedEmail?.id || null,
-    subject: detail.subject || relatedEmail?.subject,
+    contextId: contextIdForCommand,
+    subject: effectiveSubject || relatedEmail?.subject,
     journeyScope: 'compose',
     journeyScopeTarget: windowConfig.id,
-    journeyLabel: detail.subject || relatedEmail?.subject || 'draft',
+    journeyLabel: effectiveSubject || 'draft',
     journeyHeadline: deriveHeadline(detail.command, fn.label || 'AI Assistant'),
     commandArgs,
     recipientContext
@@ -289,10 +369,22 @@ export async function runComposeWindowAi({
     if (quote && !updatedBody.includes(quote.trim())) {
       updatedBody = `${updatedBody.trimEnd()}\n\n${quote}`;
     }
-    windowManager.updateComposeDraft(windowConfig.id, {
-      subject: parsed.subject || detail.subject,
-      body: updatedBody
-    });
+    const previousSubject = typeof detail.subject === 'string'
+      ? detail.subject
+      : (windowConfig.payload?.subject || '');
+    const previousBody = draftBody;
+    const nextSubject = parsed.subject || detail.subject || windowConfig.payload?.subject || previousSubject;
+    const hasChanges = nextSubject !== previousSubject || updatedBody !== previousBody;
+    if (hasChanges) {
+      windowManager.pushDraftHistory(windowConfig.id, {
+        subject: previousSubject,
+        body: previousBody
+      });
+      windowManager.updateComposeDraft(windowConfig.id, {
+        subject: nextSubject,
+        body: updatedBody
+      });
+    }
   }
   return data;
 }
