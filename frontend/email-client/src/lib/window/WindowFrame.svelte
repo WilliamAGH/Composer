@@ -109,12 +109,11 @@
   .window-frame {
     display: flex;
     flex-direction: column;
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(15, 23, 42, 0.12);
-    box-shadow: 0 25px 60px -20px rgba(15, 23, 42, 0.35);
-    border-radius: 20px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    border-radius: 12px;
     overflow: hidden;
-    backdrop-filter: blur(16px);
   }
   /**
    * Default floating positioning for desktop.
@@ -180,10 +179,9 @@
     max-height: none;
     max-width: none;
     z-index: 140;
-    border-radius: 28px;
+    border-radius: 12px;
     background: #ffffff;
-    box-shadow: 0 40px 120px -32px rgba(15, 23, 42, 0.45);
-    backdrop-filter: none;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   }
   /**
    * Content area padding.

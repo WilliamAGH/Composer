@@ -275,7 +275,7 @@
     border-radius: 12px;
     border-color: rgba(148, 163, 184, 0.65);
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.82));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 18px 35px -22px rgba(15, 23, 42, 0.35);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 1px 2px rgba(0, 0, 0, 0.05);
   }
 
   /**
