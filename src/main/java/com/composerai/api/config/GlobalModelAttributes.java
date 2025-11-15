@@ -79,7 +79,7 @@ public class GlobalModelAttributes {
     }
 
     @ModelAttribute("ogImageUrl")
-    public String ogImageUrl(HttpServletRequest request) {
+    public String ogImageUrl() {
         return ServletUriComponentsBuilder.fromCurrentContextPath()
             .path(OG_IMAGE_PATH)
             .build()
