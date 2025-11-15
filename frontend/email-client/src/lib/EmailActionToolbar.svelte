@@ -599,12 +599,16 @@
     top: auto;
     bottom: auto;
     z-index: 250;
-    background: white;
-    border-radius: 0.85rem;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    padding: 0.5rem;
-    min-width: 11rem;
+    background: rgba(255, 255, 255, 0.88);
+    border-radius: 0.65rem;
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    box-shadow:
+      0 18px 40px -28px rgba(15, 23, 42, 0.45),
+      0 10px 25px -30px rgba(15, 23, 42, 0.35);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 0.35rem;
+    min-width: 9rem;
     max-height: 80vh;
     overflow-y: auto;
   }
