@@ -7,7 +7,6 @@ export interface OverlayInstance {
   id: string;
   component: typeof SvelteComponent;
   props?: Record<string, unknown>;
-  listeners?: Record<string, (event?: CustomEvent<any>) => void>;
   zIndex?: number;
 }
 

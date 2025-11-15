@@ -35,12 +35,6 @@
         return 'overlay-sheet';
     }
   }
-
-  function createListenerProps(listeners: Record<string, (event?: CustomEvent<any>) => void> | undefined) {
-    if (!listeners) return {};
-    const entries = Object.entries(listeners).map(([event, handler]) => [`on:${event}`, handler]);
-    return Object.fromEntries(entries);
-  }
 </script>
 
 <Portal {target} className="overlay-stack">
@@ -48,8 +42,7 @@
     <div class={`overlay ${presenterClass(overlay.presenter)}`}>
       <svelte:component
         this={overlay.component}
-        {...(overlay.props || {})}
-        {...createListenerProps(overlay.listeners)} />
+        {...(overlay.props || {})} />
     </div>
   {/each}
 </Portal>
