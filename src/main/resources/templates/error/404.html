@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::body/errorContent}, 'Page not found · Composer', ~{::head/extraHead})}">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <th:block th:fragment="extraHead">
+        <style>
+            .error-page {
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 3rem 1.5rem;
+                background: radial-gradient(circle at top, #0f172a, #020617 65%);
+                position: relative;
+                overflow: hidden;
+            }
+
+            .error-page::before,
+            .error-page::after {
+                content: '';
+                position: absolute;
+                width: 420px;
+                height: 420px;
+                border-radius: 999px;
+                filter: blur(80px);
+                opacity: 0.35;
+            }
+
+            .error-page::before {
+                top: -120px;
+                left: -60px;
+                background: rgba(94, 234, 212, 0.25);
+            }
+
+            .error-page::after {
+                bottom: -150px;
+                right: -30px;
+                background: rgba(129, 140, 248, 0.35);
+            }
+
+            .error-card {
+                position: relative;
+                width: min(680px, 100%);
+                border-radius: 28px;
+                border: 1px solid rgba(148, 163, 184, 0.25);
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(241, 245, 249, 0.82));
+                padding: clamp(1.75rem, 2vw, 2.75rem);
+                box-shadow: 0 45px 95px -40px rgba(15, 23, 42, 0.65);
+                backdrop-filter: blur(18px);
+                text-align: left;
+            }
+
+            .error-eyebrow {
+                display: flex;
+                gap: 0.75rem;
+                align-items: center;
+                text-transform: uppercase;
+                letter-spacing: 0.15em;
+                font-size: 0.85rem;
+                color: #475569;
+                margin-bottom: 1rem;
+            }
+
+            .error-eyebrow span {
+                padding: 0.2rem 0.75rem;
+                border-radius: 999px;
+                border: 1px solid rgba(148, 163, 184, 0.4);
+                background: rgba(255, 255, 255, 0.85);
+                font-size: 0.75rem;
+                letter-spacing: 0.1em;
+                color: #0f172a;
+            }
+
+            .error-title {
+                font-size: clamp(2rem, 2.4vw, 2.8rem);
+                line-height: 1.2;
+                color: #0f172a;
+                margin: 0 0 1rem;
+            }
+
+            .error-copy {
+                font-size: 1.05rem;
+                line-height: 1.65;
+                color: #475569;
+                margin: 0 0 1.5rem;
+            }
+
+            .error-path {
+                display: flex;
+                flex-direction: column;
+                gap: 0.4rem;
+                padding: 1rem 1.25rem;
+                border-radius: 18px;
+                background: rgba(15, 23, 42, 0.04);
+                border: 1px dashed rgba(148, 163, 184, 0.45);
+                margin-bottom: 1.75rem;
+            }
+
+            .error-path span {
+                font-size: 0.85rem;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                color: #94a3b8;
+            }
+
+            .error-path code {
+                font-size: 1rem;
+                color: #0f172a;
+                font-weight: 600;
+            }
+
+            .error-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.75rem;
+            }
+
+            .error-actions a {
+                text-decoration: none;
+            }
+
+            @media (max-width: 640px) {
+                .error-card {
+                    border-radius: 22px;
+                }
+
+                .error-actions {
+                    flex-direction: column;
+                }
+
+                .error-actions .btn {
+                    width: 100%;
+                    justify-content: center;
+                }
+            }
+        </style>
+    </th:block>
+</head>
+
+<body>
+<div th:fragment="errorContent" class="error-page">
+    <section class="error-card" aria-labelledby="error-title">
+        <p class="error-eyebrow">
+            Missing route
+            <span th:text="${status} ?: 404">404</span>
+        </p>
+        <h1 id="error-title" class="error-title">We can't find that page</h1>
+        <p class="error-copy">
+            <span th:text="${message} ?: 'The view you requested drifted off our current navigation map.'">
+                The view you requested drifted off our current navigation map.
+            </span>
+        </p>
+        <div class="error-path">
+            <span>Requested path</span>
+            <code th:text="${path} ?: 'Unknown path'">/missing</code>
+        </div>
+        <div class="error-actions">
+            <a class="btn btn--primary" href="/email-client-v2">Return to inbox</a>
+            <a class="btn btn--ghost" href="/chat">Open Composer chat</a>
+        </div>
+    </section>
+</div>
+</body>
+
+</html>
