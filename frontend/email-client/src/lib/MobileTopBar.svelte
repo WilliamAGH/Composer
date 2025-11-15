@@ -52,7 +52,7 @@
 <div class="mobile-top-bar" class:mobile-top-bar--no-divider={variant === 'custom'}>
   <div class="mobile-top-bar__row">
     {#if showBackButton}
-      <button type="button" class="btn btn--icon z-[70]" aria-label={backButtonAriaLabel} on:click={handleBack}>
+      <button type="button" class="btn btn--icon" style="z-index: var(--z-drawer-controls, 175);" aria-label={backButtonAriaLabel} on:click={handleBack}>
         {#if backIcon === 'close'}
           <X class="h-4 w-4" aria-hidden="true" />
         {:else}
@@ -103,7 +103,8 @@
             {#if showMenuButton}
               <button
                 type="button"
-                class="btn btn--icon relative z-[70]"
+                class="btn btn--icon relative"
+                style="z-index: var(--z-drawer-controls, 175);"
                 aria-label={menuButtonAriaLabel}
                 on:click={handleMenu}>
                 <Menu class="h-4 w-4" aria-hidden="true" />

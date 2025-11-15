@@ -564,7 +564,7 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
       hasQuotedContext: prefills.hasQuotedContext,
       quotedContext: prefills.quotedContext,
       isReply: true,
-      title: selected.subject ? `Reply: ${selected.subject}` : 'Reply'
+      title: prefills.subject || 'Reply'
     });
     const result = windowManager.open(descriptor);
     if (!result.ok) {
@@ -589,7 +589,7 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
       quotedContext: prefills.quotedContext,
       isReply: false,
       isForward: true,
-      title: selected.subject ? `Forward: ${selected.subject}` : 'Forward'
+      title: prefills.subject || 'Forward'
     });
     const result = windowManager.open(descriptor);
     if (!result.ok) {

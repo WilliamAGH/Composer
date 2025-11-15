@@ -86,6 +86,36 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
     }
   }
 
+  /**
+   * Closes menus when focus moves outside the main document (e.g., into an iframe).
+   * This handles the case where emails are rendered in iframes and clicks within
+   * the iframe don't bubble to the parent document's click handler.
+   */
+  function handleWindowBlur() {
+    // Small delay to let the browser update document.activeElement
+    setTimeout(() => {
+      const active = document.activeElement;
+      // Check if focus moved to an iframe (email content)
+      if (active && active.tagName === 'IFRAME') {
+        if (translateMenuOpen) translateMenuOpen = false;
+        if (actionMenuOpen) setActionMenuOpen(false);
+      }
+    }, 0);
+  }
+
+  /**
+   * Global click handler that works across all windows/frames.
+   * Uses capture phase to catch clicks before they reach iframes.
+   */
+  function handleWindowClick(event) {
+    // If the click is in the main window, handleDocumentClick will handle it
+    // This is backup for edge cases
+    if (event.target === window) {
+      if (translateMenuOpen) translateMenuOpen = false;
+      if (actionMenuOpen) setActionMenuOpen(false);
+    }
+  }
+
   function isWithin(target, panelEl, triggerEl) {
     if (!target) return false;
     if (panelEl && panelEl.contains(target)) return true;
@@ -94,9 +124,19 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   }
 
   onMount(() => {
+    // Listen for clicks in the current document
     document.addEventListener('click', handleDocumentClick);
+
+    // Listen for window blur to detect focus moving to iframes
+    window.addEventListener('blur', handleWindowBlur);
+
+    // Listen for clicks at window level (capture phase) to catch iframe interactions
+    window.addEventListener('click', handleWindowClick, true);
+
     return () => {
       document.removeEventListener('click', handleDocumentClick);
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('click', handleWindowClick, true);
     };
   });
 
@@ -187,7 +227,7 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
         </button>
       {#if actionMenuOpen}
         <div
-          class="absolute mt-2 menu-surface"
+          class="absolute menu-surface action-dropdown"
           data-layer="nested"
           bind:this={actionDropdownEl}>
           <span class="menu-eyebrow">Suggested Actions</span>
@@ -279,7 +319,7 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
             aria-hidden="true" />
         </button>
         {#if translateMenuOpen}
-          <div class="absolute mt-2 menu-surface" data-layer="nested" bind:this={translateDropdownEl}>
+          <div class="absolute menu-surface translate-dropdown" data-layer="nested" bind:this={translateDropdownEl}>
             <span class="menu-eyebrow">Translate To</span>
             <div class="menu-list">
               {#each orderedVariants as variant (variant.key)}
@@ -491,5 +531,16 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
     padding-right: 0.75rem;
     min-height: 34px;
     font-size: 0.8rem;
+  }
+
+  /**
+   * Dropdown positioning ensures menus don't cover their trigger buttons.
+   * Increased spacing from the default mt-2 (0.5rem) to 0.75rem for better visual clearance.
+   * @usage - Applied to AI action dropdown and translate menu dropdown surfaces
+   * @related - .menu-surface
+   */
+  .action-dropdown,
+  .translate-dropdown {
+    top: calc(100% + 0.75rem);
   }
 </style>

@@ -149,7 +149,8 @@
         {#if showBackButton}
           <button
             type="button"
-            class="btn btn--icon z-[70]"
+            class="btn btn--icon"
+            style="z-index: var(--z-drawer-controls, 175);"
             aria-label="Back to inbox"
             on:click={() => emit('back')}>
             <ArrowLeft class="h-4 w-4" aria-hidden="true" />

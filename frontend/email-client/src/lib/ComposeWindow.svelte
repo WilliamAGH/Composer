@@ -153,7 +153,7 @@
 
   const composePromptSuggestions = [
     'Welcome a new lead and highlight our concierge onboarding',
-    'Summarize today\'s call with next steps and deadlines',
+    'Summarize today's call with next steps and deadlines',
     'Introduce the Fall release with friendly excitement'
   ];
 
@@ -163,6 +163,8 @@
   $: if (!isReply && draftMenuOpen) {
     draftMenuOpen = false;
   }
+  // Simple title for window header (not minimized), full subject used for dock (minimized)
+  $: displayTitle = windowConfig.payload?.isForward ? 'Forward' : (isReply ? 'Reply' : 'New Message');
 
   let draftMenuOpen = false;
   let toneMenuOpen = false;
@@ -437,7 +439,7 @@
   {#if mobile}
     {#if mobileActive}
       <ComposeMobileSheet
-        title={windowConfig.title || (isReply ? 'Reply' : 'New Message')}
+        title={displayTitle}
         bind:to
         bind:subject
         bind:body
@@ -461,7 +463,7 @@
   {:else}
     <WindowFrame
       open={true}
-      title={windowConfig.title || (isReply ? 'Reply' : 'New Message')}
+      title={displayTitle}
       mode="floating"
       minimized={windowConfig.minimized}
       allowMinimize={!mobile}
@@ -631,7 +633,7 @@
         bind:this={composePromptCard}>
         <p class="compose-prompt-eyebrow">AI Compose</p>
         <h3 id="composePromptTitle">What should we write?</h3>
-        <p id="composePromptDescription">Give the assistant a quick brief—who it\'s for, the outcome, or any details we should weave in.</p>
+        <p id="composePromptDescription">Give the assistant a quick brief—who it's for, the outcome, or any details we should weave in.</p>
         <div class="compose-prompt-suggestions" aria-label="Prompt suggestions">
           {#each composePromptSuggestions as suggestion (suggestion)}
             <button type="button" class="compose-prompt-chip" on:click={() => {
@@ -646,7 +648,7 @@
           bind:value={composePromptValue}
           rows={4}
           class="field compose-prompt-textarea"
-          placeholder="e.g., Introduce our beta, recap yesterday\'s demo, and ask for a follow-up call"
+          placeholder="e.g., Introduce our beta, recap yesterday's demo, and ask for a follow-up call"
           aria-label="Compose brief"
           aria-describedby="composePromptDescription"></textarea>
         {#if composePromptError}

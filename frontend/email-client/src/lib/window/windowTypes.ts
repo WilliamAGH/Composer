@@ -87,7 +87,7 @@ export function createComposeWindow(email: Partial<FrontendEmailMessage> = {}, o
     mode: WindowMode.FLOATING,
     minimized: false,
     contextId: email.id || null,
-    title: overrides.title || (email.subject ? `Reply: ${email.subject}` : 'New Message'),
+    title: overrides.title || normalizeReplySubject(email.subject) || 'New Message',
     payload: {
       to: overrides.to ?? defaultToValue,
       recipientName: safeRecipientName,

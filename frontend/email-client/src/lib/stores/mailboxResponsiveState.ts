@@ -4,7 +4,7 @@ import type { MailboxChromeStore } from './mailboxChromeStore';
 
 type SidebarVariant = 'inline-wide' | 'inline-desktop' | 'inline-collapsed' | 'drawer-visible' | 'drawer-hidden';
 
-const HAMBURGER_COLLAPSE_BREAKPOINT = 1215;
+const HAMBURGER_COLLAPSE_BREAKPOINT = 1340;
 const ACTION_TOOLBAR_COMPACT_BREAKPOINT = 1180;
 const SIDEBAR_WIDTH_MAP: Record<SidebarVariant, number> = {
   'inline-wide': 448,
