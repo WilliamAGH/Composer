@@ -136,29 +136,20 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   }
 
   /**
-   * Positions the action menu below the trigger button on mobile.
+   * Positions a dropdown menu below its trigger button on mobile tray mode.
    */
-  function positionActionMenu() {
-    if (!mobile || !trayMode || !actionButtonEl || !actionDropdownEl) return;
-    const buttonRect = actionButtonEl.getBoundingClientRect();
-    actionDropdownEl.style.top = `${buttonRect.bottom + 8}px`;
-  }
-
-  /**
-   * Positions the translate menu below the trigger button on mobile.
-   */
-  function positionTranslateMenu() {
-    if (!mobile || !trayMode || !translateButtonEl || !translateDropdownEl) return;
-    const buttonRect = translateButtonEl.getBoundingClientRect();
-    translateDropdownEl.style.top = `${buttonRect.bottom + 8}px`;
+  function positionMenu(buttonEl, dropdownEl) {
+    if (!mobile || !trayMode || !buttonEl || !dropdownEl) return;
+    const buttonRect = buttonEl.getBoundingClientRect();
+    dropdownEl.style.top = `${buttonRect.bottom + 8}px`;
   }
 
   $: if (actionMenuOpen && mobile && trayMode && actionButtonEl && actionDropdownEl) {
-    positionActionMenu();
+    positionMenu(actionButtonEl, actionDropdownEl);
   }
 
   $: if (translateMenuOpen && mobile && trayMode && translateButtonEl && translateDropdownEl) {
-    positionTranslateMenu();
+    positionMenu(translateButtonEl, translateDropdownEl);
   }
 
   function resolveIconComponent(key) {
