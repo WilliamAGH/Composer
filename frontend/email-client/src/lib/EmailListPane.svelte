@@ -349,6 +349,7 @@
     {:else}
       <div class="list-rows">
         {#each filtered as email (email.id)}
+          {@const rowSelected = selected?.id === email.id}
           <div
             class="list-row-container"
             animate:flip={{ duration: 220, easing: quintOut }}
@@ -358,7 +359,7 @@
             <button
               type="button"
               class="list-row w-full px-4 py-3 border-b border-slate-200 hover:bg-slate-50 cursor-pointer text-left"
-              class:list-row--selected={selected?.id === email.id}
+              class:list-row--selected={rowSelected}
               class:list-row--unread={!email.read}
               aria-pressed={selected?.id === email.id}
               aria-label={`Open email from ${escapeHtmlFn(email.from)}`}
@@ -397,7 +398,7 @@
             {/if}
             <div class="min-w-0 flex-1">
               <div class="row-header-line">
-                <div class="row-header-line__text row-text-guard">
+                <div class="row-header-line__text" class:row-text-guard={!mobile && rowSelected}>
                   <span class="font-semibold truncate" class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.from)}</span>
                   <span class="row-header-line__timestamp">{formatRelativeTimestampFn(email.timestampIso, email.timestamp)}</span>
                 </div>
@@ -449,8 +450,8 @@
                   </button>
                 </div>
               </div>
-              <p class="row-body__subject row-text-guard" class:font-medium={!email.read} class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.subject)}</p>
-              <p class="row-body__preview row-text-guard">{escapeHtmlFn(email.preview)}</p>
+              <p class="row-body__subject" class:row-text-guard={!mobile && rowSelected} class:font-medium={!email.read} class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.subject)}</p>
+              <p class="row-body__preview">{escapeHtmlFn(email.preview)}</p>
             </div>
             </button>
           </div>
@@ -699,30 +700,6 @@
     position: relative;
   }
 
-  /* Mobile action zone - right-side touch area to open action menu */
-  .mobile-action-zone {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 100px; /* Slightly wider than the three button area */
-    background: transparent;
-    border: 0;
-    cursor: pointer;
-    z-index: 5;
-    /* Visual feedback on press */
-    transition: background 0.15s ease;
-  }
-
-  .mobile-action-zone:active {
-    background: rgba(148, 163, 184, 0.1);
-  }
-
-  /* Mobile action menu portal */
-  .row-action-menu-portal {
-    z-index: var(--z-dropdown, 200);
-  }
-
   /**
    * Portaled move dropdown inherits .menu-surface tokens but tracks viewport positioning here.
    * @usage - Applied to the div rendered inside Portal for row move controls
@@ -751,6 +728,11 @@
     color: #475569;
     box-shadow: 0 10px 18px -10px rgba(15, 23, 42, 0.35);
     margin-left: auto;
+    transition: background 0.15s ease;
+  }
+
+  .mobile-action-zone:active {
+    background: rgba(148, 163, 184, 0.1);
   }
 
   .mobile-action-zone:focus-visible {
@@ -766,6 +748,7 @@
   .row-action-menu-portal {
     pointer-events: auto;
     max-height: min(360px, 70vh);
+    z-index: var(--z-dropdown, 200);
   }
 
   .list-rows {
