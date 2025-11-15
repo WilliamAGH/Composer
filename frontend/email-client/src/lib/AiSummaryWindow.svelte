@@ -325,7 +325,8 @@
    *
    * @usage - <div class="panel-scroll"> wrapping .panel-html or empty states
    * @layout - Flexbox child that expands to fill parent .panel-body
-   * @overflow - overflow-y: auto shows scrollbar only when content exceeds height
+   * @overflow - overflow-y: auto shows scrollbar only when content exceeds height,
+   *             overflow-x: hidden prevents AI output from forcing horizontal scroll
    * @min-height - 220px ensures adequate space for empty state messaging
    * @flex-behavior - flex: 1 fills available space
    * @accessibility - Scrollable region should have proper focus management
@@ -335,6 +336,7 @@
     flex: 1;
     min-height: 220px;
     overflow-y: auto;
+    overflow-x: hidden;
     transition: opacity 0.2s ease-in-out;
   }
 
@@ -369,6 +371,21 @@
     font-size: 0.95rem;
     line-height: 1.65;
     color: #111827;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /**
+   * Anchor tags inherit aggressive wrapping to prevent overflowing URLs.
+   *
+   * @usage - Hyperlinks rendered inside the AI output panel
+   * @behavior - Mirrors .panel-html wrapping to break long URLs or tokens
+   * @overflow - Ensures no horizontal scroll is required for translation/summarization output
+   * @related - .panel-html base typography rules
+   */
+  .panel-html :global(a) {
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   /**
