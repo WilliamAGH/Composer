@@ -212,8 +212,8 @@
   }
 
   function updateRowActionMenuCoords() {
-    if (!rowActionMenuAnchor || typeof window === 'undefined') {
-      rowActionMenuCoords = null;
+    if (!rowActionMenuAnchor || typeof window === 'undefined' || !rowActionMenuAnchor.isConnected) {
+      closeRowActionMenu();
       return;
     }
     const rect = rowActionMenuAnchor.getBoundingClientRect();
@@ -396,14 +396,15 @@
               />
             {/if}
             <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
-                <span class="font-semibold truncate" class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.from)}</span>
-                <span class="text-xs text-slate-400 whitespace-nowrap">{formatRelativeTimestampFn(email.timestampIso, email.timestamp)}</span>
-                <!-- Mobile: Touch zone for action menu -->
+              <div class="row-header-line">
+                <div class="row-header-line__text row-text-guard">
+                  <span class="font-semibold truncate" class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.from)}</span>
+                  <span class="row-header-line__timestamp">{formatRelativeTimestampFn(email.timestampIso, email.timestamp)}</span>
+                </div>
                 {#if mobile}
                   <button
                     type="button"
-                    class="mobile-action-zone ml-auto"
+                    class="mobile-action-zone"
                     aria-label="Open actions menu for {escapeHtmlFn(email.from)}"
                     data-row-action-menu="true"
                     on:click|stopPropagation={(e) => toggleRowActionMenu(email.id, e.currentTarget, e)}
@@ -411,8 +412,7 @@
                     <MoreVertical class="h-4 w-4" aria-hidden="true" />
                   </button>
                 {/if}
-                <!-- Desktop: Inline action buttons -->
-                <div class="row-actions ml-auto" class:hidden={mobile} class:row-actions--visible={rowMoveMenuFor === email.id}>
+                <div class="row-actions" class:hidden={mobile} class:row-actions--visible={rowMoveMenuFor === email.id}>
                   {#if resolveFolderFn(email) !== 'archive'}
                     <button
                       type="button"
@@ -438,27 +438,19 @@
                         <FolderSymlink class="h-4 w-4" />
                       {/if}
                     </button>
-                    {#if rowMoveMenuFor === email.id}
-                      <div class="row-move-surface" data-row-move-control="true">
-                        <MailboxMoveMenu
-                          currentFolderId={resolveFolderFn(email)}
-                          pending={pendingMoveIds.has(email.id)}
-                          on:select={(event) => handleRowMove(email, event.detail.targetId)} />
-                      </div>
-                      {/if}
-                    </div>
-                    <button
-                      type="button"
-                      class="row-action-btn row-action-btn--destructive"
-                      title="Delete"
-                      aria-label="Delete email"
-                      on:click|stopPropagation={() => handleDeleteEmail(email)}>
-                      <Trash2 class="h-4 w-4" />
-                    </button>
                   </div>
+                  <button
+                    type="button"
+                    class="row-action-btn row-action-btn--destructive"
+                    title="Delete"
+                    aria-label="Delete email"
+                    on:click|stopPropagation={() => handleDeleteEmail(email)}>
+                    <Trash2 class="h-4 w-4" />
+                  </button>
                 </div>
-              <p class="text-sm truncate" class:font-medium={!email.read} class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.subject)}</p>
-              <p class="text-sm text-slate-500 truncate">{escapeHtmlFn(email.preview)}</p>
+              </div>
+              <p class="row-body__subject row-text-guard" class:font-medium={!email.read} class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.subject)}</p>
+              <p class="row-body__preview row-text-guard">{escapeHtmlFn(email.preview)}</p>
             </div>
             </button>
           </div>
@@ -588,6 +580,61 @@
     position: relative;
     background: white;
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* Springy animation */
+    --row-action-guard: 110px;
+  }
+
+  @media (max-width: 640px) {
+    .list-row {
+      --row-action-guard: 72px;
+    }
+  }
+
+  .row-header-line {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 0;
+  }
+
+  .row-header-line__text {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-wrap: nowrap;
+  }
+
+  .row-header-line__timestamp {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .row-text-guard {
+    position: relative;
+    padding-right: var(--row-action-guard, 110px);
+    -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 calc(100% - var(--row-action-guard, 110px)), rgba(0, 0, 0, 0) 100%);
+    mask-image: linear-gradient(90deg, #000 0%, #000 calc(100% - var(--row-action-guard, 110px)), rgba(0, 0, 0, 0) 100%);
+  }
+
+  .row-body__subject,
+  .row-body__preview {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .row-body__subject {
+    font-size: 0.95rem;
+    margin-top: 0.15rem;
+  }
+
+  .row-body__preview {
+    font-size: 0.9rem;
+    color: #64748b;
   }
 
   /* "Lifted Card" selected state - physically elevated with depth */
@@ -619,6 +666,8 @@
     gap: 0.25rem;
     opacity: 0;
     transition: opacity 0.15s ease;
+    margin-left: auto;
+    flex-shrink: 0;
   }
 
   .row-actions--visible,
@@ -701,6 +750,7 @@
     background: rgba(255, 255, 255, 0.9);
     color: #475569;
     box-shadow: 0 10px 18px -10px rgba(15, 23, 42, 0.35);
+    margin-left: auto;
   }
 
   .mobile-action-zone:focus-visible {
