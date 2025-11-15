@@ -1,6 +1,6 @@
 # Composer API
 
-Java 21 Spring Boot backend that powers the Composer: a chat interface for reasoning over email mailbox data with LLM assistance and retrieval-augmented context.
+Java 21 Spring Boot backend that powers the Composer: a chat interface for reasoning over email mailbox data with LLM assistance and retrieval-augmented context. The production app is live at [https://composerai.app](https://composerai.app).
 
 ## Developer Routes
 

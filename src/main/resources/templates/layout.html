@@ -1,18 +1,59 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(content, pageTitle, headContent)">
-<head>
-    <meta charset="UTF-8">
-    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<head th:with="resolvedPageTitle=${pageTitle} != null ? ${pageTitle} : ${defaultPageTitle}">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title th:text="${resolvedPageTitle}">Composer - AI email that drafts and manages your mailbox</title>
+
+    <link rel="icon" href="/favicon.ico" />
     <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <meta name="apple-mobile-web-app-title" content="Composer" />
     <link rel="manifest" href="/site.webmanifest" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description"
+          content="AI webmail that triages your inbox, summarizes threads, drafts replies, schedules meetings, pulls historical context, and ensures follow-up."
+          th:attr="content=${metaDescription}" />
+    <link rel="canonical" th:href="${canonicalUrl}" />
+
+    <meta name="application-name" content="Composer" th:attr="content=${siteName}" />
+    <meta name="apple-mobile-web-app-title" content="Composer" th:attr="content=${siteName}" />
+    <meta name="theme-color" content="#0B0B0E" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Composer" th:attr="content=${siteName}" />
+    <meta property="og:url" th:attr="content=${canonicalUrl}" />
+    <meta property="og:title"
+          content="Composer - AI email that drafts and manages your mailbox"
+          th:attr="content=${resolvedPageTitle}" />
+    <meta property="og:description"
+          content="AI webmail that triages your inbox, summarizes threads, drafts replies, schedules meetings, pulls historical context, and ensures follow-up."
+          th:attr="content=${ogDescription}" />
+    <meta property="og:image" th:attr="content=${ogImageUrl}" />
+    <meta property="og:image:secure_url" th:attr="content=${ogImageUrl}" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:alt"
+          content="Composer UI showing AI triage labels, thread summary, and one-click reply suggestions."
+          th:attr="content=${ogImageAlt}" />
+    <meta property="og:image:width" content="1900" th:attr="content=${ogImageWidth}" />
+    <meta property="og:image:height" content="1000" th:attr="content=${ogImageHeight}" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title"
+          content="Composer - AI email that drafts and manages your mailbox"
+          th:attr="content=${resolvedPageTitle}" />
+    <meta name="twitter:description"
+          content="AI webmail that triages your inbox, summarizes threads, drafts replies, schedules meetings, pulls historical context, and ensures follow-up."
+          th:attr="content=${ogDescription}" />
+    <meta name="twitter:image" th:attr="content=${ogImageUrl}" />
+    <meta name="twitter:image:alt"
+          content="Composer UI showing AI triage labels, thread summary, and one-click reply suggestions."
+          th:attr="content=${ogImageAlt}" />
+    <!-- <meta name="twitter:site" content="@williamcallahan"> -->
+    <!-- <meta name="twitter:creator" content="@williamcallahan"> -->
     <link rel="stylesheet" href="/app/email-client/assets/tailwind.css" />
     <link rel="stylesheet" href="/app/email-client/assets/index.css" />
     <link rel="stylesheet" href="/css/layout.css" />
-    <title th:text="${pageTitle}">Composer</title>
     <th:block th:if="${headContent} != null" th:replace="${headContent}"></th:block>
 </head>
 <body>
