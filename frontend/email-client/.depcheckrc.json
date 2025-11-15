@@ -5,7 +5,13 @@
     "stylelint",
     "stylelint-config-html",
     "stylelint-config-standard",
-    "oxlint"
+    "oxlint",
+    "@tailwindcss/forms",
+    "@tailwindcss/postcss",
+    "@tailwindcss/typography",
+    "autoprefixer",
+    "svelte-check",
+    "tailwindcss"
   ],
   "skip-missing": true,
   "detectors": [

@@ -1,5 +1,6 @@
 <script>
   import EmailIframe from './EmailIframe.svelte';
+  import { sanitizeHtml } from './services/sanitizeHtml';
 
   /**
    * Renders the selected email body (iframe vs markdown) with responsive padding. Extracted to keep the
@@ -11,7 +12,11 @@
   export let desktop = false;
   export let wide = false;
   /** Required: must sanitize input before returning HTML for {@html} rendering */
-  export let renderMarkdownFn;
+  export let renderMarkdownFn = (value) => value ?? '';
+
+  $: markdownSource = email ? (email.contentMarkdown || email.contentText || '') : '';
+  $: renderedMarkdown = typeof renderMarkdownFn === 'function' ? renderMarkdownFn(markdownSource) : markdownSource;
+  $: safeMarkdown = sanitizeHtml(renderedMarkdown);
 </script>
 
 {#if email}
@@ -24,7 +29,7 @@
         <EmailIframe html={email.contentHtml} />
       {:else}
         <div class="prose prose-sm max-w-none text-slate-700 break-words">
-          {@html renderMarkdownFn(email.contentMarkdown || email.contentText || '')}
+          {@html safeMarkdown}
         </div>
       {/if}
     </div>

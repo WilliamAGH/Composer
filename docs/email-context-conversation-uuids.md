@@ -60,9 +60,9 @@
 
 1. **Email IDs**: `mailboxLayoutStore` normalizes every message through `mapEmailMessage`, guaranteeing `id` exists. Drafts get deterministic ids (`draft-${uuid}`) so they can participate in the same flows.
 
-2. **Context IDs**: Real emails parsed server-side carry a `contextId`. When present, `callAiCommand` simply forwards it; ChatService calls `EmailContextRegistry.contextForAi(contextId)` to fetch the markdown and never needs the raw body.
+2. **Context IDs**: Real emails parsed server-side carry a `contextId`. When present, `callAiCommand` simply forwards it; ChatService calls `EmailContextRegistry.contextForAi(contextId)` to fetch the markdown and never needs the raw body. Compose windows mint `draft-${uuid}` context IDs the first time an AI helper runs, upload the current draft markdown via `/api/catalog-commands/draft-context`, and reuse that identifier until the draft changes.
 
-3. **Context fallback**: Not every UI-generated message has a backend context. Instead of rejecting those payloads, we now (a) drop the old validator requirement in `ChatRequest`, (b) send `emailContext` markdown, and (c) set `contextId` to the conversation key so the backend still receives a stable identifier.
+3. **Context fallback**: Not every UI-generated message has a backend context. Instead of rejecting those payloads, we now (a) drop the old validator requirement in `ChatRequest`, (b) send `emailContext` markdown, and (c) set `contextId` to the conversation key so the backend still receives a stable identifier. Draft uploads use the exact same registry, so tone/composition commands always resolve to the latest draft body rather than the original inbound email.
 
 4. **Conversation IDs**: The backend is authoritative—every call goes through `StringUtils.ensureConversationId(request.getConversationId())`. The frontend’s `conversationLedger` retains whatever value comes back for that specific key so that summarizing the same email again stays in the same conversation while other emails start fresh threads.
 

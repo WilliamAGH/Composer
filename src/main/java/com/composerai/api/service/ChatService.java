@@ -635,6 +635,21 @@ Response craft:
         });
     }
 
+    public void storeDraftContext(String contextId, String content) {
+        String safeId = StringUtils.trimToNull(contextId);
+        String sanitized = HtmlConverter.cleanupOutput(content, false);
+        if (safeId == null) {
+            logger.warn("Cannot store draft context with blank contextId");
+            return;
+        }
+        if (StringUtils.isBlank(sanitized)) {
+            logger.warn("Skipping draft context store for {} because content is blank", safeId);
+            return;
+        }
+        emailContextRegistry.store(safeId, sanitized);
+        logger.debug("Stored draft context: id={}, length={}", safeId, sanitized.length());
+    }
+
     private String resolveUploadedContext(String conversationId, ChatRequest request) {
         String contextId = request.getContextId();
         logger.debug("Resolving uploaded context: contextId={}, conversationId={}", contextId, conversationId);

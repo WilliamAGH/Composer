@@ -5,6 +5,7 @@
   import { fly } from 'svelte/transition';
   import { Sparkles, Loader2, Menu, Archive, Trash2, FolderSymlink } from 'lucide-svelte';
   import MailboxMoveMenu from './MailboxMoveMenu.svelte';
+  import { getLetterAvatarData } from './services/letterAvatarGenerator';
 
   /**
    * Desktop + tablet mailbox list pane. Handles search, AI action trigger, and message selection.
@@ -17,7 +18,6 @@
   export let tablet = false;
   export let desktop = false;
   export let wide = false;
-  export let drawerVisible = false;
   export let showEmailList = true;
   export let hasMailboxCommands = false;
   export let mailboxCommandEntries = [];
@@ -32,10 +32,10 @@
   export let resolveFolderFn = () => 'inbox';
   export let pendingMoveIds = new Set();
   export let compactActions = false;
-  $: drawerOverlayActive = mobile && drawerVisible;
 
   const dispatch = createEventDispatcher();
   let rowMoveMenuFor = null;
+  let avatarFailures = new Set(); // Track which email IDs failed to load pravatar
 
   function emit(type, detail) {
     dispatch(type, detail);
@@ -59,6 +59,10 @@
 
   function handleToggleMenu() {
     emit('toggleMenu');
+  }
+
+  function handleAvatarError(emailId) {
+    avatarFailures = new Set([...avatarFailures, emailId]);
   }
 
   /**
@@ -103,17 +107,12 @@
 </script>
 
 <section class="shrink-0 flex flex-col bg-white/90 border-r border-slate-200"
-         class:fixed={drawerOverlayActive}
-         class:inset-0={drawerOverlayActive}
-         class:z-[70]={drawerOverlayActive}
-         class:shadow-2xl={drawerOverlayActive}
-         class:bg-white={drawerOverlayActive}
          class:w-[28rem]={wide}
          class:w-[25rem]={desktop && !wide}
          class:w-[20rem]={tablet && showEmailList}
          class:w-0={tablet && !showEmailList}
          class:w-full={mobile}
-         class:hidden={mobile && selected && !drawerVisible}
+         class:hidden={mobile && selected}
          class:overflow-hidden={tablet && !showEmailList && !(mailboxActionsOpen && mailboxActionsHost === 'list')}
 >
   <div class="px-4 py-3 border-b border-slate-200">
@@ -221,12 +220,30 @@
             }}
           >
           <div class="flex items-start gap-3">
-            <img
-              src={email.avatar || email.companyLogoUrl || ('https://i.pravatar.cc/100?u=' + encodeURIComponent(email.fromEmail || email.from))}
-              alt={escapeHtmlFn(email.from)}
-              class="h-10 w-10 rounded-full object-cover"
-              loading="lazy"
-            />
+            {#if email.avatar || email.companyLogoUrl}
+              <img
+                src={email.avatar || email.companyLogoUrl}
+                alt={escapeHtmlFn(email.from)}
+                class="h-10 w-10 rounded-full object-cover"
+                loading="lazy"
+              />
+            {:else if avatarFailures.has(email.id)}
+              {@const letterAvatar = getLetterAvatarData(email.from, email.fromEmail)}
+              <div
+                class="h-10 w-10 rounded-full {letterAvatar.colorClass} flex items-center justify-center text-white font-semibold text-sm"
+                aria-hidden="true"
+              >
+                {letterAvatar.initials}
+              </div>
+            {:else}
+              <img
+                src={'https://i.pravatar.cc/100?u=' + encodeURIComponent(email.fromEmail || email.from)}
+                alt={escapeHtmlFn(email.from)}
+                class="h-10 w-10 rounded-full object-cover"
+                loading="lazy"
+                on:error={() => handleAvatarError(email.id)}
+              />
+            {/if}
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
                 <span class="font-semibold truncate" class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.from)}</span>

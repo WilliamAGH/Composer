@@ -1,11 +1,13 @@
 <script>
   import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
-  import { Paperclip, Send, Wand2, Highlighter, Trash2, ChevronDown } from 'lucide-svelte';
+  import { Paperclip, Send, Wand2, Highlighter, Trash2, ChevronDown, RotateCcw } from 'lucide-svelte';
   import { isMobile } from './viewportState';
   import WindowFrame from './window/WindowFrame.svelte';
   import { useWindowContext } from './window/windowContext';
   import AiLoadingJourney from './AiLoadingJourney.svelte';
   import ComposeMobileSheet from './ComposeMobileSheet.svelte';
+  import { ensureDraftContext } from './services/aiCommandHandler';
+  import { recordClientDiagnostic } from './services/clientDiagnosticsService';
 
   /**
    * Compose window leveraging the shared WindowFrame chrome. Keeps feature-specific controls here while
@@ -17,6 +19,7 @@
   export let offsetIndex = 0;
   export let aiFunctions = [];
   export let journeyOverlay = null;
+  export let mobileActive = true;
 
   const dispatch = createEventDispatcher();
   const windowManager = useWindowContext();
@@ -31,6 +34,7 @@
   let subject = '';
   let body = '';
   let isReply = false;
+  let isForward = false;
   let lastBodyVersion = 0;
   let saveTimeout = null;
   let lastSavedSignature = null;
@@ -42,12 +46,16 @@
   let composePromptTextarea = null;
   let composePromptCard = null;
   $: composePromptReady = (composePromptValue || '').trim().length > 0;
+  let pendingContextSync = null;
+  $: undoAvailable = Boolean(windowConfig?.payload?.draftHistory && windowConfig.payload.draftHistory.length > 0);
+  $: undoDisabled = !undoAvailable || journeyInlineActive;
 
   $: if (!initialized && windowConfig) {
     to = windowConfig.payload?.to || '';
     subject = windowConfig.payload?.subject || '';
     body = windowConfig.payload?.body || '';
     isReply = Boolean(windowConfig.payload?.isReply);
+    isForward = Boolean(windowConfig.payload?.isForward);
     lastBodyVersion = windowConfig.payload?.bodyVersion || 0;
     initialized = true;
   }
@@ -57,6 +65,7 @@
     subject = windowConfig.payload.subject ?? subject;
     lastBodyVersion = windowConfig.payload.bodyVersion;
   }
+  $: isForward = Boolean(windowConfig?.payload?.isForward);
 
   onMount(() => {
     setTimeout(() => (isReply ? inputSubject?.focus() : (inputTo || inputSubject)?.focus()), 50);
@@ -93,6 +102,7 @@
   }
 
   function requestAi(command, instructionOverride = null) {
+    if (isForward) return;
     dispatch('requestAi', { id: windowConfig.id, command, draft: body, subject, isReply, to, instructionOverride });
   }
 
@@ -157,11 +167,17 @@
   ];
 
   $: derivedDraftOptions = deriveDraftOptions(aiFunctions);
-  $: draftOptions = isReply ? derivedDraftOptions : [composeDraftOption];
+  $: draftOptions = isForward ? [] : (isReply ? derivedDraftOptions : [composeDraftOption]);
   $: primaryDraftOption = draftOptions.find((option) => option.key === 'draft') || draftOptions[0] || composeDraftOption;
   $: if (!isReply && draftMenuOpen) {
     draftMenuOpen = false;
   }
+  $: if (isForward) {
+    draftMenuOpen = false;
+    toneMenuOpen = false;
+  }
+  // Simple title for window header (not minimized), full subject used for dock (minimized)
+  $: displayTitle = windowConfig?.payload?.isForward ? 'Forward' : (isReply ? 'Reply' : 'New Message');
 
   let draftMenuOpen = false;
   let toneMenuOpen = false;
@@ -193,6 +209,7 @@
   }
 
   function runPrimaryDraft() {
+    if (isForward) return;
     const target = primaryDraftOption?.key || 'draft';
     if (target === 'compose') {
       openComposePrompt();
@@ -202,6 +219,7 @@
   }
 
   async function toggleDraftMenu() {
+    if (isForward) return;
     draftMenuOpen = !draftMenuOpen;
     if (draftMenuOpen) {
       toneMenuOpen = false;
@@ -211,6 +229,7 @@
   }
 
   async function toggleToneMenu() {
+    if (isForward) return;
     toneMenuOpen = !toneMenuOpen;
     if (toneMenuOpen) {
       draftMenuOpen = false;
@@ -220,6 +239,7 @@
   }
 
   function invokeDraftOption(option) {
+    if (isForward) return;
     if (!option) return;
     if (option.key === 'compose') {
       draftMenuOpen = false;
@@ -405,6 +425,30 @@
     };
   }
 
+  async function syncDraftContextWithAutosave() {
+    if (!windowConfig?.id || !windowManager) return;
+    const currentSubject = subject || '';
+    const currentBody = body || '';
+    try {
+      if (pendingContextSync) {
+        await pendingContextSync;
+      }
+      pendingContextSync = ensureDraftContext({
+        windowManager,
+        windowConfig,
+        draft: currentBody,
+        subject: currentSubject,
+        recipientContext: null,
+        fallbackEmail: null
+      });
+      await pendingContextSync;
+    } catch (error) {
+      recordClientDiagnostic('warn', 'Unable to sync draft context.', error instanceof Error ? error : undefined);
+    } finally {
+      pendingContextSync = null;
+    }
+  }
+
   /**
    * Throttles draft persistence so autosave happens without spamming dispatch events.
    */
@@ -416,6 +460,7 @@
     const persist = () => {
       lastSavedSignature = signature;
       dispatch('saveDraft', snapshotDraftPayload());
+      syncDraftContextWithAutosave();
     };
     if (immediate) {
       persist();
@@ -423,6 +468,16 @@
     }
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(persist, 400);
+  }
+
+  function undoAiChange() {
+    if (!windowConfig?.id) return;
+    if (undoDisabled) return;
+    const restored = windowManager.restoreDraftHistory(windowConfig.id);
+    if (!restored) return;
+    requestAnimationFrame(() => {
+      inputMessage?.focus();
+    });
   }
 
   $: draftSignature = `${to}||${subject}||${body}`;
@@ -434,31 +489,36 @@
 
 {#if windowConfig}
   {#if mobile}
-    <ComposeMobileSheet
-      title={windowConfig.title || (isReply ? 'Reply' : 'New Message')}
-      bind:to
-      bind:subject
-      bind:body
-      {attachments}
-      {draftOptions}
-      {primaryDraftOption}
-      {tonePresets}
-      journeyOverlay={journeyOverlay}
-      journeyInlineActive={journeyInlineActive}
-      showDraftMenu={isReply}
-      onSend={send}
-      onDeleteDraft={deleteDraft}
-      onRunPrimaryDraft={runPrimaryDraft}
-      onInvokeDraftOption={invokeDraftOption}
-      onInvokeTonePreset={invokeTonePreset}
-      onAttach={() => fileInput?.click()}
-      onClose={closeWindow}
-      registerInputRefs={registerInputRefs}
-    />
+    {#if mobileActive}
+      <ComposeMobileSheet
+        title={displayTitle}
+        bind:to
+        bind:subject
+        bind:body
+        {attachments}
+        {draftOptions}
+        {primaryDraftOption}
+        {tonePresets}
+        journeyOverlay={journeyOverlay}
+        journeyInlineActive={journeyInlineActive}
+        showDraftMenu={isReply}
+        showAiRow={!isForward}
+        canUndo={undoAvailable && !isForward}
+        onUndo={undoAiChange}
+        onSend={send}
+        onDeleteDraft={deleteDraft}
+        onRunPrimaryDraft={runPrimaryDraft}
+        onInvokeDraftOption={invokeDraftOption}
+        onInvokeTonePreset={invokeTonePreset}
+        onAttach={() => fileInput?.click()}
+        onClose={closeWindow}
+        registerInputRefs={registerInputRefs}
+      />
+    {/if}
   {:else}
     <WindowFrame
       open={true}
-      title={windowConfig.title || (isReply ? 'Reply' : 'New Message')}
+      title={displayTitle}
       mode="floating"
       minimized={windowConfig.minimized}
       allowMinimize={!mobile}
@@ -540,43 +600,56 @@
         <Trash2 class="h-4 w-4" />
       </button>
     </div>
-    <div class="compose-footer-ai">
-      <div class="compose-ai-cluster">
-        {#if isReply}
-          <div class="compose-ai-split">
-            <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill compose-ai-pill--main" on:click={runPrimaryDraft}>
-              <Wand2 class="h-4 w-4" /> <span class="compose-ai-label">{primaryDraftOption?.label || 'Draft'}</span>
-            </button>
-            <button
-              type="button"
-              class="btn btn--ghost btn--icon compose-ai-pill compose-ai-pill--toggle"
-              aria-haspopup="menu"
-              aria-expanded={draftMenuOpen}
-              bind:this={draftToggleButton}
-              on:click={toggleDraftMenu}
-              aria-label="More drafting options">
-              <ChevronDown class={`h-4 w-4 transition ${draftMenuOpen ? 'rotate-180' : ''}`} />
-            </button>
-          </div>
-        {:else}
-          <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill" on:click={runPrimaryDraft}>
-            <Wand2 class="h-4 w-4" /> <span class="compose-ai-label">AI Compose</span>
+    {#if !isForward}
+      <div class="compose-footer-ai">
+        <div class="compose-ai-cluster">
+          <button
+            type="button"
+            class="btn btn--ghost btn--icon compose-ai-pill"
+            aria-label="Undo last AI change"
+            title="Undo last AI change"
+            on:click={undoAiChange}
+            disabled={undoDisabled}>
+            <RotateCcw class={`h-4 w-4 ${undoDisabled ? 'text-slate-400' : ''}`} />
           </button>
-        {/if}
+        </div>
+        <div class="compose-ai-cluster">
+          {#if isReply}
+            <div class="compose-ai-split">
+              <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill compose-ai-pill--main" on:click={runPrimaryDraft}>
+                <Wand2 class="h-4 w-4" /> <span class="compose-ai-label">{primaryDraftOption?.label || 'Draft'}</span>
+              </button>
+              <button
+                type="button"
+                class="btn btn--ghost btn--icon compose-ai-pill compose-ai-pill--toggle"
+                aria-haspopup="menu"
+                aria-expanded={draftMenuOpen}
+                bind:this={draftToggleButton}
+                on:click={toggleDraftMenu}
+                aria-label="More drafting options">
+                <ChevronDown class={`h-4 w-4 transition ${draftMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+          {:else}
+            <button type="button" class="btn btn--ghost btn--labelled btn--compact compose-ai-pill" on:click={runPrimaryDraft}>
+              <Wand2 class="h-4 w-4" /> <span class="compose-ai-label">AI Compose</span>
+            </button>
+          {/if}
+        </div>
+        <div class="compose-ai-cluster">
+          <button
+            type="button"
+            class="btn btn--ghost btn--labelled btn--compact compose-ai-pill tone-trigger"
+            aria-haspopup="menu"
+            aria-expanded={toneMenuOpen}
+            bind:this={toneToggleButton}
+            on:click={toggleToneMenu}>
+            <Highlighter class="h-4 w-4" /> <span class="compose-ai-label">Tone</span>
+            <ChevronDown class={`h-4 w-4 text-slate-500 transition ${toneMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
       </div>
-      <div class="compose-ai-cluster">
-        <button
-          type="button"
-          class="btn btn--ghost btn--labelled btn--compact compose-ai-pill tone-trigger"
-          aria-haspopup="menu"
-          aria-expanded={toneMenuOpen}
-          bind:this={toneToggleButton}
-          on:click={toggleToneMenu}>
-          <Highlighter class="h-4 w-4" /> <span class="compose-ai-label">Tone</span>
-          <ChevronDown class={`h-4 w-4 text-slate-500 transition ${toneMenuOpen ? 'rotate-180' : ''}`} />
-        </button>
-      </div>
-    </div>
+    {/if}
   </div>
     </WindowFrame>
   {/if}
@@ -628,7 +701,7 @@
         bind:this={composePromptCard}>
         <p class="compose-prompt-eyebrow">AI Compose</p>
         <h3 id="composePromptTitle">What should we write?</h3>
-        <p id="composePromptDescription">Give the assistant a quick brief—who it\'s for, the outcome, or any details we should weave in.</p>
+        <p id="composePromptDescription">Give the assistant a quick brief—who it's for, the outcome, or any details we should weave in.</p>
         <div class="compose-prompt-suggestions" aria-label="Prompt suggestions">
           {#each composePromptSuggestions as suggestion (suggestion)}
             <button type="button" class="compose-prompt-chip" on:click={() => {
@@ -643,7 +716,7 @@
           bind:value={composePromptValue}
           rows={4}
           class="field compose-prompt-textarea"
-          placeholder="e.g., Introduce our beta, recap yesterday\'s demo, and ask for a follow-up call"
+          placeholder="e.g., Introduce our beta, recap yesterday's demo, and ask for a follow-up call"
           aria-label="Compose brief"
           aria-describedby="composePromptDescription"></textarea>
         {#if composePromptError}
@@ -792,6 +865,8 @@
    */
   .compose-ai-cluster {
     position: relative;
+    display: flex;
+    align-items: center;
   }
   /**
    * Split button wrapper keeps primary draft action + toggle visually merged.

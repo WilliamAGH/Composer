@@ -86,6 +86,26 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
     }
   }
 
+  /**
+   * Closes menus when focus moves outside the main document (e.g., into an iframe).
+   * This handles the case where emails are rendered in iframes and clicks within
+   * the iframe don't bubble to the parent document's click handler.
+   *
+   * Uses document.activeElement to detect iframe focus, which is more reliable
+   * than relying solely on window.blur event firing.
+   */
+  function handleWindowBlur() {
+    // Small delay to let the browser update document.activeElement
+    setTimeout(() => {
+      const active = document.activeElement;
+      // Check if focus moved to an iframe (email content)
+      if (active && active.tagName === 'IFRAME') {
+        if (translateMenuOpen) translateMenuOpen = false;
+        if (actionMenuOpen) setActionMenuOpen(false);
+      }
+    }, 0);
+  }
+
   function isWithin(target, panelEl, triggerEl) {
     if (!target) return false;
     if (panelEl && panelEl.contains(target)) return true;
@@ -94,9 +114,15 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   }
 
   onMount(() => {
+    // Listen for clicks in the current document
     document.addEventListener('click', handleDocumentClick);
+
+    // Listen for window blur to detect focus moving to iframes
+    window.addEventListener('blur', handleWindowBlur);
+
     return () => {
       document.removeEventListener('click', handleDocumentClick);
+      window.removeEventListener('blur', handleWindowBlur);
     };
   });
 
@@ -156,7 +182,7 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
       <span class="action-pill__label">Run AI Assistant</span>
     </button>
   {:else}
-      <div class="relative" class:span-2={mobile && !trayMode}>
+      <div class="relative action-pill__dropdown" class:span-2={mobile && !trayMode}>
         <button
           type="button"
           class="btn"
@@ -187,7 +213,7 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
         </button>
       {#if actionMenuOpen}
         <div
-          class="absolute mt-2 menu-surface"
+          class="absolute menu-surface action-dropdown"
           data-layer="nested"
           bind:this={actionDropdownEl}>
           <span class="menu-eyebrow">Suggested Actions</span>
@@ -257,7 +283,7 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
     {/if}
 
     {#if translateEntry && orderedVariants.length && !mobile}
-      <div class="relative">
+      <div class="relative action-pill__dropdown">
         <button
           type="button"
           class={`btn btn--ghost btn--compact action-pill justify-between ${mobile ? 'w-full' : ''}`}
@@ -279,7 +305,7 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
             aria-hidden="true" />
         </button>
         {#if translateMenuOpen}
-          <div class="absolute mt-2 menu-surface" data-layer="nested" bind:this={translateDropdownEl}>
+          <div class="absolute menu-surface translate-dropdown" data-layer="nested" bind:this={translateDropdownEl}>
             <span class="menu-eyebrow">Translate To</span>
             <div class="menu-list">
               {#each orderedVariants as variant (variant.key)}
@@ -372,6 +398,20 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   }
 
   /**
+   * Dropdown wrappers keep trigger buttons (Actions/Translate) level with adjacent pills despite nested menus.
+   * @usage - Apply to wrappers that pair a trigger button with an absolutely positioned dropdown menu
+   */
+  .action-pill__dropdown {
+    display: inline-flex;
+    align-items: stretch;
+    align-self: stretch;
+  }
+
+  .action-pill__dropdown > :global(.btn) {
+    height: 100%;
+  }
+
+  /**
    * Compact tier (≤960px desktop width) collapses AI button labels to icons so the toolbar
    * fits alongside the desktop action row without clipping.
    * @usage - Applied when App.svelte passes compact={true}
@@ -421,34 +461,12 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   /**
    * Tray variant renders inside the horizontal action lane on mobile.
    * @usage - Activated when layout="tray" and mobile flag is true
-   * @related - .action-tray__ai wrapper in EmailActionToolbar.svelte
+   * @related - .action-tray__scroller in EmailActionToolbar.svelte
    */
   .ai-action-toolbar.mobile.tray-mode {
-    display: flex;
-    align-items: center;
-    overflow: visible;
+    display: contents; /* Make wrapper invisible - children become direct flex items */
   }
 
-  .ai-action-toolbar.mobile.tray-mode > * + * {
-    margin-left: 0.5rem; /* Use margin for consistent spacing in nested flex */
-  }
-
-  .ai-action-toolbar.mobile.tray-mode > * {
-    flex: 0 0 auto;
-    min-width: auto;
-  }
-
-  .ai-action-toolbar.mobile.tray-mode .relative {
-    width: auto;
-  }
-
-  .ai-action-toolbar.mobile.tray-mode :global(.btn.btn--compact) {
-    width: auto;
-  }
-
-  .ai-action-toolbar.mobile.tray-mode .span-2 {
-    grid-column: auto;
-  }
 
   /**
    * Action pills normalize icon sizing between AI actions and native controls.
@@ -477,5 +495,16 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
     padding-right: 0.75rem;
     min-height: 34px;
     font-size: 0.8rem;
+  }
+
+  /**
+   * Dropdown positioning ensures menus don't cover their trigger buttons.
+   * Increased spacing from the default mt-2 (0.5rem) to 0.75rem for better visual clearance.
+   * @usage - Applied to AI action dropdown and translate menu dropdown surfaces
+   * @related - .menu-surface
+   */
+  .action-dropdown,
+  .translate-dropdown {
+    top: calc(100% + 0.75rem);
   }
 </style>

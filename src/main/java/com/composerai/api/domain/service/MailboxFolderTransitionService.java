@@ -111,7 +111,7 @@ public class MailboxFolderTransitionService {
     public Map<String, Integer> computeFolderCounts(List<EmailMessage> messages) {
         List<EmailMessage> safeList = messages == null ? List.of() : messages;
         Map<String, Integer> totals = new LinkedHashMap<>();
-        totals.put("inbox", safeList.size());
+        totals.put("inbox", 0); // Will be calculated after exclusive folders
         totals.put("starred", 0);
         totals.put("snoozed", 0);
         totals.put("sent", 0);
@@ -119,8 +119,13 @@ public class MailboxFolderTransitionService {
         totals.put("archive", 0);
         totals.put("trash", 0);
 
+        int exclusiveCount = 0;
         for (EmailMessage message : safeList) {
             List<String> labels = normalizeLabels(message);
+            boolean hasExclusiveLabel = labels.stream().anyMatch(EXCLUSIVE_LABELS::contains);
+            if (hasExclusiveLabel) {
+                exclusiveCount++;
+            }
             if (Boolean.TRUE.equals(message.starred())) {
                 totals.computeIfPresent("starred", (k, v) -> v + 1);
             }
@@ -140,6 +145,8 @@ public class MailboxFolderTransitionService {
                 totals.computeIfPresent("trash", (k, v) -> v + 1);
             }
         }
+        // Inbox contains only messages without exclusive labels
+        totals.put("inbox", safeList.size() - exclusiveCount);
         return totals;
     }
 

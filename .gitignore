@@ -16,6 +16,7 @@ replay_pid*
 # OS artifacts
 .DS_Store
 tmp/
+frontend/email-client/src/generated/tailwind.css
 
 # Maven
 target/

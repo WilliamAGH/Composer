@@ -31,7 +31,7 @@ build: build-vite build-java
 build-vite: FE_DIR := frontend/email-client
 build-vite:
 	@echo "Building Svelte bundle into src/main/resources/static/app/email-client ..."
-	@cd $(FE_DIR) && npm install && npm run build -- --emptyOutDir
+	@cd $(FE_DIR) && npm install && npm run build
 
 build-java:
 	@echo "Building Spring Boot JAR ..."

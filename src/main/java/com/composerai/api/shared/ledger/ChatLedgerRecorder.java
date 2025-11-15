@@ -53,7 +53,8 @@ public class ChatLedgerRecorder {
     ) {
         boolean shouldPersist = ledgerService.enabled();
         boolean shouldLog = openAiProperties.isLocalDebugEnabled();
-        if ((!shouldPersist && !shouldLog) || request == null || invocation == null) {
+        if ((!shouldPersist && !shouldLog) || request == null || invocation == null
+                || conversationId == null || assistantContent == null) {
             return;
         }
 
@@ -149,9 +150,9 @@ public class ChatLedgerRecorder {
         try {
             String preview = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(envelope);
             logger.info("[LEDGER] {}", preview);
-    } catch (Exception e) {
-      logger.warn("[LEDGER] Failed to serialize conversation envelope for local debugging", e);
-    }
+        } catch (Exception e) {
+            logger.warn("[LEDGER] Failed to serialize conversation envelope for local debugging", e);
+        }
     }
 
     private List<ContextRef> buildContextRefs(ChatRequest request) {

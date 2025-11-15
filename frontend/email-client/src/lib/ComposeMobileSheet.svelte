@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { Wand2, Highlighter, ChevronDown, Send, Paperclip, Trash2, MoreVertical } from 'lucide-svelte';
+  import { Wand2, Highlighter, ChevronDown, Send, Paperclip, Trash2, MoreVertical, RotateCcw } from 'lucide-svelte';
   import AiLoadingJourney from './AiLoadingJourney.svelte';
   import MobileTopBar from './MobileTopBar.svelte';
 
@@ -13,15 +13,19 @@
   export let tonePresets = [];
   export let journeyOverlay = null;
   export let journeyInlineActive = false;
+  export let title = 'Compose';
+  export let canUndo = false;
   export let onSend = () => {};
   export let onDeleteDraft = () => {};
   export let onRunPrimaryDraft = () => {};
   export let onInvokeDraftOption = () => {};
   export let onInvokeTonePreset = () => {};
+  export let onUndo = () => {};
   export let onAttach = () => {};
   export let onClose = () => {};
   export let registerInputRefs = () => {};
   export let showDraftMenu = true;
+  export let showAiRow = true;
 
   let draftMenuOpen = false;
   let toneMenuOpen = false;
@@ -109,6 +113,11 @@
     overflowMenuRef.style.top = `${rect.bottom + offset}px`;
   }
 
+  function handleUndo() {
+    if (!canUndo || journeyInlineActive) return;
+    onUndo?.();
+  }
+
   $: if (overflowMenuOpen && overflowMenuButton && overflowMenuRef) {
     positionOverflowMenu();
   }
@@ -122,7 +131,7 @@
     backButtonAriaLabel="Close compose"
     on:back={onClose}>
     <div slot="center" class="compose-mobile__title">
-      <p class="compose-mobile__eyebrow">Compose</p>
+      <p class="compose-mobile__eyebrow">{title}</p>
     </div>
     <div slot="actions" class="compose-mobile__actions">
       <button
@@ -165,65 +174,75 @@
       placeholder="Subject"
       class="compose-mobile__field" />
 
-    <div class="compose-mobile__ai-row">
-      <div class="compose-mobile__draft-split">
-        <button type="button" class="btn btn--ghost btn--labelled compose-mobile__pill compose-mobile__pill--main" on:click={runPrimaryDraft}>
-          <Wand2 class="h-4 w-4" /> {primaryDraftOption?.label || 'Draft Reply'}
+    {#if showAiRow}
+      <div class="compose-mobile__ai-row">
+        <button
+          type="button"
+          class="btn btn--ghost btn--icon compose-mobile__pill compose-mobile__pill--icon"
+          aria-label="Undo last AI change"
+          on:click={handleUndo}
+          disabled={!canUndo || journeyInlineActive}>
+          <RotateCcw class={`h-4 w-4 ${!canUndo || journeyInlineActive ? 'text-slate-400' : ''}`} />
         </button>
-        {#if showDraftMenu}
-          <button
-            type="button"
-            class="btn btn--ghost btn--icon compose-mobile__pill compose-mobile__pill-toggle compose-mobile__pill--toggle"
-            aria-haspopup="menu"
-            aria-expanded={draftMenuOpen}
-            bind:this={draftToggleButton}
-            on:click={toggleDraftMenu}
-            aria-label="More drafting options">
-            <ChevronDown class={`h-4 w-4 transition ${draftMenuOpen ? 'rotate-180' : ''}`} />
+        <div class="compose-mobile__draft-split">
+          <button type="button" class="btn btn--ghost btn--labelled compose-mobile__pill compose-mobile__pill--main" on:click={runPrimaryDraft}>
+            <Wand2 class="h-4 w-4" /> {primaryDraftOption?.label || 'Draft Reply'}
           </button>
-          {#if draftMenuOpen && draftOptions.length}
-            <div class="menu-surface compose-mobile__menu" bind:this={draftMenuRef}>
-              <span class="menu-eyebrow">Drafting Options</span>
-              <div class="menu-list">
-                {#each draftOptions as option (option.key)}
-                  <button type="button" class="menu-item" on:click={() => invokeDraftOption(option)}>
-                    <div class="flex items-center gap-2 min-w-0">
-                      <Wand2 class="h-4 w-4 text-slate-500" />
-                      <span class="truncate">{option.label}</span>
-                    </div>
-                  </button>
-                {/each}
+          {#if showDraftMenu}
+            <button
+              type="button"
+              class="btn btn--ghost btn--icon compose-mobile__pill compose-mobile__pill-toggle compose-mobile__pill--toggle"
+              aria-haspopup="menu"
+              aria-expanded={draftMenuOpen}
+              bind:this={draftToggleButton}
+              on:click={toggleDraftMenu}
+              aria-label="More drafting options">
+              <ChevronDown class={`h-4 w-4 transition ${draftMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {#if draftMenuOpen && draftOptions.length}
+              <div class="menu-surface compose-mobile__menu" bind:this={draftMenuRef}>
+                <span class="menu-eyebrow">Drafting Options</span>
+                <div class="menu-list">
+                  {#each draftOptions as option (option.key)}
+                    <button type="button" class="menu-item" on:click={() => invokeDraftOption(option)}>
+                      <div class="flex items-center gap-2 min-w-0">
+                        <Wand2 class="h-4 w-4 text-slate-500" />
+                        <span class="truncate">{option.label}</span>
+                      </div>
+                    </button>
+                  {/each}
+                </div>
               </div>
-            </div>
+            {/if}
           {/if}
+        </div>
+        <button
+          type="button"
+          class="btn btn--ghost btn--labelled compose-mobile__pill compose-mobile__tone-pill"
+          aria-haspopup="menu"
+          aria-expanded={toneMenuOpen}
+          bind:this={toneToggleButton}
+          on:click={toggleToneMenu}>
+          <Highlighter class="h-4 w-4" /> Tone
+          <ChevronDown class={`h-4 w-4 text-slate-500 transition ${toneMenuOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {#if toneMenuOpen}
+          <div class="menu-surface compose-mobile__menu compose-mobile__menu--tone" bind:this={toneMenuRef}>
+            <span class="menu-eyebrow">Rewrite Tone</span>
+            <div class="menu-list">
+              {#each tonePresets as preset (preset.id)}
+                <button type="button" class="menu-item" on:click={() => invokeTonePreset(preset)}>
+                  <div class="flex flex-col text-left">
+                    <span class="font-medium text-slate-900">{preset.label}</span>
+                    <span class="text-xs text-slate-500">Rewrite using the {preset.label.toLowerCase()} voice.</span>
+                  </div>
+                </button>
+              {/each}
+            </div>
+          </div>
         {/if}
       </div>
-      <button
-        type="button"
-        class="btn btn--ghost btn--labelled compose-mobile__pill compose-mobile__tone-pill"
-        aria-haspopup="menu"
-        aria-expanded={toneMenuOpen}
-        bind:this={toneToggleButton}
-        on:click={toggleToneMenu}>
-        <Highlighter class="h-4 w-4" /> Tone
-        <ChevronDown class={`h-4 w-4 text-slate-500 transition ${toneMenuOpen ? 'rotate-180' : ''}`} />
-      </button>
-      {#if toneMenuOpen}
-        <div class="menu-surface compose-mobile__menu compose-mobile__menu--tone" bind:this={toneMenuRef}>
-          <span class="menu-eyebrow">Rewrite Tone</span>
-          <div class="menu-list">
-            {#each tonePresets as preset (preset.id)}
-              <button type="button" class="menu-item" on:click={() => invokeTonePreset(preset)}>
-                <div class="flex flex-col text-left">
-                  <span class="font-medium text-slate-900">{preset.label}</span>
-                  <span class="text-xs text-slate-500">Rewrite using the {preset.label.toLowerCase()} voice.</span>
-                </div>
-              </button>
-            {/each}
-          </div>
-        </div>
-      {/if}
-    </div>
+    {/if}
 
     <textarea
       bind:this={bodyInputEl}
@@ -267,6 +286,7 @@
   /**
    * Mobile compose sheet anchors to the viewport with frosted backdrop and maximal padding for thumb reach.
    * @usage - Rendered exclusively when ComposeWindow detects a mobile viewport
+   * @z-index-warning - Must sit above drawer overlays (160-170) to be visible when compose opens
    */
   .compose-mobile {
     position: fixed;
@@ -276,7 +296,7 @@
     background: linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(255, 255, 255, 0.97));
     padding: 0.5rem 1rem 1rem;
     gap: 0.75rem;
-    z-index: 85;
+    z-index: var(--z-modal, 180);
   }
   /**
    * Title stack shows only eyebrow label, subject removed to save space.
@@ -311,12 +331,19 @@
    */
 .compose-mobile__field {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   border: 1px solid rgba(148, 163, 184, 0.7);
   border-radius: 16px;
   padding: 0.85rem 1rem;
   font-size: clamp(16px, 1rem + 0.05vw, 17px);
   line-height: 1.5;
   background: rgba(255, 255, 255, 0.95);
+  outline: none;
+}
+.compose-mobile__field:focus {
+  border-color: rgba(99, 102, 241, 0.7);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
   /**
    * AI action rows present buttons side-by-side while collapsing menus underneath.
@@ -339,6 +366,11 @@
   }
   .compose-mobile__draft-split {
     display: flex;
+  }
+  .compose-mobile__pill--icon {
+    width: 42px;
+    justify-content: center;
+    padding: 0;
   }
   .compose-mobile__pill--main {
     border-top-right-radius: 0;
@@ -387,6 +419,8 @@
    */
 .compose-mobile__textarea {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   border: 1px solid rgba(148, 163, 184, 0.7);
   border-radius: 16px;
   padding: 0.85rem 1rem;
@@ -396,6 +430,11 @@
   min-height: 0;
   resize: none;
   background: rgba(255, 255, 255, 0.95);
+  outline: none;
+}
+.compose-mobile__textarea:focus {
+  border-color: rgba(99, 102, 241, 0.7);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
   /**
    * Journey card inherits spacing from body but adds subtle border for readability.
@@ -438,7 +477,7 @@
    * @usage - Top bar actions slot
    */
   .compose-mobile__actions {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 0.35rem;
     position: relative;

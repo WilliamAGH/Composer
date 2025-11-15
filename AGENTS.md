@@ -23,6 +23,7 @@ Refer to `README.md` (Technology Stack and Requirements) for current runtime ver
 - Maintain a lightweight working note (scratchpad, checklist, or plan) that records the validated why and revisit it throughout the task so investigations stay anchored to the goal instead of assumptions.
 - Audit existing documentation up front and bring it in sync with the confirmed purpose following the guidance in "Documentation & Communication" before proceeding.
 - Treat purpose alignment as a gate—do not move into execution until both the why and the documentation plan are explicit.
+- Never undo, overwrite, or “clean up” another agent’s work just because it looks unfamiliar—review the relevant docs/code and coordinate before touching files you didn’t introduce.
 
 ## Backend Development Principles
 
@@ -124,11 +125,14 @@ Note: This structure governs placement only; it does not change existing error e
 ### Core Technologies & Patterns
 
 - Primary UI is Svelte; Thymeleaf hosts the page and injects bootstrap JSON + CSP/nonce
+- Tailwind CSS is bundled via the Vite/PostCSS pipeline (never via CDN); keep `src/app.css` importing `@tailwind base/components/utilities`.
+- Treat Tailwind as the source of truth for spacing/color/typography. Build components with utility classes first, and only drop into custom CSS when utilities cannot express the design. Before touching CSS, skim Tailwind’s “Utility-First”/“Best Practices” docs and remember that utilities win by order, not specificity.
 - Icons: use `lucide-svelte`
 - Email HTML must render via the sandboxed iframe (`email-renderer.js`) — never use raw {@html} with email bodies
 - Treat `layout.html` as the shared frame; inject page-specific content through fragments
 - Keep JavaScript modular and progressive-enhancement friendly; use plain ES modules over large frameworks
 - **NEVER duplicate backend constants/enums in HTML/JS**: Use `@ControllerAdvice` + `@ModelAttribute` + `th:inline="javascript"` to inject Java enums directly into templates. See `GlobalModelAttributes.java` and `WebViewControllerTest.java` for the canonical pattern
+- **Before touching UI tasks**: carefully review Tailwind CSS docs (especially their notes on CDN-injected specificity) and skim the relevant Svelte docs plus node_modules helpers before starting so implementation details stay accurate.
 
 ### Design Language
 
@@ -151,6 +155,12 @@ Note: This structure governs placement only; it does not change existing error e
 ### CSS Organization & Style Architecture
 
 Maintain a strict separation between global styles, component-scoped styles, and Tailwind utilities to prevent duplication, specificity conflicts, and maintenance burden.
+- Scoped component styles (`<style>` in `.svelte`) are preferred for Tailwind overrides since Svelte adds hashed selectors that beat utility conflicts. Use `:global()` only for shared tokens (buttons, nav pills, etc.).
+- When extracting repeated Tailwind patterns, prefer Svelte components or `@apply` inside component styles instead of re-creating selectors in `app-shared.css`.
+- Keep inline `style=` bindings for stateful transforms (e.g., drawer translate) if Tailwind utilities would otherwise override them. Inline styles and scoped selectors should be the last resort after checking for appropriate utilities.
+- Avoid `!important` unless Tailwind’s `!` prefix (e.g., `!translate-x-0`) is absolutely required; review Tailwind docs before adding it.
+- If you must write custom CSS, do it in the component `<style>` block and use `@apply` to pull Tailwind tokens. Reserve `app-shared.css` for true design tokens (buttons, nav pills, z-index vars).
+- `:global()` is for shared tokens only. If a selector names a component (e.g., `.compose-mobile__field`), move it into that component or replace it with utilities.
 
 #### Style Placement Rules
 

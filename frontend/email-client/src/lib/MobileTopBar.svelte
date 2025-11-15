@@ -52,7 +52,7 @@
 <div class="mobile-top-bar" class:mobile-top-bar--no-divider={variant === 'custom'}>
   <div class="mobile-top-bar__row">
     {#if showBackButton}
-      <button type="button" class="btn btn--icon z-[70]" aria-label={backButtonAriaLabel} on:click={handleBack}>
+      <button type="button" class="btn btn--icon" style="z-index: var(--z-drawer-controls, 175);" aria-label={backButtonAriaLabel} on:click={handleBack}>
         {#if backIcon === 'close'}
           <X class="h-4 w-4" aria-hidden="true" />
         {:else}
@@ -103,7 +103,8 @@
             {#if showMenuButton}
               <button
                 type="button"
-                class="btn btn--icon relative z-[70]"
+                class="btn btn--icon relative"
+                style="z-index: var(--z-drawer-controls, 175);"
                 aria-label={menuButtonAriaLabel}
                 on:click={handleMenu}>
                 <Menu class="h-4 w-4" aria-hidden="true" />
@@ -178,6 +179,8 @@
   .mobile-top-bar--no-divider {
     border-bottom: none;
     padding-bottom: 0.75rem;
+    padding-left: 0;
+    padding-right: 0;
   }
 
   .mobile-top-bar__row {
@@ -203,6 +206,8 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+    margin-left: auto;
+    justify-content: flex-end;
   }
 
   .mobile-search {
@@ -223,12 +228,18 @@
     gap: 0.35rem;
   }
 
+  /**
+   * Dropdown shell for AI mailbox actions on mobile search.
+   * @usage - Menu rendered when the Actions button in the mobile search bar is toggled
+   * @z-index-warning - Must stay above the toolbar surface (z-150); rely on --z-dropdown stack
+   * @related - .menu-surface in app-shared.css for shared styling
+   */
   .mobile-search__menu {
     position: absolute;
     right: 0;
     top: calc(100% + 0.5rem);
     min-width: 16rem;
-    z-index: 80;
+    z-index: var(--z-dropdown, 200);
   }
 
   .mobile-top-bar__status {

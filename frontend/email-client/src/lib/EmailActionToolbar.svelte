@@ -149,7 +149,8 @@
         {#if showBackButton}
           <button
             type="button"
-            class="btn btn--icon z-[70]"
+            class="btn btn--icon"
+            style="z-index: var(--z-drawer-controls, 175);"
             aria-label="Back to inbox"
             on:click={() => emit('back')}>
             <ArrowLeft class="h-4 w-4" aria-hidden="true" />
@@ -207,82 +208,80 @@
               <Archive class="h-4 w-4" />
             </button>
           {/if}
-          <div class="mobile-action-menu-shell" class:mobile-action-menu-shell--open={moveMenuOpen}>
-            {#if moveMenuOpen}
-              <div class="move-menu-surface" bind:this={moveMenuRef}>
-                <MailboxMoveMenu currentFolderId={currentFolderId} pending={pendingMove} on:select={handleMoveSelect} />
-              </div>
-            {/if}
-          </div>
-          <div class="action-tray__buttons">
-            <AiCommandButtons
-              {commands}
-              layout="tray"
-              actionOptions={actionMenuOptions}
-              actionMenuLoading={actionMenuLoading}
-              {mobile}
-              compact={compactActions}
-              on:select={(event) => emit('commandSelect', event.detail)}
-              on:actionSelect={(event) => emit('actionSelect', event.detail)}
-              on:actionMenuToggle={(event) => emit('actionMenuToggle', event.detail)}
-              on:comingSoon={(event) => emit('comingSoon', event.detail)}
-            />
-            <button
-              bind:this={moreMenuButton}
-              type="button"
-              class="btn btn--icon"
-              aria-label="More actions"
-              title="More"
-              aria-expanded={moreMenuOpen}
-              on:click={toggleMoreMenu}>
-              <MoreVertical class="h-4 w-4" />
-            </button>
-          </div>
-          <div class="mobile-action-menu-shell" class:mobile-action-menu-shell--open={moreMenuOpen}>
-            {#if moreMenuOpen}
-              <div class="mobile-overflow-menu" bind:this={moreMenuRef}>
-                {#if translateMenuOpen}
-                  <button type="button" class="mobile-overflow-menu__item mobile-overflow-menu__item--header" on:click={() => translateMenuOpen = false}>
-                    <ChevronLeft class="h-4 w-4" />
-                    <span>Back</span>
-                  </button>
-                  <div class="mobile-overflow-menu__divider" />
-                  <div class="mobile-overflow-menu__eyebrow">Translate To</div>
-                  {#each orderedVariants as variant (variant.key)}
-                    <button type="button" class="mobile-overflow-menu__item" on:click={() => handleVariantSelect(variant.key)}>
-                      <Languages class="h-4 w-4" />
-                      <span>{variant.label}</span>
-                    </button>
-                  {/each}
-                  <div class="mobile-overflow-menu__divider" />
-                  <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('comingSoon', { label: 'Translate customization' }); closeMoreMenu(); }}>
-                    <Sparkles class="h-4 w-4" />
-                    <span>Customize</span>
-                  </button>
-                {:else}
-                  <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('forward'); closeMoreMenu(); }}>
-                    <Forward class="h-4 w-4" />
-                    <span>Forward</span>
-                  </button>
-                  {#if translateEntry && orderedVariants.length}
-                    <button type="button" class="mobile-overflow-menu__item" on:click={() => translateMenuOpen = true}>
-                      <Languages class="h-4 w-4" />
-                      <span>Translate</span>
-                    </button>
-                  {/if}
-                  <button type="button" class="mobile-overflow-menu__item" on:click={() => { toggleMoveMenu(); closeMoreMenu(); }}>
-                    <FolderSymlink class="h-4 w-4" />
-                    <span>Move to folder</span>
-                  </button>
-                  <button type="button" class="mobile-overflow-menu__item mobile-overflow-menu__item--destructive" on:click={() => { emit('delete'); closeMoreMenu(); }}>
-                    <Trash2 class="h-4 w-4" />
-                    <span>Delete</span>
-                  </button>
-                {/if}
-              </div>
-            {/if}
-          </div>
+          <AiCommandButtons
+            {commands}
+            layout="tray"
+            actionOptions={actionMenuOptions}
+            actionMenuLoading={actionMenuLoading}
+            {mobile}
+            compact={compactActions}
+            on:select={(event) => emit('commandSelect', event.detail)}
+            on:actionSelect={(event) => emit('actionSelect', event.detail)}
+            on:actionMenuToggle={(event) => emit('actionMenuToggle', event.detail)}
+            on:comingSoon={(event) => emit('comingSoon', event.detail)}
+          />
+          <button
+            bind:this={moreMenuButton}
+            type="button"
+            class="btn btn--icon"
+            aria-label="More actions"
+            title="More"
+            aria-expanded={moreMenuOpen}
+            on:click={toggleMoreMenu}>
+            <MoreVertical class="h-4 w-4" />
+          </button>
         </div>
+
+        <!-- Move menu positioned absolutely, outside the button flow -->
+        {#if moveMenuOpen}
+          <div class="move-menu-surface" bind:this={moveMenuRef}>
+            <MailboxMoveMenu currentFolderId={currentFolderId} pending={pendingMove} on:select={handleMoveSelect} />
+          </div>
+        {/if}
+
+        <!-- Overflow menu positioned absolutely, outside the button flow -->
+        {#if moreMenuOpen}
+          <div class="mobile-overflow-menu" bind:this={moreMenuRef}>
+            {#if translateMenuOpen}
+              <button type="button" class="mobile-overflow-menu__item mobile-overflow-menu__item--header" on:click={() => translateMenuOpen = false}>
+                <ChevronLeft class="h-4 w-4" />
+                <span>Back</span>
+              </button>
+              <div class="mobile-overflow-menu__divider" />
+              <div class="mobile-overflow-menu__eyebrow">Translate To</div>
+              {#each orderedVariants as variant (variant.key)}
+                <button type="button" class="mobile-overflow-menu__item" on:click={() => handleVariantSelect(variant.key)}>
+                  <Languages class="h-4 w-4" />
+                  <span>{variant.label}</span>
+                </button>
+              {/each}
+              <div class="mobile-overflow-menu__divider" />
+              <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('comingSoon', { label: 'Translate customization' }); closeMoreMenu(); }}>
+                <Sparkles class="h-4 w-4" />
+                <span>Customize</span>
+              </button>
+            {:else}
+              <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('forward'); closeMoreMenu(); }}>
+                <Forward class="h-4 w-4" />
+                <span>Forward</span>
+              </button>
+              {#if translateEntry && orderedVariants.length}
+                <button type="button" class="mobile-overflow-menu__item" on:click={() => translateMenuOpen = true}>
+                  <Languages class="h-4 w-4" />
+                  <span>Translate</span>
+                </button>
+              {/if}
+              <button type="button" class="mobile-overflow-menu__item" on:click={() => { toggleMoveMenu(); closeMoreMenu(); }}>
+                <FolderSymlink class="h-4 w-4" />
+                <span>Move to folder</span>
+              </button>
+              <button type="button" class="mobile-overflow-menu__item mobile-overflow-menu__item--destructive" on:click={() => { emit('delete'); closeMoreMenu(); }}>
+                <Trash2 class="h-4 w-4" />
+                <span>Delete</span>
+              </button>
+            {/if}
+          </div>
+        {/if}
       </div>
     </div>
   {:else}
@@ -530,6 +529,7 @@
    * @related - .action-tray__scroller
    */
   .action-tray {
+    position: relative; /* Positioning context for absolutely positioned menus */
     width: 100%;
     display: flex; /* Establish a flex context to control alignment of the scroller */
     justify-content: flex-end; /* Push the scroller to the far right */
@@ -544,15 +544,11 @@
   .action-tray__scroller {
     display: flex;
     align-items: center;
+    gap: 0.75rem; /* Consistent spacing between all buttons, works with display: contents */
     margin-left: auto; /* Aligns the entire button group to the right */
     overflow-x: auto;
     padding-bottom: 0.25rem;
     -webkit-overflow-scrolling: touch;
-  }
-
-  /* Use adjacent sibling selector for robust, consistent spacing */
-  .action-tray__scroller > :global(*) + :global(*) {
-    margin-left: 0.5rem;
   }
   /**
    * High-specificity override to guarantee all icon buttons in the tray are perfectly circular.
@@ -567,16 +563,6 @@
     flex-shrink: 0;
   }
 
-  /**
-   * Shell keeps menu triggers positioned relative to dropdown surfaces on mobile.
-   * @usage - Wraps buttons + dropdowns inside the action tray
-   * @related - .move-menu-surface, .mobile-overflow-menu
-   */
-  .mobile-action-menu-shell {
-    position: relative;
-    flex: 0 0 auto;
-    display: inline-flex;
-  }
 
   /**
    * Overflow menu for less-common mobile actions (forward, translate, move, delete).
@@ -647,20 +633,5 @@
     text-transform: uppercase;
     color: #94a3b8;
     padding: 0.5rem 0.75rem;
-  }
-
-  /**
-   * Wrapper keeps the AI buttons and overflow menu aligned as a unified group.
-   * Uses same gap as parent scroller for visual consistency.
-   * @usage - Container around AI buttons + overflow menu inside action tray
-   * @related - .ai-action-toolbar.mobile.tray-mode
-   */
-  .action-tray__buttons {
-    display: flex;
-    align-items: center;
-  }
-
-  .action-tray__buttons > :global(*) + :global(*) {
-    margin-left: 0.5rem;
   }
 </style>
