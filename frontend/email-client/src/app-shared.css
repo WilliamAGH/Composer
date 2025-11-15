@@ -7,12 +7,12 @@
  * Z-INDEX ARCHITECTURE ensures overlays remain predictable across panes.
  * 10  - Panel overlays (ai-panel-wrapper)
  * 30  - Maximized panels
- * 50  - Drawer backdrop
- * 60  - Drawer sidebar
  * 80  - Floating window frames
  * 120 - Window notices
  * 140 - Window backdrop (notches modal dimmers)
  * 150 - Primary nav + toolbar surfaces (mobile top bar, mailbox list header, dock controls)
+ * 160 - Drawer backdrop (above toolbar when drawer opens)
+ * 170 - Drawer sidebar (above backdrop)
  * 180 - Modals (ComingSoonModal)
  * 200 - Dropdown menus
  * 220 - Nested dropdowns
@@ -20,19 +20,26 @@
 :root {
   --z-panel-overlay: 10;
   --z-panel-maximized: 30;
-  --z-drawer-backdrop: 50;
-  --z-drawer-sidebar: 60;
   --z-window-floating: 80;
   --z-window-notice: 120;
   --z-window-backdrop: 140;
   /**
    * Primary navigation + toolbar surface tier.
    * @usage - MobileTopBar, EmailListPane header, AiPanelDockChip and other top-of-shell controls
-   * @z-index-warning - Must sit above DrawerBackdrop (50) and MailboxSidebar (60),
-   *                    but below global modals (180) and dropdown menus (200+).
+   * @z-index-warning - Must sit below drawer overlays (160+) when drawer is open,
+   *                    but above content and below global modals (180) and dropdown menus (200+).
    * @related - DrawerBackdrop.svelte, MailboxSidebar.svelte, MobileTopBar.svelte, EmailListPane.svelte
    */
   --z-toolbar-surface: 150;
+  /**
+   * Drawer overlay tier for mobile hamburger menu.
+   * @usage - DrawerBackdrop and MailboxSidebar when in drawer mode
+   * @z-index-warning - Must sit above toolbar (150) to properly overlay when drawer opens,
+   *                    but below modals (180) and dropdowns (200+).
+   * @related - DrawerBackdrop.svelte, MailboxSidebar.svelte
+   */
+  --z-drawer-backdrop: 160;
+  --z-drawer-sidebar: 170;
   --z-modal: 180;
   --z-dropdown: 200;
   --z-dropdown-nested: 220;

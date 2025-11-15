@@ -83,7 +83,7 @@
        class:left-0={variantConfig.fixed}
        class:shadow-xl={variantConfig.fixed}
        aria-hidden={ariaHidden}
-       style="pointer-events: {pointerEventsValue}; transform: {transformValue}; z-index: {variantConfig.fixed ? '60' : 'auto'};">
+       style="pointer-events: {pointerEventsValue}; transform: {transformValue}; z-index: {variantConfig.fixed ? 'var(--z-drawer-sidebar, 170)' : 'auto'};">
   <div class="p-4 border-b border-slate-200">
     <div class="flex items-center gap-2 mb-4 justify-center w-full text-center">
       <InboxIcon class="h-6 w-6 text-slate-900" />

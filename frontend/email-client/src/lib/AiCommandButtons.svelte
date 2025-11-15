@@ -156,7 +156,7 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
       <span class="action-pill__label">Run AI Assistant</span>
     </button>
   {:else}
-      <div class="relative" class:span-2={mobile && !trayMode}>
+      <div class="relative action-pill__dropdown" class:span-2={mobile && !trayMode}>
         <button
           type="button"
           class="btn"
@@ -257,7 +257,7 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
     {/if}
 
     {#if translateEntry && orderedVariants.length && !mobile}
-      <div class="relative">
+      <div class="relative action-pill__dropdown">
         <button
           type="button"
           class={`btn btn--ghost btn--compact action-pill justify-between ${mobile ? 'w-full' : ''}`}
@@ -369,6 +369,20 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
 
   .action-pill__chevron {
     margin-left: 0.35rem;
+  }
+
+  /**
+   * Dropdown wrappers keep trigger buttons (Actions/Translate) level with adjacent pills despite nested menus.
+   * @usage - Apply to wrappers that pair a trigger button with an absolutely positioned dropdown menu
+   */
+  .action-pill__dropdown {
+    display: inline-flex;
+    align-items: stretch;
+    align-self: stretch;
+  }
+
+  .action-pill__dropdown > :global(.btn) {
+    height: 100%;
   }
 
   /**

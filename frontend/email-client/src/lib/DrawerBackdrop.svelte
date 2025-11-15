@@ -15,7 +15,8 @@
 
 <button
   type="button"
-  class="fixed inset-0 bg-black/30 z-[50]"
+  class="fixed inset-0 bg-black/30"
+  style="z-index: var(--z-drawer-backdrop, 160);"
   aria-label="Close menu overlay"
   on:click={emitClose}
   on:keydown={(event) => {
