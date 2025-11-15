@@ -101,10 +101,6 @@
     overflow: hidden;
   }
 
-  .error-card--compact .error-card__surface {
-    border-radius: 12px;
-  }
-
   .error-card__content {
     position: relative;
     display: flex;
