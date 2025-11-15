@@ -16,6 +16,15 @@ type SelectedEmail = FrontendEmailMessage;
 
 type CallAiCommandFn = (command: string, instruction: string, options: Record<string, unknown>) => Promise<ChatResponsePayload | null>;
 
+// Type for panel store to avoid circular dependency
+type PanelStore = {
+  stores: {
+    sessionActive: Readable<boolean>;
+    minimized: Readable<boolean>;
+  };
+  minimize: () => void;
+};
+
 /**
  * Centralizes AI-command handling so App.svelte can delegate compose/summary logic. By isolating this in
  * JS we avoid duplicate logic when other components need to trigger AI helpers.
@@ -28,7 +37,8 @@ export async function handleAiCommand({
   catalogStore,
   windowManager,
   callAiCommand,
-  ensureCatalogLoaded
+  ensureCatalogLoaded,
+  panelStore
 }: {
   command: string;
   commandVariant?: string | null;
@@ -38,6 +48,7 @@ export async function handleAiCommand({
   windowManager: WindowManager;
   callAiCommand: CallAiCommandFn;
   ensureCatalogLoaded: () => Promise<boolean>;
+  panelStore: PanelStore;
 }) {
   const ready = await ensureCatalogLoaded();
   if (!ready) throw new Error('AI helpers are unavailable. Please refresh and try again.');
@@ -50,6 +61,15 @@ export async function handleAiCommand({
   const targetsCompose = Array.isArray(fn.scopes) && fn.scopes.includes('compose');
 
   if (targetsCompose) {
+    // Minimize panel if open before opening compose window
+    const sessionActive = get(panelStore.stores.sessionActive);
+    const minimized = get(panelStore.stores.minimized);
+    console.log('[handleAiCommand] Compose command - panel state:', { sessionActive, minimized });
+    if (sessionActive && !minimized) {
+      console.log('[handleAiCommand] Minimizing panel before opening compose');
+      panelStore.minimize();
+    }
+
     const existingCompose = findMatchingComposeWindow(windowManager, selectedEmail?.id || null);
     const descriptor = existingCompose || createComposeWindow(selectedEmail, {
       to: selectedEmail.fromEmail || '',
@@ -59,8 +79,10 @@ export async function handleAiCommand({
     });
 
     if (existingCompose) {
+      console.log('[handleAiCommand] Focusing existing compose window');
       windowManager.focus(descriptor.id);
     } else {
+      console.log('[handleAiCommand] Opening new compose window');
       const result = windowManager.open(descriptor);
       if (!result.ok) {
         throw new Error('Close or minimize an existing draft before opening another.');
