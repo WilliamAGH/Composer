@@ -362,7 +362,7 @@
               class="list-row w-full px-4 py-3 border-b border-slate-200 hover:bg-slate-50 cursor-pointer text-left"
               class:list-row--selected={rowSelected}
               class:list-row--unread={!email.read}
-              aria-pressed={selected?.id === email.id}
+              aria-pressed={rowSelected}
               aria-label={`Open email from ${escapeHtmlFn(email.from)}`}
               on:click={() => handleSelectEmail(email)}
               on:keydown={(event) => {
