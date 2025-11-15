@@ -42,8 +42,8 @@ export function quoteEmailContext(email: FrontendEmailMessage | null | undefined
   if (!email) return '';
   const context = buildEmailContextString(email);
   if (!context) return '';
-  const lines = [];
-  lines.push(includeHeaders ? '--- Forwarded message ---' : '--- Previous message ---');
-  lines.push(context);
-  return lines.join('\n');
+  if (includeHeaders) {
+    return `Forwarded message:\n${context}`;
+  }
+  return `Previous message:\n${context}`;
 }
