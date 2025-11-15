@@ -102,9 +102,14 @@
 
 <div class="email-html-container" bind:this={container}>
   {#if !rendered && fallback}
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
     <div
       class="email-html-fallback prose prose-sm text-slate-700"
       bind:this={fallbackContainer}
+      role="region"
+      aria-label="Email message content"
       on:click={handleFallbackClick}>{@html fallback}</div>
   {/if}
 </div>

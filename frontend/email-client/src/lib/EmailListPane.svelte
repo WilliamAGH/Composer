@@ -209,12 +209,17 @@
     currentSwipeOffset = 0;
   }
 
-  function getRowTransform(emailId) {
+  function getRowTransform(emailId, isSelected) {
+    // If swiped, apply swipe transform (takes precedence over selected state)
     if (swipedRowId === emailId) {
-      const offset = isDragging ? currentSwipeOffset : -120;
-      return `translateX(${offset}px)`;
+      const swipeOffset = isDragging ? currentSwipeOffset : -120;
+      const baseOffset = isSelected ? 8 : 0; // Account for selected state offset
+      const scale = isSelected ? 1.02 : 1; // Account for selected state scale
+      return `translateX(${baseOffset + swipeOffset}px) scale(${scale})`;
     }
-    return 'translateX(0)';
+    // If selected but not swiped, the CSS class handles the transform
+    // Return empty string to let CSS take over
+    return '';
   }
 
   // Debug logging to help troubleshoot (can be removed later)
@@ -354,8 +359,10 @@
             <button
               type="button"
               data-email-id={email.id}
-              class="list-row w-full text-left px-4 py-3 border-b border-slate-200 hover:bg-slate-50 cursor-pointer {selected?.id===email.id?'bg-slate-100':''} {email.read?'':'bg-blue-50/30'}"
-              style="transform: {getRowTransform(email.id)}; transition: {isDragging && swipedRowId === email.id ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'}; will-change: {isDragging && swipedRowId === email.id ? 'transform' : 'auto'};"
+              class="list-row w-full text-left px-4 py-3 border-b border-slate-200 hover:bg-slate-50 cursor-pointer"
+              class:list-row--selected={selected?.id === email.id}
+              class:list-row--unread={!email.read}
+              style="{getRowTransform(email.id, selected?.id === email.id) ? `transform: ${getRowTransform(email.id, selected?.id === email.id)};` : ''} transition: {isDragging && swipedRowId === email.id ? 'none' : 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'}; will-change: {isDragging && swipedRowId === email.id ? 'transform' : 'auto'};"
               on:click={(event) => handleSelectEmail(email, event)}
               on:keydown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
@@ -500,6 +507,29 @@
     position: relative;
     background: white;
     touch-action: pan-y; /* Allow vertical scroll but capture horizontal gestures */
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* Springy animation */
+  }
+
+  /* "Lifted Card" selected state - physically elevated with depth */
+  .list-row--selected {
+    background: white;
+    transform: translateX(8px) scale(1.02);
+    box-shadow:
+      0 6px 16px -4px rgba(15, 23, 42, 0.15),
+      0 2px 8px -2px rgba(15, 23, 42, 0.08),
+      0 0 0 1px rgba(148, 163, 184, 0.2);
+    border-radius: 8px;
+    margin: 4px 8px 4px 0;
+    z-index: 10;
+  }
+
+  /* Unread message accent (blue tint background) */
+  .list-row--unread {
+    background: rgba(239, 246, 255, 0.4);
+  }
+
+  .list-row--selected.list-row--unread {
+    background: white; /* Selected state overrides unread tint */
   }
 
   /* Hover/focus action group */
@@ -513,7 +543,8 @@
 
   .row-actions--visible,
   .list-row:hover .row-actions,
-  .list-row:focus-within .row-actions {
+  .list-row:focus-within .row-actions,
+  .list-row--selected .row-actions {
     opacity: 1;
   }
   /* Icon button styling for archive/move/delete */
