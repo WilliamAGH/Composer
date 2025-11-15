@@ -15,6 +15,7 @@
   } from 'lucide-svelte';
   import AiCommandButtons from './AiCommandButtons.svelte';
   import MailboxMoveMenu from './MailboxMoveMenu.svelte';
+  import Portal from './components/Portal.svelte';
 
   /**
    * Header for the selected email: shows sender info, quick actions, and AI command buttons.
@@ -241,46 +242,48 @@
 
         <!-- Overflow menu positioned absolutely, outside the button flow -->
         {#if moreMenuOpen}
-          <div class="mobile-overflow-menu" bind:this={moreMenuRef}>
-            {#if translateMenuOpen}
-              <button type="button" class="mobile-overflow-menu__item mobile-overflow-menu__item--header" on:click={() => translateMenuOpen = false}>
-                <ChevronLeft class="h-4 w-4" />
-                <span>Back</span>
-              </button>
-              <div class="mobile-overflow-menu__divider" />
-              <div class="mobile-overflow-menu__eyebrow">Translate To</div>
-              {#each orderedVariants as variant (variant.key)}
-                <button type="button" class="mobile-overflow-menu__item" on:click={() => handleVariantSelect(variant.key)}>
-                  <Languages class="h-4 w-4" />
-                  <span>{variant.label}</span>
+          <Portal target="body">
+            <div class="mobile-overflow-menu" bind:this={moreMenuRef}>
+              {#if translateMenuOpen}
+                <button type="button" class="mobile-overflow-menu__item mobile-overflow-menu__item--header" on:click={() => translateMenuOpen = false}>
+                  <ChevronLeft class="h-4 w-4" />
+                  <span>Back</span>
                 </button>
-              {/each}
-              <div class="mobile-overflow-menu__divider" />
-              <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('comingSoon', { label: 'Translate customization' }); closeMoreMenu(); }}>
-                <Sparkles class="h-4 w-4" />
-                <span>Customize</span>
-              </button>
-            {:else}
-              <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('forward'); closeMoreMenu(); }}>
-                <Forward class="h-4 w-4" />
-                <span>Forward</span>
-              </button>
-              {#if translateEntry && orderedVariants.length}
-                <button type="button" class="mobile-overflow-menu__item" on:click={() => translateMenuOpen = true}>
-                  <Languages class="h-4 w-4" />
-                  <span>Translate</span>
+                <div class="mobile-overflow-menu__divider" />
+                <div class="mobile-overflow-menu__eyebrow">Translate To</div>
+                {#each orderedVariants as variant (variant.key)}
+                  <button type="button" class="mobile-overflow-menu__item" on:click={() => handleVariantSelect(variant.key)}>
+                    <Languages class="h-4 w-4" />
+                    <span>{variant.label}</span>
+                  </button>
+                {/each}
+                <div class="mobile-overflow-menu__divider" />
+                <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('comingSoon', { label: 'Translate customization' }); closeMoreMenu(); }}>
+                  <Sparkles class="h-4 w-4" />
+                  <span>Customize</span>
+                </button>
+              {:else}
+                <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('forward'); closeMoreMenu(); }}>
+                  <Forward class="h-4 w-4" />
+                  <span>Forward</span>
+                </button>
+                {#if translateEntry && orderedVariants.length}
+                  <button type="button" class="mobile-overflow-menu__item" on:click={() => translateMenuOpen = true}>
+                    <Languages class="h-4 w-4" />
+                    <span>Translate</span>
+                  </button>
+                {/if}
+                <button type="button" class="mobile-overflow-menu__item" on:click={() => { toggleMoveMenu(); closeMoreMenu(); }}>
+                  <FolderSymlink class="h-4 w-4" />
+                  <span>Move to folder</span>
+                </button>
+                <button type="button" class="mobile-overflow-menu__item mobile-overflow-menu__item--destructive" on:click={() => { emit('delete'); closeMoreMenu(); }}>
+                  <Trash2 class="h-4 w-4" />
+                  <span>Delete</span>
                 </button>
               {/if}
-              <button type="button" class="mobile-overflow-menu__item" on:click={() => { toggleMoveMenu(); closeMoreMenu(); }}>
-                <FolderSymlink class="h-4 w-4" />
-                <span>Move to folder</span>
-              </button>
-              <button type="button" class="mobile-overflow-menu__item mobile-overflow-menu__item--destructive" on:click={() => { emit('delete'); closeMoreMenu(); }}>
-                <Trash2 class="h-4 w-4" />
-                <span>Delete</span>
-              </button>
-            {/if}
-          </div>
+            </div>
+          </Portal>
         {/if}
       </div>
     </div>
