@@ -72,6 +72,8 @@ function sanitizeNode(node: Node) {
       const element = child as HTMLElement;
       const tag = element.tagName.toLowerCase();
       if (!DEFAULT_ALLOWED_TAGS.has(tag)) {
+        // Sanitize descendants before unwrapping so no unsafe nodes survive
+        sanitizeNode(element);
         unwrapElement(element);
         continue;
       }
