@@ -716,6 +716,11 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
   const escapeHtml = escapeHtmlContent;
   const renderMarkdown = renderMarkdownContent;
 
+  /** Helper to strip "AI " prefix from labels and titles */
+  function stripAiPrefix(str) {
+    return str.replace(/^AI\s+/i, '');
+  }
+
   // ---------- AI integration (parity with v1) ----------
 
   async function callAiCommand(command, instruction, overrides = {}) {
@@ -764,9 +769,9 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
         if (key) {
           panelStore.recordResponse(key, {
             html: result.html,
-            title: (result.title || fnMeta?.label || 'Summary').replace(/^AI\s+/i, ''),
+            title: stripAiPrefix(result.title || fnMeta?.label || 'Summary'),
             commandKey: result.command || command,
-            commandLabel: (result.commandLabel || fnMeta?.label || 'Summary').replace(/^AI\s+/i, ''),
+            commandLabel: stripAiPrefix(result.commandLabel || fnMeta?.label || 'Summary'),
             updatedAt: Date.now()
           });
         }
