@@ -27,18 +27,20 @@
 {#if displayItems.length}
   <div class="unified-dock">
     {#each displayItems as item (item.id)}
-      <button
-        type="button"
-        class="dock-pill"
-        on:click={(event) => handleRestore(item, event)}
-        aria-label="Restore {item.title}"
-      >
-        {#if item.icon}
-          <span class="pill-icon" aria-hidden="true">
-            <svelte:component this={item.icon} />
-          </span>
-        {/if}
-        <span class="pill-title">{item.title}</span>
+      <div class="dock-pill">
+        <button
+          type="button"
+          class="dock-pill-restore"
+          on:click={(event) => handleRestore(item, event)}
+          aria-label="Restore {item.title}"
+        >
+          {#if item.icon}
+            <span class="pill-icon" aria-hidden="true">
+              <svelte:component this={item.icon} />
+            </span>
+          {/if}
+          <span class="pill-title">{item.title}</span>
+        </button>
         {#if item.closeable && item.onClose}
           <button
             type="button"
@@ -47,7 +49,7 @@
             on:click={(event) => handleClose(item, event)}
           >×</button>
         {/if}
-      </button>
+      </div>
     {/each}
 
     {#if hasOverflow}
@@ -83,9 +85,9 @@
   }
 
   /**
-   * Dock pill - glassmorphic capsule button for minimized items.
+   * Dock pill - wrapper container for restore button and close button.
    * @usage - Individual minimized window/panel representation in the dock
-   * @related - .pill-title, .pill-close, .pill-icon
+   * @related - .dock-pill-restore, .pill-title, .pill-close, .pill-icon
    */
   .dock-pill {
     display: inline-flex;
@@ -100,15 +102,31 @@
     font-size: 0.85rem;
     color: #0f172a;
     box-shadow: 0 10px 25px -12px rgba(15, 23, 42, 0.25);
-    cursor: pointer;
     transition: all 0.2s ease;
-    pointer-events: auto; /* Pills themselves are clickable */
+    pointer-events: auto;
   }
 
   .dock-pill:hover {
     background: rgba(255, 255, 255, 1);
     box-shadow: 0 12px 28px -12px rgba(15, 23, 42, 0.3);
     transform: translateY(-1px);
+  }
+
+  /**
+   * Dock pill restore button - clickable area to restore the minimized item.
+   * @usage - Main interactive button within the pill
+   */
+  .dock-pill-restore {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    background: transparent;
+    padding: 0;
+    color: inherit;
+    font-family: inherit;
+    font-size: inherit;
+    cursor: pointer;
   }
 
   /**
