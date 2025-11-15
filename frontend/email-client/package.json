@@ -2,6 +2,7 @@
   "name": "composerai-email-client",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://composerai.app",
   "type": "module",
   "scripts": {
     "dev": "npm run dev:css & vite",
