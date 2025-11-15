@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import AiLoadingJourney from './AiLoadingJourney.svelte';
   import WindowActionControls from './window/WindowActionControls.svelte';
+  import ErrorStateCard from './components/ErrorStateCard.svelte';
   import { Sparkles, RotateCcw } from 'lucide-svelte';
   import { sanitizeHtml } from './services/sanitizeHtml';
 
@@ -17,6 +18,7 @@
   $: rawHtml = panelState?.html || '';
   $: html = sanitizeHtml(rawHtml);
   $: lastCommand = panelState?.commandKey || 'summarize';
+  $: commandCode = (lastCommand || '').toUpperCase();
   $: updatedLabel = panelState?.updatedAt
     ? new Date(panelState.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : null;
@@ -96,16 +98,17 @@
           subdued={true}
           className="border-slate-200" />
       {:else if error}
-      <div class="panel-state panel-error">
-        <p>{error}</p>
-        <button
-          type="button"
-          class="btn btn--ghost btn--icon"
-          aria-label="Try again"
-          on:click={() => emitRunCommand(lastCommand)}>
-          <RotateCcw class="h-4 w-4" aria-hidden="true" />
-        </button>
-      </div>
+        <ErrorStateCard
+          size="compact"
+          eyebrow={`${badgeLabel} panel`}
+          code={commandCode}
+          title="We hit a snag"
+          description={error}
+          primaryLabel="Try again"
+          primaryVariant="ghost"
+          primaryIcon={RotateCcw}
+          on:primary={() => emitRunCommand(lastCommand || 'summarize')}
+        />
       {:else if hasContent}
         <div class="panel-html">
           {@html html}
@@ -385,17 +388,18 @@
   }
 
   /**
-   * Empty and error states share columnar layout.
+   * Empty state layout mirrors the padding rhythm of ErrorStateCard.
    *
-   * Used when there's no content to display (empty state) or when an error has occurred.
-   * The vertical column layout stacks the icon, heading, description, and action button.
+   * Used when there's no content to display. Error states now lean on ErrorStateCard to
+   * keep styling consistent across the application, so .panel-state focuses solely on
+   * the neutral empty illustration.
    *
-   * @usage - <div class="panel-state"> for empty or error states
+   * @usage - <div class="panel-state"> for empty states
    * @layout - Flexbox column with left alignment
    * @min-height - 180px ensures adequate space for empty state messaging
    * @spacing - 0.6rem gap between child elements (icon, text, button)
    * @color - Medium slate gray (#475569) for neutral empty state text
-   * @related - .panel-error variant for error state styling
+   * @related - ErrorStateCard.svelte for error messaging
    */
   .panel-state {
     min-height: 180px;
@@ -404,21 +408,6 @@
     align-items: flex-start;
     gap: 0.6rem;
     color: #475569;
-  }
-
-  /**
-   * Error text color cues retry state.
-   *
-   * Modifier class that changes text color to indicate an error condition.
-   * Applied alongside .panel-state when displaying error messages.
-   *
-   * @usage - <div class="panel-state panel-error"> for error states
-   * @color - Red (#b91c1c) signals error condition
-   * @accessibility - Color should not be sole indicator; pair with icons/text
-   * @related - .panel-state base styles
-   */
-  .panel-error {
-    color: #b91c1c;
   }
 
   /**
@@ -512,7 +501,8 @@
     border: none;
     box-shadow: none;
     padding: 0;
-    background: transparent !important;
+    background: #ffffff !important;
     backdrop-filter: none;
+    border-radius: 1rem;
   }
 </style>
