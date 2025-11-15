@@ -461,34 +461,12 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   /**
    * Tray variant renders inside the horizontal action lane on mobile.
    * @usage - Activated when layout="tray" and mobile flag is true
-   * @related - .action-tray__ai wrapper in EmailActionToolbar.svelte
+   * @related - .action-tray__scroller in EmailActionToolbar.svelte
    */
   .ai-action-toolbar.mobile.tray-mode {
-    display: flex;
-    align-items: center;
-    overflow: visible;
+    display: contents; /* Make wrapper invisible - children become direct flex items */
   }
 
-  .ai-action-toolbar.mobile.tray-mode > * + * {
-    margin-left: 0.5rem; /* Use margin for consistent spacing in nested flex */
-  }
-
-  .ai-action-toolbar.mobile.tray-mode > * {
-    flex: 0 0 auto;
-    min-width: auto;
-  }
-
-  .ai-action-toolbar.mobile.tray-mode .relative {
-    width: auto;
-  }
-
-  .ai-action-toolbar.mobile.tray-mode :global(.btn.btn--compact) {
-    width: auto;
-  }
-
-  .ai-action-toolbar.mobile.tray-mode .span-2 {
-    grid-column: auto;
-  }
 
   /**
    * Action pills normalize icon sizing between AI actions and native controls.
