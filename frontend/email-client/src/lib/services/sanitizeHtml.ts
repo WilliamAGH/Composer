@@ -66,6 +66,8 @@ export function sanitizeHtml(input: string | null | undefined): string {
 }
 
 function sanitizeNode(node: Node) {
+  // Create a snapshot of childNodes before iterating to avoid issues when
+  // mutating the DOM (unwrapping/removing nodes) during iteration
   const children = Array.from(node.childNodes);
   for (const child of children) {
     if (child.nodeType === Node.ELEMENT_NODE) {
