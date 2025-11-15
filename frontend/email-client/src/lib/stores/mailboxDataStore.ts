@@ -1,7 +1,7 @@
 import { derived, get, writable, type Readable } from 'svelte/store';
 import { computeMailboxCounts, mapEmailMessage } from '../services/emailUtils';
 import { filterEmailsByMailbox } from '../services/mailboxFiltering';
-import { fetchMailboxStateSnapshot, moveMailboxMessage } from '../services/mailboxStateClient';
+import { fetchMailboxStateSnapshot, moveMailboxMessage, type MailboxStateSnapshotResult, type MessageMoveResult } from '../services/mailboxStateClient';
 
 type Message = ReturnType<typeof mapEmailMessage>;
 type FolderCounts = Record<string, number>;
@@ -21,8 +21,8 @@ export interface MailboxDataStore {
   hydrateEmails: (nextEmails: any[], effectiveFoldersOverride?: Record<string, string> | null) => void;
   selectMailbox: (target: string) => void;
   setSearch: (value: string) => void;
-  loadMailboxState: (mailboxId: string) => Promise<any>;
-  moveMessageRemote: (params: { mailboxId: string; messageId: string; targetFolderId: string }) => Promise<any>;
+  loadMailboxState: (mailboxId: string) => Promise<MailboxStateSnapshotResult | null>;
+  moveMessageRemote: (params: { mailboxId: string; messageId: string; targetFolderId: string }) => Promise<MessageMoveResult | null>;
   saveDraftSession: (draft: any) => void;
   markDraftAsSent: (draftId: string) => void;
   deleteDraftMessage: (draftId: string) => void;
@@ -181,7 +181,7 @@ export function createMailboxDataStore(
     updatePlacementForMessage(messageId, targetMailbox);
   }
 
-  function reconcileMailboxMoveResult(payload: any) {
+  function reconcileMailboxMoveResult(payload: MessageMoveResult | MailboxStateSnapshotResult | null) {
     if (!payload) return;
     if (payload.messages) {
       hydrateEmails(payload.messages, payload.effectiveFolders || null);
