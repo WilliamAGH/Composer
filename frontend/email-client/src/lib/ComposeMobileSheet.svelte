@@ -13,6 +13,7 @@
   export let tonePresets = [];
   export let journeyOverlay = null;
   export let journeyInlineActive = false;
+  export let title = 'Compose';
   export let canUndo = false;
   export let onSend = () => {};
   export let onDeleteDraft = () => {};
@@ -130,7 +131,7 @@
     backButtonAriaLabel="Close compose"
     on:back={onClose}>
     <div slot="center" class="compose-mobile__title">
-      <p class="compose-mobile__eyebrow">Compose</p>
+      <p class="compose-mobile__eyebrow">{title}</p>
     </div>
     <div slot="actions" class="compose-mobile__actions">
       <button
