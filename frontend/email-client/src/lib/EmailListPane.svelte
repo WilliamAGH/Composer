@@ -58,7 +58,7 @@
     emit('mailboxAction', { entry });
   }
 
-  function handleSelectEmail(email, event) {
+  function handleSelectEmail(email) {
     emit('selectEmail', { email });
   }
 
@@ -356,18 +356,19 @@
             in:fly={{ y: 18, duration: 180, easing: quintOut }}
             out:fly={{ y: -18, duration: 220, opacity: 0.1, easing: quintOut }}
           >
-            <button
-              type="button"
+            <div
+              role="button"
+              tabindex="0"
               class="list-row w-full px-4 py-3 border-b border-slate-200 hover:bg-slate-50 cursor-pointer text-left"
               class:list-row--selected={rowSelected}
               class:list-row--unread={!email.read}
               aria-pressed={selected?.id === email.id}
               aria-label={`Open email from ${escapeHtmlFn(email.from)}`}
-              on:click={(event) => handleSelectEmail(email, event)}
+              on:click={() => handleSelectEmail(email)}
               on:keydown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault();
-                  handleSelectEmail(email, event);
+                  handleSelectEmail(email);
                 }
               }}
             >
@@ -456,7 +457,8 @@
               <p class="row-body__subject" class:row-text-guard={!mobile && rowSelected} class:font-medium={!email.read} class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.subject)}</p>
               <p class="row-body__preview">{escapeHtmlFn(email.preview)}</p>
             </div>
-            </button>
+          </div>
+            </div>
           </div>
         {/each}
       </div>
