@@ -35,7 +35,7 @@ Compose drafts and AI summary panels share a reusable window shell:
 - `frontend/email-client/src/lib/window/windowTypes.js` – plain JS factories for window descriptors (kept outside Svelte/Java so multiple components/stores can reuse them without rendering).
 - `frontend/email-client/src/lib/window/windowStore.js` – Svelte store that enforces per-mode limits, manages minimize/focus, and ensures summaries stay tied to their email IDs.
 - `frontend/email-client/src/lib/window/WindowFrame.svelte` – shared chrome for floating/docked windows; feature components (`ComposeWindow.svelte`, `AiSummaryWindow.svelte`) wrap it instead of duplicating markup.
-- `frontend/email-client/src/lib/window/WindowDock.svelte` – renders minimized windows as a bottom dock so they never overlap email content.
+- `frontend/email-client/src/lib/UnifiedDock.svelte` – unified dock for all minimized components (compose windows, AI panels) with consistent styling and automatic spacing to prevent overlap.
 
 Add new AI windows by creating a feature component that wraps `WindowFrame` and registering it with the window store rather than building bespoke panels.
 
