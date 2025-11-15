@@ -99,8 +99,7 @@
     z-index: 90;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(15, 23, 42, 0.1));
-    backdrop-filter: blur(12px);
+    background: #ffffff;
     padding: 0.5rem 1rem 1rem;
   }
 
