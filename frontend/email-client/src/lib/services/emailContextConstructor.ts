@@ -15,12 +15,8 @@ type RecipientSource = {
   timestampIso?: string | null;
 };
 
-type EmailContextSource = Partial<FrontendEmailMessage> & RecipientSource & {
+export type EmailContextSource = Partial<FrontendEmailMessage> & RecipientSource & {
   subject?: string | null;
-  timestamp?: string | null;
-  timestampIso?: string | null;
-  contentMarkdown?: string | null;
-  contentText?: string | null;
   senderName?: string | null;
   senderEmail?: string | null;
   recipientName?: string | null;
