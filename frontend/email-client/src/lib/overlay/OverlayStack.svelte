@@ -8,13 +8,13 @@
 
   let overlays: OverlayStackItem[] = [];
   let unsubscribe: (() => void) | null = null;
+  let currentController: OverlayController | null = null;
 
-  $: {
+  $: if (controller !== currentController) {
+    currentController = controller;
     unsubscribe?.();
     if (controller) {
-      unsubscribe = controller.overlays.subscribe((value) => {
-        overlays = value;
-      });
+      unsubscribe = controller.overlays.subscribe((value) => { overlays = value; });
     } else {
       overlays = [];
       unsubscribe = null;
