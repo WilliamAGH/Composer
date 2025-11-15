@@ -221,6 +221,9 @@
             on:actionMenuToggle={(event) => emit('actionMenuToggle', event.detail)}
             on:comingSoon={(event) => emit('comingSoon', event.detail)}
           />
+        </div>
+
+        <div class="action-tray__overflow">
           <button
             bind:this={moreMenuButton}
             type="button"
@@ -232,18 +235,18 @@
             <MoreVertical class="h-4 w-4" />
           </button>
         </div>
+      </div>
+      <!-- Move menu positioned absolutely, outside the button flow -->
+      {#if moveMenuOpen}
+        <div class="move-menu-surface" bind:this={moveMenuRef}>
+          <MailboxMoveMenu currentFolderId={currentFolderId} pending={pendingMove} on:select={handleMoveSelect} />
+        </div>
+      {/if}
 
-        <!-- Move menu positioned absolutely, outside the button flow -->
-        {#if moveMenuOpen}
-          <div class="move-menu-surface" bind:this={moveMenuRef}>
-            <MailboxMoveMenu currentFolderId={currentFolderId} pending={pendingMove} on:select={handleMoveSelect} />
-          </div>
-        {/if}
-
-        <!-- Overflow menu positioned absolutely, outside the button flow -->
-        {#if moreMenuOpen}
-          <Portal target="body">
-            <div class="mobile-overflow-menu" bind:this={moreMenuRef}>
+      <!-- Overflow menu positioned absolutely, outside the button flow -->
+      {#if moreMenuOpen}
+        <Portal target="body">
+          <div class="mobile-overflow-menu" bind:this={moreMenuRef}>
               {#if translateMenuOpen}
                 <button type="button" class="mobile-overflow-menu__item mobile-overflow-menu__item--header" on:click={() => translateMenuOpen = false}>
                   <ChevronLeft class="h-4 w-4" />
@@ -534,8 +537,9 @@
   .action-tray {
     position: relative; /* Positioning context for absolutely positioned menus */
     width: 100%;
-    display: flex; /* Establish a flex context to control alignment of the scroller */
-    justify-content: flex-end; /* Push the scroller to the far right */
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
   }
 
   /**
@@ -545,13 +549,26 @@
    * @related - .action-tray__buttons
    */
   .action-tray__scroller {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 0.75rem; /* Consistent spacing between all buttons, works with display: contents */
-    margin-left: auto; /* Aligns the entire button group to the right */
+    gap: 0.75rem;
+    flex: 1 1 auto;
     overflow-x: auto;
     padding-bottom: 0.25rem;
+    padding-right: clamp(32px, 8vw, 56px);
     -webkit-overflow-scrolling: touch;
+  }
+
+  .action-tray__scroller::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: clamp(32px, 8vw, 56px);
+    height: 100%;
+    pointer-events: none;
+    background: linear-gradient(90deg, rgba(248, 250, 252, 0), rgba(248, 250, 252, 0.98));
   }
   /**
    * High-specificity override to guarantee all icon buttons in the tray are perfectly circular.
@@ -564,6 +581,10 @@
     height: 42px;
     padding: 0;
     flex-shrink: 0;
+  }
+
+  .action-tray__overflow {
+    flex: 0 0 auto;
   }
 
 
