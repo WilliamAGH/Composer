@@ -5,6 +5,8 @@ import com.composerai.api.dto.ChatResponse;
 import com.composerai.api.service.ChatService;
 import com.composerai.api.util.StringUtils;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -49,5 +51,20 @@ public class CatalogCommandController {
         ChatResponse response = chatService.processChat(request);
         return ResponseEntity.ok(response);
     }
-}
 
+    @PostMapping("/draft-context")
+    public ResponseEntity<Void> uploadDraftContext(@Valid @RequestBody DraftContextRequest request) {
+        chatService.storeDraftContext(request.contextId(), request.content());
+        return ResponseEntity.accepted().build();
+    }
+
+    public record DraftContextRequest(
+        @NotBlank(message = "contextId is required")
+        @Size(max = 200, message = "contextId cannot exceed 200 characters")
+        String contextId,
+
+        @NotBlank(message = "content is required")
+        @Size(max = 20000, message = "content cannot exceed 20000 characters")
+        String content
+    ) {}
+}
