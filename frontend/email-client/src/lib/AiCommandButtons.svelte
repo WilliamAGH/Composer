@@ -90,6 +90,9 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
    * Closes menus when focus moves outside the main document (e.g., into an iframe).
    * This handles the case where emails are rendered in iframes and clicks within
    * the iframe don't bubble to the parent document's click handler.
+   *
+   * Uses document.activeElement to detect iframe focus, which is more reliable
+   * than relying solely on window.blur event firing.
    */
   function handleWindowBlur() {
     // Small delay to let the browser update document.activeElement
@@ -101,19 +104,6 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
         if (actionMenuOpen) setActionMenuOpen(false);
       }
     }, 0);
-  }
-
-  /**
-   * Global click handler that works across all windows/frames.
-   * Uses capture phase to catch clicks before they reach iframes.
-   */
-  function handleWindowClick(event) {
-    // If the click is in the main window, handleDocumentClick will handle it
-    // This is backup for edge cases
-    if (event.target === window) {
-      if (translateMenuOpen) translateMenuOpen = false;
-      if (actionMenuOpen) setActionMenuOpen(false);
-    }
   }
 
   function isWithin(target, panelEl, triggerEl) {
@@ -130,13 +120,9 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
     // Listen for window blur to detect focus moving to iframes
     window.addEventListener('blur', handleWindowBlur);
 
-    // Listen for clicks at window level (capture phase) to catch iframe interactions
-    window.addEventListener('click', handleWindowClick, true);
-
     return () => {
       document.removeEventListener('click', handleDocumentClick);
       window.removeEventListener('blur', handleWindowBlur);
-      window.removeEventListener('click', handleWindowClick, true);
     };
   });
 
