@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(content, pageTitle, headContent)">
-<head th:with="resolvedPageTitle=${pageTitle} != null ? pageTitle : defaultPageTitle">
+<head th:with="resolvedPageTitle=${pageTitle} != null ? ${pageTitle} : ${defaultPageTitle}">
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title th:text="${resolvedPageTitle}">Composer - AI email that drafts and manages your mailbox</title>
