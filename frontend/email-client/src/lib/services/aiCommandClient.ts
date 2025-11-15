@@ -8,6 +8,7 @@ import {
 import { buildEmailContextString, deriveRecipientContext, normalizeRecipient } from './emailContextConstructor';
 import { parseSubjectAndBody } from './emailUtils';
 import { deriveHeadline } from './aiCommandHandler';
+import { sanitizeHtml } from './sanitizeHtml';
 import { executeCatalogCommand } from './catalogCommandClient';
 import type { ChatRequestPayload } from './catalogCommandClient';
 import { createConversationLedger } from './conversationLedger';
@@ -278,7 +279,8 @@ export function createAiCommandClient({
     let draftText = markdown;
     if (!draftText && sanitizedHtml) {
       const temp = document.createElement('div');
-      temp.innerHTML = sanitizedHtml;
+      // Defense-in-depth: re-sanitize on client even though server sanitized
+      temp.innerHTML = sanitizeHtml(sanitizedHtml);
       draftText = temp.textContent?.trim() || '';
     }
 
