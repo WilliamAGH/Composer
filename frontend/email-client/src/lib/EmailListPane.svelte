@@ -402,7 +402,44 @@
                   <span class="font-semibold truncate" class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.from)}</span>
                   <span class="row-header-line__timestamp">{formatRelativeTimestampFn(email.timestampIso, email.timestamp)}</span>
                 </div>
-                {#if mobile}
+                {#if !mobile}
+                  <div class="row-actions" class:row-actions--visible={rowMoveMenuFor === email.id}>
+                    {#if resolveFolderFn(email) !== 'archive'}
+                      <button
+                        type="button"
+                        class="row-action-btn"
+                        title="Archive"
+                        aria-label="Archive email"
+                        on:click|stopPropagation={() => handleArchiveEmail(email)}>
+                        <Archive class="h-4 w-4" />
+                      </button>
+                    {/if}
+                    <div class="row-action-menu">
+                      <button
+                        type="button"
+                        class="row-action-btn"
+                        title="Move"
+                        aria-label="Move email"
+                        aria-expanded={rowMoveMenuFor === email.id}
+                        data-row-move-control="true"
+                        on:click|stopPropagation={(e) => toggleRowMoveMenu(email.id, e.currentTarget)}>
+                        {#if pendingMoveIds.has(email.id)}
+                          <Loader2 class="h-4 w-4 animate-spin" />
+                        {:else}
+                          <FolderSymlink class="h-4 w-4" />
+                        {/if}
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      class="row-action-btn row-action-btn--destructive"
+                      title="Delete"
+                      aria-label="Delete email"
+                      on:click|stopPropagation={() => handleDeleteEmail(email)}>
+                      <Trash2 class="h-4 w-4" />
+                    </button>
+                  </div>
+                {:else}
                   <button
                     type="button"
                     class="mobile-action-zone"
@@ -413,42 +450,6 @@
                     <MoreVertical class="h-4 w-4" aria-hidden="true" />
                   </button>
                 {/if}
-                <div class="row-actions" class:hidden={mobile} class:row-actions--visible={rowMoveMenuFor === email.id}>
-                  {#if resolveFolderFn(email) !== 'archive'}
-                    <button
-                      type="button"
-                      class="row-action-btn"
-                      title="Archive"
-                      aria-label="Archive email"
-                      on:click|stopPropagation={() => handleArchiveEmail(email)}>
-                      <Archive class="h-4 w-4" />
-                    </button>
-                  {/if}
-                  <div class="row-action-menu">
-                    <button
-                      type="button"
-                      class="row-action-btn"
-                      title="Move"
-                      aria-label="Move email"
-                      aria-expanded={rowMoveMenuFor === email.id}
-                      data-row-move-control="true"
-                      on:click|stopPropagation={(e) => toggleRowMoveMenu(email.id, e.currentTarget)}>
-                      {#if pendingMoveIds.has(email.id)}
-                        <Loader2 class="h-4 w-4 animate-spin" />
-                      {:else}
-                        <FolderSymlink class="h-4 w-4" />
-                      {/if}
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    class="row-action-btn row-action-btn--destructive"
-                    title="Delete"
-                    aria-label="Delete email"
-                    on:click|stopPropagation={() => handleDeleteEmail(email)}>
-                    <Trash2 class="h-4 w-4" />
-                  </button>
-                </div>
               </div>
               <p class="row-body__subject" class:row-text-guard={!mobile && rowSelected} class:font-medium={!email.read} class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.subject)}</p>
               <p class="row-body__preview">{escapeHtmlFn(email.preview)}</p>
