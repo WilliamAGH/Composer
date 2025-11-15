@@ -25,32 +25,48 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # ============================================================================
-# 1. UNUSED EXPORTS (ts-prune) - TypeScript projects only
+# 1. UNUSED EXPORTS (svelte-check + tsc)
 # ============================================================================
-echo "📦 Checking for unused exports..."
+echo "📦 Checking for unused exports with svelte-check..."
 
 if [ ! -f "tsconfig.json" ]; then
   echo -e "   ${BLUE}ℹ️  No tsconfig.json found, skipping (JavaScript project)${NC}"
 elif ! command -v npx &> /dev/null; then
-  echo -e "   ${YELLOW}⚠️  npx not found, skipping unused exports check${NC}"
+  echo -e "   ${YELLOW}⚠️  npx not found, skipping unused export check${NC}"
 else
-  # Run ts-prune, filtering out common false positives
-  UNUSED_EXPORTS=$(npx --yes ts-prune@latest --project tsconfig.json 2>/dev/null | \
-    grep -v "used in module" | \
-    grep -v "default (used in module)" | \
-    grep -v ".d.ts:" || true)
+  set +e
+  SVELTE_OUTPUT=$(npx svelte-check --tsconfig tsconfig.json --threshold hint --fail-on-warnings 2>&1)
+  SVELTE_STATUS=$?
+  set -e
 
-  if [ -z "$UNUSED_EXPORTS" ]; then
-    echo -e "   ${GREEN}✅ No unused exports found${NC}"
+  if [ "$SVELTE_STATUS" -eq 0 ]; then
+    echo -e "   ${GREEN}✅ No unused exports (per svelte-check)${NC}"
   else
-    echo -e "   ${YELLOW}⚠️  Unused exports detected:${NC}"
-    echo "$UNUSED_EXPORTS" | head -10
-    EXPORT_COUNT=$(echo "$UNUSED_EXPORTS" | wc -l | tr -d ' ')
-    if [ "$EXPORT_COUNT" -gt 10 ]; then
-      echo -e "   ${YELLOW}... and $((EXPORT_COUNT - 10)) more${NC}"
-    fi
-    TOTAL_ISSUES=$((TOTAL_ISSUES + EXPORT_COUNT))
+    echo -e "   ${YELLOW}⚠️  svelte-check reported issues:${NC}"
+    echo "$SVELTE_OUTPUT"
+    ISSUE_LINES=$(echo "$SVELTE_OUTPUT" | wc -l | tr -d ' ')
+    TOTAL_ISSUES=$((TOTAL_ISSUES + ISSUE_LINES))
   fi
+fi
+echo ""
+
+echo "🧪 Running tsc --noEmit to surface TS-only issues..."
+if [ -f "tsconfig.json" ] && command -v npx &> /dev/null; then
+  set +e
+  TSC_OUTPUT=$(npx tsc --noEmit 2>&1)
+  TSC_STATUS=$?
+  set -e
+
+  if [ "$TSC_STATUS" -eq 0 ]; then
+    echo -e "   ${GREEN}✅ tsc completed with no unused-export diagnostics${NC}"
+  else
+    echo -e "   ${YELLOW}⚠️  tsc reported issues:${NC}"
+    echo "$TSC_OUTPUT"
+    ISSUE_LINES=$(echo "$TSC_OUTPUT" | wc -l | tr -d ' ')
+    TOTAL_ISSUES=$((TOTAL_ISSUES + ISSUE_LINES))
+  fi
+else
+  echo -e "   ${YELLOW}⚠️  Skipping tsc (tsconfig or npx missing)${NC}"
 fi
 echo ""
 
