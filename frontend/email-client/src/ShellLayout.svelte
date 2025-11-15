@@ -167,8 +167,8 @@ mailboxStores.emails.subscribe((value) => {
             onDelete: () => deleteEmail($selected),
             onMove: (event) => moveEmailToFolder($selected, event?.detail?.targetFolderId),
             onCommandSelect: (event) => runMainAiCommand(event?.detail),
-            onActionSelect: (event) => handleActionSelect(event),
-            onActionMenuToggle: (event) => handleActionMenuToggle(event),
+            onActionSelect: (event) => handleActionSelect(event?.detail ? { detail: event.detail } : event),
+            onActionMenuToggle: (event) => handleActionMenuToggle(event?.detail ? { detail: event.detail } : event),
             onComingSoon: (event) => handleComingSoon(event?.detail)
           }
         }
@@ -699,6 +699,10 @@ const activePanelErrorStore = derived([panelErrorsStore, panelActiveKeyStore], (
     const commandVariant = typeof request === 'object' ? request?.variantKey : null;
     const instructionOverride = typeof request === 'object' ? request?.instructionOverride : null;
     if (!command) return;
+    if (!selected) {
+      alert('Select an email first.');
+      return;
+    }
     const selectedContextKey = selected ? (selected.contextId || selected.id) : null;
     const fnMeta = getFunctionMeta(catalogData, command);
     const targetsCompose = Array.isArray(fnMeta?.scopes) && fnMeta.scopes.includes('compose');

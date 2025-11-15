@@ -1,6 +1,6 @@
 import { formatRecipientDisplay } from '../services/emailContextConstructor';
 import { normalizeReplySubject } from '../services/emailSubjectPrefixHandler';
-import type { EmailMessage } from '../../main';
+import type { FrontendEmailMessage } from '../services/emailUtils';
 
 export type WindowKindType = 'compose' | 'summary';
 export type WindowModeType = 'floating' | 'docked';
@@ -77,8 +77,8 @@ export type ComposeWindowOverrides = Partial<ComposeWindowPayload> & {
   contextId?: string | null;
 };
 
-export function createComposeWindow(email: Partial<EmailMessage> = {}, overrides: ComposeWindowOverrides = {}): ComposeWindowDescriptor {
-  const safeRecipientName = toTrimmed(overrides.recipientName ?? email.senderName ?? email.from ?? '');
+export function createComposeWindow(email: Partial<FrontendEmailMessage> = {}, overrides: ComposeWindowOverrides = {}): ComposeWindowDescriptor {
+  const safeRecipientName = toTrimmed(overrides.recipientName ?? email.senderName ?? '');
   const safeRecipientEmail = toTrimmed(overrides.recipientEmail ?? email.fromEmail ?? '');
   const defaultToValue = formatRecipientDisplay(safeRecipientName, safeRecipientEmail);
   return {
@@ -103,7 +103,7 @@ export function createComposeWindow(email: Partial<EmailMessage> = {}, overrides
   };
 }
 
-export function createSummaryWindow(email: Partial<EmailMessage> = {}, html = '', title = 'AI Summary'): SummaryWindowDescriptor {
+export function createSummaryWindow(email: Partial<FrontendEmailMessage> = {}, html = '', title = 'AI Summary'): SummaryWindowDescriptor {
   const contextId = email.id || email.contextId || createWindowId();
   return {
     id: createWindowId(),

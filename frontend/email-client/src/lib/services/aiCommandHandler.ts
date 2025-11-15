@@ -8,15 +8,11 @@ import { deriveRecipientContext } from './emailContextConstructor';
 import type { Readable } from 'svelte/store';
 import type { AiFunctionCatalogDto } from '../../main';
 import type { ChatResponsePayload } from './catalogCommandClient';
-import type { EmailMessage } from '../../main';
+import type { FrontendEmailMessage } from './emailUtils';
 
 type CatalogStore = Readable<AiFunctionCatalogDto | null>;
 
-type SelectedEmail = (EmailMessage & {
-  from?: string | null;
-  fromEmail?: string | null;
-  preview?: string | null;
-}) | null;
+type SelectedEmail = FrontendEmailMessage | null;
 
 type CallAiCommandFn = (command: string, instruction: string, options: Record<string, unknown>) => Promise<ChatResponsePayload | null>;
 
@@ -43,7 +39,9 @@ export async function handleAiCommand({
   callAiCommand: CallAiCommandFn;
   ensureCatalogLoaded: () => Promise<boolean>;
 }) {
-  if (!selectedEmail) throw new Error('Select an email first.');
+  if (!selectedEmail) {
+    throw new Error('Select an email first.');
+  }
   const ready = await ensureCatalogLoaded();
   if (!ready) throw new Error('AI helpers are unavailable. Please refresh and try again.');
   const catalog = get(catalogStore);
@@ -91,6 +89,10 @@ export async function handleAiCommand({
   }
 
   const instruction = instructionOverride || resolveDefaultInstruction(fn, variant);
+  if (!selectedEmail) {
+    throw new Error('Select an email first.');
+  }
+
   const data = await callAiCommand(command, instruction, {
     contextId: selectedEmail.contextId,
     subject: selectedEmail.subject,
@@ -116,12 +118,14 @@ export async function handleAiCommand({
   };
 }
 
-function findMatchingComposeWindow(windowManager: WindowManager, contextId: string | null) {
+function findMatchingComposeWindow(windowManager: WindowManager, contextId: string | null): ComposeWindowDescriptor | null {
   const openWindows = get(windowManager.windows);
   if (!Array.isArray(openWindows) || openWindows.length === 0) return null;
-  return openWindows.find((win) =>
-    win.kind === WindowKind.COMPOSE && (contextId ? win.contextId === contextId : true)
-  ) || null;
+  const match = openWindows.find(
+    (win): win is ComposeWindowDescriptor =>
+      win.kind === WindowKind.COMPOSE && (contextId ? win.contextId === contextId : true)
+  );
+  return match || null;
 }
 
 async function draftWithAi({
@@ -255,7 +259,7 @@ export async function runComposeWindowAi({
   if (!fn) {
     throw new Error('Command unavailable.');
   }
-  const instruction = detail.instructionOverride || buildComposeInstruction(detail.command, detail.draft || '', detail.isReply, fn);
+  const instruction = detail.instructionOverride || buildComposeInstruction(detail.command, detail.draft || '', Boolean(detail.isReply), fn);
   const relatedEmail = windowConfig.contextId ? resolveEmailById?.(windowConfig.contextId) : selectedEmail || null;
   const commandArgs = mergeDefaultArgs(fn, null);
   const recipientContext = deriveRecipientContext({

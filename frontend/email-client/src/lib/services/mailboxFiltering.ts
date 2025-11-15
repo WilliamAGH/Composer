@@ -1,11 +1,6 @@
-export type FilterableEmail = {
-  [key: string]: unknown;
-  subject?: string | null;
-  preview?: string | null;
-  from?: string | null;
-  labels?: string[];
-  starred?: boolean;
-};
+import type { FrontendEmailMessage } from './emailUtils';
+
+export type FilterableEmail = FrontendEmailMessage;
 
 export type FolderResolver<T extends FilterableEmail = FilterableEmail> = (message: T) => string | null | undefined;
 
@@ -56,4 +51,3 @@ export function filterEmailsByMailbox<T extends FilterableEmail>(
     return haystack.includes(needle);
   });
 }
-

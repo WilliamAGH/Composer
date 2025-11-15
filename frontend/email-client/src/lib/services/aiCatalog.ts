@@ -5,6 +5,7 @@
  */
 import { writable, get, type Writable } from 'svelte/store';
 import type { AiFunctionCatalogDto, AiFunctionSummary, AiFunctionVariantSummary } from '../../main';
+export type { AiFunctionCatalogDto, AiFunctionSummary, AiFunctionVariantSummary } from '../../main';
 import { dispatchClientWarning } from './sessionNonceClient';
 
 const catalog: Writable<AiFunctionCatalogDto | null> = writable(null);

@@ -1,3 +1,5 @@
+import type { FrontendEmailMessage } from './emailUtils';
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export type Recipient = { name: string; email: string };
@@ -13,7 +15,7 @@ type RecipientSource = {
   timestampIso?: string | null;
 };
 
-type EmailContextSource = RecipientSource & {
+type EmailContextSource = Partial<FrontendEmailMessage> & RecipientSource & {
   subject?: string | null;
   timestamp?: string | null;
   timestampIso?: string | null;
@@ -55,8 +57,8 @@ export function recipientFromEmail(email: EmailContextSource | null | undefined)
   if (!email) {
     return { name: '', email: '' };
   }
-  const name = (email.from || email.senderName || '').trim();
-  const address = (email.fromEmail || email.senderEmail || '').trim();
+  const name = (email.senderName || '').trim();
+  const address = (email.senderEmail || '').trim();
   return { name, email: address };
 }
 
@@ -88,8 +90,8 @@ export function deriveRecipientContext({
 
   if (composePayload) {
     const directPayload = normalizeRecipient({
-      name: composePayload.recipientName,
-      email: composePayload.recipientEmail || composePayload.toEmail
+      name: composePayload.recipientName ?? '',
+      email: composePayload.recipientEmail ?? composePayload.toEmail ?? ''
     });
     if (directPayload.name || directPayload.email) {
       return directPayload;
@@ -131,8 +133,8 @@ export function buildEmailContextString(email: EmailContextSource | null | undef
   const lines = [];
   lines.push('=== Email Metadata ===');
   lines.push(`Subject: ${email.subject || 'No subject'}`);
-  lines.push(`From: ${formatParticipant(email.from, email.fromEmail, 'Unknown sender')}`);
-  lines.push(`To: ${formatParticipant(email.to, email.toEmail, 'Unknown recipient')}`);
+  lines.push(`From: ${formatParticipant(email.senderName, email.senderEmail, 'Unknown sender')}`);
+  lines.push(`To: ${formatParticipant(email.recipientName, email.recipientEmail, 'Unknown recipient')}`);
   if (email.timestamp) {
     lines.push(`Email sent on: ${email.timestamp}`);
   }
