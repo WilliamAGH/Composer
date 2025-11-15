@@ -135,6 +135,32 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
     return ordered;
   }
 
+  /**
+   * Positions the action menu below the trigger button on mobile.
+   */
+  function positionActionMenu() {
+    if (!mobile || !trayMode || !actionButtonEl || !actionDropdownEl) return;
+    const buttonRect = actionButtonEl.getBoundingClientRect();
+    actionDropdownEl.style.top = `${buttonRect.bottom + 8}px`;
+  }
+
+  /**
+   * Positions the translate menu below the trigger button on mobile.
+   */
+  function positionTranslateMenu() {
+    if (!mobile || !trayMode || !translateButtonEl || !translateDropdownEl) return;
+    const buttonRect = translateButtonEl.getBoundingClientRect();
+    translateDropdownEl.style.top = `${buttonRect.bottom + 8}px`;
+  }
+
+  $: if (actionMenuOpen && mobile && trayMode && actionButtonEl && actionDropdownEl) {
+    positionActionMenu();
+  }
+
+  $: if (translateMenuOpen && mobile && trayMode && translateButtonEl && translateDropdownEl) {
+    positionTranslateMenu();
+  }
+
   function resolveIconComponent(key) {
     const normalized = (key || '').toLowerCase();
     switch (normalized) {
@@ -506,5 +532,82 @@ import { Languages, ChevronDown, Sparkles, Highlighter, MailPlus, BookOpenCheck,
   .action-dropdown,
   .translate-dropdown {
     top: calc(100% + 0.75rem);
+  }
+
+  /**
+   * Mobile tray mode uses fixed positioning to avoid overflow clipping issues.
+   * Matches the mobile-overflow-menu behavior from EmailActionToolbar.
+   * @usage - Applied when mobile + tray-mode flags are active
+   * @related - .mobile-overflow-menu in EmailActionToolbar.svelte
+   */
+  .ai-action-toolbar.mobile.tray-mode .action-dropdown,
+  .ai-action-toolbar.mobile.tray-mode .translate-dropdown {
+    position: fixed;
+    right: 1rem;
+    top: auto;
+    bottom: auto;
+    z-index: 250;
+    background: white;
+    border-radius: 0.85rem;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.18);
+    padding: 0.5rem;
+    min-width: 11rem;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  /**
+   * Mobile tray mode menu items match the mobile-overflow-menu__item styling.
+   * @usage - Menu items inside dropdowns when mobile + tray-mode are active
+   * @related - .mobile-overflow-menu__item in EmailActionToolbar.svelte
+   */
+  .ai-action-toolbar.mobile.tray-mode .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    border-radius: 0.5rem;
+    background: transparent;
+    border: none;
+    color: #0f172a;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .ai-action-toolbar.mobile.tray-mode .menu-item:hover {
+    background: rgba(248, 250, 252, 0.9);
+  }
+
+  /**
+   * Mobile tray mode eyebrow styling matches mobile-overflow-menu__eyebrow.
+   * @usage - Section headers inside dropdowns when mobile + tray-mode are active
+   */
+  .ai-action-toolbar.mobile.tray-mode .menu-eyebrow {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    padding: 0.5rem 0.75rem;
+  }
+
+  /**
+   * Ensure menu item icons display properly in mobile tray mode.
+   * @usage - Icon styling inside menu items when mobile + tray-mode are active
+   */
+  .ai-action-toolbar.mobile.tray-mode .menu-item-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .ai-action-toolbar.mobile.tray-mode .menu-item :global(svg) {
+    width: 1rem;
+    height: 1rem;
   }
 </style>
