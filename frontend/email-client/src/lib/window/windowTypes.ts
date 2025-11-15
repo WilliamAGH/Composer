@@ -116,7 +116,7 @@ export function createComposeWindow(email: Partial<FrontendEmailMessage> = {}, o
 }
 
 export function createSummaryWindow(email: Partial<FrontendEmailMessage> = {}, html = '', title = 'AI Summary'): SummaryWindowDescriptor {
-  const contextId = email.id || email.contextId || createWindowId();
+  const contextId = email.id || createWindowId();
   return {
     id: createWindowId(),
     kind: WindowKind.SUMMARY,
@@ -125,7 +125,7 @@ export function createSummaryWindow(email: Partial<FrontendEmailMessage> = {}, h
     contextId,
     title: title || 'AI Summary',
     payload: {
-      emailId: contextId,
+      emailId: email.id || null,
       html: html || '<div class="text-sm text-slate-500">No summary yet.</div>'
     }
   };
