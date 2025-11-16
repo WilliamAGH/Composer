@@ -359,7 +359,9 @@
             <div
               role="button"
               tabindex="0"
-              class="list-row w-full px-4 py-3 border-b border-slate-200 hover:bg-slate-50 cursor-pointer text-left"
+              class="list-row w-full px-4 py-3 hover:bg-slate-50 cursor-pointer text-left"
+              class:border-b={!rowSelected}
+              class:border-slate-200={!rowSelected}
               class:list-row--selected={rowSelected}
               class:list-row--unread={!email.read}
               aria-pressed={rowSelected}
@@ -399,7 +401,7 @@
             {/if}
             <div class="min-w-0 flex-1">
               <div class="row-header-line">
-                <div class="row-header-line__text" class:row-text-guard={!mobile && rowSelected}>
+                <div class="row-header-line__text">
                   <span class="font-semibold truncate" class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.from)}</span>
                   <span class="row-header-line__timestamp">{formatRelativeTimestampFn(email.timestampIso, email.timestamp)}</span>
                 </div>
@@ -454,7 +456,7 @@
                   </button>
                 {/if}
               </div>
-              <p class="row-body__subject" class:row-text-guard={!mobile && rowSelected} class:font-medium={!email.read} class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.subject)}</p>
+              <p class="row-body__subject" class:font-medium={!email.read} class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.subject)}</p>
               <p class="row-body__preview">{escapeHtmlFn(email.preview)}</p>
             </div>
           </div>
@@ -565,11 +567,18 @@
    * @usage - Wrapper div around the .list-rows stack
    * @overflow - y: auto for scrolling, x: visible so dropdown portals are not clipped
    * @padding - Horizontal padding provides consistent breathing room for the lifted-card selected state
+   * @desktop - Left padding collapses on desktop so selected cards sit flush with the list edge (no visible notch)
    */
   .mailbox-list-scroll {
     overflow-y: auto;
     overflow-x: visible;
     padding: 0 8px;
+  }
+
+  @media (min-width: 1024px) {
+    .mailbox-list-scroll {
+      padding-left: 0;
+    }
   }
 
   /**
@@ -588,13 +597,15 @@
     position: relative;
     background: white;
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* Springy animation */
-    --row-action-guard: 110px;
   }
 
-  @media (max-width: 640px) {
-    .list-row {
-      --row-action-guard: 72px;
-    }
+  /**
+   * Remove the separator line above a selected row by clearing the border from the preceding row.
+   * @compat - :has() is supported in evergreen browsers (Chrome 105+, Safari 15.4+, Firefox 121+)
+   * @reason - keeps the lifted card visually connected to the list without double borders
+   */
+  .list-row-container:has(+ .list-row-container .list-row--selected) .list-row {
+    border-bottom-color: transparent !important;
   }
 
   .row-header-line {
@@ -618,13 +629,6 @@
     color: #94a3b8;
     flex-shrink: 0;
     white-space: nowrap;
-  }
-
-  .row-text-guard {
-    position: relative;
-    padding-right: var(--row-action-guard, 110px);
-    -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 calc(100% - var(--row-action-guard, 110px)), rgba(0, 0, 0, 0) 100%);
-    mask-image: linear-gradient(90deg, #000 0%, #000 calc(100% - var(--row-action-guard, 110px)), rgba(0, 0, 0, 0) 100%);
   }
 
   .row-body__subject,
@@ -653,10 +657,9 @@
       0 8px 24px -6px rgba(15, 23, 42, 0.12),
       0 4px 12px -2px rgba(15, 23, 42, 0.06),
       0 0 0 1px rgba(148, 163, 184, 0.15);
-    border-radius: 10px;
-    margin: 6px 4px;
+    border-radius: 12px;
+    margin: 4px 8px 6px 0;
     z-index: 10;
-    border-bottom: none; /* Remove bottom border that creates edge gap */
   }
 
   /* Unread message accent (blue tint background) */
