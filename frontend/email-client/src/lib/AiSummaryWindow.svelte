@@ -372,7 +372,6 @@
     line-height: 1.65;
     color: #111827;
     overflow-wrap: anywhere;
-    word-break: break-word;
   }
 
   /**
@@ -385,7 +384,6 @@
    */
   .panel-html :global(a) {
     overflow-wrap: anywhere;
-    word-break: break-word;
   }
 
   /**

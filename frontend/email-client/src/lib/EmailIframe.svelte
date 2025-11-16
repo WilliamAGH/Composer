@@ -98,11 +98,26 @@
       console.debug('EmailIframe: unable to open external link', error);
     }
   }
+
+  function handleFallbackKeydown(event) {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+    const anchor = findAnchorElement(event.target);
+    if (!anchor) {
+      return;
+    }
+    const href = anchor.getAttribute('href');
+    if (!isExternalHttpUrl(href)) {
+      return;
+    }
+    event.preventDefault();
+    openSafeExternalUrl(href);
+  }
 </script>
 
 <div class="email-html-container" bind:this={container}>
   {#if !rendered && fallback}
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
     <!-- svelte-ignore a11y-no-static-element-interactions -->
     <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
     <div
@@ -110,7 +125,8 @@
       bind:this={fallbackContainer}
       role="region"
       aria-label="Email message content"
-      on:click={handleFallbackClick}>{@html fallback}</div>
+      on:click={handleFallbackClick}
+      on:keydown={handleFallbackKeydown}>{@html fallback}</div>
   {/if}
 </div>
 

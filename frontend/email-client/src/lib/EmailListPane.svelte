@@ -359,10 +359,12 @@
             <div
               role="button"
               tabindex="0"
-              class="list-row w-full px-4 py-3 border-b border-slate-200 hover:bg-slate-50 cursor-pointer text-left"
+              class="list-row w-full px-4 py-3 hover:bg-slate-50 cursor-pointer text-left"
+              class:border-b={!rowSelected}
+              class:border-slate-200={!rowSelected}
               class:list-row--selected={rowSelected}
               class:list-row--unread={!email.read}
-              aria-pressed={selected?.id === email.id}
+              aria-pressed={rowSelected}
               aria-label={`Open email from ${escapeHtmlFn(email.from)}`}
               on:click={() => handleSelectEmail(email)}
               on:keydown={(event) => {
@@ -399,7 +401,7 @@
             {/if}
             <div class="min-w-0 flex-1">
               <div class="row-header-line">
-                <div class="row-header-line__text" class:row-text-guard={!mobile && rowSelected}>
+                <div class="row-header-line__text">
                   <span class="font-semibold truncate" class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.from)}</span>
                   <span class="row-header-line__timestamp">{formatRelativeTimestampFn(email.timestampIso, email.timestamp)}</span>
                 </div>
@@ -454,7 +456,7 @@
                   </button>
                 {/if}
               </div>
-              <p class="row-body__subject" class:row-text-guard={!mobile && rowSelected} class:font-medium={!email.read} class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.subject)}</p>
+              <p class="row-body__subject" class:font-medium={!email.read} class:text-slate-700={email.read} class:text-slate-900={!email.read}>{escapeHtmlFn(email.subject)}</p>
               <p class="row-body__preview">{escapeHtmlFn(email.preview)}</p>
             </div>
           </div>
@@ -564,10 +566,19 @@
    * Scroll container for the list maintains vertical scrolling while allowing dropdown portals to overflow horizontally.
    * @usage - Wrapper div around the .list-rows stack
    * @overflow - y: auto for scrolling, x: visible so dropdown portals are not clipped
+   * @padding - Horizontal padding provides consistent breathing room for the lifted-card selected state
+   * @desktop - Left padding collapses on desktop so selected cards sit flush with the list edge (no visible notch)
    */
   .mailbox-list-scroll {
     overflow-y: auto;
     overflow-x: visible;
+    padding: 0 8px;
+  }
+
+  @media (min-width: 1024px) {
+    .mailbox-list-scroll {
+      padding-left: 0;
+    }
   }
 
   /**
@@ -586,13 +597,15 @@
     position: relative;
     background: white;
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* Springy animation */
-    --row-action-guard: 110px;
   }
 
-  @media (max-width: 640px) {
-    .list-row {
-      --row-action-guard: 72px;
-    }
+  /**
+   * Remove the separator line above a selected row by clearing the border from the preceding row.
+   * @compat - :has() is supported in evergreen browsers (Chrome 105+, Safari 15.4+, Firefox 121+)
+   * @reason - keeps the lifted card visually connected to the list without double borders
+   */
+  .list-row-container:has(+ .list-row-container .list-row--selected) .list-row {
+    border-bottom-color: transparent !important;
   }
 
   .row-header-line {
@@ -618,13 +631,6 @@
     white-space: nowrap;
   }
 
-  .row-text-guard {
-    position: relative;
-    padding-right: var(--row-action-guard, 110px);
-    -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 calc(100% - var(--row-action-guard, 110px)), rgba(0, 0, 0, 0) 100%);
-    mask-image: linear-gradient(90deg, #000 0%, #000 calc(100% - var(--row-action-guard, 110px)), rgba(0, 0, 0, 0) 100%);
-  }
-
   .row-body__subject,
   .row-body__preview {
     display: block;
@@ -646,13 +652,13 @@
   /* "Lifted Card" selected state - physically elevated with depth */
   .list-row--selected {
     background: white;
-    transform: translateX(8px) scale(1.02);
+    transform: translateY(-2px) scale(1.01);
     box-shadow:
-      0 6px 16px -4px rgba(15, 23, 42, 0.15),
-      0 2px 8px -2px rgba(15, 23, 42, 0.08),
-      0 0 0 1px rgba(148, 163, 184, 0.2);
-    border-radius: 8px;
-    margin: 4px 8px 4px 0;
+      0 8px 24px -6px rgba(15, 23, 42, 0.12),
+      0 4px 12px -2px rgba(15, 23, 42, 0.06),
+      0 0 0 1px rgba(148, 163, 184, 0.15);
+    border-radius: 12px;
+    margin: 4px 8px 6px 0;
     z-index: 10;
   }
 

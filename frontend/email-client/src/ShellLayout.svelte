@@ -24,6 +24,7 @@ import { provideOverlayController } from './lib/overlay/overlayContext';
 import { isMobile, isTablet, isDesktop, isWide, viewport, viewportSize } from './lib/viewportState';
   import { createWindowManager } from './lib/window/windowStore'; // temp use
   import { createComposeWindow, WindowKind } from './lib/window/windowTypes';
+import { createDesktopContentController } from './lib/controllers/DesktopContentController';
 import { getFunctionMeta, mergeDefaultArgs, resolveDefaultInstruction } from './lib/services/aiCatalog';
 import { handleAiCommand, deriveHeadline, runComposeWindowAi } from './lib/services/aiCommandHandler';
 import { deriveRecipientContext } from './lib/services/emailContextConstructor';
@@ -225,9 +226,17 @@ let sidebarOpen = get(sidebarOpenStore);
 let drawerMode = get(drawerModeStore);
 let drawerVisible = get(drawerVisibleStore);
 let pendingMoves = get(pendingMovesStore);
-const { aiClient, journeyStore: aiJourney, conversationLedger } = createAiCommandService(() => selected);
-const aiJourneyOverlayStore = aiJourney.overlay;
-const panelStore = createAiPanelStore();
+  const { aiClient, journeyStore: aiJourney, conversationLedger } = createAiCommandService(() => selected);
+  const aiJourneyOverlayStore = aiJourney.overlay;
+  const panelStore = createAiPanelStore();
+  const desktopContentController = createDesktopContentController({
+    windowManager,
+    panelStore,
+    overlayController,
+    aiPanelTitle: 'AI Panel',
+    aiPanelIcon: Sparkles
+  });
+  const dockItemsStore = desktopContentController.dockItems;
 const panelStores = panelStore.stores;
 const panelSessionActiveStore = panelStores.sessionActive;
 const panelMinimizedStore = panelStores.minimized;
@@ -250,7 +259,6 @@ const activePanelErrorStore = derived([panelErrorsStore, panelActiveKeyStore], (
   $: floatingWindows = $floatingStore;
   $: composeWindowStack = floatingWindows.filter((win) => win.kind === WindowKind.COMPOSE && !win.minimized);
   $: activeMobileComposeId = composeWindowStack.length ? composeWindowStack[composeWindowStack.length - 1].id : null;
-  $: minimizedWindows = $minimizedStore;
   $: windowAlert = $windowErrorStore ? $windowErrorStore.message : '';
   $: aiJourneyOverlay = $aiJourneyOverlayStore;
   $: composeJourneyOverlay = aiJourneyOverlay.scope === 'compose' ? aiJourneyOverlay : null;
@@ -313,6 +321,7 @@ onDestroy(() => {
   for (const dispose of overlayRegistrations) {
     dispose();
   }
+  desktopContentController.dispose();
 });
   // Viewport responsive
   $: mobile = $isMobile;
@@ -342,31 +351,6 @@ onDestroy(() => {
     previousPanelKey = selectedPanelKey;
     panelStore.resetSessionState();
   }
-
-  // Unified dock items - combines all minimized components
-  $: dockItems = [
-    // Minimized compose windows
-    ...minimizedWindows.map(win => ({
-      id: win.id,
-      type: 'compose',
-      title: win.title,
-      icon: null,
-      onRestore: () => windowManager.toggleMinimize(win.id),
-      onClose: () => windowManager.close(win.id),
-      closeable: true
-    })),
-
-    // Minimized AI panel
-    ...($panelSessionActiveStore && $panelMinimizedStore ? [{
-      id: 'ai-panel',
-      type: 'panel',
-      title: 'AI Panel',
-      icon: Sparkles,
-      onRestore: () => panelStore.restoreFromDock(),
-      onClose: () => panelStore.closePanel(selectedPanelKey),
-      closeable: true
-    }] : [])
-  ];
 
   // UI state
   let mailboxActionsOpen = false;
@@ -579,6 +563,10 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
     const result = windowManager.open(createComposeWindow());
     if (!result.ok) {
       showWindowLimitMessage();
+      return;
+    }
+    if (get(drawerVisibleStore)) {
+      mailboxChromeStore.closeDrawer();
     }
   }
 
@@ -716,6 +704,11 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
   const escapeHtml = escapeHtmlContent;
   const renderMarkdown = renderMarkdownContent;
 
+  /** Helper to strip "AI " prefix from labels and titles */
+  function stripAiPrefix(str) {
+    return str.replace(/^AI\s+/i, '');
+  }
+
   // ---------- AI integration (parity with v1) ----------
 
   async function callAiCommand(command, instruction, overrides = {}) {
@@ -764,9 +757,9 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
         if (key) {
           panelStore.recordResponse(key, {
             html: result.html,
-            title: (result.title || fnMeta?.label || 'Summary').replace(/^AI\s+/i, ''),
+            title: stripAiPrefix(result.title || fnMeta?.label || 'Summary'),
             commandKey: result.command || command,
-            commandLabel: (result.commandLabel || fnMeta?.label || 'Summary').replace(/^AI\s+/i, ''),
+            commandLabel: stripAiPrefix(result.commandLabel || fnMeta?.label || 'Summary'),
             updatedAt: Date.now()
           });
         }
@@ -994,9 +987,12 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
     {/if}
   {/each}
 
-  <UnifiedDock items={dockItems} />
+  <UnifiedDock items={$dockItemsStore} />
 
   <OverlayStack controller={overlayController} />
+
+  <!-- Portal target for mailbox row menus -->
+  <div id="mailbox-row-menu-root"></div>
 </WindowProvider>
 
 <WindowNotice message={$windowNoticeStore} />
