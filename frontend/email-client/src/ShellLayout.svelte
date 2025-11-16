@@ -563,6 +563,10 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
     const result = windowManager.open(createComposeWindow());
     if (!result.ok) {
       showWindowLimitMessage();
+      return;
+    }
+    if (get(drawerVisibleStore)) {
+      mailboxChromeStore.closeDrawer();
     }
   }
 
