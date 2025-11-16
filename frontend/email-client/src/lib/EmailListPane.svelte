@@ -269,7 +269,7 @@
          class:hidden={mobile && selected}
          class:overflow-hidden={tablet && !showEmailList && !(mailboxActionsOpen && mailboxActionsHost === 'list')}
 >
-  <div class="px-4 py-3 border-b border-slate-200">
+  <div class="mailbox-list-header-shell px-4 py-3 border-b border-slate-200">
     <div class="flex items-center gap-3 mailbox-list-header">
       <button type="button" title="Toggle menu" class="btn btn--icon" aria-label="Toggle mailbox list" on:click={handleToggleMenu}>
         <Menu class="h-4 w-4" aria-hidden="true" />
@@ -563,16 +563,30 @@
   }
 
   /**
+   * Header shell clears the divider when the first row is in the lifted state so the border doesn't peek through.
+   * @usage - Applied to the container wrapping the search input + compose trigger
+   * @related - .list-row--selected
+   */
+  .mailbox-list-header-shell {
+    transition: border-color 0.2s ease;
+  }
+
+  .mailbox-list-header-shell:has(+ .mailbox-list-scroll .list-row-container:first-child .list-row--selected) {
+    border-bottom-color: transparent;
+  }
+
+  /**
    * Scroll container for the list maintains vertical scrolling while allowing dropdown portals to overflow horizontally.
    * @usage - Wrapper div around the .list-rows stack
    * @overflow - y: auto for scrolling, x: visible so dropdown portals are not clipped
-   * @padding - Horizontal padding provides consistent breathing room for the lifted-card selected state
+   * @padding - Left padding only to preserve spacing near the drawer edge; right edge sits flush so unread backgrounds reach the border
    * @desktop - Left padding collapses on desktop so selected cards sit flush with the list edge (no visible notch)
    */
   .mailbox-list-scroll {
     overflow-y: auto;
     overflow-x: visible;
-    padding: 0 8px;
+    padding-left: 8px;
+    padding-right: 0;
   }
 
   @media (min-width: 1024px) {
