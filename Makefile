@@ -66,32 +66,28 @@ lint:
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo ""
 	@echo "📋 Maven Enforcer (dependency checks)..."
-	@mvn validate -q && echo "   ✅ Passed" || echo "   ❌ Failed"
+	@mvn validate -q
 	@echo ""
 	@echo "📦 SpotBugs (Java static analysis)..."
-	@mvn compile spotbugs:spotbugs -q 2>&1 | grep -q "BUILD SUCCESS" || true
+	@mvn compile spotbugs:spotbugs -q
 	@if [ -f target/spotbugsXml.xml ]; then \
 		BUGS=$$(grep -o "total_bugs='[0-9]*'" target/spotbugsXml.xml | grep -o "[0-9]*" | head -1); \
-		if [ "$$BUGS" = "0" ]; then \
-			echo "   ✅ 0 bugs found"; \
-		else \
-			echo "   ⚠️  $$BUGS bugs found (run 'mvn spotbugs:gui' to view)"; \
-		fi; \
+		echo "   SpotBugs report: $$BUGS issues (see target/spotbugsXml.xml)"; \
 	else \
-		echo "   ⚠️  No report generated"; \
+		echo "   ⚠️  No SpotBugs report generated"; \
 	fi
 	@echo ""
 	@echo "⚡ Oxlint (JavaScript/Svelte <script> tags)..."
-	@cd frontend/email-client && npm run lint 2>&1 | grep -v "^>" | grep -v "^$$" || true
+	@cd frontend/email-client && npm run lint
 	@echo ""
 	@echo "🎨 Stylelint (CSS & Svelte <style> tags - duplicate detection)..."
-	@cd frontend/email-client && npm run lint:css 2>&1 | grep -v "^>" | tail -5 || true
+	@cd frontend/email-client && npm run lint:css
 	@echo ""
 	@echo "🧹 Unused :global() CSS Detection..."
-	@cd frontend/email-client && ./scripts/check-unused-global-css.sh src || true
+	@cd frontend/email-client && ./scripts/check-unused-global-css.sh src
 	@echo ""
 	@echo "🗑️  Dead Code Detection (exports, deps, components)..."
-	@cd frontend/email-client && ./scripts/check-dead-code.sh || true
+	@cd frontend/email-client && ./scripts/check-dead-code.sh
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "✅ Linting complete"

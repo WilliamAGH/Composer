@@ -3,23 +3,22 @@
 # Simple deployment script for Composer
 echo "Building Composer application..."
 
-# Check if we have Maven
-if command -v mvn &> /dev/null; then
-    echo "Building with Maven..."
+# Prefer the orchestrated Make build (Vite → Maven) so assets land in the JAR
+if command -v make &> /dev/null; then
+    echo "Running make build (frontend then backend)..."
+    make build
+elif command -v mvn &> /dev/null; then
+    echo "Fallback: building with Maven (backend only)..."
+    (cd frontend/email-client && npm install && npm run build)
     mvn clean package -DskipTests
 elif command -v ./mvnw &> /dev/null; then
-    echo "Building with Maven wrapper..."
+    echo "Fallback: building with Maven wrapper (backend only)..."
+    (cd frontend/email-client && npm install && npm run build)
     ./mvnw clean package -DskipTests
-elif command -v gradle &> /dev/null; then
-    echo "Building with Gradle..."
-    gradle build
-elif command -v ./gradlew &> /dev/null; then
-    echo "Building with Gradle wrapper..."
-    ./gradlew build
 else
-    echo "No build tool found. Please install Maven or Gradle."
+    echo "No build tool found. Please install Make and Maven."
     exit 1
 fi
 
-echo "Build complete! Check target/ or build/ directory for JAR file."
-echo "To run locally: java -jar target/*.jar or java -jar build/libs/*.jar"
+echo "Build complete! Check target/ for the JAR file."
+echo "To run locally: java -jar target/*.jar"
