@@ -27,7 +27,7 @@ public class ClientConfiguration {
         return StringUtils.isMissing(apiKey) ? null : apiKey.trim();
     }
 
-    @ConditionalOnProperty(prefix = "openai.api", name = "key")
+    @ConditionalOnProperty(prefix = "openai.api", name = "key", matchIfMissing = true)
     @Bean
     public OpenAIClient openAIClient(OpenAiProperties openAiProperties) {
         String apiKey = resolveApiKey(openAiProperties);
@@ -77,7 +77,7 @@ public class ClientConfiguration {
      * 
      * Only used when base URL is OpenRouter - otherwise normal SDK client is used.
      */
-    @ConditionalOnProperty(prefix = "openai.api", name = "key")
+    @ConditionalOnProperty(prefix = "openai.api", name = "key", matchIfMissing = true)
     @Bean
     public org.springframework.web.client.RestClient openRouterRestClient(OpenAiProperties openAiProperties) {
         String apiKey = resolveApiKey(openAiProperties);
