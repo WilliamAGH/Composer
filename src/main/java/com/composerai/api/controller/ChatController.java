@@ -32,7 +32,6 @@ public class ChatController {
     private final ScheduledExecutorService sseHeartbeatExecutor;
     private final OpenAiProperties openAiProperties;
     private final ErrorMessagesProperties errorMessages;
-    private static final String INSIGHTS_TRIGGER = "__INSIGHTS_TRIGGER__";
 
     public ChatController(
         ChatService chatService,
@@ -214,7 +213,7 @@ public class ChatController {
     public SseEmitter insightsStream(@Valid @RequestBody ChatRequest request, HttpServletResponse response) {
         log.info("Received insights request from conversation: {}", request.getConversationId());
 
-        request.setMessage(INSIGHTS_TRIGGER);
+        request.setMessage(ChatService.INSIGHTS_TRIGGER);
 
         // Delegate to regular stream endpoint with modified request
         return stream(request, response);
