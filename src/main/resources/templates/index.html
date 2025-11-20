@@ -6,16 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" th:remove="tag" />
     <title>Redirecting…</title>
     <th:block th:fragment="extraHead">
-        <meta http-equiv="refresh" content="0; url=/chat">
+        <meta http-equiv="refresh" content="0; url=/email-client-v2">
         <script>
             // Fallback in case meta refresh is blocked
-            window.location.replace('/chat');
+            window.location.replace('/email-client-v2');
         </script>
     </th:block>
 </head>
 <body>
     <div th:fragment="content">
-        <p>If you are not redirected automatically, <a href="/chat">click here</a>.</p>
+        <p>If you are not redirected automatically, <a href="/email-client-v2">click here</a>.</p>
     </div>
 </body>
 </html>

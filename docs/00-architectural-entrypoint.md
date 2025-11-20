@@ -122,7 +122,7 @@ Each bullet lists a real file (tracked in git) and what it does so you can quick
 - `controller/SystemController.java` — System health endpoints (ping/version) for uptime checks.
 - `controller/UiNonceService.java` — Server-side helper that manages UI nonce issuance; consumed via `UiSessionController`.
 - `controller/UiSessionController.java` — REST endpoints for session bootstrap and nonce refresh.
-- `controller/WebViewController.java` — Serves the Svelte SPA shell (`email-client` bundle) under `/app/email-client`.
+- `controller/WebViewController.java` — Serves the Svelte SPA shell (`email-client` bundle) under `/email-client-v2` (default landing for `/`).
 
 #### Application Layer (`application/**`)
 - `application/dto/mailbox/MailboxStateSnapshotResult.java` — Use-case response describing messages, folders, and placements sent to the UI.
@@ -205,7 +205,6 @@ Each bullet lists a real file (tracked in git) and what it does so you can quick
 - `application.properties` — Default Spring configuration for local/dev environments.
 - `application-prod.properties` — Production overrides loaded when the `prod` profile is active.
 - `static/apple-touch-icon.png` — Touch icon served for iOS home screen shortcuts.
-- `static/css/chat.css` — Legacy CSS for the server-rendered chat preview.
 - `static/css/layout.css` — Styles for legacy Thymeleaf layouts.
 - `static/favicon.ico`, `static/favicon.svg`, `static/favicon-96x96.png` — Favicons delivered by the Spring static handler.
 - `static/index.html` — Landing page stub for the static site variant.
@@ -213,7 +212,6 @@ Each bullet lists a real file (tracked in git) and what it does so you can quick
 - `static/site.webmanifest`, `static/web-app-manifest-192x192.png`, `static/web-app-manifest-512x512.png` — PWA manifest + icons served with the SPA bundle.
 - `templates/layout.html` — Base Thymeleaf layout shell shared across server-rendered pages.
 - `templates/index.html` — Server-rendered landing page hooking into `layout.html`.
-- `templates/chat.html` — Chat-specific Thymeleaf page used during early demos.
 - `templates/email-client-v2.html` — Template embedding the V2 email client (Svelte bundle) with nonce injection.
 - `templates/qa/diagnostics.html` — QA diagnostics interface rendered on demand.
 - `templates/qa/email-file-parser.html` — QA UI for uploading `.eml` files and viewing parsed output.
