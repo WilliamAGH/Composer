@@ -697,9 +697,9 @@
   }
 
   .row-actions--visible,
+  .list-row--selected .row-actions,
   .list-row:hover .row-actions,
-  .list-row:focus-within .row-actions,
-  .list-row--selected .row-actions {
+  .list-row:focus-within .row-actions {
     opacity: 1;
   }
   /* Icon button styling for archive/move/delete */
@@ -763,6 +763,16 @@
                 box-shadow 0.2s ease;
   }
 
+  .mobile-action-zone:active {
+    background: rgba(148, 163, 184, 0.15);
+    transform: scale(0.95);
+  }
+
+  .mobile-action-zone:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.35), 0 10px 18px -10px rgba(15, 23, 42, 0.35);
+  }
+
   /* Reveal and enhance button when row is touched, focused, or has active menu */
   .list-row:active .mobile-action-zone,
   .list-row:focus-within .mobile-action-zone,
@@ -773,16 +783,6 @@
     background: rgba(255, 255, 255, 0.95);
     color: #475569;
     box-shadow: 0 10px 18px -10px rgba(15, 23, 42, 0.35);
-  }
-
-  .mobile-action-zone:active {
-    background: rgba(148, 163, 184, 0.15);
-    transform: scale(0.95);
-  }
-
-  .mobile-action-zone:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.35), 0 10px 18px -10px rgba(15, 23, 42, 0.35);
   }
 
   /**
