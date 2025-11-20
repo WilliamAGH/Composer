@@ -16,15 +16,6 @@ type SelectedEmail = FrontendEmailMessage;
 
 type CallAiCommandFn = (command: string, instruction: string, options: Record<string, unknown>) => Promise<ChatResponsePayload | null>;
 
-// Type for panel store to avoid circular dependency
-type PanelStore = {
-  stores: {
-    sessionActive: Readable<boolean>;
-    minimized: Readable<boolean>;
-  };
-  minimize: () => void;
-};
-
 /**
  * Centralizes AI-command handling so App.svelte can delegate compose/summary logic. By isolating this in
  * JS we avoid duplicate logic when other components need to trigger AI helpers.
@@ -37,8 +28,7 @@ export async function handleAiCommand({
   catalogStore,
   windowManager,
   callAiCommand,
-  ensureCatalogLoaded,
-  panelStore
+  ensureCatalogLoaded
 }: {
   command: string;
   commandVariant?: string | null;
@@ -48,7 +38,6 @@ export async function handleAiCommand({
   windowManager: WindowManager;
   callAiCommand: CallAiCommandFn;
   ensureCatalogLoaded: () => Promise<boolean>;
-  panelStore: PanelStore;
 }) {
   const ready = await ensureCatalogLoaded();
   if (!ready) throw new Error('AI helpers are unavailable. Please refresh and try again.');
