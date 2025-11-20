@@ -5,6 +5,7 @@ Java 21 Spring Boot backend powering Composer’s email-intelligence UX. The pri
 ## Developer Routes
 
 - `/email-client-v2` – canonical Svelte mail client (default redirect target from `/` and `/index`; `/email-client` also redirects here).
+- `/chat-diagnostics` – server-rendered diagnostics chat surface (markdown logging/chat tooling); no auto-redirects pointing here.
 - `/qa/diagnostics` – internal diagnostics workspace with health checks, mock retrievals, and UI preview controls.
 - `/qa/email-file-parser` – QA-only email parsing workspace for uploading `.eml`/`.txt` files and inspecting normalized output produced by the shared `EmailParsingService` pipeline.
 
@@ -80,6 +81,7 @@ The email client sidebar now derives a single `sidebarVariant` in `App.svelte` (
 - The Svelte client at `/email-client-v2` renders sanitized HTML inside a sandboxed iframe (scripts disabled, same-origin enabled for sizing, inner scrollbars suppressed). If no HTML remains, it falls back to Markdown text.
 - `/` and `/index` now forward internally to `/email-client-v2`, so the default home route loads the same Thymeleaf host regardless of environment.
 - `/email-client` now redirects to `/email-client-v2` so bookmarks continue working while the legacy view is removed.
+- `/chat-diagnostics` (and `/chat`) remain available for the server-rendered diagnostics chat/logging surface; no landing pages auto-redirect here.
 
 ## Technology Stack
 

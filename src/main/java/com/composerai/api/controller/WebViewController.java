@@ -32,6 +32,12 @@ public class WebViewController {
         return "forward:/email-client-v2";
     }
 
+    @GetMapping({"/chat", "/chat-diagnostics"})
+    public String chatDiagnostics(Model model, HttpSession session) {
+        model.addAttribute("uiNonce", uiNonceService.getOrCreateSessionNonce(session));
+        return "chat";
+    }
+
     @GetMapping("/email-client")
     public String emailClientLegacyRedirect() {
         // Preserve backward-compatible path while serving the modern UI
