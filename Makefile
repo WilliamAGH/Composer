@@ -4,11 +4,12 @@ PORT ?= 8080
 PROFILE ?= local
 MAVEN_TEST_FLAGS ?=
 
-.PHONY: help run build build-vite build-java java-compile test clean lint docker-build docker-run-local docker-run-prod fe-dev clean-frontend
+.PHONY: help run dev build build-vite build-java java-compile test clean lint docker-build docker-run-local docker-run-prod fe-dev clean-frontend
 
 help:
 	@echo "Targets:"
 	@echo "  make run           - Run Spring Boot locally (profile=local)"
+	@echo "  make dev           - Run Java + Svelte dev servers together (unified logs)"
 	@echo "  make build         - Build frontend (Vite) and backend (Maven)"
 	@echo "  make build-vite    - Build Svelte bundle into Spring static/"
 	@echo "  make build-java    - Build Spring Boot JAR (skip tests)"
@@ -23,6 +24,18 @@ help:
 
 run:
 	SPRING_PROFILES_ACTIVE=local mvn spring-boot:run -Dspring-boot.run.profiles=local
+
+# Dev mode: run Java backend + Svelte dev server together with unified logs
+# Uses awk to add colored prefixes while preserving output
+# Access via http://localhost:5173 (Vite proxies /api and /ui to Spring Boot on :8080)
+dev:
+	@echo "Starting Java backend (port 8080) + Svelte dev server (port 5173)..."
+	@echo "Access the app at: http://localhost:5173/app/email-client/"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@trap 'kill 0' INT TERM; \
+	(cd frontend/email-client && npm install --silent && npm run dev 2>&1 | awk '{print "\033[36m[vite]\033[0m " $$0; fflush()}') & \
+	(SPRING_PROFILES_ACTIVE=local mvn spring-boot:run -Dspring-boot.run.profiles=local 2>&1 | awk '{print "\033[33m[java]\033[0m " $$0; fflush()}') & \
+	wait
 
 # Orchestrated build: frontend first so assets are bundled into the JAR
 build: build-vite build-java
