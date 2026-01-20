@@ -32,8 +32,8 @@ public class WebViewController {
         return "forward:/email-client-v2";
     }
 
-    @GetMapping("/chat")
-    public String chat(Model model, HttpSession session) {
+    @GetMapping({"/chat", "/chat-diagnostics"})
+    public String chatDiagnostics(Model model, HttpSession session) {
         model.addAttribute("uiNonce", uiNonceService.getOrCreateSessionNonce(session));
         return "chat";
     }

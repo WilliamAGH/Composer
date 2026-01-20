@@ -97,7 +97,6 @@
     border: 1px solid rgba(15, 23, 42, 0.12);
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
     padding: 6px 12px;
     font-size: 0.85rem;
     color: #0f172a;
@@ -198,7 +197,6 @@
     border: 1px solid rgba(148, 163, 184, 0.5);
     background: rgba(248, 250, 252, 0.95);
     backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
     padding: 0 0.75rem;
     font-size: 0.75rem;
     font-weight: 600;

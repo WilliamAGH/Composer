@@ -55,7 +55,7 @@ public class ChatService {
     private final AiFunctionCatalogHelper aiFunctionCatalogHelper;
     private final ChatLedgerRecorder chatLedgerRecorder;
 
-    private static final String INSIGHTS_TRIGGER = "__INSIGHTS_TRIGGER__";
+    public static final String INSIGHTS_TRIGGER = "__INSIGHTS_TRIGGER__";
     private static final Pattern MARKDOWN_LINK_PATTERN = Pattern.compile("\\[([^\\]]+)\\]\\(([^\\)]*)\\)");
     private static final Pattern BARE_URL_PATTERN = Pattern.compile("(?i)(?:https?://|www\\.)\\S+");
     private static final String CONVERSATION_GUIDANCE = """

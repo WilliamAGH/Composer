@@ -7,6 +7,7 @@ import com.openai.core.Timeout;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.QdrantGrpcClient;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -18,20 +19,22 @@ import org.springframework.context.annotation.Bean;
 @EnableConfigurationProperties({OpenAiProperties.class, QdrantProperties.class, MagicEmailProperties.class, AiFunctionCatalogProperties.class})
 public class ClientConfiguration {
 
-
-    @Bean
-    public OpenAIClient openAIClient(OpenAiProperties openAiProperties) {
+    private String resolveApiKey(OpenAiProperties openAiProperties) {
         String apiKey = openAiProperties.getApi().getKey();
         if (StringUtils.isMissing(apiKey)) {
             apiKey = System.getenv("OPENAI_API_KEY");
         }
+        return StringUtils.isMissing(apiKey) ? null : apiKey.trim();
+    }
 
+    @ConditionalOnProperty(prefix = "openai.api", name = "key", matchIfMissing = true)
+    @Bean
+    public OpenAIClient openAIClient(OpenAiProperties openAiProperties) {
+        String apiKey = resolveApiKey(openAiProperties);
         if (StringUtils.isMissing(apiKey)) {
             log.warn("API key not configured via openai.api.key or OPENAI_API_KEY. Service will operate in degraded mode.");
             return null;
         }
-
-        String trimmedKey = apiKey.trim();
 
         try {
             // Base URL comes from properties (which handles env var fallback chain)
@@ -43,7 +46,7 @@ public class ClientConfiguration {
             log.info("Configuring OpenAI-compatible client: {}", capabilities);
             
             OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder()
-                .apiKey(trimmedKey)
+                .apiKey(apiKey)
                 .timeout(Timeout.builder()
                     .connect(Duration.ofSeconds(10))
                     // Use finite timeout for SSE to prevent hung connections
@@ -74,13 +77,10 @@ public class ClientConfiguration {
      * 
      * Only used when base URL is OpenRouter - otherwise normal SDK client is used.
      */
+    @ConditionalOnProperty(prefix = "openai.api", name = "key", matchIfMissing = true)
     @Bean
     public org.springframework.web.client.RestClient openRouterRestClient(OpenAiProperties openAiProperties) {
-        String apiKey = openAiProperties.getApi().getKey();
-        if (StringUtils.isMissing(apiKey)) {
-            apiKey = System.getenv("OPENAI_API_KEY");
-        }
-        
+        String apiKey = resolveApiKey(openAiProperties);
         if (StringUtils.isMissing(apiKey)) {
             log.warn("API key not configured - RestClient will fail if used");
             return null;

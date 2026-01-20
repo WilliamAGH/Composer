@@ -95,7 +95,7 @@
       const url = new URL(href, window.location.href);
       window.open(url.href, '_blank', 'noopener,noreferrer');
     } catch (error) {
-      console.debug('EmailIframe: unable to open external link', error);
+      // Silently fail - invalid URLs are handled gracefully
     }
   }
 

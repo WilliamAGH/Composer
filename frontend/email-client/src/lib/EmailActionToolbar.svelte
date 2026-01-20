@@ -593,7 +593,6 @@
       0 18px 40px -28px rgba(15, 23, 42, 0.45),
       0 10px 25px -30px rgba(15, 23, 42, 0.35);
     backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
     padding: 0.35rem;
     min-width: 9rem;
     max-height: 80vh;

@@ -748,8 +748,7 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
         catalogStore: catalog,
         windowManager,
         callAiCommand,
-        ensureCatalogLoaded: ensureCatalog,
-        panelStore
+        ensureCatalogLoaded: ensureCatalog
       });
 
       if (result?.type === WindowKind.SUMMARY) {

@@ -683,6 +683,19 @@ import Portal from './components/Portal.svelte';
   }
 
   /**
+   * Standalone class for eyebrow headers inside portaled dropdowns.
+   * @usage - Applied to section headers when using Portal on mobile tray mode
+   */
+  .mobile-tray-dropdown .menu-eyebrow {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    padding: 0.5rem 0.75rem;
+    display: block;
+  }
+
+  /**
    * Mobile tray mode eyebrow styling matches mobile-overflow-menu__eyebrow.
    * @usage - Section headers inside dropdowns when mobile + tray-mode are active
    */
@@ -695,16 +708,13 @@ import Portal from './components/Portal.svelte';
   }
 
   /**
-   * Standalone class for eyebrow headers inside portaled dropdowns.
-   * @usage - Applied to section headers when using Portal on mobile tray mode
+   * Icon styling for portaled menu items.
    */
-  .mobile-tray-dropdown .menu-eyebrow {
-    font-size: 0.65rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: #94a3b8;
-    padding: 0.5rem 0.75rem;
-    display: block;
+  .mobile-tray-menu-item .menu-item-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
   }
 
   /**
@@ -721,16 +731,6 @@ import Portal from './components/Portal.svelte';
   .ai-action-toolbar.mobile.tray-mode .menu-item :global(svg) {
     width: 1rem;
     height: 1rem;
-  }
-
-  /**
-   * Icon styling for portaled menu items.
-   */
-  .mobile-tray-menu-item .menu-item-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
   }
 
   .mobile-tray-menu-item :global(svg) {

@@ -1,9 +1,11 @@
 # Composer API
 
-Java 21 Spring Boot backend that powers the Composer: a chat interface for reasoning over email mailbox data with LLM assistance and retrieval-augmented context. The production app is live at [https://composerai.app](https://composerai.app).
+Java 21 Spring Boot backend powering Composer’s email-intelligence UX. The primary UI lives at `/email-client-v2` (default landing at `/`). Production: [https://composerai.app](https://composerai.app).
 
 ## Developer Routes
 
+- `/email-client-v2` – canonical Svelte mail client (default redirect target from `/` and `/index`; `/email-client` also redirects here).
+- `/chat-diagnostics` – server-rendered diagnostics chat surface (markdown logging/chat tooling); no auto-redirects pointing here.
 - `/qa/diagnostics` – internal diagnostics workspace with health checks, mock retrievals, and UI preview controls.
 - `/qa/email-file-parser` – QA-only email parsing workspace for uploading `.eml`/`.txt` files and inspecting normalized output produced by the shared `EmailParsingService` pipeline.
 
@@ -79,6 +81,7 @@ The email client sidebar now derives a single `sidebarVariant` in `App.svelte` (
 - The Svelte client at `/email-client-v2` renders sanitized HTML inside a sandboxed iframe (scripts disabled, same-origin enabled for sizing, inner scrollbars suppressed). If no HTML remains, it falls back to Markdown text.
 - `/` and `/index` now forward internally to `/email-client-v2`, so the default home route loads the same Thymeleaf host regardless of environment.
 - `/email-client` now redirects to `/email-client-v2` so bookmarks continue working while the legacy view is removed.
+- `/chat-diagnostics` (and `/chat`) remain available for the server-rendered diagnostics chat/logging surface; no landing pages auto-redirect here.
 
 ## Technology Stack
 
@@ -298,7 +301,6 @@ Content-Type: application/json
   "emailContext": "(optional) sanitized preview returned by /api/qa/parse-email"
 }
 `contextId` should originate from `/api/qa/parse-email`; if it is omitted or invalid, the server drops any supplied `emailContext` string and proceeds with vector-search context only. This guarantees that only normalized pipeline output can reach downstream LLM calls.
-`contextId` must originate from `/api/parse-email`; if it is omitted or invalid, the server drops any supplied `emailContext` string and proceeds with vector-search context only. This guarantees that only the normalized pipeline output can reach downstream LLM calls.
 ```
 
 ### Streaming Chat (SSE)

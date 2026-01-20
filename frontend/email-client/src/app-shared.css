@@ -4,16 +4,17 @@
  */
 
 /**
- * Z-INDEX ARCHITECTURE ensures overlays remain predictable across panes.
+ * Z-INDEX ARCHITECTURE mirrors the AGENTS baseline (10/30/50/60/70+/80/120/140/150/180/200/220)
+ * while keeping drawer overlays above floating windows to preserve current behavior.
  * 10  - Panel overlays (ai-panel-wrapper)
  * 30  - Maximized panels
- * 80  - Floating window frames
+ * 80  - Floating window frames (baseline from guide)
  * 120 - Window notices
- * 140 - Window backdrop (notches modal dimmers)
+ * 140 - Window backdrop (modal dimmers)
  * 150 - Primary nav + toolbar surfaces (mobile top bar, mailbox list header, UnifiedDock for minimized items)
- * 160 - Drawer backdrop (above toolbar when drawer opens)
+ * 160 - Drawer backdrop (kept above windows to ensure the drawer obscures floating panes)
  * 170 - Drawer sidebar (above backdrop)
- * 175 - Drawer controls (hamburger menu, back button - remain clickable above drawer)
+ * 175 - Drawer controls (hamburger/back buttons stay clickable above drawer)
  * 180 - Modals (ComingSoonModal)
  * 200 - Dropdown menus
  * 220 - Nested dropdowns

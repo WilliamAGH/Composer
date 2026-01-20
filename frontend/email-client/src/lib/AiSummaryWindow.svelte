@@ -341,10 +341,10 @@
   }
 
   .panel-scroll > * {
-    animation: fadeIn 0.3s ease-in-out;
+    animation: fade-in 0.3s ease-in-out;
   }
 
-  @keyframes fadeIn {
+  @keyframes fade-in {
     from {
       opacity: 0;
       transform: translateY(8px);
