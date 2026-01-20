@@ -1,5 +1,30 @@
 # Composer Agent Guide
 
+## 🚨🚨🚨 CRITICAL: CLEAN CODE & FILE CREATION REQUIREMENTS 🚨🚨🚨
+
+### FILE CREATION — MANDATORY WORKFLOW
+
+**STOP! BEFORE CREATING ANY NEW FILE YOU MUST:**
+
+1. **SEARCH EXHAUSTIVELY**: Find ALL existing files related to EVERY function, class, method, or component you envision. Use grep, file_glob, and semantic search across the ENTIRE codebase.
+2. **ANALYZE**: Review each discovered file—does the functionality ALREADY EXIST or can it be EXTENDED?
+3. **CONFIRM**: Only after exhaustively confirming NO existing solution may you proceed.
+4. **REQUEST PERMISSION**: Obtain explicit user approval before creating any file.
+5. **COMPLY WITH STANDARDS**: All new files MUST follow the code quality mandates below.
+
+### CODE QUALITY MANDATES (per Robert Martin's Clean Code & Clean Architecture)
+
+| Requirement | Rule | Violation Example |
+|-------------|------|-------------------|
+| **Type Safety** | NEVER use `Object`, `Map<String,Object>`, raw types, or `any`. Use typed DTOs/records. | ❌ `Map<String, Object>` / `any` |
+| **Clean Code** | Succinct, single-responsibility functions. NO useless try/catch that swallows errors. NO dead code. | ❌ `catch (Exception e) { log.error(e); }` |
+| **Clean Architecture** | Dependencies point inward. Domain has ZERO framework imports. Respect layer boundaries. | ❌ Repository importing from Controller |
+| **No Suppression** | NEVER use `@SuppressWarnings`, `@ts-ignore`, or `eslint-disable`. Fix the root cause. | ❌ `@SuppressWarnings("unchecked")` |
+
+**These are NON-NEGOTIABLE requirements, not suggestions.**
+
+---
+
 Operational guidance for autonomous contributors extending the Composer, an email AI web application that makes it easy to search a mailbox via traditional queries and RAG all via one easy to use AI chat interface.
 
 Follow these standards to deliver clean, DRY implementations that slot into the existing Java 21 + Spring Boot 3 stack and polished front-end experience.
@@ -30,7 +55,7 @@ Refer to `README.md` (Technology Stack and Requirements) for current runtime ver
 **Code Quality & Reuse:**
 - Write DRY code: always review existing related code before adding new implementations
 - Use idiomatic modern Java 21+ practices; prefer built-in JDK and Spring Boot 3+ defaults over custom code
-- Do NOT create new files without explicit permission
+- Do NOT create new files without explicit permission. **🚨🚨🚨 STOP! BEFORE CREATING ANY NEW FILE YOU MUST:** (1) Find ALL existing files related to EVERY function/class/method you're envisioning by searching the ENTIRE codebase, (2) Analyze if functionality ALREADY EXISTS or can be EXTENDED, (3) ONLY after confirming NO existing solution exists may you request permission. All new files MUST comply with OOP best practices (SOLID, DRY, separation of concerns) and be idiomatically clean for the language.
 - Produce light, lean code free of unnecessary boilerplate
 
 **Architecture & Design:**
@@ -278,7 +303,7 @@ Before committing CSS changes, verify:
 2. **Code quality and reuse** (see Backend Development Principles for detailed guidance)
    - Find and reuse existing in-repo tools—maintain a single DRY source of truth
    - Follow idiomatic Java 21+ and Spring Boot 3.3.x best practices
-   - Never create new files without explicit permission
+   - Never create new files without explicit permission. **🚨 MANDATORY:** Before ANY new file, you MUST first search for ALL existing files related to the functionality, confirm no existing solution exists, and ensure compliance with OOP best practices.
 
 3. **Database migrations and SQL**
    - We DO NOT use Flyway, Liquibase, or any automatic migration tool.
