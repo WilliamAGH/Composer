@@ -33,8 +33,8 @@ public class SecurityHeadersConfig {
         if (origins != null && !origins.isBlank()) {
             config.setAllowedOriginPatterns(Arrays.asList(origins.split(",")));
         } else {
-             // Fallback or explicit allow all if safe? No, safe default is strict.
-             // But for dev we might want localhost.
+             // Explicitly log that no origins are allowed when credentials are on
+             log.warn("CORS configured with credentials enabled but no allowed origins. Cross-origin requests will fail.");
         }
         
         config.addAllowedHeader("*");
