@@ -12,12 +12,9 @@ public record UsageMetrics(
     long totalTokens,
     long latencyMs
 ) {
-    public UsageMetrics(long promptTokens, long completionTokens, long totalTokens, long latencyMs) {
-        this.promptTokens = promptTokens;
-        this.completionTokens = completionTokens;
-        this.latencyMs = latencyMs;
-        this.totalTokens = (totalTokens == 0 && (promptTokens > 0 || completionTokens > 0))
-            ? promptTokens + completionTokens
-            : totalTokens;
+    public UsageMetrics {
+        if (totalTokens == 0 && (promptTokens > 0 || completionTokens > 0)) {
+            totalTokens = promptTokens + completionTokens;
+        }
     }
 }
