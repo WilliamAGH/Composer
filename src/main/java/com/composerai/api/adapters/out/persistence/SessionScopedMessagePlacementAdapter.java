@@ -54,16 +54,14 @@ public class SessionScopedMessagePlacementAdapter implements SessionScopedMessag
     @Override
     public void removePlacement(MailboxId mailboxId, SessionId sessionId, MessageId messageId) {
         MailboxId normalizedKey = new MailboxId(mailboxKey(mailboxId.value()));
-        SessionStore sessionStore = store.get(normalizedKey);
-        if (sessionStore == null) {
-            return;
-        }
-        
-        sessionStore.remove(sessionId, messageId);
 
-        if (sessionStore.isEmpty()) {
-            store.remove(normalizedKey);
-        }
+        store.compute(normalizedKey, (key, sessionStore) -> {
+            if (sessionStore == null) {
+                return null;
+            }
+            sessionStore.remove(sessionId, messageId);
+            return sessionStore.isEmpty() ? null : sessionStore;
+        });
     }
 
     private String mailboxKey(String mailboxId) {
