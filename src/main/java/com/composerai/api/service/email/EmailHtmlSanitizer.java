@@ -71,29 +71,51 @@ public final class EmailHtmlSanitizer {
     }
 
     /**
-     * Remove all JavaScript event handlers (onclick, onerror, etc.) and javascript: URLs.
+     * Remove all JavaScript event handlers (onclick, onerror, etc.) and dangerous URLs.
+     * Blocks javascript:, vbscript:, and data: (except for images) schemes.
+     * Also neutralizes SVG xlink:href attributes.
      */
     private static void removeJavaScriptHandlers(Document doc) {
         for (Element el : doc.getAllElements()) {
             // Remove all on* attributes (iterate over copy to avoid concurrent modification)
             List<String> attrsToRemove = new ArrayList<>();
             for (var attr : el.attributes()) {
-                if (attr.getKey().toLowerCase().startsWith("on")) {
+                String key = attr.getKey().toLowerCase();
+                if (key.startsWith("on")) {
                     attrsToRemove.add(attr.getKey());
+                }
+                // Check for xlink:href or href on SVG elements which can be XSS vectors
+                if (key.endsWith(":href") || key.equals("href")) {
+                    String val = attr.getValue().toLowerCase().trim();
+                    if (isDangerousUrl(val)) {
+                        attrsToRemove.add(attr.getKey());
+                    }
                 }
             }
             for (String attrKey : attrsToRemove) {
                 el.removeAttr(attrKey);
             }
 
-            // Remove javascript: URLs from href and src
-            if (el.hasAttr("href") && el.attr("href").toLowerCase().trim().startsWith("javascript:")) {
-                el.removeAttr("href");
+            // Explicitly check src and href for dangerous protocols
+            if (el.hasAttr("src")) {
+                String src = el.attr("src").toLowerCase().trim();
+                // Allow data:image/... but block other data:
+                if (src.startsWith("javascript:") || src.startsWith("vbscript:") || (src.startsWith("data:") && !src.startsWith("data:image/"))) {
+                    el.removeAttr("src");
+                }
             }
-            if (el.hasAttr("src") && el.attr("src").toLowerCase().trim().startsWith("javascript:")) {
-                el.removeAttr("src");
+            if (el.hasAttr("href")) {
+                if (isDangerousUrl(el.attr("href").toLowerCase().trim())) {
+                    el.removeAttr("href");
+                }
             }
         }
+    }
+
+    private static boolean isDangerousUrl(String url) {
+        return url.startsWith("javascript:") || 
+               url.startsWith("vbscript:") || 
+               url.startsWith("data:");
     }
 
     /**

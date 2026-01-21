@@ -89,6 +89,18 @@ public final class HtmlConverter {
         return text.trim();
     }
 
+    private static final String[] UTILITY_KEYWORDS = {
+        "unsubscribe",
+        "update your preferences",
+        "view this email",
+        "read in browser",
+        "email marketing powered by mailchimp",
+        "add us to your address book",
+        "you are receiving this email because",
+        "want to change how you receive these emails",
+        "our mailing address is:"
+    };
+
     /**
      * Remove noise, apply URL policy, and flatten layout tables.
      */
@@ -102,80 +114,11 @@ public final class HtmlConverter {
         // Remove non-content elements commonly present in marketing emails
         doc.select("script, style, noscript, svg, iframe").remove();
 
-        // URL-related handling for anchors and images
-        for (Element a : doc.select("a[href]")) {
-            String href = a.attr("href").toLowerCase();
-            String text = a.text().toLowerCase();
-            boolean isTrackingHost = href.contains("list-manage.com")
-                || href.contains("campaign-archive.com")
-                || href.contains("mailchimpapp.net")
-                || href.contains("track/click")
-                || href.contains("track/open.php");
-            boolean isUtilityText = text.contains("view this email")
-                || text.contains("read in browser")
-                || text.contains("share on twitter")
-                || text.contains("share on facebook")
-                || text.contains("email marketing powered by mailchimp")
-                || text.contains("unsubscribe")
-                || text.contains("update your preferences")
-                || text.contains("add us to your address book");
-            if (isTrackingHost) {
-                a.remove();
-            } else if (suppressUtility && isUtilityText) {
-                a.remove();
-            } else if (policy == HtmlToText.UrlPolicy.STRIP_ALL) {
-                a.unwrap();
-            } else if (policy == HtmlToText.UrlPolicy.CLEAN_ONLY) {
-                String cleaned = StringUtils.sanitizeUrl(a.attr("href"));
-                if (cleaned == null || cleaned.isBlank()) a.unwrap();
-                else a.attr("href", cleaned);
-            }
-        }
-        for (Element img : doc.select("img[src]")) {
-            String src = img.attr("src").toLowerCase();
-            String alt = img.attr("alt");
-            boolean isTrackingImg = src.contains("track/open.php")
-                || src.contains("cdn-images.mailchimp.com/monkey_rewards")
-                || src.contains("social_connect_tweet.png");
-            if (isTrackingImg) {
-                if (alt != null && !alt.isBlank()) img.replaceWith(new TextNode(alt));
-                else img.remove();
-            } else if (policy == HtmlToText.UrlPolicy.STRIP_ALL) {
-                if (alt != null && !alt.isBlank()) img.replaceWith(new TextNode(alt));
-                else img.remove();
-            } else if (policy == HtmlToText.UrlPolicy.CLEAN_ONLY) {
-                String cleaned = StringUtils.sanitizeUrl(img.attr("src"));
-                if (cleaned == null || cleaned.isBlank()) {
-                    if (alt != null && !alt.isBlank()) img.replaceWith(new TextNode(alt));
-                    else img.remove();
-                } else img.attr("src", cleaned);
-            }
-        }
+        processAnchors(doc, policy, suppressUtility);
+        processImages(doc, policy);
 
-        // Optional utility/footer block removal
         if (suppressUtility) {
-            String[] utilityKeys = new String[] {
-                "unsubscribe",
-                "update your preferences",
-                "view this email",
-                "read in browser",
-                "email marketing powered by mailchimp",
-                "add us to your address book",
-                "you are receiving this email because",
-                "want to change how you receive these emails",
-                "our mailing address is:"
-            };
-            for (Element el : doc.select("p, small, footer")) {
-                String t = el.text().toLowerCase();
-                for (String key : utilityKeys) {
-                    if (t.contains(key)) { el.remove(); break; }
-                }
-            }
-            for (Element el : doc.select(
-                "div[class*='templateFooter'],div[id*='templateFooter'],div[class*='mcnFooter'],div[id*='mcn-footer'],div[class*='monkey_rewards'],div[class*='unsubscribe'],div[id*='unsubscribe'],div[class*='email-footer'],div[id*='email-footer']"
-            )) {
-                el.remove();
-            }
+            removeUtilityBlocks(doc);
         }
 
         // Add paragraph separators for table rows before unwrapping to preserve item breaks
@@ -197,6 +140,75 @@ public final class HtmlConverter {
 
         return doc.html();
     }
+
+    private static void processAnchors(Document doc, HtmlToText.UrlPolicy policy, boolean suppressUtility) {
+        for (Element a : doc.select("a[href]")) {
+            String href = a.attr("href").toLowerCase();
+            String text = a.text().toLowerCase();
+            boolean isTrackingHost = href.contains("list-manage.com")
+                || href.contains("campaign-archive.com")
+                || href.contains("mailchimpapp.net")
+                || href.contains("track/click")
+                || href.contains("track/open.php");
+            boolean isUtilityText = text.contains("view this email")
+                || text.contains("read in browser")
+                || text.contains("share on twitter")
+                || text.contains("share on facebook")
+                || text.contains("email marketing powered by mailchimp")
+                || text.contains("unsubscribe")
+                || text.contains("update your preferences")
+                || text.contains("add us to your address book");
+            if (isTrackingHost && policy != HtmlToText.UrlPolicy.KEEP) {
+                a.remove();
+            } else if (suppressUtility && isUtilityText) {
+                a.remove();
+            } else if (policy == HtmlToText.UrlPolicy.STRIP_ALL) {
+                a.unwrap();
+            } else if (policy == HtmlToText.UrlPolicy.CLEAN_ONLY) {
+                String cleaned = StringUtils.sanitizeUrl(a.attr("href"));
+                if (cleaned == null || cleaned.isBlank()) a.unwrap();
+                else a.attr("href", cleaned);
+            }
+        }
+    }
+
+    private static void processImages(Document doc, HtmlToText.UrlPolicy policy) {
+        for (Element img : doc.select("img[src]")) {
+            String src = img.attr("src").toLowerCase();
+            String alt = img.attr("alt");
+            boolean isTrackingImg = src.contains("track/open.php")
+                || src.contains("cdn-images.mailchimp.com/monkey_rewards")
+                || src.contains("social_connect_tweet.png");
+            if (isTrackingImg && policy != HtmlToText.UrlPolicy.KEEP) {
+                if (alt != null && !alt.isBlank()) img.replaceWith(new TextNode(alt));
+                else img.remove();
+            } else if (policy == HtmlToText.UrlPolicy.STRIP_ALL) {
+                if (alt != null && !alt.isBlank()) img.replaceWith(new TextNode(alt));
+                else img.remove();
+            } else if (policy == HtmlToText.UrlPolicy.CLEAN_ONLY) {
+                String cleaned = StringUtils.sanitizeUrl(img.attr("src"));
+                if (cleaned == null || cleaned.isBlank()) {
+                    if (alt != null && !alt.isBlank()) img.replaceWith(new TextNode(alt));
+                    else img.remove();
+                } else img.attr("src", cleaned);
+            }
+        }
+    }
+
+    private static void removeUtilityBlocks(Document doc) {
+        for (Element el : doc.select("p, small, footer")) {
+            String t = el.text().toLowerCase();
+            for (String key : UTILITY_KEYWORDS) {
+                if (t.contains(key)) { el.remove(); break; }
+            }
+        }
+        for (Element el : doc.select(
+            "div[class*='templateFooter'],div[id*='templateFooter'],div[class*='mcnFooter'],div[id*='mcn-footer'],div[class*='monkey_rewards'],div[class*='unsubscribe'],div[id*='unsubscribe'],div[class*='email-footer'],div[id*='email-footer']"
+        )) {
+            el.remove();
+        }
+    }
+
 
     private static void wrapTextNodesIntoParagraphs(Document doc, String selectors) {
         for (Element el : doc.select(selectors)) {

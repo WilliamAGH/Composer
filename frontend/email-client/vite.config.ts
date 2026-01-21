@@ -1,6 +1,8 @@
 import { defineConfig, type Plugin } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import sveltePreprocess from 'svelte-preprocess'
+import { resolve } from 'path'
+import { existsSync, readFileSync } from 'fs'
 
 /**
  * Logs incoming requests to Vite dev server for debugging.
@@ -22,10 +24,49 @@ function requestLogger(): Plugin {
   }
 }
 
+/**
+ * Serves Spring Boot static resources directly during Vite dev.
+ * Ensures feature parity with production by serving /js/* and /css/* from
+ * src/main/resources/static without requiring Spring Boot to be running.
+ */
+function serveSpringBootStatic(): Plugin {
+  const staticRoot = resolve(__dirname, '../../src/main/resources/static')
+  const basePrefix = '/app/email-client'
+  return {
+    name: 'serve-spring-boot-static',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        let url = req.url ?? ''
+        // Strip base prefix if present (Vite may prepend it in dev mode)
+        if (url.startsWith(basePrefix)) {
+          url = url.slice(basePrefix.length)
+        }
+        // Serve /js/* and /css/* from Spring Boot static resources
+        if (url.startsWith('/js/') || url.startsWith('/css/')) {
+          const filePath = resolve(staticRoot, url.slice(1))
+          if (existsSync(filePath)) {
+            const ext = url.split('.').pop() ?? ''
+            const mimeTypes: Record<string, string> = {
+              js: 'application/javascript',
+              css: 'text/css',
+              json: 'application/json'
+            }
+            res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream')
+            res.end(readFileSync(filePath))
+            return
+          }
+        }
+        next()
+      })
+    }
+  }
+}
+
 export default defineConfig({
   plugins: [
     svelte({ preprocess: sveltePreprocess() }),
-    requestLogger()
+    requestLogger(),
+    serveSpringBootStatic()
   ],
   base: '/app/email-client/',
   build: {

@@ -47,12 +47,14 @@
         } catch (e) { return ''; }
       }
       window.Composer.escapeHtml = function (text) { const d = document.createElement('div'); d.textContent = text || ''; return d.innerHTML; }
-      window.__EMAIL_CLIENT_BOOTSTRAP__ = { uiNonce: null, messages: [], aiFunctions: {} };
+      window.__EMAIL_CLIENT_BOOTSTRAP__ = { uiNonce: null, messages: [], aiFunctions: null };
     </script>
     <style> body{background:linear-gradient(180deg,#f8fafc 0%,#f5f5f7 100%);} </style>
   </head>
   <body>
     <div id="email-client-root"></div>
+    <!-- Load EmailRenderer before the app to preserve iframe isolation API (served from Spring Boot static resources) -->
+    <script src="/js/email-renderer.js"></script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
