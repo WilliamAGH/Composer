@@ -82,7 +82,7 @@ public class ContextBuilder {
         private final ConcurrentMap<String, StoredContext> contexts = new ConcurrentHashMap<>();
 
         @Override
-        public synchronized void store(String contextId, String contextForAI) {
+        public void store(String contextId, String contextForAI) {
             if (StringUtils.isBlank(contextId)) {
                 logger.warn("Attempted to store context with blank contextId");
                 return;
