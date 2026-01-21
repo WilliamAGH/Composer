@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -114,7 +115,7 @@ public class VectorSearchService {
         LocalDateTime timestamp = LocalDateTime.now();
         if (payload.containsKey(KEY_TIMESTAMP) && payload.get(KEY_TIMESTAMP).hasStringValue()) {
              try {
-                 timestamp = LocalDateTime.parse(payload.get(KEY_TIMESTAMP).getStringValue());
+                 timestamp = OffsetDateTime.parse(payload.get(KEY_TIMESTAMP).getStringValue()).toLocalDateTime();
              } catch (Exception e) {
                  log.debug("Failed to parse timestamp from Qdrant payload", e);
              }
