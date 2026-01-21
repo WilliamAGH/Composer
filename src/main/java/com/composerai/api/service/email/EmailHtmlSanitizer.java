@@ -92,7 +92,8 @@ public final class EmailHtmlSanitizer {
                 // Check for xlink:href or href on SVG elements which can be XSS vectors
                 if (key.endsWith(":href") || key.equals("href")) {
                     String val = attr.getValue().toLowerCase().trim();
-                    if (isDangerousUrl(val)) {
+                    // Allow data:image in href/xlink:href as requested, but still block scripts
+                    if (isDangerousUrl(val, true)) {
                         attrsToRemove.add(attr.getKey());
                     }
                 }
@@ -104,13 +105,14 @@ public final class EmailHtmlSanitizer {
             // Explicitly check src and href for dangerous protocols
             if (el.hasAttr("src")) {
                 String src = el.attr("src").toLowerCase().trim();
-                // Allow data:image/... but block other data:
-                if (src.startsWith("javascript:") || src.startsWith("vbscript:") || (src.startsWith("data:") && !src.startsWith("data:image/"))) {
+                // Allow data:image for src, block others
+                if (isDangerousUrl(src, true)) {
                     el.removeAttr("src");
                 }
             }
             if (el.hasAttr("href")) {
-                if (isDangerousUrl(el.attr("href").toLowerCase().trim())) {
+                // Same policy for href: allow images if they are data URIs, block scripts
+                if (isDangerousUrl(el.attr("href").toLowerCase().trim(), true)) {
                     el.removeAttr("href");
                 }
             }
@@ -118,9 +120,17 @@ public final class EmailHtmlSanitizer {
     }
 
     private static boolean isDangerousUrl(String url) {
-        return url.startsWith("javascript:") || 
-               url.startsWith("vbscript:") || 
-               url.startsWith("data:");
+        return isDangerousUrl(url, false);
+    }
+
+    private static boolean isDangerousUrl(String url, boolean allowDataImages) {
+        if (url.startsWith("javascript:") || url.startsWith("vbscript:")) {
+            return true;
+        }
+        if (url.startsWith("data:")) {
+            return !(allowDataImages && url.startsWith("data:image/"));
+        }
+        return false;
     }
 
     /**
