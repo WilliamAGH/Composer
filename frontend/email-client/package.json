@@ -6,18 +6,18 @@
   "homepage": "https://composerai.app",
   "type": "module",
   "scripts": {
-    "dev": "npm run dev:css & vite",
+    "dev": "bun run dev:css & vite",
     "dev:css": "tailwindcss -i ./src/app.css -o ./src/generated/tailwind.css --content './src/**/*.{js,ts,svelte}' --watch",
-    "build": "npm run build:css && vite build --emptyOutDir",
+    "build": "bun run build:css && vite build --emptyOutDir",
     "postbuild": "mkdir -p ../../src/main/resources/static/app/email-client/assets && cp ./src/generated/tailwind.css ../../src/main/resources/static/app/email-client/assets/tailwind.css",
     "build:css": "tailwindcss -i ./src/app.css -o ./src/generated/tailwind.css --content './src/**/*.{js,ts,svelte}'",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig tsconfig.json",
-    "lint": "npm run check && oxlint src",
+    "lint": "bun run check && oxlint src",
     "lint:fix": "oxlint --fix src",
     "lint:css": "stylelint '**/*.{css,svelte}'",
     "lint:css:fix": "stylelint '**/*.{css,svelte}' --fix",
-    "lint:all": "npm run lint && npm run lint:css"
+    "lint:all": "bun run lint && bun run lint:css"
   },
   "dependencies": {
     "lucide-svelte": "^0.453.0"

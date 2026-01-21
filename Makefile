@@ -33,7 +33,7 @@ dev:
 	@echo "Access the app at: http://localhost:5173/app/email-client/"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@trap 'kill 0' INT TERM; \
-	(cd frontend/email-client && npm install --silent && npm run dev 2>&1 | awk '{print "\033[36m[vite]\033[0m " $$0; fflush()}') & \
+	(cd frontend/email-client && bun install --silent && bun run dev 2>&1 | awk '{print "\033[36m[vite]\033[0m " $$0; fflush()}') & \
 	(SPRING_PROFILES_ACTIVE=local mvn spring-boot:run -Dspring-boot.run.profiles=local 2>&1 | awk '{print "\033[33m[java]\033[0m " $$0; fflush()}') & \
 	wait
 
@@ -44,7 +44,7 @@ build: build-vite build-java
 build-vite: FE_DIR := frontend/email-client
 build-vite:
 	@echo "Building Svelte bundle into src/main/resources/static/app/email-client ..."
-	@cd $(FE_DIR) && npm install && npm run build
+	@cd $(FE_DIR) && bun install && bun run build
 
 build-java:
 	@echo "Building Spring Boot JAR ..."
@@ -59,7 +59,7 @@ FE_DIR := frontend/email-client
 
 fe-dev:
 	@echo "Starting Svelte dev server (Vite) with API proxy..."
-	@cd $(FE_DIR) && npm install && npm run dev
+	@cd $(FE_DIR) && bun install && bun run dev
 
 clean-frontend:
 	@echo "Removing built Svelte assets from static/app/email-client ..."
@@ -91,10 +91,10 @@ lint:
 	fi
 	@echo ""
 	@echo "⚡ Oxlint (JavaScript/Svelte <script> tags)..."
-	@cd frontend/email-client && npm run lint
+	@cd frontend/email-client && bun run lint
 	@echo ""
 	@echo "🎨 Stylelint (CSS & Svelte <style> tags - duplicate detection)..."
-	@cd frontend/email-client && npm run lint:css
+	@cd frontend/email-client && bun run lint:css
 	@echo ""
 	@echo "🧹 Unused :global() CSS Detection..."
 	@cd frontend/email-client && ./scripts/check-unused-global-css.sh src
