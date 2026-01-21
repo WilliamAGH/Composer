@@ -7,10 +7,12 @@ import com.composerai.api.config.AiFunctionCatalogProperties;
 import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
 import com.composerai.api.config.MagicEmailProperties;
-import com.composerai.api.shared.ledger.UsageMetrics;
+import com.composerai.api.domain.model.ChatCompletionCommand;
+import com.composerai.api.domain.model.ConversationTurn;
 import com.composerai.api.dto.ChatRequest;
 import com.composerai.api.dto.ChatResponse;
 import com.composerai.api.shared.ledger.ChatLedgerRecorder;
+import com.composerai.api.shared.ledger.UsageMetrics;
 import com.openai.client.OpenAIClient;
 import com.openai.models.embeddings.CreateEmbeddingResponse;
 import com.openai.models.embeddings.Embedding;
@@ -40,8 +42,6 @@ import java.util.concurrent.ExecutorService;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -127,7 +127,8 @@ class OpenAiChatServiceTest {
         when(openAIClient.responses().create(any(ResponseCreateParams.class)))
             .thenReturn(mockResponse);
 
-        OpenAiChatService.ChatCompletionResult result = service.generateResponse("Hi", "Context", List.of(), false, null, false);
+        ChatCompletionCommand command = new ChatCompletionCommand("Hi", "Context", List.of(), false, null, false);
+        OpenAiChatService.ChatCompletionResult result = service.generateResponse(command);
 
         assertEquals("**Hello** <script>alert('x')</script> world", result.rawText());
         String sanitized = result.sanitizedHtml();
@@ -145,7 +146,9 @@ class OpenAiChatServiceTest {
         when(openAIClient.responses().create(any(ResponseCreateParams.class)))
             .thenReturn(mockResponse);
 
-        OpenAiChatService.ChatCompletionResult result = customModelService.generateResponse("Test", "Context", List.of(), false, null, false);
+        OpenAiChatService.ChatCompletionResult result = customModelService.generateResponse(
+            new ChatCompletionCommand("Test", "Context", List.of(), false, null, false)
+        );
 
         assertEquals("Custom model response", result.rawText());
         Mockito.verify(openAIClient.responses()).create(any(ResponseCreateParams.class));
@@ -156,7 +159,9 @@ class OpenAiChatServiceTest {
         OpenAiProperties properties = new OpenAiProperties();
         OpenAiChatService nullClientService = new OpenAiChatService(null, properties, errorMessages);
 
-        OpenAiChatService.ChatCompletionResult result = nullClientService.generateResponse("Hi", "Context", List.of(), true, "minimal", false);
+        OpenAiChatService.ChatCompletionResult result = nullClientService.generateResponse(
+            new ChatCompletionCommand("Hi", "Context", List.of(), true, "minimal", false)
+        );
 
         assertTrue(result.rawText().contains("not configured"));
         assertTrue(result.sanitizedHtml().contains("not configured"));
@@ -168,12 +173,12 @@ class OpenAiChatServiceTest {
         when(openAIClient.responses().create(any(ResponseCreateParams.class)))
             .thenReturn(mockResponse);
 
-        List<OpenAiChatService.ConversationTurn> history = List.of(
-            OpenAiChatService.ConversationTurn.user("Earlier question"),
-            OpenAiChatService.ConversationTurn.assistant("Earlier answer")
+        List<ConversationTurn> history = List.of(
+            ConversationTurn.user("Earlier question"),
+            ConversationTurn.assistant("Earlier answer")
         );
 
-        service.generateResponse("What about now?", "Context data", history, false, null, false);
+        service.generateResponse(new ChatCompletionCommand("What about now?", "Context data", history, false, null, false));
 
         ArgumentCaptor<ResponseCreateParams> captor = ArgumentCaptor.forClass(ResponseCreateParams.class);
         Mockito.verify(openAIClient.responses()).create(captor.capture());
@@ -192,7 +197,9 @@ class OpenAiChatServiceTest {
         when(openAIClient.responses().create(any(ResponseCreateParams.class)))
             .thenReturn(mockResponse);
 
-        service.generateResponse("Return structured data", "Context payload", List.of(), false, null, true);
+        service.generateResponse(
+            new ChatCompletionCommand("Return structured data", "Context payload", List.of(), false, null, true)
+        );
 
         ArgumentCaptor<ResponseCreateParams> captor = ArgumentCaptor.forClass(ResponseCreateParams.class);
         Mockito.verify(openAIClient.responses()).create(captor.capture());
@@ -311,28 +318,15 @@ class ChatServiceContextPropagationTest {
             null,
             new UsageMetrics(0, 0, 0, 0)
         );
-        Mockito.when(openAiChatService.invokeChatResponse(
-            any(String.class),
-            any(String.class),
-            anyList(),
-            anyBoolean(),
-            any(),
-            anyBoolean()
-        )).thenReturn(invocationResult);
+        Mockito.when(openAiChatService.invokeChatResponse(any(ChatCompletionCommand.class)))
+            .thenReturn(invocationResult);
 
         chatService.processChat(request);
 
-        ArgumentCaptor<String> contextCaptor = ArgumentCaptor.forClass(String.class);
-        Mockito.verify(openAiChatService).invokeChatResponse(
-            any(String.class),
-            contextCaptor.capture(),
-            anyList(),
-            anyBoolean(),
-            any(),
-            anyBoolean()
-        );
+        ArgumentCaptor<ChatCompletionCommand> commandCaptor = ArgumentCaptor.forClass(ChatCompletionCommand.class);
+        Mockito.verify(openAiChatService).invokeChatResponse(commandCaptor.capture());
 
-        String mergedContext = contextCaptor.getValue();
+        String mergedContext = commandCaptor.getValue().emailContext();
         assertTrue(mergedContext.contains("Uploaded email context"));
         assertTrue(mergedContext.contains("Relevant emails"));
     }

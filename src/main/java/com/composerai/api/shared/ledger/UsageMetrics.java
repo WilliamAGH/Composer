@@ -11,4 +11,10 @@ public record UsageMetrics(
     long completionTokens,
     long totalTokens,
     long latencyMs
-) {}
+) {
+    public UsageMetrics {
+        if (totalTokens == 0 && (promptTokens > 0 || completionTokens > 0)) {
+            totalTokens = promptTokens + completionTokens;
+        }
+    }
+}

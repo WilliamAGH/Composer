@@ -83,7 +83,7 @@ public class ContextBuilder {
         private final ConcurrentMap<String, StoredContext> contexts = new ConcurrentHashMap<>();
 
         @Override
-        public void store(String contextId, String contextForAI) {
+        public synchronized void store(String contextId, String contextForAI) {
             if (StringUtils.isBlank(contextId)) {
                 logger.warn("Attempted to store context with blank contextId");
                 return;
@@ -140,7 +140,7 @@ public class ContextBuilder {
             return !StringUtils.isBlank(stored.content());
         }
 
-        private void prune() {
+        private synchronized void prune() {
             if (contexts.isEmpty()) {
                 return;
             }
@@ -152,8 +152,8 @@ public class ContextBuilder {
             }
             List<Map.Entry<String, StoredContext>> snapshot = new ArrayList<>(contexts.entrySet());
             snapshot.sort(Comparator.comparing(entry -> entry.getValue().createdAt()));
-            for (int i = 0; i < overflow && i < snapshot.size(); i++) {
-                contexts.remove(snapshot.get(i).getKey());
+            for (int evictionIndex = 0; evictionIndex < overflow && evictionIndex < snapshot.size(); evictionIndex++) {
+                contexts.remove(snapshot.get(evictionIndex).getKey());
             }
         }
 
