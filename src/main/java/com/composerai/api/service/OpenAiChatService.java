@@ -114,8 +114,11 @@ public class OpenAiChatService {
 
     public Invocation invokeChatResponse(ChatCompletionCommand command) {
         if (openAiClient == null) {
+            String fallback = command.jsonOutput()
+                ? "{\"error\":\"openai_misconfigured\"}"
+                : errorMessages.getOpenai().getMisconfigured();
             return new Invocation(
-                ChatCompletionResult.fromRaw(errorMessages.getOpenai().getMisconfigured(), command.jsonOutput()),
+                ChatCompletionResult.fromRaw(fallback, command.jsonOutput()),
                 null,
                 null,
                 new UsageMetrics(0, 0, 0, 0)
@@ -137,8 +140,11 @@ public class OpenAiChatService {
             return new Invocation(ChatCompletionResult.fromRaw(aiResponse, command.jsonOutput()), params, apiResponse, usage);
         } catch (Exception e) {
             logger.error("Chat completion failed: {}", e.getMessage(), e);
+            String fallback = command.jsonOutput()
+                ? "{\"error\":\"openai_unavailable\"}"
+                : errorMessages.getOpenai().getUnavailable();
             return new Invocation(
-                ChatCompletionResult.fromRaw(errorMessages.getOpenai().getUnavailable(), command.jsonOutput()),
+                ChatCompletionResult.fromRaw(fallback, command.jsonOutput()),
                 null,
                 null,
                 new UsageMetrics(0, 0, 0, 0)
