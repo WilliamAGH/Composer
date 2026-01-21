@@ -159,12 +159,12 @@ public class MailboxFolderTransitionService {
             return Map.of();
         }
         return placements
-            .values()
+            .entrySet()
             .stream()
             .collect(
                 Collectors.toUnmodifiableMap(
-                    p -> p.messageId().toString(), 
-                    p -> p.folderIdentifier().value()
+                    entry -> entry.getKey().toString(), 
+                    entry -> entry.getValue().folderIdentifier().value()
                 )
             );
     }
