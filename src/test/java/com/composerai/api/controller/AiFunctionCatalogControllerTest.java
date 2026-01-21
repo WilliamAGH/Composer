@@ -2,6 +2,7 @@ package com.composerai.api.controller;
 
 import com.composerai.api.ai.AiFunctionCatalogHelper;
 import com.composerai.api.config.AiFunctionCatalogProperties;
+import com.composerai.api.config.AppProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -39,6 +40,11 @@ class AiFunctionCatalogControllerTest {
         @Bean
         AiFunctionCatalogHelper aiFunctionCatalogHelper(AiFunctionCatalogProperties properties) {
             return new AiFunctionCatalogHelper(properties);
+        }
+
+        @Bean
+        AppProperties appProperties() {
+            return new AppProperties();
         }
     }
 }

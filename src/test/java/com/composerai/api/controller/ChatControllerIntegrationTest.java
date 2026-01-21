@@ -187,5 +187,10 @@ class ChatControllerIntegrationTest {
         AiFunctionCatalogHelper aiFunctionCatalogHelper(AiFunctionCatalogProperties properties) {
             return new AiFunctionCatalogHelper(properties);
         }
+
+        @Bean
+        com.composerai.api.config.AppProperties appProperties() {
+            return new com.composerai.api.config.AppProperties();
+        }
     }
 }
