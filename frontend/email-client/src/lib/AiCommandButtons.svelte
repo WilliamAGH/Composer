@@ -683,6 +683,18 @@ import Portal from './components/Portal.svelte';
   }
 
   /**
+   * Mobile tray mode eyebrow styling matches mobile-overflow-menu__eyebrow.
+   * @usage - Section headers inside dropdowns when mobile + tray-mode are active
+   */
+  .ai-action-toolbar.mobile.tray-mode .menu-eyebrow {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    padding: 0.5rem 0.75rem;
+  }
+
+  /**
    * Standalone class for eyebrow headers inside portaled dropdowns.
    * @usage - Applied to section headers when using Portal on mobile tray mode
    */
@@ -696,21 +708,10 @@ import Portal from './components/Portal.svelte';
   }
 
   /**
-   * Mobile tray mode eyebrow styling matches mobile-overflow-menu__eyebrow.
-   * @usage - Section headers inside dropdowns when mobile + tray-mode are active
+   * Ensure menu item icons display properly in mobile tray mode.
+   * @usage - Icon styling inside menu items when mobile + tray-mode are active
    */
-  .ai-action-toolbar.mobile.tray-mode .menu-eyebrow {
-    font-size: 0.65rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: #94a3b8;
-    padding: 0.5rem 0.75rem;
-  }
-
-  /**
-   * Icon styling for portaled menu items.
-   */
-  .mobile-tray-menu-item .menu-item-icon {
+  .ai-action-toolbar.mobile.tray-mode .menu-item-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -718,10 +719,9 @@ import Portal from './components/Portal.svelte';
   }
 
   /**
-   * Ensure menu item icons display properly in mobile tray mode.
-   * @usage - Icon styling inside menu items when mobile + tray-mode are active
+   * Icon styling for portaled menu items.
    */
-  .ai-action-toolbar.mobile.tray-mode .menu-item-icon {
+  .mobile-tray-menu-item .menu-item-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;

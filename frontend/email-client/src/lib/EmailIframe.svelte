@@ -20,7 +20,7 @@
         rendered = true;
         return; // Success - no fallback needed
       } catch (e) {
-        // Iframe rendering failed - fall through to fallback
+        console.debug('EmailIframe: renderInIframe failed, falling back to sanitization', e);
         rendered = false;
       }
     }
@@ -95,7 +95,7 @@
       const url = new URL(href, window.location.href);
       window.open(url.href, '_blank', 'noopener,noreferrer');
     } catch (error) {
-      // Silently fail - invalid URLs are handled gracefully
+      console.debug('EmailIframe: unable to open external link', error);
     }
   }
 
