@@ -36,7 +36,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -123,14 +122,7 @@ public class OpenAiChatService {
             );
         }
 
-        Invocation fallback = new Invocation(
-            ChatCompletionResult.fromRaw(errorMessages.getOpenai().getUnavailable(), command.jsonOutput()),
-            null,
-            null,
-            new UsageMetrics(0, 0, 0, 0)
-        );
-
-        return executeWithFallback(() -> {
+        try {
             PreparedRequest prepared = prepareResponseRequest(command);
             ResponseCreateParams params = prepared.builder().build();
             String modelId = openAiProperties.getModel().getChat();
@@ -143,7 +135,15 @@ public class OpenAiChatService {
             logger.info("Chat completion: model={} promptTokens={} completionTokens={}",
                 modelId, usage.promptTokens(), usage.completionTokens());
             return new Invocation(ChatCompletionResult.fromRaw(aiResponse, command.jsonOutput()), params, apiResponse, usage);
-        }, fallback, "OpenAI error while generating response");
+        } catch (Exception e) {
+            logger.error("Chat completion failed: {}", e.getMessage(), e);
+            return new Invocation(
+                ChatCompletionResult.fromRaw(errorMessages.getOpenai().getUnavailable(), command.jsonOutput()),
+                null,
+                null,
+                new UsageMetrics(0, 0, 0, 0)
+            );
+        }
     }
 
     public ChatCompletionResult generateResponse(ChatCompletionCommand command) {
@@ -158,9 +158,14 @@ public class OpenAiChatService {
      * Max tokens: {@link OpenAiProperties.Intent#getMaxOutputTokens()} - 10
      */
     public String analyzeIntent(String userMessage) {
-        return executeWithFallback(() -> {
-            if (openAiClient == null) return openAiProperties.getIntent().getDefaultCategory();
+        String defaultCategory = openAiProperties.getIntent().getDefaultCategory();
 
+        if (openAiClient == null) {
+            logger.debug("Intent analysis skipped: OpenAI client not configured");
+            return defaultCategory;
+        }
+
+        try {
             String modelId = openAiProperties.getModel().getChat();
             logLlmInvocation("intent", modelId, false, false, false, null);
             String intent = openAiClient.responses().create(ResponseCreateParams.builder()
@@ -176,8 +181,11 @@ public class OpenAiChatService {
                 .trim().toLowerCase();
 
             logger.info("Analyzed intent: {}", intent);
-            return intent.isEmpty() ? openAiProperties.getIntent().getDefaultCategory() : intent;
-        }, openAiProperties.getIntent().getDefaultCategory(), "OpenAI error while analyzing intent");
+            return intent.isEmpty() ? defaultCategory : intent;
+        } catch (Exception e) {
+            logger.error("Intent analysis failed - defaulting to '{}': {}", defaultCategory, e.getMessage(), e);
+            return defaultCategory;
+        }
     }
 
     public ResponseCreateParams streamResponse(ChatCompletionCommand command,
@@ -373,32 +381,47 @@ public class OpenAiChatService {
      *
      * Configuration source of truth: OpenAiProperties.java
      * Embedding model: {@link OpenAiProperties.Embedding#getModel()} - "text-embedding-3-small"
-     * 
+     *
      * Note: Not all providers support embeddings. Returns empty array if provider doesn't support it.
      */
     public float[] generateEmbedding(String text) {
-        if (text == null || text.isBlank()) return new float[0];
-        
+        if (text == null || text.isBlank()) {
+            return new float[0];
+        }
+
         // Check if provider supports embeddings
         if (!openAiProperties.getProviderCapabilities().supportsEmbeddings()) {
             logger.debug("Provider {} does not support embeddings, returning empty vector",
                 openAiProperties.getProviderCapabilities().getType());
             return new float[0];
         }
-        
-        return executeWithFallback(() -> {
+
+        if (openAiClient == null) {
+            logger.error("Embedding generation failed: OpenAI client not configured");
+            return new float[0];
+        }
+
+        try {
             logLlmInvocation("embedding", openAiProperties.getEmbedding().getModel(), false, false, false, null);
             List<Embedding> data = openAiClient.embeddings().create(
                 EmbeddingCreateParams.builder()
                     .model(EmbeddingModel.of(openAiProperties.getEmbedding().getModel()))
                     .input(text)
                     .build()).data();
-            if (data.isEmpty()) return new float[0];
+            if (data.isEmpty()) {
+                logger.warn("Embedding API returned empty data for input of {} chars", text.length());
+                return new float[0];
+            }
             List<Float> vector = data.get(0).embedding();
             float[] result = new float[vector.size()];
-            for (int i = 0; i < vector.size(); i++) result[i] = vector.get(i);
+            for (int i = 0; i < vector.size(); i++) {
+                result[i] = vector.get(i);
+            }
             return result;
-        }, new float[0], "OpenAI error while generating embeddings");
+        } catch (Exception e) {
+            logger.error("Embedding generation failed for input of {} chars: {}", text.length(), e.getMessage(), e);
+            return new float[0];
+        }
     }
 
     /**
@@ -462,7 +485,7 @@ public class OpenAiChatService {
             totalTokenEstimate += estimateTokens(sanitizedDirective);
         }
 
-        String safeContext = StringUtils.safe(StringUtils.sanitize(emailContext));
+        String safeContext = StringUtils.sanitize(emailContext);
         if (!StringUtils.isBlank(safeContext)) {
             String contextMessage = "Email Context:\n" + safeContext;
             messages.add(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
@@ -561,24 +584,6 @@ public class OpenAiChatService {
             operation, provider, modelId, baseUrl, streaming, jsonOutput, thinkingLabel);
     }
 
-    /**
-     * Execute an action with fallback error handling.
-     * Catches any exceptions, logs a warning, and returns the fallback value.
-     *
-     * @param action     the action to execute
-     * @param fallback   the value to return if an exception occurs
-     * @param errorMsg   the error message to log
-     * @param <T>        the return type
-     * @return the result of the action or the fallback value
-     */
-    private <T> T executeWithFallback(Supplier<T> action, T fallback, String errorMsg) {
-        try {
-            return action.get();
-        } catch (Exception e) {
-            logger.warn("{}: {}", errorMsg, e.getMessage());
-            return fallback;
-        }
-    }
 
     private int estimateTokens(String text) {
         if (text == null || text.isBlank()) {
