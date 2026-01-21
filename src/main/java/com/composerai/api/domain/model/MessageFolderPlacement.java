@@ -3,6 +3,8 @@ package com.composerai.api.domain.model;
 import java.time.Instant;
 import java.util.Objects;
 
+import com.composerai.api.util.StringUtils;
+
 /**
  * Captures the session-scoped folder assignment for a specific message.
  * This record keeps the mailbox/session/message relationship explicit so that future persistence
@@ -10,9 +12,9 @@ import java.util.Objects;
  */
 public final class MessageFolderPlacement {
 
-    private final String mailboxId;
-    private final String sessionId;
-    private final String messageId;
+    private final MailboxId mailboxId;
+    private final SessionId sessionId;
+    private final MessageId messageId;
     private final MailFolderIdentifier folderIdentifier;
     private final Instant updatedAt;
 
@@ -24,15 +26,15 @@ public final class MessageFolderPlacement {
         this.updatedAt = builder.updatedAt == null ? Instant.now() : builder.updatedAt;
     }
 
-    public String mailboxId() {
+    public MailboxId mailboxId() {
         return mailboxId;
     }
 
-    public String sessionId() {
+    public SessionId sessionId() {
         return sessionId;
     }
 
-    public String messageId() {
+    public MessageId messageId() {
         return messageId;
     }
 
@@ -68,9 +70,9 @@ public final class MessageFolderPlacement {
     }
 
     public static final class Builder {
-        private String mailboxId;
-        private String sessionId;
-        private String messageId;
+        private MailboxId mailboxId;
+        private SessionId sessionId;
+        private MessageId messageId;
         private MailFolderIdentifier folderIdentifier;
         private Instant updatedAt;
 
@@ -85,18 +87,42 @@ public final class MessageFolderPlacement {
             this.updatedAt = source.updatedAt;
         }
 
-        public Builder mailboxId(String mailboxId) {
+        public Builder mailboxId(MailboxId mailboxId) {
             this.mailboxId = mailboxId;
             return this;
         }
 
-        public Builder sessionId(String sessionId) {
+        public Builder mailboxId(String mailboxId) {
+            if (StringUtils.isBlank(mailboxId)) {
+                throw new IllegalArgumentException("mailboxId cannot be blank");
+            }
+            this.mailboxId = new MailboxId(mailboxId);
+            return this;
+        }
+
+        public Builder sessionId(SessionId sessionId) {
             this.sessionId = sessionId;
             return this;
         }
 
-        public Builder messageId(String messageId) {
+        public Builder sessionId(String sessionId) {
+            if (StringUtils.isBlank(sessionId)) {
+                throw new IllegalArgumentException("sessionId cannot be blank");
+            }
+            this.sessionId = new SessionId(sessionId);
+            return this;
+        }
+
+        public Builder messageId(MessageId messageId) {
             this.messageId = messageId;
+            return this;
+        }
+
+        public Builder messageId(String messageId) {
+            if (StringUtils.isBlank(messageId)) {
+                throw new IllegalArgumentException("messageId cannot be blank");
+            }
+            this.messageId = new MessageId(messageId);
             return this;
         }
 
@@ -111,13 +137,13 @@ public final class MessageFolderPlacement {
         }
 
         public MessageFolderPlacement build() {
-            if (mailboxId == null || mailboxId.isBlank()) {
+            if (mailboxId == null) {
                 throw new IllegalArgumentException("mailboxId is required");
             }
-            if (sessionId == null || sessionId.isBlank()) {
+            if (sessionId == null) {
                 throw new IllegalArgumentException("sessionId is required");
             }
-            if (messageId == null || messageId.isBlank()) {
+            if (messageId == null) {
                 throw new IllegalArgumentException("messageId is required");
             }
             if (folderIdentifier == null) {

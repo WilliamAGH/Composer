@@ -1,8 +1,11 @@
 package com.composerai.api.application.usecase.mailbox;
 
 import com.composerai.api.application.dto.mailbox.MailboxStateSnapshotResult;
+import com.composerai.api.domain.model.MailboxId;
 import com.composerai.api.domain.model.MailboxSnapshot;
 import com.composerai.api.domain.model.MessageFolderPlacement;
+import com.composerai.api.domain.model.MessageId;
+import com.composerai.api.domain.model.SessionId;
 import com.composerai.api.domain.port.MailboxSnapshotPort;
 import com.composerai.api.domain.port.SessionScopedMessagePlacementPort;
 import com.composerai.api.domain.service.MailboxFolderTransitionService;
@@ -48,7 +51,10 @@ public class LoadMailboxStateSnapshotUseCase {
         log.debug("Loading mailbox snapshot for mailbox={} session={}", mailboxId, sessionId);
 
         MailboxSnapshot snapshot = mailboxSnapshotPort.loadSnapshot(mailboxId);
-        Map<String, MessageFolderPlacement> placements = sessionPlacementPort.findPlacements(mailboxId, sessionId);
+        Map<MessageId, MessageFolderPlacement> placements = sessionPlacementPort.findPlacements(
+            new MailboxId(mailboxId), 
+            new SessionId(sessionId)
+        );
         List<EmailMessage> resolvedMessages = transitionService.applyPlacements(snapshot, placements);
         Map<String, Integer> folderCounts = transitionService.computeFolderCounts(resolvedMessages);
         var effectiveFolders = transitionService.serializeEffectiveFolders(

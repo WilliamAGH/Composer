@@ -3,8 +3,11 @@ package com.composerai.api.application.usecase.mailbox;
 import com.composerai.api.application.dto.mailbox.MessageMoveCommand;
 import com.composerai.api.application.dto.mailbox.MessageMoveResult;
 import com.composerai.api.domain.model.MailFolderIdentifier;
+import com.composerai.api.domain.model.MailboxId;
 import com.composerai.api.domain.model.MailboxSnapshot;
 import com.composerai.api.domain.model.MessageFolderPlacement;
+import com.composerai.api.domain.model.MessageId;
+import com.composerai.api.domain.model.SessionId;
 import com.composerai.api.domain.port.MailboxSnapshotPort;
 import com.composerai.api.domain.port.SessionScopedMessagePlacementPort;
 import com.composerai.api.domain.service.MailboxFolderTransitionService;
@@ -40,20 +43,24 @@ public class ExecuteMessageMoveUseCase {
     }
 
     public MessageMoveResult execute(MessageMoveCommand command) {
-        String mailboxId = command.mailboxId();
-        String sessionId = command.sessionId();
-        String messageId = command.messageId();
+        String mailboxIdRaw = command.mailboxId();
+        String sessionIdRaw = command.sessionId();
+        String messageIdRaw = command.messageId();
         String targetFolderId = command.targetFolderId();
 
-        log.info("Moving message {} in mailbox {} for session {}", messageId, mailboxId, sessionId);
+        log.info("Moving message {} in mailbox {} for session {}", messageIdRaw, mailboxIdRaw, sessionIdRaw);
 
-        MailboxSnapshot snapshot = mailboxSnapshotPort.loadSnapshot(mailboxId);
-        Map<String, MessageFolderPlacement> placements = new HashMap<>(sessionPlacementPort.findPlacements(mailboxId, sessionId));
+        MailboxId mailboxId = new MailboxId(mailboxIdRaw);
+        SessionId sessionId = new SessionId(sessionIdRaw);
+        MessageId messageId = new MessageId(messageIdRaw);
+
+        MailboxSnapshot snapshot = mailboxSnapshotPort.loadSnapshot(mailboxIdRaw);
+        Map<MessageId, MessageFolderPlacement> placements = new HashMap<>(sessionPlacementPort.findPlacements(mailboxId, sessionId));
 
         EmailMessage targetMessage = snapshot.messages().stream()
-            .filter(message -> messageId.equals(message.id()))
+            .filter(message -> messageIdRaw.equals(message.id()))
             .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException("Message not found: " + messageId));
+            .orElseThrow(() -> new IllegalArgumentException("Message not found: " + messageIdRaw));
 
         MailFolderIdentifier targetFolder = transitionService.normalizeFolder(targetFolderId);
         MessageFolderPlacement existingPlacement = placements.get(messageId);
@@ -62,7 +69,7 @@ public class ExecuteMessageMoveUseCase {
             : transitionService.deriveBaselineFolder(targetMessage);
 
         if (currentFolder.equals(targetFolder)) {
-            log.debug("Message {} already in folder {} – returning existing snapshot", messageId, targetFolder.value());
+            log.debug("Message {} already in folder {} – returning existing snapshot", messageIdRaw, targetFolder.value());
             return buildResult(snapshot, placements, mailboxId, messageId, currentFolder, placements);
         }
 
@@ -85,11 +92,11 @@ public class ExecuteMessageMoveUseCase {
     }
 
     private MessageMoveResult buildResult(MailboxSnapshot snapshot,
-                                          Map<String, MessageFolderPlacement> placements,
-                                          String mailboxId,
-                                          String messageId,
+                                          Map<MessageId, MessageFolderPlacement> placements,
+                                          MailboxId mailboxId,
+                                          MessageId messageId,
                                           MailFolderIdentifier previousFolder,
-                                          Map<String, MessageFolderPlacement> currentPlacements) {
+                                          Map<MessageId, MessageFolderPlacement> currentPlacements) {
         List<EmailMessage> resolvedMessages = transitionService.applyPlacements(snapshot, currentPlacements);
         Map<String, Integer> folderCounts = transitionService.computeFolderCounts(resolvedMessages);
         Map<String, String> placementMap = transitionService.serializePlacements(currentPlacements);
@@ -97,7 +104,7 @@ public class ExecuteMessageMoveUseCase {
             transitionService.deriveEffectiveFolders(snapshot, currentPlacements)
         );
         EmailMessage updatedMessage = resolvedMessages.stream()
-            .filter(message -> messageId.equals(message.id()))
+            .filter(message -> messageId.value().equals(message.id()))
             .findFirst()
             .orElseThrow(() -> new IllegalStateException("Updated message missing from snapshot"));
         MailFolderIdentifier currentFolder = Optional.ofNullable(currentPlacements.get(messageId))
@@ -105,8 +112,8 @@ public class ExecuteMessageMoveUseCase {
             .orElse(transitionService.deriveBaselineFolder(updatedMessage));
 
         return new MessageMoveResult(
-            mailboxId,
-            messageId,
+            mailboxId.value(),
+            messageId.value(),
             previousFolder.value(),
             currentFolder.value(),
             updatedMessage,
