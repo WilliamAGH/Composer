@@ -11,11 +11,42 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
+
 import java.io.IOException;
+import java.util.Arrays;
 
 @Slf4j
 @Configuration
 public class SecurityHeadersConfig {
+
+    @Bean
+    public FilterRegistrationBean<CorsFilter> corsFilter(AppProperties appProperties) {
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        CorsConfiguration config = new CorsConfiguration();
+        
+        config.setAllowCredentials(true);
+        // Use patterns to support dynamic origins or specific lists
+        String origins = appProperties.getCors().getAllowedOrigins();
+        if (origins != null && !origins.isBlank()) {
+            config.setAllowedOriginPatterns(Arrays.asList(origins.split(",")));
+        } else {
+             // Fallback or explicit allow all if safe? No, safe default is strict.
+             // But for dev we might want localhost.
+        }
+        
+        config.addAllowedHeader("*");
+        config.addAllowedMethod("*");
+        
+        source.registerCorsConfiguration("/**", config);
+        
+        FilterRegistrationBean<CorsFilter> bean = new FilterRegistrationBean<>(new CorsFilter(source));
+        // Run before other security filters
+        bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return bean;
+    }
 
 
     @Bean
@@ -33,8 +64,8 @@ public class SecurityHeadersConfig {
     }
 
     @Bean
-    public FilterRegistrationBean<OncePerRequestFilter> apiUiNonceGuardFilter() {
-        FilterRegistrationBean<OncePerRequestFilter> registrationBean = new FilterRegistrationBean<>(new ApiUiNonceGuardFilter());
+    public FilterRegistrationBean<OncePerRequestFilter> apiUiNonceGuardFilter(AppProperties appProperties) {
+        FilterRegistrationBean<OncePerRequestFilter> registrationBean = new FilterRegistrationBean<>(new ApiUiNonceGuardFilter(appProperties));
         registrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE + 2);
         return registrationBean;
     }
@@ -177,8 +208,18 @@ public class SecurityHeadersConfig {
      */
     private static class ApiUiNonceGuardFilter extends OncePerRequestFilter {
 
+        private final AppProperties appProperties;
+
+        ApiUiNonceGuardFilter(AppProperties appProperties) {
+            this.appProperties = appProperties;
+        }
+
         @Override
         protected boolean shouldNotFilter(HttpServletRequest request) {
+            // Bypass in dev mode to allow local Vite development without server-rendered nonces
+            if (appProperties.getSecurity().isDevMode()) {
+                return true;
+            }
             String path = request.getRequestURI();
             if (path == null) return true;
             if (!path.startsWith("/api/")) return true;
