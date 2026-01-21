@@ -114,11 +114,8 @@ public class VectorSearchService {
         // Attempt to parse timestamp, fallback to now if missing
         LocalDateTime timestamp = LocalDateTime.now();
         if (payload.containsKey(KEY_TIMESTAMP) && payload.get(KEY_TIMESTAMP).hasStringValue()) {
-             try {
-                 timestamp = OffsetDateTime.parse(payload.get(KEY_TIMESTAMP).getStringValue()).toLocalDateTime();
-             } catch (Exception e) {
-                 log.debug("Failed to parse timestamp from Qdrant payload", e);
-             }
+            String timestampStr = payload.get(KEY_TIMESTAMP).getStringValue();
+            timestamp = parseTimestamp(timestampStr);
         }
 
         return new EmailContext(
@@ -141,5 +138,34 @@ public class VectorSearchService {
             }
         }
         return null;
+    }
+
+    /**
+     * Parse a timestamp string that may be in either OffsetDateTime or LocalDateTime format.
+     * Tries OffsetDateTime first (for strings with timezone like "2025-01-15T09:30:00Z"),
+     * then falls back to LocalDateTime (for plain ISO strings like "2025-01-15T09:30:00").
+     *
+     * @param timestampStr the timestamp string to parse
+     * @return the parsed LocalDateTime, or LocalDateTime.now() if parsing fails
+     */
+    private LocalDateTime parseTimestamp(String timestampStr) {
+        if (timestampStr == null || timestampStr.isBlank()) {
+            return LocalDateTime.now();
+        }
+        
+        // Try OffsetDateTime first (handles "2025-01-15T09:30:00Z" or "2025-01-15T09:30:00+00:00")
+        try {
+            return OffsetDateTime.parse(timestampStr).toLocalDateTime();
+        } catch (Exception ignored) {
+            // Fall through to LocalDateTime parsing
+        }
+        
+        // Try LocalDateTime (handles "2025-01-15T09:30:00")
+        try {
+            return LocalDateTime.parse(timestampStr);
+        } catch (Exception e) {
+            log.debug("Failed to parse timestamp '{}' from Qdrant payload", timestampStr, e);
+            return LocalDateTime.now();
+        }
     }
 }
