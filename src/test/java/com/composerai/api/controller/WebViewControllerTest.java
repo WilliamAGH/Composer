@@ -60,6 +60,14 @@ class WebViewControllerTest {
     }
 
     @Test
+    void chat_ShouldRenderWithUiNonce() throws Exception {
+        mockMvc.perform(get("/chat"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("chat"))
+            .andExpect(model().attributeExists("uiNonce"));
+    }
+
+    @Test
     void emailClientV2_ShouldRenderWithBootstrapModel() throws Exception {
         mockMvc.perform(get("/email-client-v2"))
             .andExpect(status().isOk())
