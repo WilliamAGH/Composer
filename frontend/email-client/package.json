@@ -1,6 +1,7 @@
 {
-  "name": "composer",
-  "version": "0.1.1",
+  "name": "Composer",
+  "description": "AI email that drafts and manages your mailbox",
+  "version": "0.1.2",
   "private": true,
   "homepage": "https://composerai.app",
   "type": "module",

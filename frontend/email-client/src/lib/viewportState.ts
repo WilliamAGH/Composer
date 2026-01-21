@@ -93,8 +93,8 @@ function createMediaQueries(): MediaQueryMap {
   return {
     mobile: window.matchMedia(`(max-width: ${VIEWPORT_BREAKPOINTS.mobile - 0.02}px)`),
     tablet: window.matchMedia(`(min-width: ${VIEWPORT_BREAKPOINTS.mobile}px) and (max-width: ${VIEWPORT_BREAKPOINTS.tablet - 0.02}px)`),
-    desktop: window.matchMedia(`(min-width: ${VIEWPORT_BREAKPOINTS.tablet}px) and (max-width: ${VIEWPORT_BREAKPOINTS.desktop - 0.02}px)`),
-    wide: window.matchMedia(`(min-width: ${VIEWPORT_BREAKPOINTS.desktop}px)`)
+    desktop: window.matchMedia(`(min-width: ${VIEWPORT_BREAKPOINTS.tablet}px) and (max-width: ${VIEWPORT_BREAKPOINTS.wide - 0.02}px)`),
+    wide: window.matchMedia(`(min-width: ${VIEWPORT_BREAKPOINTS.wide}px)`)
   };
 }
 
@@ -111,8 +111,8 @@ function computeMatches(measurement: ViewportMeasurement, queries: MediaQueryMap
   return {
     mobile: width < VIEWPORT_BREAKPOINTS.mobile,
     tablet: width >= VIEWPORT_BREAKPOINTS.mobile && width < VIEWPORT_BREAKPOINTS.tablet,
-    desktop: width >= VIEWPORT_BREAKPOINTS.tablet && width < VIEWPORT_BREAKPOINTS.desktop,
-    wide: width >= VIEWPORT_BREAKPOINTS.desktop
+    desktop: width >= VIEWPORT_BREAKPOINTS.tablet && width < VIEWPORT_BREAKPOINTS.wide,
+    wide: width >= VIEWPORT_BREAKPOINTS.wide
   };
 }
 

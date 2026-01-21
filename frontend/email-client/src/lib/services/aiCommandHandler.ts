@@ -118,9 +118,10 @@ export async function handleAiCommand({
 function findMatchingComposeWindow(windowManager: WindowManager, contextId: string | null): ComposeWindowDescriptor | null {
   const openWindows = get(windowManager.windows);
   if (!Array.isArray(openWindows) || openWindows.length === 0) return null;
+  if (contextId === null) return null;
   const match = openWindows.find(
     (win): win is ComposeWindowDescriptor =>
-      win.kind === WindowKind.COMPOSE && (contextId ? win.contextId === contextId : true)
+      win.kind === WindowKind.COMPOSE && win.contextId === contextId
   );
   return match || null;
 }
