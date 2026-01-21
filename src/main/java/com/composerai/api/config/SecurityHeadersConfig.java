@@ -31,7 +31,21 @@ public class SecurityHeadersConfig {
         // Use patterns to support dynamic origins or specific lists
         String origins = appProperties.getCors().getAllowedOrigins();
         if (origins != null && !origins.isBlank()) {
-            config.setAllowedOriginPatterns(Arrays.asList(origins.split(",")));
+            var patterns = Arrays.stream(origins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+
+            if (!patterns.isEmpty()) {
+                // Validate patterns when credentials are enabled
+                boolean hasWildcard = patterns.stream().anyMatch(p -> p.equals("*"));
+                if (hasWildcard) {
+                    log.warn("Security warning: CORS configured with '*' origin pattern and credentials enabled. This may be insecure.");
+                }
+                config.setAllowedOriginPatterns(patterns);
+            } else {
+                log.warn("CORS allowed origins is empty after trimming; cross-origin requests will fail.");
+            }
         } else {
              // Explicitly log that no origins are allowed when credentials are on
              log.warn("CORS configured with credentials enabled but no allowed origins. Cross-origin requests will fail.");
