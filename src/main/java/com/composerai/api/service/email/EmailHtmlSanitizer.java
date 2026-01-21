@@ -4,6 +4,8 @@ import com.composerai.api.util.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +23,8 @@ import java.util.List;
  * @version 0.0.1
  */
 public final class EmailHtmlSanitizer {
+
+    private static final Logger logger = LoggerFactory.getLogger(EmailHtmlSanitizer.class);
 
     private EmailHtmlSanitizer() {}
 
@@ -65,8 +69,9 @@ public final class EmailHtmlSanitizer {
             return cleaned.trim().isEmpty() ? null : cleaned.trim();
 
         } catch (Exception e) {
-            // On error, return null to prevent any potential XSS
-            return null;
+            // On error, return empty string and log for observability
+            logger.error("HTML sanitization failed for input of {} chars: {}", html.length(), e.getMessage(), e);
+            return "";
         }
     }
 
