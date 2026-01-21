@@ -10,7 +10,11 @@ WORKDIR /workspace
 # Copy entire repo so Vite outDir relative path resolves to src/main/resources/static/...
 COPY . .
 WORKDIR /workspace/frontend/email-client
-RUN npm ci && npm run build
+RUN npm ci && npm run build && \
+    echo "Verifying frontend build output..." && \
+    ls -la ../../src/main/resources/static/app/email-client/ && \
+    test -f ../../src/main/resources/static/app/email-client/email-client.js || \
+    (echo "ERROR: Frontend build failed - email-client.js not found" && exit 1)
 
 # 2) Build backend (Spring Boot) with Maven, including built frontend assets
 FROM ${MAVEN_IMAGE} AS builder
@@ -20,7 +24,10 @@ RUN --mount=type=cache,target=/root/.m2 mvn -q -B -DskipTests dependency:go-offl
 COPY src src
 # Overlay built FE assets into resources before packaging so they are bundled in the JAR
 COPY --from=fe_builder /workspace/src/main/resources/static/app/email-client /workspace/src/main/resources/static/app/email-client
-RUN --mount=type=cache,target=/root/.m2 mvn -q -B -DskipTests package
+RUN --mount=type=cache,target=/root/.m2 \
+    echo "Verifying frontend assets before Maven build..." && \
+    ls -la /workspace/src/main/resources/static/app/email-client/ && \
+    mvn -q -B -DskipTests package
 
 # 3) Runtime image
 FROM ${BASE_IMAGE} as runtime
