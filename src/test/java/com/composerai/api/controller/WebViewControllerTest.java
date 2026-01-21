@@ -20,6 +20,7 @@ import static org.mockito.Mockito.when;
  * Verifies that backend enums are properly injected into Thymeleaf templates.
  */
 @WebMvcTest(WebViewController.class)
+@org.springframework.boot.context.properties.EnableConfigurationProperties(com.composerai.api.config.AppProperties.class)
 class WebViewControllerTest {
 
     @Autowired
@@ -48,6 +49,14 @@ class WebViewControllerTest {
         mockMvc.perform(get("/"))
             .andExpect(status().isOk())
             .andExpect(forwardedUrl("/email-client-v2"));
+    }
+
+    @Test
+    void chatDiagnostics_ShouldRenderWithUiNonce() throws Exception {
+        mockMvc.perform(get("/chat-diagnostics"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("chat"))
+            .andExpect(model().attributeExists("uiNonce"));
     }
 
     @Test
