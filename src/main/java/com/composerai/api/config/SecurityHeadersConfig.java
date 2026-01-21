@@ -40,7 +40,9 @@ public class SecurityHeadersConfig {
         config.addAllowedHeader("*");
         config.addAllowedMethod("*");
         
-        source.registerCorsConfiguration("/**", config);
+        // Only apply CORS to API endpoints, not static resources
+        source.registerCorsConfiguration("/api/**", config);
+        source.registerCorsConfiguration("/ui/**", config);
         
         FilterRegistrationBean<CorsFilter> bean = new FilterRegistrationBean<>(new CorsFilter(source));
         // Run before other security filters
