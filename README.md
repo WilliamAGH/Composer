@@ -300,7 +300,6 @@ Content-Type: application/json
   "contextId": "7c2f0a22-88d2-4bec-aad4-1f81f9b6f5af",
   "emailContext": "(optional) sanitized preview returned by /api/qa/parse-email"
 }
-`contextId` should originate from `/api/qa/parse-email`; if it is omitted or invalid, the server drops any supplied `emailContext` string and proceeds with vector-search context only. This guarantees that only normalized pipeline output can reach downstream LLM calls.
 ```
 
 ### Streaming Chat (SSE)
