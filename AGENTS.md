@@ -15,7 +15,7 @@ Operational guidance for autonomous contributors extending Composer, an email AI
 - [AR1a-f] Architecture & Boundaries (canonical roots, layer rules, thin controllers)
 - [TS1a-e] Testing Standards (coverage mandatory, observable behavior, refactor-resilient)
 - [GT1a-d] Git & Permissions (escalate first, no destructive commands, no lock deletion)
-- [TL1a-e] Tooling & Commands (make targets, tmp/ artifacts, compliance checklist)
+- [TL1a-f] Tooling & Commands (make targets, tmp/ artifacts, npm-only, compliance checklist)
 
 ---
 
@@ -114,6 +114,7 @@ Operational guidance for autonomous contributors extending Composer, an email AI
 - [TL1c] Tests: `mvn test`; validate Docker with `make docker-build TAG=local` when deps change.
 - [TL1d] Temporary artifacts: ALL markdown/test/doc/temp files in `tmp/` unless user requests otherwise; delete when done.
 - [TL1e] Never commit `node_modules/` or built assets (`src/main/resources/static/app/email-client/`).
+- [TL1f] Package Manager: `npm` is the ONLY supported package manager. `bun`, `pnpm`, `yarn` are PROHIBITED.
 
 ---
 
