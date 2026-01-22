@@ -74,6 +74,7 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: true,
     rollupOptions: {
+      external: ['/js/email-renderer.js'],
       output: {
         entryFileNames: 'email-client.js',
         chunkFileNames: 'assets/[name].js',
