@@ -266,7 +266,7 @@ make docker-build TAG=latest
 make docker-run-local TAG=latest PORT=8080
 ```
 
-The container build uses Red Hat UBI base images (`registry.access.redhat.com/ubi9/nodejs-20` for the frontend stage and `registry.access.redhat.com/ubi9/openjdk-21-runtime` for the runtime stage) plus `ghcr.io/carlossg/maven:3.9-eclipse-temurin-21` for the backend build. Static assets are copied alongside the executable JAR for direct serving.
+The container build uses Red Hat UBI base images (`registry.access.redhat.com/ubi9/nodejs-20` for the frontend stage and `registry.access.redhat.com/ubi9/openjdk-21-runtime` for the runtime stage) plus `maven:3.9.12-eclipse-temurin-21` for the backend build. Static assets are copied alongside the executable JAR for direct serving.
 
 ## Static Workspaces
 
