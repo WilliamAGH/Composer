@@ -11,59 +11,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.filter.CorsFilter;
-
 import java.io.IOException;
-import java.util.Arrays;
 
 @Slf4j
 @Configuration
 public class SecurityHeadersConfig {
-
-    @Bean
-    public FilterRegistrationBean<CorsFilter> corsFilter(AppProperties appProperties) {
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        CorsConfiguration config = new CorsConfiguration();
-        
-        config.setAllowCredentials(true);
-        // Use patterns to support dynamic origins or specific lists
-        String origins = appProperties.getCors().getAllowedOrigins();
-        if (origins != null && !origins.isBlank()) {
-            var patterns = Arrays.stream(origins.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toList();
-
-            if (!patterns.isEmpty()) {
-                // Validate patterns when credentials are enabled
-                boolean hasWildcard = patterns.stream().anyMatch(p -> p.equals("*"));
-                if (hasWildcard) {
-                    log.warn("Security warning: CORS configured with '*' origin pattern and credentials enabled. This may be insecure.");
-                }
-                config.setAllowedOriginPatterns(patterns);
-            } else {
-                log.warn("CORS allowed origins is empty after trimming; cross-origin requests will fail.");
-            }
-        } else {
-             // Explicitly log that no origins are allowed when credentials are on
-             log.warn("CORS configured with credentials enabled but no allowed origins. Cross-origin requests will fail.");
-        }
-        
-        config.addAllowedHeader("*");
-        config.addAllowedMethod("*");
-        
-        // Only apply CORS to API endpoints, not static resources
-        source.registerCorsConfiguration("/api/**", config);
-        source.registerCorsConfiguration("/ui/**", config);
-        
-        FilterRegistrationBean<CorsFilter> bean = new FilterRegistrationBean<>(new CorsFilter(source));
-        // Run before other security filters
-        bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
-        return bean;
-    }
-
 
     @Bean
     public FilterRegistrationBean<OncePerRequestFilter> hstsHeaderFilter(AppProperties appProperties) {
