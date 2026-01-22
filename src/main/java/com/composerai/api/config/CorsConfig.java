@@ -1,6 +1,7 @@
 package com.composerai.api.config;
 
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -14,8 +15,12 @@ import java.util.Arrays;
 public class CorsConfig implements WebMvcConfigurer {
 
     private static final String ORIGIN_DELIMITER = ",";
-    private static final String CORS_MAPPING_PATH = "/api/**";
+    private static final String API_CORS_MAPPING_PATH = "/api/**";
+    private static final String UI_CORS_MAPPING_PATH = "/ui/**";
     private static final String ALLOWED_HEADERS_ALL = "*";
+    private static final String WILDCARD_ORIGIN_PATTERN = "*";
+    private static final String CREDENTIALS_WILDCARD_ERROR =
+        "CORS allowed origins cannot include '*' when credentials are enabled.";
     private static final String METHOD_GET = "GET";
     private static final String METHOD_POST = "POST";
     private static final String METHOD_PUT = "PUT";
@@ -33,12 +38,25 @@ public class CorsConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         String configuredOrigins = appProperties.getCors().getAllowedOrigins();
         String[] originPatterns = parseOriginPatterns(configuredOrigins);
-        registry.addMapping(CORS_MAPPING_PATH)
+        validateCredentialedOrigins(originPatterns);
+        applyCorsConfiguration(registry.addMapping(API_CORS_MAPPING_PATH), originPatterns);
+        applyCorsConfiguration(registry.addMapping(UI_CORS_MAPPING_PATH), originPatterns);
+    }
+
+    private static void applyCorsConfiguration(CorsRegistration registration, String[] originPatterns) {
+        registration
             .allowedOriginPatterns(originPatterns)
             .allowedMethods(METHOD_GET, METHOD_POST, METHOD_PUT, METHOD_DELETE, METHOD_OPTIONS)
             .allowedHeaders(ALLOWED_HEADERS_ALL)
             .allowCredentials(true)
             .maxAge(CORS_MAX_AGE_SECONDS);
+    }
+
+    private static void validateCredentialedOrigins(String[] originPatterns) {
+        boolean includesWildcard = Arrays.stream(originPatterns).anyMatch(WILDCARD_ORIGIN_PATTERN::equals);
+        if (includesWildcard) {
+            throw new IllegalStateException(CREDENTIALS_WILDCARD_ERROR);
+        }
     }
 
     private static String[] parseOriginPatterns(String configuredOrigins) {
