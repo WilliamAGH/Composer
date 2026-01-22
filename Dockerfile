@@ -1,5 +1,5 @@
 ARG BASE_IMAGE=registry.access.redhat.com/ubi9/openjdk-21-runtime:latest
-ARG MAVEN_IMAGE=ghcr.io/carlossg/maven:3.9-eclipse-temurin-21
+ARG MAVEN_IMAGE=maven:3.9.12-eclipse-temurin-21
 ARG NODE_IMAGE=registry.access.redhat.com/ubi9/nodejs-20:latest
 
 # 1) Build frontend (Svelte) into Spring static path
@@ -11,9 +11,15 @@ COPY . .
 WORKDIR /workspace/frontend/email-client
 RUN npm ci && npm run build && \
     echo "Verifying frontend build output..." && \
-    ls -la ../../src/main/resources/static/app/email-client/ && \
-    test -f ../../src/main/resources/static/app/email-client/email-client.js || \
-    (echo "ERROR: Frontend build failed - email-client.js not found" && exit 1)
+    if [ ! -d ../../src/main/resources/static/app/email-client ]; then \
+        echo "ERROR: Frontend build output directory missing - check npm build logs"; \
+        exit 1; \
+    elif [ ! -f ../../src/main/resources/static/app/email-client/email-client.js ]; then \
+        echo "ERROR: Frontend build succeeded but output path mismatch - email-client.js not found in expected directory"; \
+        exit 1; \
+    else \
+        ls -la ../../src/main/resources/static/app/email-client/; \
+    fi
 
 # 2) Build backend (Spring Boot) with Maven, including built frontend assets
 FROM ${MAVEN_IMAGE} AS builder
