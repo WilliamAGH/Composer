@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 
-ARG BASE_IMAGE=eclipse-temurin:21-jre-alpine
-ARG MAVEN_IMAGE=maven:3.9-eclipse-temurin-21
-ARG NODE_IMAGE=node:20-alpine
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9/openjdk-21-runtime:latest
+ARG MAVEN_IMAGE=ghcr.io/carlossg/maven:3.9-eclipse-temurin-21
+ARG NODE_IMAGE=registry.access.redhat.com/ubi9/nodejs-20:latest
 
 # 1) Build frontend (Svelte) into Spring static path
 FROM ${NODE_IMAGE} AS fe_builder
