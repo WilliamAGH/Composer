@@ -697,9 +697,9 @@
   }
 
   .row-actions--visible,
+  .list-row--selected .row-actions,
   .list-row:hover .row-actions,
-  .list-row:focus-within .row-actions,
-  .list-row--selected .row-actions {
+  .list-row:focus-within .row-actions {
     opacity: 1;
   }
   /* Icon button styling for archive/move/delete */
