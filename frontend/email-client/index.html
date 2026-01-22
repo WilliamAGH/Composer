@@ -54,7 +54,7 @@
   <body>
     <div id="email-client-root"></div>
     <!-- Load EmailRenderer before the app to preserve iframe isolation API (served from Spring Boot static resources) -->
-    <script src="/js/email-renderer.js"></script>
+    <script type="module" src="/js/email-renderer.js"></script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
