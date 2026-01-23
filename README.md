@@ -43,7 +43,7 @@ For production builds, alternative providers (OpenRouter, Ollama), and vector se
 
 ## Routes
 
-- `/` – Svelte email client
+- `/` – Redirects to `/email-client-v2` (Svelte email client)
 - `/chat-diagnostics` – server-rendered diagnostics
 - `/qa/diagnostics` – health checks
 - `/qa/email-file-parser` – parse `.eml` uploads
