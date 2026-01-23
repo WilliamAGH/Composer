@@ -1,12 +1,14 @@
-# ComposerAI
+# Composer
 
-An experimental email client exploring what happens when AI is deeply integrated into everyday software—not as a chatbot sidebar, but as a collaborator that anticipates what you need before you ask.
+Composer is an experimental email client exploring what is possible when AI is well integrated into everyday software. The vision was to build and test features that are not just a chatbot sidebar, but tooling that anticipates what you might need before you ask for it.
 
-[![Composer Desktop](src/main/resources/static/img/ComposerAI_Desktop_Screenshot.png)](https://composerai.app)
+Play with a live demo:
+
+[![Composer Desktop](src/main/resources/static/img/composer-screenshot.png)](https://composerai.app)
 
 ## Why this exists
 
-Most AI integrations are reactive: open a panel, write a prompt, wait, copy-paste. ComposerAI prototypes a different pattern—AI that quietly analyzes context and surfaces actions you're likely to take next.
+Most AI integrations are reactive: open a panel, write a prompt, wait, copy-paste. ComposerAI anticipates that quietly by analyzing the data and UI in the current context and surfaces actions [it believes] you're likely to take next.
 
 - **Anticipatory suggestions** — Select an email and the app surfaces contextual actions (summarize, draft reply, flag follow-up) without prompting.
 - **One-click depth** — Summarize, translate, adjust tone, or draft replies. The AI sees the full thread and adapts to who you're replying to.
@@ -15,11 +17,11 @@ Most AI integrations are reactive: open a panel, write a prompt, wait, copy-past
 
 ## Web and mobile
 
-Single responsive codebase. Desktop gets floating windows and side-by-side panels; mobile gets full-screen sheets and bottom drawers with the same capabilities.
+The desktop web app has floating windows, aiming to behave like a native OS app, and the mobile interface has full-screen views and bottom drawers with the same capabilities.
 
 ## Tech stack
 
-Spring Boot 3 (Java 21) · Svelte + Vite · OpenAI-compatible LLM providers · Optional Qdrant vector search.
+Spring Boot 3 (Java 21) · Svelte 5 + Vite · OpenAI-compatible LLM providers · Optional Qdrant vector search
 
 ## Quick start
 
@@ -30,7 +32,7 @@ export OPENAI_API_KEY="..."
 make dev
 ```
 
-Open `http://localhost:5173/app/email-client/`. Sample emails live in `data/eml/`.
+Open `http://localhost:8080`. Sample emails live in `data/eml/`.
 
 For production builds, alternative providers (OpenRouter, Ollama), and vector search setup, see [docs/getting-started.md](docs/getting-started.md).
 
