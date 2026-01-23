@@ -1,329 +1,49 @@
-# Composer API
+# ComposerAI
 
-Java 21 Spring Boot backend powering Composer's email-intelligence UX. The primary UI lives at `/email-client-v2` (default landing at `/`). Production: [https://composerai.app](https://composerai.app).
+An experimental email client exploring what happens when AI is deeply integrated into everyday software—not as a chatbot sidebar, but as a collaborator that anticipates what you need before you ask.
 
 [![Composer Desktop](src/main/resources/static/img/ComposerAI_Desktop_Screenshot.png)](https://composerai.app)
 
-## Developer Routes
+## Why this exists
 
-- `/email-client-v2` – canonical Svelte mail client (default redirect target from `/` and `/index`; `/email-client` also redirects here).
-- `/chat-diagnostics` – server-rendered diagnostics chat surface (markdown logging/chat tooling); no auto-redirects pointing here.
-- `/qa/diagnostics` – internal diagnostics workspace with health checks, mock retrievals, and UI preview controls.
-- `/qa/email-file-parser` – QA-only email parsing workspace for uploading `.eml`/`.txt` files and inspecting normalized output produced by the shared `EmailParsingService` pipeline.
+Most AI integrations are reactive: open a panel, write a prompt, wait, copy-paste. ComposerAI prototypes a different pattern—AI that quietly analyzes context and surfaces actions you're likely to take next.
 
-### Customizing AI Command Prompts
+- **Anticipatory suggestions** — Select an email and the app surfaces contextual actions (summarize, draft reply, flag follow-up) without prompting.
+- **One-click depth** — Summarize, translate, adjust tone, or draft replies. The AI sees the full thread and adapts to who you're replying to.
+- **Batch operations** — Triage dozens of messages at once. Auto-label by intent, merge duplicates, collapse noise.
+- **Streaming responses** — Token-by-token output with visible "thinking" states so you're never staring at a spinner.
 
-AI helper flows (compose, draft, summarize, translate, tone) are now declared in `AiFunctionCatalogProperties` (`src/main/java/com/composerai/api/config/AiFunctionCatalogProperties.java`) via the `ai.functions.*` namespace. `AiFunctionCatalogHelper` (`src/main/java/com/composerai/api/ai/AiFunctionCatalogHelper.java`) normalizes those properties and exposes them—through `AiFunctionCatalogDto` (`src/main/java/com/composerai/api/dto/AiFunctionCatalogDto.java`)—to:
+## Web and mobile
 
-- Back-end services (`ChatService`) when rendering prompts and enforcing validation.
-- Validation (`AiCommandValidator`) for request safety.
-- Front-end bootstrap JSON (`GlobalModelAttributes` → `aiFunctionCatalog`) so the Svelte client renders buttons, instructions, and variants directly from the catalog.
-- The `/api/ai-functions` endpoint (`AiFunctionCatalogController`) for clients that need to refresh metadata after initial load (the Svelte client now auto-fetches when bootstrapped data is missing).
+Single responsive codebase. Desktop gets floating windows and side-by-side panels; mobile gets full-screen sheets and bottom drawers with the same capabilities.
 
-Each entry defines labels, prompt templates, default instructions, context strategy, scopes, and optional variants (e.g., translation languages). Override any field per environment in `application.properties` (or profile-specific variants).
+## Tech stack
 
-```properties
-# application-local.properties
-ai.functions.compose.prompt-template=Compose a concise, action-oriented reply: {{instruction}}
-ai.functions.compose.default-instruction=Compose a helpful reply using the selected context.
-ai.functions.translate.variants.es.label=AI Translation (Spanish)
-ai.functions.translate.variants.es.default-args.targetLanguage=Spanish
-```
+Spring Boot 3 (Java 21) · Svelte + Vite · OpenAI-compatible LLM providers · Optional Qdrant vector search.
 
-Placeholders such as `{{instruction}}`, `{{subject}}`, or keys from `defaultArgs`/`variants.defaultArgs` are replaced server-side before sending prompts to the model. If a custom value is omitted or blank the service falls back to the built-in defaults defined in `AiFunctionCatalogProperties`.
+## Quick start
 
-### Email Client Window System
-
-Compose drafts and AI summary panels share a reusable window shell:
-
-- `frontend/email-client/src/lib/window/windowTypes.js` – plain JS factories for window descriptors (kept outside Svelte/Java so multiple components/stores can reuse them without rendering).
-- `frontend/email-client/src/lib/window/windowStore.js` – Svelte store that enforces per-mode limits, manages minimize/focus, and ensures summaries stay tied to their email IDs.
-- `frontend/email-client/src/lib/window/WindowFrame.svelte` – shared chrome for floating/docked windows; feature components (`ComposeWindow.svelte`, `AiSummaryWindow.svelte`) wrap it instead of duplicating markup.
-- `frontend/email-client/src/lib/UnifiedDock.svelte` – unified dock for all minimized components (compose windows, AI panels) with consistent styling and automatic spacing to prevent overlap.
-
-Add new AI windows by creating a feature component that wraps `WindowFrame` and registering it with the window store rather than building bespoke panels.
-
-### Reply & Forward Compose Behavior
-
-- Reply and forward buttons live in `EmailActionToolbar.svelte` and delegate to helper logic in `App.svelte` via `composePrefill.js`.
-- Both flows prefill compose windows with the correct subject prefix (`Re:`/`Fwd:`) and append the selected email's metadata/body at the bottom so greetings and signatures sit above the quoted context.
-- Reply automatically queues an AI helper (current `draft` command) that focuses on greeting/closing lines only; the helper re-attaches the quoted context after the model responds.
-- Forward opens the same compose window but skips the auto-AI call while still including the sanitized quote block.
-- Forward windows intentionally leave the `To` field blank (no auto-fill from the original sender) so users can choose a new recipient without accidentally emailing the prior sender.
-- Compose payloads now carry `quotedContext` metadata so future helpers can guarantee the prior thread stays intact even after AI edits.
-
-#### Recipient Metadata in Chat Requests
-
-`ChatRequest` accepts optional `recipientName` and `recipientEmail` fields. The UI populates these whenever a compose surface triggers an AI command so the backend prompt templates can:
-
-- Personalize salutations (falls back to generic greetings when no name is available).
-- Infer friendly names from email addresses when needed.
-- Emit explicit instructions (via `recipientGreetingDirective`) guiding models to use or avoid names/signatures appropriately.
-
-Client integrations should send the best-known recipient metadata alongside AI compose/draft/tone commands to keep greeting behavior consistent with the main UI.
-
-## Feature Highlights
-
-- **Chat Orchestration** – Routes chat requests through OpenAI-compatible models, classifies user intent, and stitches email snippets into responses.
-- **AI Request Journey Loader** – `frontend/email-client/src/lib/AiLoadingJourney.svelte` renders the deterministic lifecycle defined in `aiJourney.ts`, mirroring `ChatService.prepareChatContext` → `VectorSearchService.searchSimilarEmails` → `OpenAiChatService.generateResponse` so UI copy stays in sync with backend stages.
-- **Mailbox AI Actions** – The email list header now exposes an "AI Actions" dropdown that targets mailbox-wide workflows (e.g., Smart triage & cleanup). The control appears next to the search bar on desktop/tablet and in the mobile toolbar so users can trigger scoped batch actions against the currently filtered messages, reusing the existing AI journey overlay and catalog metadata.
-- **Folder controls & drafts** – Every list row now surfaces Archive / Move / Delete hover actions, all wired to the new `/api/messages/{id}/move` endpoint. Compose windows auto-save to the Drafts folder and moving to Sent/Trash simply reuses the same API contract, keeping UI + API behavior identical even before SMTP wiring lands.
-- **Vector Retrieval Stub** – Integrates with Qdrant for similarity search; ships with placeholder extraction logic so teams can map real payloads incrementally.
-- **Email Parsing Workspace (QA)** – Provides an interactive HTML workspace for uploading `.eml`/`.txt` files and returning cleaned text output via the `/api/qa/parse-email` endpoint.
-- **Diagnostics Control Panel** – Ships a rich, static diagnostics dashboard tailored for observing health checks, mock retrieval responses, and LLM outputs.
-- **CLI Utilities** – Includes `HtmlToText` tooling for converting raw email sources to Markdown or plain text, enabling batch processing workflows.
-
-### Responsive Sidebar Modes
-
-The email client sidebar now derives a single `sidebarVariant` in `App.svelte` (`inline-wide`, `inline-desktop`, `inline-collapsed`, `drawer-visible`, `drawer-hidden`) instead of juggling raw viewport booleans. `MailboxSidebar.svelte` consumes that variant to decide width, positioning, and pointer/aria visibility so desktop collapses actually remove the navigation rail while mobile/tablet builds rely on the drawer overlay. This simplification makes the hamburger toggle deterministic across breakpoints and prevents conflicting Tailwind class bindings.
-
-## Email Rendering & Isolation
-
-- All `EmailMessage.emailBodyHtml` values are sanitized server-side via `EmailHtmlSanitizer`.
-- The Svelte client at `/email-client-v2` renders sanitized HTML inside a sandboxed iframe (scripts disabled, same-origin enabled for sizing, inner scrollbars suppressed). If no HTML remains, it falls back to Markdown text.
-- `/` and `/index` now forward internally to `/email-client-v2`, so the default home route loads the same Thymeleaf host regardless of environment.
-- `/email-client` now redirects to `/email-client-v2` so bookmarks continue working while the legacy view is removed.
-- `/chat-diagnostics` (and `/chat`) remain available for the server-rendered diagnostics chat/logging surface; no landing pages auto-redirect here.
-
-## Technology Stack
-
-- **Runtime**: Java 21 (Spring Boot 3.3.x)
-- **Frontend**: Svelte + Vite (assets emitted under `src/main/resources/static/app/email-client/`), Tailwind utilities; lucide icons
-- **Server UI**: Thymeleaf host templates for bootstrapping and CSP/nonce injection
-- **Build**: `make build` (Vite → Maven)
-- **Integrations**: OpenAI Java SDK, Qdrant, Flexmark, JSoup, Jakarta Mail
-- **Containers**: Multi-stage Docker build
-
-## Requirements
-
-- Java Development Kit 21
-- Maven 3.9 or newer
-- OpenAI API key (or compatible endpoint) for chat completion and intent classification
-- Qdrant instance for production retrieval (development runs without an active connection)
-
-## Configuration
-
-Configure via environment variables or `application.properties` equivalents. The app also supports optional dotenv-style files loaded automatically if present:
-
-```properties
-# src/main/resources/application.properties
-spring.config.import=optional:file:.env,optional:file:.env.local,optional:file:.env.properties,optional:file:.env.local.properties
-```
-
-Precedence: environment variables > `.env.local` > `.env` > `.env.local.properties` > `.env.properties` > bundled `application*.properties` defaults. This lets CI/CD inject secrets while dotenv-style files provide convenient local overrides.
-
-```properties
-server.port=${PORT:8080}
-openai.api.key=${OPENAI_API_KEY:your-openai-api-key}
-openai.api.base-url=${OPENAI_BASE_URL:https://api.openai.com/v1}
-# default OpenAI model; override with LLM_MODEL when deploying alternate providers
-openai.model.chat=${LLM_MODEL:gpt-4o-mini}
-qdrant.enabled=${QDRANT_ENABLED:false}
-qdrant.host=${QDRANT_HOST:localhost}
-qdrant.port=${QDRANT_PORT:6333}
-qdrant.use-tls=${QDRANT_USE_TLS:false}
-qdrant.collection-name=${QDRANT_COLLECTION_NAME:emails}
-qdrant.api-key=${QDRANT_API_KEY:}
-```
-
-Example `.env` (or `.env.properties`) for local use (do not commit secrets):
-
-```properties
-OPENAI_API_KEY=sk-...redacted...
-OPENAI_BASE_URL=https://api.openai.com/v1
-LLM_MODEL=gpt-4o-mini
-QDRANT_ENABLED=true
-QDRANT_HOST=cluster-abc.us-east-1-0.aws.cloud.qdrant.io
-QDRANT_PORT=6334
-QDRANT_USE_TLS=true
-QDRANT_COLLECTION_NAME=emails
-QDRANT_API_KEY=qdrant_cloud_api_key_here
-```
-
-Only `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `LLM_MODEL` are read at runtime for the LLM connection; legacy `OPENAI_API_BASE_URL`, `OPENAI_MODEL`, `LLM_API_KEY`, and `LLM_BASE_URL` variables are intentionally ignored to avoid drift between environments.
-
-If you rely on a raw `.env` file, the application will load the key during startup even when the property value falls back to the placeholder. For `make run`, ensure your shell exports the variables (e.g. `set -a; source .env; set +a`) or keep the `.env` file present at the project root so the configuration loader can read it. Retrieval can be turned off entirely by leaving `QDRANT_ENABLED` unset or set to `false`.
-
-### Qdrant usage modes
-
-- Local development (default): `qdrant.enabled=false` yields no outbound Qdrant calls; vector search is skipped gracefully.
-- Cloud (Qdrant Cloud): set `QDRANT_ENABLED=true`, `QDRANT_HOST`, `QDRANT_PORT` (usually 6334), `QDRANT_USE_TLS=true`, and `QDRANT_API_KEY`.
-
-The app attaches the API key to gRPC requests when supported by the Qdrant Java client version; when not supported, calls are still gated by `qdrant.enabled` to avoid failures.
-
-`application-local.properties` enables Spring DevTools restart/live reload. Production profile disables HSTS headers through `app.hsts.enabled=false` for reverse-proxy compatibility.
-
-### Using alternative OpenAI-compatible providers
-
-To use OpenRouter, Groq, LM Studio, or other providers, set `OPENAI_BASE_URL`, `OPENAI_API_KEY`, and `LLM_MODEL`. Provider capabilities are auto-detected from the base URL.
-
-### OpenRouter Configuration
-
-Composer supports [OpenRouter](https://openrouter.ai) for multi-provider LLM access.
-
-#### Basic Setup
+Requires JDK 21, Maven 3.9+, Node 20+.
 
 ```bash
-export OPENAI_API_KEY="your-openrouter-api-key"
-export OPENAI_BASE_URL="https://openrouter.ai/api/v1"
-export LLM_MODEL="anthropic/claude-3.7-sonnet"
+export OPENAI_API_KEY="..."
+make dev
 ```
 
-`LLM_API_KEY` and `LLM_BASE_URL` are no longer read so that deployments cannot inadvertently inherit stale multi-provider credentials.
+Open `http://localhost:5173/app/email-client/`. Sample emails live in `data/eml/`.
 
-#### Provider Routing
+For production builds, alternative providers (OpenRouter, Ollama), and vector search setup, see [docs/getting-started.md](docs/getting-started.md).
 
-**Note**: Provider routing configuration is now supported and applied to requests. You can control provider selection and routing behavior using the environment variables below.
+## Documentation
 
-Control which providers OpenRouter uses:
+- [Getting Started](docs/getting-started.md) – setup, configuration, development workflow
+- [Architecture](docs/00-architectural-entrypoint.md) – system design, file inventory, extension points
+- [Email Client](docs/email-client-v2.md) – frontend architecture, window system, email safety model
+- [Context & Conversations](docs/email-context-conversation-uuids.md) – how identifiers flow between UI and API
 
-```bash
-# Prefer specific provider(s)
-export LLM_PROVIDER_ORDER="anthropic,openai"
+## Routes
 
-# Sort by price (cheapest first), throughput, or latency
-export LLM_PROVIDER_SORT="price"
-
-# Disable fallbacks
-export LLM_PROVIDER_ALLOW_FALLBACKS="false"
-```
-
-[Learn more about OpenRouter provider routing](https://openrouter.ai/docs/features/provider-routing)
-
-#### Reasoning Models
-
-OpenRouter supports reasoning models but with different constraints:
-
-```bash
-# ✅ Supported: low, medium, high
-export LLM_REASONING="medium"
-
-# ❌ Not supported: minimal (OpenAI-only)
-# Will automatically fallback to "low"
-```
-
-### Environment Variables Reference
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `OPENAI_API_KEY` | - | API key for all providers (required) |
-| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Base URL for OpenAI-compatible providers |
-| `LLM_MODEL` | `gpt-4o-mini` | Chat model identifier consumed by the service |
-| `LLM_TEMPERATURE` | `0.5` | Sampling temperature (0-2) |
-| `LLM_MAX_OUTPUT_TOKENS` | - | Max output tokens (model default if unset) |
-| `LLM_TOP_P` | - | Nucleus sampling parameter (model default if unset) |
-| `LLM_REASONING` | `low` | Reasoning effort: `low`, `medium`, `high`, `minimal`* |
-| `LLM_PROVIDER_ORDER` | `novita` | Comma-separated provider preference (OpenRouter only) |
-| `LLM_PROVIDER_SORT` | - | Sort providers: `price`, `throughput`, `latency` (OpenRouter only) |
-| `LLM_PROVIDER_ALLOW_FALLBACKS` | `true` | Allow fallback providers (OpenRouter only) |
-| `LLM_DEBUG_FETCH` | `false` | Log full request/response bodies |
-| `RENDER_EMAILS_WITH` | `HTML` | Email client render mode: `HTML`, `MARKDOWN`, or `PLAINTEXT` |
-| `SESSION_TIMEOUT` | `PT8H` | Servlet session timeout (ISO-8601 duration) used for UI nonce + cookie lifetime |
-
-\* `minimal` only supported by OpenAI. Automatically converts to `low` for other providers.
-
-### Mailbox state & move endpoints
-
-All mailbox interactions are scoped to an ephemeral `X-Mailbox-Session` header so each browser tab maintains its own local folder overrides until refresh.
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/mailboxes/{mailboxId}/state` | Returns the resolved message list, folder counts, and placement map for the caller's session. Accepts optional `session` query parameter when the header is unavailable. |
-| `POST` | `/api/mailboxes/{mailboxId}/messages/{messageId}/move` | Moves a single message into `targetFolderId` (`inbox`, `archive`, `trash`) and returns updated counts + placements. Body: `{ mailboxId, targetFolderId, sessionId? }`. |
-
-These endpoints power `mailboxLayoutStore` in the Svelte client today and will be reused when we swap the file-system adapter for a real mailbox provider (IMAP/Graph).
-
-## Local Development
-
-```bash
-# Compile sources and resolve dependencies
-mvn clean compile
-
-# Run tests
-mvn test
-
-# Launch the API with hot reload (local profile)
-mvn spring-boot:run -Dspring-boot.run.profiles=local
-```
-
-Helpful Makefile targets:
-
-- `make run` – Run Spring Boot locally (profile=local)
-- `make build` – Build frontend (Vite) then backend (Maven) into a single JAR
-- `make build-vite` – Build only the Svelte bundle into `src/main/resources/static/app/email-client/`
-- `make build-java` – Build only the Spring Boot JAR
-- `make fe-dev` – Start Vite dev server with API proxy
-- `make test` – Run the full Maven test suite (override with `MAVEN_TEST_FLAGS="-DskipITs"` etc.)
-- `make lint` – Run all linters: SpotBugs (Java bugs), Oxlint (JS/Svelte scripts), Stylelint (CSS duplicates), Maven Enforcer (dependencies)
-- `make docker-build` – Build `composerai-api:local`
-- `make docker-run-local` – Run container with local profile variables
-
-## Docker Usage
-
-```bash
-# Build
-make docker-build TAG=latest
-
-# Run (local)
-make docker-run-local TAG=latest PORT=8080
-```
-
-The container build uses Red Hat UBI base images (`registry.access.redhat.com/ubi9/nodejs-20` for the frontend stage and `registry.access.redhat.com/ubi9/openjdk-21-runtime` for the runtime stage) plus `ghcr.io/carlossg/maven:3.9-eclipse-temurin-21` for the backend build. Static assets are copied alongside the executable JAR for direct serving.
-
-## Static Workspaces
-
-- Diagnostics dashboard: `http://localhost:8080/qa/diagnostics`
-- Email parser UI: `http://localhost:8080/qa/email-file-parser`
-- Redirect landing page: `http://localhost:8080/`
-
-Each workspace follows the house design language: layered glass cards over soft gradients, deep slate or charcoal accents, diffused shadows, disciplined spacing, and crisp system typography.
-
-## REST Endpoints
-
-| Method | Path | Description |
-| ------ | ---- | ----------- |
-| `GET` | `/api/health` | Service heartbeat with timestamp |
-| `GET` | `/api/chat/health` | Chat-specific heartbeat |
-| `POST` | `/api/chat` | Main chat endpoint accepting message, optional conversation ID, `maxResults`, and a `contextId` referencing normalized email content |
-| `POST` | `/api/chat/stream` | SSE stream of incremental tokens for live responses |
-| `POST` | `/api/qa/parse-email` | QA-only multipart upload for `.eml`/`.txt` files that streams them through the shared `EmailParsingService` and returns a `contextId` for subsequent chat calls |
-| `POST` | `/ui/session/nonce` | Renews the UI nonce for the active servlet session (used by the Svelte client to recover after session expiry) |
-
-### Example Chat Request
-
-```http
-POST /api/chat
-Content-Type: application/json
-
-{
-  "message": "Summarize updates from my hiring emails",
-  "conversationId": "thread-123",
-  "maxResults": 5,
-  "contextId": "7c2f0a22-88d2-4bec-aad4-1f81f9b6f5af",
-  "emailContext": "(optional) sanitized preview returned by /api/qa/parse-email"
-}
-```
-
-### Streaming Chat (SSE)
-
-Request is identical to `/api/chat`, but POST to `/api/chat/stream`. The response is `text/event-stream` with typed events.
-
-Example SSE response:
-
-```text
-event: rendered_html
-data: {"html":"<p>Hello</p>"}
-
-event: rendered_html
-data: {"html":"<p>, how can I help you today?</p>"}
-
-event: done
-data: {}
-```
-
-Example curl command:
-
-```bash
-curl -N -H "Accept: text/event-stream" -H "Content-Type: application/json" \
-     -d '{"message":"hi","contextId":"test-123"}' http://localhost:8080/api/chat/stream
-```
+- `/` – Svelte email client
+- `/chat-diagnostics` – server-rendered diagnostics
+- `/qa/diagnostics` – health checks
+- `/qa/email-file-parser` – parse `.eml` uploads

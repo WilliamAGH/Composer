@@ -14,7 +14,7 @@
                │ conversation key (contextId || email.id || windowId)
                v
 ┌─────────────────────────────────────────────────────────────────────┐
-│ conversationLedger (lib/services/conversationLedger.js)             │
+│ conversationLedger (lib/services/conversationLedger.ts)             │
 │ • Returns stored `conversationId` for the key                       │
 │ • Falls back to null (backend will mint UUID)                       │
 └──────────────┬──────────────────────────────────────────────────────┘
@@ -56,6 +56,16 @@
 | Conversation Key  | Stable client key for ledger lookups (panel/compose/global). | Derived in `conversationLedger`: panel → `contextId/id`, compose → window id, global → literal `__global__`. | Keeps per-email/windows conversation IDs isolated. |
 | `emailContext`    | Raw markdown fallback when no registry entry exists.      | Built in `buildEmailContextString` (App.svelte) or compose payload. | Sent only when `contextId` missing; backend consumes directly. |
 
+## Recipient metadata in `ChatRequest`
+
+`ChatRequest` supports optional `recipientName` and `recipientEmail`. The UI should populate these when an AI action is initiated from a compose surface so the backend can:
+
+- Personalize salutations when appropriate (and stay generic when metadata is missing).
+- Infer friendly names from email addresses when needed.
+- Emit explicit prompt instructions (for example: avoid names/signatures, or keep greetings intact) while still keeping templates declarative.
+
+If you are building a new client integration, send the best-known recipient metadata alongside compose/draft/tone commands so greeting behavior stays consistent with the main UI.
+
 ## How We Handle Each Identifier
 
 1. **Email IDs**: `mailboxLayoutStore` normalizes every message through `mapEmailMessage`, guaranteeing `id` exists. Drafts get deterministic ids (`draft-${uuid}`) so they can participate in the same flows.
@@ -70,7 +80,7 @@
 
 ## Files to Consult
 
-- `frontend/email-client/src/lib/services/conversationLedger.js` – explains conversation-key derivation and storage.
+- `frontend/email-client/src/lib/services/conversationLedger.ts` – explains conversation-key derivation and storage.
 - `frontend/email-client/src/App.svelte` – shows how the ledger, `callAiCommand`, and `aiPanelStore` interact.
 - `src/main/java/com/composerai/api/service/ChatService.java` – authoritative handling of context IDs, conversation IDs, and registry lookups.
 - `src/main/java/com/composerai/api/service/ContextBuilder.EmailContextRegistry` – stores and retrieves the markdown associated with server-issued context IDs.
