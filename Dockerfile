@@ -1,6 +1,6 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi9/openjdk-21-runtime:latest
-ARG MAVEN_IMAGE=ghcr.io/carlossg/maven:3.9-eclipse-temurin-21
-ARG NODE_IMAGE=registry.access.redhat.com/ubi9/nodejs-20:latest
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9/openjdk-21-runtime:latest@sha256:84a136ce036ebde3adc502c84c39f22bd4bf14ca387a3825cf3e1c7ae26c0942
+ARG MAVEN_IMAGE=ghcr.io/carlossg/maven:3.9-eclipse-temurin-21@sha256:41d58c4b64bae45eaa1c1df58b3e97e066597d8270f8a3b9eefa0153e8db650a
+ARG NODE_IMAGE=registry.access.redhat.com/ubi9/nodejs-20:latest@sha256:23aa2e84a94e5e11d2c716de12344bc6183b29f0fc0a440fde7b0f2ee3dc703c
 
 # 1) Build frontend (Svelte) into Spring static path
 FROM ${NODE_IMAGE} AS fe_builder
