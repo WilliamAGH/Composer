@@ -1,10 +1,8 @@
 # Composer
 
-Composer is an experimental email client exploring what is possible when AI is well integrated into everyday software. The vision was to build and test features that are not just a chatbot sidebar, but tooling that anticipates what you might need before you ask for it.
-
-Play with a live demo:
-
 [![Composer Desktop](src/main/resources/static/img/composer-screenshot.png)](https://composerai.app)
+
+Composer is an experimental email client exploring what is possible when AI is well integrated into everyday software. The vision was to build and test features that are not just a chatbot sidebar, but tooling that anticipates what you might need before you ask for it.
 
 ## Why this exists
 
