@@ -29,6 +29,16 @@ public final class EmailHtmlSanitizer {
     private EmailHtmlSanitizer() {}
 
     /**
+     * Exception thrown when HTML sanitization fails.
+     * Callers should handle this explicitly rather than receiving silent empty results.
+     */
+    public static class SanitizationException extends RuntimeException {
+        public SanitizationException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
+    /**
      * Sanitize raw email HTML for safe display in an isolated iframe.
      * <p>
      * Security measures:
@@ -41,6 +51,7 @@ public final class EmailHtmlSanitizer {
      *
      * @param html Raw HTML content from email
      * @return Sanitized HTML safe for iframe rendering, or null if input is null/blank
+     * @throws SanitizationException if sanitization fails due to malformed HTML or internal error
      */
     public static String sanitize(String html) {
         if (html == null || html.isBlank()) {
@@ -69,9 +80,9 @@ public final class EmailHtmlSanitizer {
             return cleaned.trim().isEmpty() ? null : cleaned.trim();
 
         } catch (Exception e) {
-            // On error, return empty string and log for observability
             logger.error("HTML sanitization failed for input of {} chars: {}", html.length(), e.getMessage(), e);
-            return "";
+            throw new SanitizationException(
+                String.format("Failed to sanitize HTML content (%d chars)", html.length()), e);
         }
     }
 

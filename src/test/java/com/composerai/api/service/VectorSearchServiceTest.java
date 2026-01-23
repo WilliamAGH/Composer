@@ -19,6 +19,7 @@ import io.qdrant.client.grpc.Points;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import com.composerai.api.dto.ChatResponse.EmailContext;
 import io.qdrant.client.grpc.JsonWithInt.Value;
@@ -289,5 +290,62 @@ class VectorSearchServiceTest {
         assertEquals("Alt Subject Key", ctx.subject());
         assertEquals("bob@example.com", ctx.sender());
         assertEquals("Alt body key content", ctx.snippet());
+    }
+
+    // Direct unit tests for parseTimestamp returning Optional
+
+    @Test
+    void parseTimestamp_withValidOffsetDateTime_returnsPresent() {
+        properties.setEnabled(true);
+        VectorSearchService service = new VectorSearchService(qdrantClient, properties);
+
+        Optional<LocalDateTime> result = service.parseTimestamp("2025-01-15T09:30:00Z");
+
+        assertTrue(result.isPresent());
+        assertEquals(2025, result.get().getYear());
+        assertEquals(1, result.get().getMonthValue());
+        assertEquals(15, result.get().getDayOfMonth());
+    }
+
+    @Test
+    void parseTimestamp_withValidLocalDateTime_returnsPresent() {
+        properties.setEnabled(true);
+        VectorSearchService service = new VectorSearchService(qdrantClient, properties);
+
+        Optional<LocalDateTime> result = service.parseTimestamp("2025-12-25T00:00:00");
+
+        assertTrue(result.isPresent());
+        assertEquals(2025, result.get().getYear());
+        assertEquals(12, result.get().getMonthValue());
+    }
+
+    @Test
+    void parseTimestamp_withNull_returnsEmpty() {
+        properties.setEnabled(true);
+        VectorSearchService service = new VectorSearchService(qdrantClient, properties);
+
+        Optional<LocalDateTime> result = service.parseTimestamp(null);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void parseTimestamp_withBlankString_returnsEmpty() {
+        properties.setEnabled(true);
+        VectorSearchService service = new VectorSearchService(qdrantClient, properties);
+
+        Optional<LocalDateTime> result = service.parseTimestamp("   ");
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void parseTimestamp_withInvalidFormat_returnsEmpty() {
+        properties.setEnabled(true);
+        VectorSearchService service = new VectorSearchService(qdrantClient, properties);
+
+        Optional<LocalDateTime> result = service.parseTimestamp("not-a-valid-timestamp");
+
+        assertTrue(result.isEmpty());
     }
 }

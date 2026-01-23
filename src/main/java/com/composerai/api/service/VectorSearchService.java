@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
@@ -110,12 +111,19 @@ public class VectorSearchService {
         String subject = getPayloadString(payload, KEYS_SUBJECT);
         String sender = getPayloadString(payload, KEYS_SENDER);
         String snippet = getPayloadString(payload, KEYS_SNIPPET);
-        
-        // Attempt to parse timestamp, fallback to now if missing
-        LocalDateTime timestamp = LocalDateTime.now();
+
+        // Parse timestamp - missing or invalid timestamps are logged and defaulted
+        LocalDateTime timestamp;
         if (payload.containsKey(KEY_TIMESTAMP) && payload.get(KEY_TIMESTAMP).hasStringValue()) {
             String timestampStr = payload.get(KEY_TIMESTAMP).getStringValue();
-            timestamp = parseTimestamp(timestampStr);
+            Optional<LocalDateTime> parsed = parseTimestamp(timestampStr);
+            if (parsed.isEmpty()) {
+                log.info("Using current time for email {} due to missing/invalid timestamp", pointId);
+            }
+            timestamp = parsed.orElseGet(LocalDateTime::now);
+        } else {
+            log.debug("No timestamp field in Qdrant payload for point {}", pointId);
+            timestamp = LocalDateTime.now();
         }
 
         return new EmailContext(
@@ -146,26 +154,26 @@ public class VectorSearchService {
      * then falls back to LocalDateTime (for plain ISO strings like "2025-01-15T09:30:00").
      *
      * @param timestampStr the timestamp string to parse
-     * @return the parsed LocalDateTime, or LocalDateTime.now() if parsing fails
+     * @return Optional containing the parsed LocalDateTime, or empty if parsing fails
      */
-    private LocalDateTime parseTimestamp(String timestampStr) {
+    Optional<LocalDateTime> parseTimestamp(String timestampStr) {
         if (timestampStr == null || timestampStr.isBlank()) {
-            return LocalDateTime.now();
+            return Optional.empty();
         }
-        
+
         // Try OffsetDateTime first (handles "2025-01-15T09:30:00Z" or "2025-01-15T09:30:00+00:00")
         try {
-            return OffsetDateTime.parse(timestampStr).toLocalDateTime();
+            return Optional.of(OffsetDateTime.parse(timestampStr).toLocalDateTime());
         } catch (Exception ignored) {
             // Fall through to LocalDateTime parsing
         }
-        
+
         // Try LocalDateTime (handles "2025-01-15T09:30:00")
         try {
-            return LocalDateTime.parse(timestampStr);
+            return Optional.of(LocalDateTime.parse(timestampStr));
         } catch (Exception e) {
-            log.debug("Failed to parse timestamp '{}' from Qdrant payload", timestampStr, e);
-            return LocalDateTime.now();
+            log.warn("Failed to parse timestamp '{}' from Qdrant payload: {}", timestampStr, e.getMessage());
+            return Optional.empty();
         }
     }
 }

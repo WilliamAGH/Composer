@@ -230,7 +230,9 @@ public class OpenAiChatService {
                             onEvent.accept(StreamEvent.failed(failedEvent));
                         });
                     } catch (Exception processingError) {
-                        logger.warn("Failed to process stream event", processingError);
+                        // Log at error level and mark stream as failed so caller knows
+                        logger.error("Stream event processing failed - marking stream as failed", processingError);
+                        failed[0] = true;
                     }
                 });
                 if (!command.jsonOutput() && assembler != null) {
