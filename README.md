@@ -1,6 +1,8 @@
 # Composer API
 
-Java 21 Spring Boot backend powering Composer’s email-intelligence UX. The primary UI lives at `/email-client-v2` (default landing at `/`). Production: [https://composerai.app](https://composerai.app).
+Java 21 Spring Boot backend powering Composer's email-intelligence UX. The primary UI lives at `/email-client-v2` (default landing at `/`). Production: [https://composerai.app](https://composerai.app).
+
+[![Composer Desktop](https://composerai.app/img/ComposerAI_Desktop_Screenshot.png)](https://composerai.app)
 
 ## Developer Routes
 
