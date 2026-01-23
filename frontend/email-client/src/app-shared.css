@@ -1,6 +1,10 @@
 /**
  * Responsive styling guardrails keep interactive inputs legible (≥16px), constrain floating surfaces,
  * and preserve the glassy layering language on both desktop and mobile breakpoints.
+ *
+ * DESIGN SYSTEM: "Refined Editorial"
+ * Typography: Satoshi (display/headers) + General Sans (body/UI)
+ * Palette: Deep ink sidebar, luminous violet AI accents, warm champagne highlights
  */
 
 /**
@@ -20,6 +24,33 @@
  * 220 - Nested dropdowns
  */
 :root {
+  /* ═══════════════════════════════════════════════════════════════════════════
+   * COLOR PALETTE: Warm Editorial (Light Mode Default)
+   * Inspired by Anthropic's restraint - warm terracotta accent, cream neutrals
+   * ═══════════════════════════════════════════════════════════════════════════ */
+
+  /* Primary Accent - Warm Terracotta (like Anthropic) */
+  --color-accent: #d97757;
+  --color-accent-hover: #c9654a;
+  --color-accent-muted: rgba(217, 119, 87, 0.15);
+  --color-accent-subtle: rgba(217, 119, 87, 0.08);
+
+  /* Warm Neutrals - Light Mode */
+  --color-cream: #faf9f7;
+  --color-cream-dark: #f5f4f0;
+  --color-surface: #ffffff;
+  --color-border: #e7e5e4;
+
+  /* Text hierarchy - Light Mode */
+  --color-text-primary: #1c1917;
+  --color-text-secondary: #57534e;
+  --color-text-muted: #78716c;
+
+  /* Typography */
+  --font-display: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'General Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Z-Index Architecture */
   --z-panel-overlay: 10;
   --z-panel-maximized: 30;
   --z-window-floating: 80;
@@ -53,6 +84,7 @@
   --z-dropdown: 200;
   --z-dropdown-nested: 220;
 }
+
 
 /**
  * Accessibility helper that visually hides content while keeping it accessible to assistive tech.
@@ -428,3 +460,91 @@ input[type='email'] {
 :global(.mailbox-ai-trigger--compact .mailbox-ai-trigger__label) {
   display: none;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * ACCENT BUTTON STYLES
+ * Warm terracotta accent - same color for AI and primary actions
+ * Restraint over spectacle
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Primary accent button - warm terracotta fill
+ * @usage - Primary actions including AI commands (Summarize, Reply, Actions)
+ */
+.btn--accent {
+  font-family: var(--font-body);
+  font-weight: 500;
+  color: white;
+  background: var(--color-accent);
+  border: 1px solid transparent;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn--accent:hover {
+  background: var(--color-accent-hover);
+  box-shadow: 0 2px 8px -2px rgba(217, 119, 87, 0.4);
+}
+
+.btn--accent:active {
+  background: var(--color-accent);
+}
+
+/**
+ * Ghost accent button - subtle terracotta border
+ * @usage - Secondary accent actions, AI action pills
+ */
+.btn--accent-ghost {
+  font-family: var(--font-body);
+  font-weight: 500;
+  color: #b45a3f;
+  background: var(--color-accent-subtle);
+  border: 1px solid rgba(217, 119, 87, 0.3);
+  transition: all 0.15s ease;
+}
+
+.btn--accent-ghost:hover {
+  background: var(--color-accent-muted);
+  border-color: rgba(217, 119, 87, 0.5);
+  color: #9a4a33;
+}
+
+/**
+ * Accent icon button - circular
+ * @usage - Compact triggers in toolbars
+ */
+.btn--accent-icon {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 999px;
+  color: white;
+  background: var(--color-accent);
+  border: 1px solid transparent;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.btn--accent-icon:hover {
+  background: var(--color-accent-hover);
+  transform: scale(1.05);
+}
+
+/**
+ * Small icon chip inside buttons
+ */
+.accent-icon-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Legacy aliases for existing component references */
+.btn--ai { }
+.btn--ai-ghost { }
+.btn--ai-icon { }
+.ai-icon-chip { }

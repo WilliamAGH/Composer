@@ -194,8 +194,8 @@ import Portal from './components/Portal.svelte';
       aria-label="Run Assistant"
       title="Run Assistant"
       on:click={() => handleClick('summarize')}>
-      <span class="action-pill__icon">
-        <Sparkles class="h-4 w-4 text-slate-500" aria-hidden="true" />
+      <span class="action-pill__icon btn-icon-chip">
+        <Sparkles class="h-4 w-4" aria-hidden="true" />
       </span>
       <span class="action-pill__label">Assistant</span>
     </button>
@@ -206,7 +206,7 @@ import Portal from './components/Portal.svelte';
           class="btn"
           class:action-pill={!trayMode}
           class:btn--icon={trayMode}
-          class:btn--ghost={!trayMode}
+          class:btn--secondary={!trayMode}
           class:btn--compact={!trayMode}
           class:w-full={mobile && !trayMode}
           class:justify-center={mobile && !trayMode}
@@ -225,7 +225,7 @@ import Portal from './components/Portal.svelte';
             </span>
             <span class="action-pill__label tracking-wide">Actions</span>
             <ChevronDown
-              class={`action-pill__chevron h-4 w-4 transition ${actionMenuOpen ? 'text-slate-700 rotate-180' : 'text-slate-500'}`}
+              class={`action-pill__chevron h-4 w-4 transition ${actionMenuOpen ? 'opacity-70 rotate-180' : 'opacity-90'}`}
               aria-hidden="true" />
           {/if}
         </button>
@@ -290,7 +290,7 @@ import Portal from './components/Portal.svelte';
         class="btn"
         class:action-pill={!trayMode}
         class:btn--icon={trayMode}
-        class:btn--secondary={!trayMode}
+        class:btn--ghost={!trayMode}
         class:btn--compact={!trayMode}
         aria-label={labelForEntry(summarizeEntry)}
         title={labelForEntry(summarizeEntry)}
@@ -299,7 +299,7 @@ import Portal from './components/Portal.svelte';
           <svelte:component this={resolveIconComponent(summarizeEntry.key)} class="h-4 w-4" aria-hidden="true" />
         {:else}
           <span class="action-pill__icon">
-            <svelte:component this={resolveIconComponent(summarizeEntry.key)} class="h-4 w-4 text-slate-500" aria-hidden="true" />
+            <svelte:component this={resolveIconComponent(summarizeEntry.key)} class="h-4 w-4" aria-hidden="true" />
           </span>
           <span class="action-pill__label">{labelForEntry(summarizeEntry)}</span>
         {/if}
@@ -312,7 +312,7 @@ import Portal from './components/Portal.svelte';
         class="btn"
         class:action-pill={!trayMode}
         class:btn--icon={trayMode}
-        class:btn--secondary={!trayMode}
+        class:btn--ghost={!trayMode}
         class:btn--compact={!trayMode}
         aria-label={labelForEntry(draftEntry)}
         title={labelForEntry(draftEntry)}
@@ -321,7 +321,7 @@ import Portal from './components/Portal.svelte';
           <svelte:component this={resolveIconComponent(draftEntry.key)} class="h-4 w-4" aria-hidden="true" />
         {:else}
           <span class="action-pill__icon">
-            <svelte:component this={resolveIconComponent(draftEntry.key)} class="h-4 w-4 text-slate-500" aria-hidden="true" />
+            <svelte:component this={resolveIconComponent(draftEntry.key)} class="h-4 w-4" aria-hidden="true" />
           </span>
           <span class="action-pill__label">{labelForEntry(draftEntry)}</span>
         {/if}
@@ -342,12 +342,12 @@ import Portal from './components/Portal.svelte';
           bind:this={translateButtonEl}>
           <div class="flex items-center gap-2">
             <span class="action-pill__icon">
-              <Languages class="h-4 w-4 text-slate-500" aria-hidden="true" />
+              <Languages class="h-4 w-4" aria-hidden="true" />
             </span>
             <span class="action-pill__label">Translate</span>
           </div>
           <ChevronDown
-            class={`action-pill__chevron h-4 w-4 text-slate-500 transition ${translateMenuOpen ? 'rotate-180' : ''}`}
+            class={`action-pill__chevron h-4 w-4 transition ${translateMenuOpen ? 'rotate-180' : ''}`}
             aria-hidden="true" />
         </button>
         {#if translateMenuOpen}
@@ -413,13 +413,13 @@ import Portal from './components/Portal.svelte';
     {#each otherEntries as entry (entry.key)}
       <button
         type="button"
-        class="btn btn--secondary btn--compact action-pill"
+        class="btn btn--ghost btn--compact action-pill"
         class:action-pill--tray={trayMode}
         aria-label={labelForEntry(entry)}
         title={labelForEntry(entry)}
         on:click={() => handleClick(entry.key)}>
         <span class="action-pill__icon">
-          <svelte:component this={resolveIconComponent(entry.key)} class="h-4 w-4 text-slate-500" aria-hidden="true" />
+          <svelte:component this={resolveIconComponent(entry.key)} class="h-4 w-4" aria-hidden="true" />
         </span>
         <span class="action-pill__label">{labelForEntry(entry)}</span>
       </button>

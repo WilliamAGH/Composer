@@ -72,125 +72,265 @@
   }
 </script>
 
-<aside class={`mailbox-sidebar shrink-0 border-slate-200 bg-white/80 backdrop-blur transition-all duration-200 will-change-transform ${variantConfig.widthClass}`}
+<aside class={`mailbox-sidebar shrink-0 transition-all duration-200 will-change-transform ${variantConfig.widthClass}`}
        data-style-usage="mailbox-sidebar"
-       class:border-r={!variantConfig.hideBorder}
-       class:border-r-0={variantConfig.hideBorder}
        class:overflow-hidden={variantConfig.overflowHidden}
        class:pointer-events-none={variantConfig.pointerNone}
        class:fixed={variantConfig.fixed}
        class:inset-y-0={variantConfig.fixed}
        class:left-0={variantConfig.fixed}
-       class:shadow-xl={variantConfig.fixed}
        aria-hidden={ariaHidden}
        style="pointer-events: {pointerEventsValue}; transform: {transformValue}; z-index: {variantConfig.fixed ? 'var(--z-drawer-sidebar, 170)' : 'auto'};">
-  <div class="p-4 border-b border-slate-200">
-    <div class="flex items-center gap-2 mb-4 justify-center w-full text-center">
-      <InboxIcon class="h-6 w-6 text-slate-900" />
-      <h1 class="text-xl font-bold text-slate-900">Composer</h1>
+  <div class="sidebar-header">
+    <div class="sidebar-brand">
+      <div class="brand-icon">
+        <InboxIcon class="h-5 w-5" />
+      </div>
+      <h1 class="brand-text">Composer</h1>
     </div>
-    <button class="btn btn--primary w-full justify-center" on:click={compose}>
-      <Pencil class="h-4 w-4" /> Compose
+    <button class="compose-btn" on:click={compose}>
+      <Pencil class="h-4 w-4" />
+      <span>Compose</span>
     </button>
   </div>
-  <nav class="p-2 space-y-1 overflow-y-auto">
-    <button type="button" class={`nav-pill ${mailbox==='inbox' ? 'nav-pill--active' : ''}`}
-            on:click={() => select('inbox')}>
-      <InboxIcon class="h-4 w-4" />
-      <span class="font-medium">Inbox</span>
-      <span class="nav-pill-badge">{mailboxCounts.inbox}</span>
-    </button>
-    <button type="button" class={`nav-pill ${mailbox==='starred' ? 'nav-pill--active' : ''}`}
-            on:click={() => select('starred')}>
-      <StarIcon class="h-4 w-4" />
-      <span class="font-medium">Starred</span>
-      <span class="nav-pill-badge">{mailboxCounts.starred}</span>
-    </button>
-    <button type="button" class={`nav-pill ${mailbox==='snoozed' ? 'nav-pill--active' : ''}`}
-            on:click={() => select('snoozed')}>
-      <AlarmClock class="h-4 w-4" />
-      <span class="font-medium">Snoozed</span>
-      <span class="nav-pill-badge">{mailboxCounts.snoozed}</span>
-    </button>
-    <button type="button" class={`nav-pill ${mailbox==='sent' ? 'nav-pill--active' : ''}`}
-            on:click={() => select('sent')}>
-      <Send class="h-4 w-4" />
-      <span class="font-medium">Sent</span>
-      <span class="nav-pill-badge">{mailboxCounts.sent}</span>
-    </button>
-    <button type="button" class={`nav-pill ${mailbox==='drafts' ? 'nav-pill--active' : ''}`}
-            on:click={() => select('drafts')}>
-      <AlarmClock class="h-4 w-4" />
-      <span class="font-medium">Drafts</span>
-      <span class="nav-pill-badge">{mailboxCounts.drafts}</span>
-    </button>
-    <button type="button" class={`nav-pill ${mailbox==='archive' ? 'nav-pill--active' : ''}`}
-            on:click={() => select('archive')}>
-      <Archive class="h-4 w-4" />
-      <span class="font-medium">Archive</span>
-      <span class="nav-pill-badge">{mailboxCounts.archive}</span>
-    </button>
-    <button type="button" class={`nav-pill ${mailbox==='trash' ? 'nav-pill--active' : ''}`}
-            on:click={() => select('trash')}>
-      <Trash2 class="h-4 w-4" />
-      <span class="font-medium">Trash</span>
-      <span class="nav-pill-badge">{mailboxCounts.trash}</span>
-    </button>
+  <nav class="sidebar-nav">
+    <div class="nav-section">
+      <button type="button" class={`nav-pill ${mailbox==='inbox' ? 'nav-pill--active' : ''}`}
+              on:click={() => select('inbox')}>
+        <span class="nav-pill-icon"><InboxIcon class="h-4 w-4" /></span>
+        <span class="nav-pill-label">Inbox</span>
+        {#if mailboxCounts.inbox > 0}
+          <span class="nav-pill-badge">{mailboxCounts.inbox}</span>
+        {/if}
+      </button>
+      <button type="button" class={`nav-pill ${mailbox==='starred' ? 'nav-pill--active' : ''}`}
+              on:click={() => select('starred')}>
+        <span class="nav-pill-icon"><StarIcon class="h-4 w-4" /></span>
+        <span class="nav-pill-label">Starred</span>
+        {#if mailboxCounts.starred > 0}
+          <span class="nav-pill-badge">{mailboxCounts.starred}</span>
+        {/if}
+      </button>
+      <button type="button" class={`nav-pill ${mailbox==='snoozed' ? 'nav-pill--active' : ''}`}
+              on:click={() => select('snoozed')}>
+        <span class="nav-pill-icon"><AlarmClock class="h-4 w-4" /></span>
+        <span class="nav-pill-label">Snoozed</span>
+        {#if mailboxCounts.snoozed > 0}
+          <span class="nav-pill-badge">{mailboxCounts.snoozed}</span>
+        {/if}
+      </button>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div class="nav-section">
+      <button type="button" class={`nav-pill ${mailbox==='sent' ? 'nav-pill--active' : ''}`}
+              on:click={() => select('sent')}>
+        <span class="nav-pill-icon"><Send class="h-4 w-4" /></span>
+        <span class="nav-pill-label">Sent</span>
+      </button>
+      <button type="button" class={`nav-pill ${mailbox==='drafts' ? 'nav-pill--active' : ''}`}
+              on:click={() => select('drafts')}>
+        <span class="nav-pill-icon"><Pencil class="h-4 w-4" /></span>
+        <span class="nav-pill-label">Drafts</span>
+        {#if mailboxCounts.drafts > 0}
+          <span class="nav-pill-badge nav-pill-badge--muted">{mailboxCounts.drafts}</span>
+        {/if}
+      </button>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div class="nav-section">
+      <button type="button" class={`nav-pill ${mailbox==='archive' ? 'nav-pill--active' : ''}`}
+              on:click={() => select('archive')}>
+        <span class="nav-pill-icon"><Archive class="h-4 w-4" /></span>
+        <span class="nav-pill-label">Archive</span>
+      </button>
+      <button type="button" class={`nav-pill ${mailbox==='trash' ? 'nav-pill--active' : ''}`}
+              on:click={() => select('trash')}>
+        <span class="nav-pill-icon"><Trash2 class="h-4 w-4" /></span>
+        <span class="nav-pill-label">Trash</span>
+      </button>
+    </div>
   </nav>
 </aside>
 
 <style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+   * MAILBOX SIDEBAR: Light Mode (Default)
+   * Clean white background, warm terracotta accent, refined typography
+   * ═══════════════════════════════════════════════════════════════════════════ */
+
   /**
-   * Baseline mailbox row pill renders each folder entry with frosted hover affordances.
-   * @usage - Buttons wrapping mailbox options inside this sidebar component
-   * @related - .nav-pill--active, .nav-pill-badge
+   * Sidebar container - light with subtle warmth
+   */
+  :global(.mailbox-sidebar) {
+    background: var(--color-cream, #faf9f7);
+    border-right: 1px solid #e7e5e4;
+  }
+
+  /**
+   * Header section
+   */
+  .sidebar-header {
+    padding: 1.25rem 1rem 1rem;
+    border-bottom: 1px solid #e7e5e4;
+  }
+
+  .sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 1.25rem;
+    padding-left: 0.15rem;
+  }
+
+  .brand-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--color-accent, #d97757);
+    color: white;
+  }
+
+  .brand-text {
+    font-family: var(--font-display, 'Satoshi', sans-serif);
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: #1c1917;
+    margin: 0;
+  }
+
+  /**
+   * Compose button - warm accent
+   */
+  .compose-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border-radius: 10px;
+    border: none;
+    font-family: var(--font-body, 'General Sans', sans-serif);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: white;
+    background: var(--color-accent, #d97757);
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .compose-btn:hover {
+    background: var(--color-accent-hover, #e8896b);
+  }
+
+  .compose-btn:active {
+    background: var(--color-accent, #d97757);
+  }
+
+  /**
+   * Navigation container
+   */
+  .sidebar-nav {
+    padding: 0.75rem 0.6rem;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .nav-section {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .nav-divider {
+    height: 1px;
+    margin: 0.6rem 0.5rem;
+    background: #e7e5e4;
+  }
+
+  /**
+   * Navigation pill
    */
   .nav-pill {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.65rem;
     width: 100%;
     border-radius: 8px;
-    padding: 0.55rem 0.85rem;
-    color: #475569;
-    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-    border: 1px solid transparent;
+    padding: 0.55rem 0.75rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: background 0.15s ease;
   }
 
-  /**
-   * Hover emphasis deepens the pill background to reinforce interactive affordance.
-   * @usage - Implicit pseudo-class on .nav-pill buttons when pointer hovers
-   * @related - .nav-pill
-   */
+  .nav-pill-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: #78716c;
+    transition: color 0.15s ease;
+  }
+
+  .nav-pill-label {
+    font-family: var(--font-body, 'General Sans', sans-serif);
+    font-size: 0.875rem;
+    font-weight: 450;
+    color: #57534e;
+    transition: color 0.15s ease;
+  }
+
   .nav-pill:hover {
-    background: rgba(15, 23, 42, 0.05);
-    color: #0f172a;
+    background: rgba(0, 0, 0, 0.04);
+  }
+
+  .nav-pill:hover .nav-pill-icon,
+  .nav-pill:hover .nav-pill-label {
+    color: #1c1917;
   }
 
   /**
-   * Active mailbox pill uses inset border to highlight the currently selected folder.
-   * @usage - Conditionals add this class for whichever mailbox prop matches
-   * @related - .nav-pill
+   * Active state - subtle warm highlight
    */
   .nav-pill--active {
-    background: rgba(15, 23, 42, 0.08);
-    border-color: rgba(15, 23, 42, 0.12);
-    color: #0f172a;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    background: var(--color-accent-subtle, rgba(217, 119, 87, 0.08));
+  }
+
+  .nav-pill--active .nav-pill-icon {
+    color: var(--color-accent, #d97757);
+  }
+
+  .nav-pill--active .nav-pill-label {
+    color: #1c1917;
+    font-weight: 500;
   }
 
   /**
-   * Badge styles the unread count indicator at the end of each pill.
-   * @usage - Span containing mailboxCounts values inside each nav button
-   * @related - .nav-pill
+   * Unread count badge
    */
   .nav-pill-badge {
     margin-left: auto;
     padding: 0.1rem 0.5rem;
     border-radius: 999px;
+    font-family: var(--font-body, 'General Sans', sans-serif);
     font-size: 0.7rem;
     font-weight: 600;
-    background: rgba(226, 232, 240, 0.8);
-    color: #475569;
+    background: var(--color-accent, #d97757);
+    color: white;
+  }
+
+  .nav-pill-badge--muted {
+    background: #e7e5e4;
+    color: #78716c;
   }
 </style>
