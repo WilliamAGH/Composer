@@ -20,7 +20,10 @@ public class CorsConfig implements WebMvcConfigurer {
     private static final String ALLOWED_HEADERS_ALL = "*";
     private static final String WILDCARD_ORIGIN_PATTERN = "*";
     private static final String CREDENTIALS_WILDCARD_ERROR =
-        "CORS allowed origins cannot include '*' when credentials are enabled.";
+        "CORS configuration error: Wildcard origin '*' is not allowed when credentials are enabled. " +
+        "Configure specific origins via APP_CORS_ALLOWED_ORIGINS environment variable or " +
+        "app.cors.allowed-origins property (e.g., 'https://example.com,https://app.example.com'). " +
+        "Patterns like 'https://*.example.com' are also supported.";
     private static final String METHOD_GET = "GET";
     private static final String METHOD_POST = "POST";
     private static final String METHOD_PUT = "PUT";
