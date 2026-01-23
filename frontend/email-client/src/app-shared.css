@@ -47,8 +47,8 @@
   --color-text-muted: #78716c;
 
   /* Typography */
-  --font-display: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'General Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Satoshi', -apple-system, blinkmacsystemfont, sans-serif;
+  --font-body: 'General Sans', -apple-system, blinkmacsystemfont, sans-serif;
 
   /* Z-Index Architecture */
   --z-panel-overlay: 10;
@@ -543,8 +543,4 @@ input[type='email'] {
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* Legacy aliases for existing component references */
-.btn--ai { }
-.btn--ai-ghost { }
-.btn--ai-icon { }
-.ai-icon-chip { }
+/* Legacy aliases for existing component references: .btn--ai, .btn--ai-ghost, .btn--ai-icon, .ai-icon-chip */
