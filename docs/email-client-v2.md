@@ -44,8 +44,8 @@ File map
   - `vite.config.js` (outDir + proxy)
   - `src/main.js`, `src/App.svelte`, `src/lib/EmailIframe.svelte`
 - Window system (compose + AI summary)
-  - `src/lib/window/windowTypes.js` – factory helpers (JS module for reuse across stores/components)
-  - `src/lib/window/windowStore.js` – Svelte store managing open/minimized windows
+  - `src/lib/window/windowTypes.ts` – factory helpers (JS module for reuse across stores/components)
+  - `src/lib/window/windowStore.ts` – Svelte store managing open/minimized windows
   - `src/lib/window/WindowFrame.svelte` – shared chrome
   - `src/lib/UnifiedDock.svelte` – unified dock for all minimized components
 - Feature windows: `ComposeWindow.svelte`, `AiSummaryWindow.svelte`

@@ -78,7 +78,7 @@
 
 Keeping these contracts synchronized ensures every AI request carries the right trio: **email identifier**, **context identifier**, and **conversation identifier**. If a message ever lacks one of them, the fallback rules above guarantee the backend still receives enough information to run the catalog command deterministically.
 
-For a concrete example of how these identifiers feed the forthcoming conversation ledger, see `docs/example-openai-conversation-json-2025-11-12.md`.
+For a concrete example of how these identifiers feed the forthcoming conversation ledger, see `docs/reference-conversation-ledger.md`.
 
 ### Conversation Ledger Structure
 

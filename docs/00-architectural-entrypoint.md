@@ -94,7 +94,7 @@ Each bullet lists a real file (tracked in git) and what it does so you can quick
 - `docs/00-architectural-entrypoint.md` — **This file**: canonical architecture reference plus file inventory (kept current).
 - `docs/email-client-v2.md` — Frontend UX write-up covering v2 mail client journeys.
 - `docs/email-context-conversation-uuids.md` — Notes on how conversation UUIDs are generated and propagated.
-- `docs/example-openai-conversation-json-2025-11-12.md` — Captured JSON transcript from an OpenAI reasoning session for troubleshooting.
+- `docs/reference-conversation-ledger.md` — Captured JSON transcript from an OpenAI reasoning session for troubleshooting.
 
 ### Backend Java Source (`src/main/java/com/composerai/api`)
 #### Boot + Config
@@ -256,7 +256,6 @@ Each bullet lists a real file (tracked in git) and what it does so you can quick
 - `EmailListPane.svelte` — List component showing message summaries with selection + virtualization logic.
 - `MailboxMoveMenu.svelte` — Menu for selecting destination folders powered by store state.
 - `MailboxSidebar.svelte` — Sidebar navigation listing folders, counts, and filter chips.
-- `MobileOverlayCoordinator.ts` — Utility that coordinates drawer/backdrop behavior across mobile sheets.
 - `MobileTopBar.svelte` — Mobile header with navigation + account controls.
 - `Modal.svelte` — Generic modal wrapper that handles focus traps and transitions.
 - `UnifiedDock.svelte` — Unified dock for all minimized components (compose windows, AI panels) with consistent styling and automatic spacing.
