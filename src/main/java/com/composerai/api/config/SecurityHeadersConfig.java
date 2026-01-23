@@ -143,11 +143,13 @@ public class SecurityHeadersConfig {
             // - frame-ancestors 'none': Prevent clickjacking (X-Frame-Options alternative)
             // Third-party allowances (minimal):
             // - script-src: cdn.jsdelivr.net for marked + DOMPurify
+            // - style-src: api.fontshare.com for Fontshare CSS
+            // - font-src: cdn.fontshare.com for Fontshare font files
             // - img-src: i.pravatar.cc for avatar fallback images
             String csp = "default-src 'self'; " +
                 "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
-                "style-src 'self' 'unsafe-inline'; " +
-                "font-src 'self'; " +
+                "style-src 'self' 'unsafe-inline' https://api.fontshare.com; " +
+                "font-src 'self' https://cdn.fontshare.com; " +
                 "img-src 'self' https: data: https://i.pravatar.cc; " +
                 "connect-src 'self' https:; " +
                 "frame-src 'none'; " +
