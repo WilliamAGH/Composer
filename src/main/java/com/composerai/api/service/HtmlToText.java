@@ -127,9 +127,7 @@ public class HtmlToText {
     public static String convert(Options options) throws IOException, MessagingException {
         try {
             return com.composerai.api.service.email.EmailPipeline.process(options);
-        } catch (MessagingException e) {
-            throw e;
-        } catch (IOException e) {
+        } catch (IOException | MessagingException e) {
             throw e;
         } catch (Exception e) {
             throw new RuntimeException(e);
