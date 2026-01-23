@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte';
+  import { dispatchClientWarning } from './services/sessionNonceClient';
   import { sanitizeHtml } from './services/sanitizeHtml';
   export let html = '';
   let container = null;
@@ -7,6 +8,16 @@
   let fallback = '';
   let rendered = false;
   const SAFE_LINK_REL = 'noopener noreferrer nofollow';
+  const IFRAME_RENDER_WARNING_MESSAGE = 'Email iframe render failed; using sanitized fallback.';
+  const EXTERNAL_LINK_WARNING_MESSAGE = 'Email link could not be opened.';
+
+  function reportIframeRenderFailure(renderError) {
+    dispatchClientWarning({ message: IFRAME_RENDER_WARNING_MESSAGE, error: renderError, silent: true });
+  }
+
+  function reportExternalLinkFailure(openError) {
+    dispatchClientWarning({ message: EXTERNAL_LINK_WARNING_MESSAGE, error: openError, silent: true });
+  }
 
   function tryRender(content = html) {
     rendered = false;
@@ -19,8 +30,8 @@
         window.EmailRenderer.renderInIframe(container, normalizedHtml);
         rendered = true;
         return; // Success - no fallback needed
-      } catch (e) {
-        // Iframe rendering failed - fall through to fallback
+      } catch (renderError) {
+        reportIframeRenderFailure(renderError);
         rendered = false;
       }
     }
@@ -82,7 +93,7 @@
     try {
       const url = new URL(href, window.location.href);
       return url.protocol === 'http:' || url.protocol === 'https:';
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -94,8 +105,8 @@
     try {
       const url = new URL(href, window.location.href);
       window.open(url.href, '_blank', 'noopener,noreferrer');
-    } catch (error) {
-      console.debug('EmailIframe: unable to open external link', error);
+    } catch (openError) {
+      reportExternalLinkFailure(openError);
     }
   }
 

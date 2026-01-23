@@ -1,6 +1,9 @@
 package com.composerai.api.domain.port;
 
+import com.composerai.api.domain.model.MailboxId;
 import com.composerai.api.domain.model.MessageFolderPlacement;
+import com.composerai.api.domain.model.MessageId;
+import com.composerai.api.domain.model.SessionId;
 
 import java.util.Map;
 import java.util.Optional;
@@ -12,11 +15,11 @@ import java.util.Optional;
  */
 public interface SessionScopedMessagePlacementPort {
 
-    Optional<MessageFolderPlacement> findPlacement(String mailboxId, String sessionId, String messageId);
+    Optional<MessageFolderPlacement> findPlacement(MailboxId mailboxId, SessionId sessionId, MessageId messageId);
 
-    Map<String, MessageFolderPlacement> findPlacements(String mailboxId, String sessionId);
+    Map<MessageId, MessageFolderPlacement> findPlacements(MailboxId mailboxId, SessionId sessionId);
 
     void savePlacement(MessageFolderPlacement placement);
 
-    void removePlacement(String mailboxId, String sessionId, String messageId);
+    void removePlacement(MailboxId mailboxId, SessionId sessionId, MessageId messageId);
 }

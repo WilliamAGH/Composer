@@ -4,6 +4,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import com.composerai.api.config.ErrorMessagesProperties;
 import com.composerai.api.config.OpenAiProperties;
+import com.composerai.api.domain.model.ChatCompletionCommand;
 import com.composerai.api.service.email.HtmlConverter;
 import com.openai.client.OpenAIClient;
 import com.openai.core.http.StreamResponse;
@@ -55,7 +56,7 @@ class OpenAiChatServiceStreamingTest {
 
     @Test
     void assemblerFlushesOnDoubleNewlineOutsideCodeFence() {
-        OpenAiChatService.MarkdownStreamAssembler assembler = new OpenAiChatService.MarkdownStreamAssembler(false);
+        MarkdownStreamAssembler assembler = new MarkdownStreamAssembler(false);
 
         List<String> firstChunk = assembler.onDelta("First paragraph.\n\nSecond paragraph start");
         assertEquals(1, firstChunk.size());
@@ -71,7 +72,7 @@ class OpenAiChatServiceStreamingTest {
 
     @Test
     void assemblerDefersFlushInsideCodeFence() {
-        OpenAiChatService.MarkdownStreamAssembler assembler = new OpenAiChatService.MarkdownStreamAssembler(false);
+        MarkdownStreamAssembler assembler = new MarkdownStreamAssembler(false);
 
         List<String> beforeFence = assembler.onDelta("```java\nSystem.out.println(\"hi\");\n");
         assertTrue(beforeFence.isEmpty());
@@ -85,7 +86,7 @@ class OpenAiChatServiceStreamingTest {
 
     @Test
     void assemblerRendersMarkdownTablesToHtml() {
-        OpenAiChatService.MarkdownStreamAssembler assembler = new OpenAiChatService.MarkdownStreamAssembler(false);
+        MarkdownStreamAssembler assembler = new MarkdownStreamAssembler(false);
 
         List<String> chunks = assembler.onDelta("| Col A | Col B |\n| --- | --- |\n| 1 | 2 |\n\n");
         assertEquals(1, chunks.size());
@@ -115,12 +116,14 @@ class OpenAiChatServiceStreamingTest {
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
         service.streamResponse(
-            "What is new?",
-            "Context",
-            List.of(),
-            false,
-            null,
-            false,
+            new ChatCompletionCommand(
+                "What is new?",
+                "Context",
+                List.of(),
+                false,
+                null,
+                false
+            ),
             event -> {
                 if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
                     chunks.add(rendered.html());
@@ -153,7 +156,12 @@ class OpenAiChatServiceStreamingTest {
         AtomicBoolean completed = new AtomicBoolean(false);
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
-        service.streamResponse("msg", "ctx", List.of(), false, null, false, event -> {}, () -> completed.set(true), errorRef::set);
+        service.streamResponse(
+            new ChatCompletionCommand("msg", "ctx", List.of(), false, null, false),
+            event -> {},
+            () -> completed.set(true),
+            errorRef::set
+        );
 
         assertTrue(chunks.isEmpty());
         assertFalse(completed.get());
@@ -174,7 +182,12 @@ class OpenAiChatServiceStreamingTest {
 
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
-        service.streamResponse("msg", "ctx", List.of(), false, null, false, event -> {}, () -> {}, errorRef::set);
+        service.streamResponse(
+            new ChatCompletionCommand("msg", "ctx", List.of(), false, null, false),
+            event -> {},
+            () -> {},
+            errorRef::set
+        );
 
         assertNotNull(errorRef.get());
         assertTrue(errorRef.get().getMessage().contains("insufficient_quota"));
@@ -201,12 +214,14 @@ class OpenAiChatServiceStreamingTest {
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
         customModelService.streamResponse(
-            "Analyze this email",
-            "Email context here",
-            List.of(),
-            true,
-            "minimal",
-            false,
+            new ChatCompletionCommand(
+                "Analyze this email",
+                "Email context here",
+                List.of(),
+                true,
+                "minimal",
+                false
+            ),
             event -> {
                 if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
                     chunks.add(rendered.html());
@@ -246,12 +261,14 @@ class OpenAiChatServiceStreamingTest {
         AtomicBoolean completed = new AtomicBoolean(false);
 
         standardModelService.streamResponse(
-            "Test message",
-            "Context",
-            List.of(),
-            false,
-            null,
-            false,
+            new ChatCompletionCommand(
+                "Test message",
+                "Context",
+                List.of(),
+                false,
+                null,
+                false
+            ),
             event -> {
                 if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
                     chunks.add(rendered.html());
@@ -274,12 +291,14 @@ class OpenAiChatServiceStreamingTest {
         AtomicBoolean completed = new AtomicBoolean(false);
 
         nullClientService.streamResponse(
-            "Test",
-            "Context",
-            List.of(),
-            true,
-            "standard",
-            false,
+            new ChatCompletionCommand(
+                "Test",
+                "Context",
+                List.of(),
+                true,
+                "standard",
+                false
+            ),
             event -> {},
             () -> completed.set(true),
             errorRef::set
@@ -349,12 +368,14 @@ class OpenAiChatServiceStreamingTest {
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
         service.streamResponse(
-            "Complex analysis question",
-            "Context",
-            List.of(),
-            true,
-            "high",
-            false,
+            new ChatCompletionCommand(
+                "Complex analysis question",
+                "Context",
+                List.of(),
+                true,
+                "high",
+                false
+            ),
             event -> {
                 if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
                     chunks.add(rendered.html());
@@ -396,12 +417,14 @@ class OpenAiChatServiceStreamingTest {
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
         service.streamResponse(
-            "Long analysis",
-            "Context",
-            List.of(),
-            false,
-            null,
-            false,
+            new ChatCompletionCommand(
+                "Long analysis",
+                "Context",
+                List.of(),
+                false,
+                null,
+                false
+            ),
             event -> {
                 if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
                     chunks.add(rendered.html());
@@ -437,12 +460,14 @@ class OpenAiChatServiceStreamingTest {
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
         service.streamResponse(
-            "Test",
-            "Context",
-            List.of(),
-            false,
-            null,
-            false,
+            new ChatCompletionCommand(
+                "Test",
+                "Context",
+                List.of(),
+                false,
+                null,
+                false
+            ),
             event -> {},
             () -> completed.set(true),
             errorRef::set

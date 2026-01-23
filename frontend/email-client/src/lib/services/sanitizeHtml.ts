@@ -32,6 +32,12 @@ const DEFAULT_ALLOWED_TAGS = new Set([
   'ul'
 ]);
 
+/**
+ * Tags whose content should be completely discarded (not unwrapped as text).
+ * These contain non-renderable content like CSS, scripts, or document metadata.
+ */
+const DISCARD_CONTENT_TAGS = new Set(['style', 'script', 'head', 'title', 'meta', 'link', 'noscript']);
+
 const GLOBAL_ATTRS = new Set(['title', 'aria-label', 'role', 'tabindex', 'dir']);
 const URI_ATTRS = new Set(['href', 'src']);
 const SAFE_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:'];
@@ -73,6 +79,11 @@ function sanitizeNode(node: Node) {
     if (child.nodeType === Node.ELEMENT_NODE) {
       const element = child as HTMLElement;
       const tag = element.tagName.toLowerCase();
+      // Completely remove tags whose content should not be rendered (CSS, scripts, metadata)
+      if (DISCARD_CONTENT_TAGS.has(tag)) {
+        element.remove();
+        continue;
+      }
       if (!DEFAULT_ALLOWED_TAGS.has(tag)) {
         // Sanitize descendants before unwrapping so no unsafe nodes survive
         sanitizeNode(element);

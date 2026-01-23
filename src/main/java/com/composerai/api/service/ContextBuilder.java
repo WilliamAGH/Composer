@@ -69,14 +69,13 @@ public class ContextBuilder {
     }
 
     /**
-     * Legacy stop-gap cache for uploading email context. Prefer the ledger-based flow for new
-     * functionality; this registry will be removed once callers migrate.
+     * In-memory cache for email context with TTL and size-based eviction.
+     * This is the primary implementation of {@link EmailContextCache}.
      */
-    @Deprecated
     @Component
-    public static class EmailContextRegistry implements EmailContextCache {
+    public static class InMemoryEmailContextCache implements EmailContextCache {
 
-        private static final Logger logger = LoggerFactory.getLogger(EmailContextRegistry.class);
+        private static final Logger logger = LoggerFactory.getLogger(InMemoryEmailContextCache.class);
         private static final int MAX_ENTRIES = 512;
         private static final Duration TTL = Duration.ofMinutes(45);
 
@@ -140,7 +139,7 @@ public class ContextBuilder {
             return !StringUtils.isBlank(stored.content());
         }
 
-        private void prune() {
+        private synchronized void prune() {
             if (contexts.isEmpty()) {
                 return;
             }
@@ -152,8 +151,8 @@ public class ContextBuilder {
             }
             List<Map.Entry<String, StoredContext>> snapshot = new ArrayList<>(contexts.entrySet());
             snapshot.sort(Comparator.comparing(entry -> entry.getValue().createdAt()));
-            for (int i = 0; i < overflow && i < snapshot.size(); i++) {
-                contexts.remove(snapshot.get(i).getKey());
+            for (int evictionIndex = 0; evictionIndex < overflow && evictionIndex < snapshot.size(); evictionIndex++) {
+                contexts.remove(snapshot.get(evictionIndex).getKey());
             }
         }
 
@@ -168,6 +167,10 @@ public class ContextBuilder {
         }
     }
 
-    /** Non-deprecated shim for tests and legacy flows that still need the in-memory cache. */
-    public static class InMemoryEmailContextCache extends EmailContextRegistry {}
+    /**
+     * @deprecated Use {@link InMemoryEmailContextCache} directly. This alias remains for backward
+     * compatibility and will be removed in a future release.
+     */
+    @Deprecated
+    public static class EmailContextRegistry extends InMemoryEmailContextCache {}
 }

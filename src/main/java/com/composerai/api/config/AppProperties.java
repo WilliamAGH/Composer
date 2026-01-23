@@ -23,6 +23,8 @@ public class AppProperties {
     private EmailRendering emailRendering = new EmailRendering();
     @NestedConfigurationProperty
     private Ledger ledger = new Ledger();
+    @NestedConfigurationProperty
+    private Security security = new Security();
 
     @PostConstruct
     void hydrateFromEnvironment() {
@@ -94,5 +96,16 @@ public class AppProperties {
         private boolean enabled = false;
         /** Directory where JSON envelopes are written when enabled. */
         private String directory = "data/ledger";
+    }
+
+    @Getter
+    @Setter
+    public static class Security {
+        /**
+         * When true, disables strict UI nonce checks and relaxes certain security headers
+         * to allow local development (e.g. Vite dev server).
+         * NEVER enable in production.
+         */
+        private boolean devMode = false;
     }
 }

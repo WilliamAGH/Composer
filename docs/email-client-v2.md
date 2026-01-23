@@ -1,8 +1,6 @@
-# Email Client v2 (Svelte) — Architecture and Flow
+# Email Client — Architecture and Flow
 
-Status: Canonical client served at /email-client-v2 (legacy route /email-client redirects here; home URLs `/` and `/index` forward internally to this route so it's always the default landing page).
-
-Overview
+## Overview
 - Host: Thymeleaf template `templates/email-client-v2.html` injects bootstrap data and CSP/nonce.
 - App: Svelte + Vite builds static assets to `src/main/resources/static/app/email-client/`.
 - Backend: Spring Boot serves APIs and the host page; no Node in production.
@@ -14,6 +12,26 @@ Data flow
 2) Template sets `window.__EMAIL_CLIENT_BOOTSTRAP__ = { uiNonce, messages, aiFunctions }` (if `aiFunctions` is null the client now fetches them via `GET /api/ai-functions`).
 3) Svelte mounts to `#email-client-root`, normalizes messages, and renders UI.
 4) Email HTML bodies render in an isolated iframe via `window.EmailRenderer.renderInIframe()`.
+
+## Window system (compose + AI panels)
+
+Composer’s desktop UI uses a shared window shell for compose drafts, AI summaries, and future tools.
+
+- `frontend/email-client/src/lib/window/windowTypes.ts` – typed factories for window descriptors (kept outside Svelte component code so stores/helpers can reuse them without rendering).
+- `frontend/email-client/src/lib/window/windowStore.ts` – Svelte store that enforces per-mode limits, manages focus/minimize, and keeps AI panels tied to email IDs.
+- `frontend/email-client/src/lib/window/WindowFrame.svelte` – shared chrome for floating/docked windows; feature components wrap this instead of duplicating markup.
+- `frontend/email-client/src/lib/UnifiedDock.svelte` – unified dock for all minimized windows (compose + AI panels) with consistent spacing and restoration UX.
+
+Add new AI windows by creating a feature component that wraps `WindowFrame` and registering it in `windowStore` rather than building bespoke overlays.
+
+## Reply / forward compose behavior
+
+- Compose actions originate in `EmailActionToolbar.svelte` and flow through the shell coordinator (`ShellLayout.svelte`) so window creation stays centralized.
+- Reply/forward prefill behavior lives in `frontend/email-client/src/lib/services/composePrefill.ts`:
+  - Reply/forward normalize subject prefixes (`Re:` / `Fwd:`) consistently.
+  - Both flows keep greetings/signatures above the quoted context by inserting quoted metadata/body at the bottom of the compose body.
+  - Forward intentionally leaves `To` blank so users don’t accidentally send to the original sender.
+- Compose payloads carry `quotedContext` so future helpers can preserve quoted thread context even after AI edits.
 
 Email safety model
 - Server-side sanitization: `EmailHtmlSanitizer` strips scripts, handlers, embeds, and dangerous CSS; constrains images.
@@ -41,21 +59,16 @@ File map
 - Template: `src/main/resources/templates/email-client-v2.html`
 - Renderer: `src/main/resources/static/js/email-renderer.js`
 - Frontend root: `frontend/email-client/`
-  - `vite.config.js` (outDir + proxy)
-  - `src/main.js`, `src/App.svelte`, `src/lib/EmailIframe.svelte`
+  - `vite.config.ts` (outDir + proxy)
+  - `src/main.ts`, `src/App.svelte`, `src/lib/EmailIframe.svelte`
 - Window system (compose + AI summary)
-  - `src/lib/window/windowTypes.js` – factory helpers (JS module for reuse across stores/components)
-  - `src/lib/window/windowStore.js` – Svelte store managing open/minimized windows
+  - `src/lib/window/windowTypes.ts` – typed window descriptors + factories
+  - `src/lib/window/windowStore.ts` – Svelte store managing open/minimized windows
   - `src/lib/window/WindowFrame.svelte` – shared chrome
   - `src/lib/UnifiedDock.svelte` – unified dock for all minimized components
 - Feature windows: `ComposeWindow.svelte`, `AiSummaryWindow.svelte`
 - Sidebar & message UI: `MailboxSidebar.svelte`, `EmailActionToolbar.svelte`, `EmailDetailView.svelte`
 - Message UI components: `EmailActionToolbar.svelte`, `EmailDetailView.svelte`
-
-Cutover
-- Validate `/email-client-v2` in staging (legacy path already redirects here).
-- Verify `/` (and `/index`) forward server-side to `/email-client-v2` so every environment loads the same bootstrap template by default.
-- `/email-client` remains as a redirect only; there is no separate fallback template.
 
 ## Mobile acceptance checklist
 

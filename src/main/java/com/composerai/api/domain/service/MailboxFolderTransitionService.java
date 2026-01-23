@@ -3,6 +3,7 @@ package com.composerai.api.domain.service;
 import com.composerai.api.domain.model.MailFolderIdentifier;
 import com.composerai.api.domain.model.MailboxSnapshot;
 import com.composerai.api.domain.model.MessageFolderPlacement;
+import com.composerai.api.domain.model.MessageId;
 import com.composerai.api.model.EmailMessage;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -88,14 +89,14 @@ public class MailboxFolderTransitionService {
      */
     public List<EmailMessage> applyPlacements(
         MailboxSnapshot snapshot,
-        Map<String, MessageFolderPlacement> placements
+        Map<MessageId, MessageFolderPlacement> placements
     ) {
         Objects.requireNonNull(snapshot, "snapshot is required");
-        Map<String, MessageFolderPlacement> placementMap = placements == null ? Map.of() : placements;
+        Map<MessageId, MessageFolderPlacement> placementMap = placements == null ? Map.of() : placements;
 
         List<EmailMessage> resolved = new ArrayList<>(snapshot.messages().size());
         for (EmailMessage message : snapshot.messages()) {
-            MessageFolderPlacement placement = placementMap.get(message.id());
+            MessageFolderPlacement placement = placementMap.get(new MessageId(message.id()));
             if (placement == null) {
                 resolved.add(message);
                 continue;
@@ -153,15 +154,18 @@ public class MailboxFolderTransitionService {
     /**
      * Builds the effective placement map for serialization (messageId -> folderId).
      */
-    public Map<String, String> serializePlacements(Map<String, MessageFolderPlacement> placements) {
+    public Map<String, String> serializePlacements(Map<MessageId, MessageFolderPlacement> placements) {
         if (placements == null || placements.isEmpty()) {
             return Map.of();
         }
         return placements
-            .values()
+            .entrySet()
             .stream()
             .collect(
-                Collectors.toUnmodifiableMap(MessageFolderPlacement::messageId, p -> p.folderIdentifier().value())
+                Collectors.toUnmodifiableMap(
+                    entry -> entry.getKey().toString(), 
+                    entry -> entry.getValue().folderIdentifier().value()
+                )
             );
     }
 
@@ -202,12 +206,12 @@ public class MailboxFolderTransitionService {
 
     public EffectiveFoldersMap deriveEffectiveFolders(
         MailboxSnapshot snapshot,
-        Map<String, MessageFolderPlacement> placements
+        Map<MessageId, MessageFolderPlacement> placements
     ) {
         Map<String, MailFolderIdentifier> folderMap = new HashMap<>();
-        Map<String, MessageFolderPlacement> safePlacements = placements == null ? Map.of() : placements;
+        Map<MessageId, MessageFolderPlacement> safePlacements = placements == null ? Map.of() : placements;
         for (EmailMessage message : snapshot.messages()) {
-            MessageFolderPlacement placement = safePlacements.get(message.id());
+            MessageFolderPlacement placement = safePlacements.get(new MessageId(message.id()));
             MailFolderIdentifier effective = placement != null
                 ? placement.folderIdentifier()
                 : deriveBaselineFolder(message);

@@ -4,11 +4,12 @@ PORT ?= 8080
 PROFILE ?= local
 MAVEN_TEST_FLAGS ?=
 
-.PHONY: help run build build-vite build-java java-compile test clean lint docker-build docker-run-local docker-run-prod fe-dev clean-frontend
+.PHONY: help run dev build build-vite build-java java-compile test clean lint docker-build docker-run-local docker-run-prod fe-dev clean-frontend
 
 help:
 	@echo "Targets:"
 	@echo "  make run           - Run Spring Boot locally (profile=local)"
+	@echo "  make dev           - Run Java + Svelte dev servers together (unified logs)"
 	@echo "  make build         - Build frontend (Vite) and backend (Maven)"
 	@echo "  make build-vite    - Build Svelte bundle into Spring static/"
 	@echo "  make build-java    - Build Spring Boot JAR (skip tests)"
@@ -23,6 +24,18 @@ help:
 
 run:
 	SPRING_PROFILES_ACTIVE=local mvn spring-boot:run -Dspring-boot.run.profiles=local
+
+# Dev mode: run Java backend + Svelte dev server together with unified logs
+# Uses awk to add colored prefixes while preserving output
+# Access via http://localhost:5173 (Vite proxies /api and /ui to Spring Boot on :8080)
+dev:
+	@echo "Starting Java backend (port 8080) + Svelte dev server (port 5173)..."
+	@echo "Access the app at: http://localhost:5173/app/email-client/"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@trap 'kill 0' INT TERM; \
+	(cd frontend/email-client && npm install --silent && npm run dev 2>&1 | awk '{print "\033[36m[vite]\033[0m " $$0; fflush()}') & \
+	(SPRING_PROFILES_ACTIVE=local mvn spring-boot:run -Dspring-boot.run.profiles=local 2>&1 | awk '{print "\033[33m[java]\033[0m " $$0; fflush()}') & \
+	wait
 
 # Orchestrated build: frontend first so assets are bundled into the JAR
 build: build-vite build-java
@@ -66,32 +79,28 @@ lint:
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo ""
 	@echo "📋 Maven Enforcer (dependency checks)..."
-	@mvn validate -q && echo "   ✅ Passed" || echo "   ❌ Failed"
+	@mvn validate -q
 	@echo ""
 	@echo "📦 SpotBugs (Java static analysis)..."
-	@mvn compile spotbugs:spotbugs -q 2>&1 | grep -q "BUILD SUCCESS" || true
+	@mvn compile spotbugs:spotbugs -q
 	@if [ -f target/spotbugsXml.xml ]; then \
 		BUGS=$$(grep -o "total_bugs='[0-9]*'" target/spotbugsXml.xml | grep -o "[0-9]*" | head -1); \
-		if [ "$$BUGS" = "0" ]; then \
-			echo "   ✅ 0 bugs found"; \
-		else \
-			echo "   ⚠️  $$BUGS bugs found (run 'mvn spotbugs:gui' to view)"; \
-		fi; \
+		echo "   SpotBugs report: $$BUGS issues (see target/spotbugsXml.xml)"; \
 	else \
-		echo "   ⚠️  No report generated"; \
+		echo "   ⚠️  No SpotBugs report generated"; \
 	fi
 	@echo ""
 	@echo "⚡ Oxlint (JavaScript/Svelte <script> tags)..."
-	@cd frontend/email-client && npm run lint 2>&1 | grep -v "^>" | grep -v "^$$" || true
+	@cd frontend/email-client && npm run lint
 	@echo ""
 	@echo "🎨 Stylelint (CSS & Svelte <style> tags - duplicate detection)..."
-	@cd frontend/email-client && npm run lint:css 2>&1 | grep -v "^>" | tail -5 || true
+	@cd frontend/email-client && npm run lint:css
 	@echo ""
 	@echo "🧹 Unused :global() CSS Detection..."
-	@cd frontend/email-client && ./scripts/check-unused-global-css.sh src || true
+	@cd frontend/email-client && ./scripts/check-unused-global-css.sh src
 	@echo ""
 	@echo "🗑️  Dead Code Detection (exports, deps, components)..."
-	@cd frontend/email-client && ./scripts/check-dead-code.sh || true
+	@cd frontend/email-client && ./scripts/check-dead-code.sh
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "✅ Linting complete"

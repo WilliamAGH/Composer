@@ -30,6 +30,12 @@ export const VIEWPORT_BREAKPOINTS = {
   wide: 1536
 } as const;
 
+/**
+ * Sub-pixel offset for max-width media queries to avoid overlap with min-width queries.
+ * Using 0.02px ensures exclusive ranges (e.g., max-width: 639.98px vs min-width: 640px).
+ */
+const MEDIA_QUERY_MAX_WIDTH_OFFSET = 0.02;
+
 const DEFAULT_STATE: ViewportSnapshot = {
   width: 0,
   height: 0,
@@ -91,10 +97,10 @@ type MediaQueryMap = {
 function createMediaQueries(): MediaQueryMap {
   if (!isBrowser || typeof window.matchMedia !== 'function') return null;
   return {
-    mobile: window.matchMedia(`(max-width: ${VIEWPORT_BREAKPOINTS.mobile - 0.02}px)`),
-    tablet: window.matchMedia(`(min-width: ${VIEWPORT_BREAKPOINTS.mobile}px) and (max-width: ${VIEWPORT_BREAKPOINTS.tablet - 0.02}px)`),
-    desktop: window.matchMedia(`(min-width: ${VIEWPORT_BREAKPOINTS.tablet}px) and (max-width: ${VIEWPORT_BREAKPOINTS.desktop - 0.02}px)`),
-    wide: window.matchMedia(`(min-width: ${VIEWPORT_BREAKPOINTS.desktop}px)`)
+    mobile: window.matchMedia(`(max-width: ${VIEWPORT_BREAKPOINTS.mobile - MEDIA_QUERY_MAX_WIDTH_OFFSET}px)`),
+    tablet: window.matchMedia(`(min-width: ${VIEWPORT_BREAKPOINTS.mobile}px) and (max-width: ${VIEWPORT_BREAKPOINTS.tablet - MEDIA_QUERY_MAX_WIDTH_OFFSET}px)`),
+    desktop: window.matchMedia(`(min-width: ${VIEWPORT_BREAKPOINTS.tablet}px) and (max-width: ${VIEWPORT_BREAKPOINTS.wide - MEDIA_QUERY_MAX_WIDTH_OFFSET}px)`),
+    wide: window.matchMedia(`(min-width: ${VIEWPORT_BREAKPOINTS.wide}px)`)
   };
 }
 
@@ -111,8 +117,8 @@ function computeMatches(measurement: ViewportMeasurement, queries: MediaQueryMap
   return {
     mobile: width < VIEWPORT_BREAKPOINTS.mobile,
     tablet: width >= VIEWPORT_BREAKPOINTS.mobile && width < VIEWPORT_BREAKPOINTS.tablet,
-    desktop: width >= VIEWPORT_BREAKPOINTS.tablet && width < VIEWPORT_BREAKPOINTS.desktop,
-    wide: width >= VIEWPORT_BREAKPOINTS.desktop
+    desktop: width >= VIEWPORT_BREAKPOINTS.tablet && width < VIEWPORT_BREAKPOINTS.wide,
+    wide: width >= VIEWPORT_BREAKPOINTS.wide
   };
 }
 

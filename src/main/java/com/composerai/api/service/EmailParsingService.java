@@ -439,11 +439,16 @@ public class EmailParsingService {
         if (normalized == null) {
             return null;
         }
-        String sanitized = EmailHtmlSanitizer.sanitize(normalized);
-        if (sanitized == null || sanitized.isBlank()) {
+        try {
+            String sanitized = EmailHtmlSanitizer.sanitize(normalized);
+            if (sanitized == null || sanitized.isBlank()) {
+                return null;
+            }
+            return sanitized.trim();
+        } catch (EmailHtmlSanitizer.SanitizationException e) {
+            logger.warn("Failed to sanitize email HTML, falling back to null: {}", e.getMessage());
             return null;
         }
-        return sanitized.trim();
     }
 
     private record StructuredParticipant(String name, String email) {}

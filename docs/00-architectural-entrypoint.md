@@ -1,11 +1,8 @@
-# Composer Architecture Entry Point
+# Architecture
 
-## Purpose & Usage
-- **Why this file exists:** to keep purpose alignment (Step 0) explicit by documenting *why* Composer exists and enumerating every artifact in the repo so contributors know exactly where to extend functionality without guesswork.
-- **How to use it:** before touching code, scan the end-to-end flow, jump to the inventory section for the file you plan to edit, and note its responsibilities plus any neighboring files you may need to update.
-- **Scope covered:** Spring Boot backend (Java 21 + resources), the Svelte/Vite frontend, datasets under `data/`, build scripts, docs, tests, and configuration metadata checked into git. Local node_modules, build artifacts, and secrets are intentionally excluded.
+This document covers the Spring Boot backend, Svelte/Vite frontend, datasets, build scripts, and tests. Local node_modules, build artifacts, and secrets are excluded.
 
-## End-to-End System Flow
+## System Flow
 ```
                           +-----------------------------+
                           |   External Email Providers   |
@@ -39,6 +36,64 @@
           +------------------------------------ data / actions <------------------- WindowManager &
                                                                                      Session clients
 ```
+
+## Key configuration surfaces
+
+### Local overrides (`.env`, `.env.local`)
+
+`src/main/resources/application.properties` opts into dotenv-style local overrides:
+
+```properties
+spring.config.import=optional:file:.env,optional:file:.env.local,optional:file:.env.properties,optional:file:.env.local.properties
+```
+
+This keeps CI/CD environment variables authoritative while still letting developers run locally without exporting secrets in every shell.
+
+### AI function catalog (`ai.functions.*`)
+
+Composer’s “AI Actions” buttons and backend prompt templates come from a single catalog bound by `AiFunctionCatalogProperties` (`src/main/java/com/composerai/api/config/AiFunctionCatalogProperties.java`).
+
+- **Why it exists:** UI and backend share the same command keys, labels, scopes, variants, and prompt templates so features don’t drift.
+- **How it flows:** properties → `AiFunctionCatalogHelper` → validation (`AiCommandValidator`) + prompt rendering (`ChatService.renderFunctionTemplate`) + UI bootstrap (`GlobalModelAttributes`) and `GET /api/ai-functions`.
+- **Template placeholders:** `{{instruction}}`, `{{subject}}`, and any `{{key}}` present in merged args (function defaults + variant defaults + request overrides) are substituted server-side before the LLM call.
+
+Example override:
+
+```properties
+# application-local.properties
+ai.functions.definitions.compose.prompt-template=Compose a concise, action-oriented reply: {{instruction}}
+ai.functions.definitions.compose.default-instruction=Compose a helpful reply using the selected context.
+ai.functions.definitions.translate.variants.es.label=AI Translation (Spanish)
+ai.functions.definitions.translate.variants.es.default-args.targetLanguage=Spanish
+```
+
+### LLM + retrieval providers (`openai.*`, `qdrant.*`)
+
+- **LLM connection + defaults:** `OpenAiProperties` (`src/main/java/com/composerai/api/config/OpenAiProperties.java`) is the single source of truth for provider base URL, model identifiers, streaming timeouts, and prompt defaults. Common overrides are `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `LLM_MODEL`.
+- **OpenRouter quickstart:** set `OPENAI_BASE_URL=https://openrouter.ai/api/v1` and `OPENAI_API_KEY` to your OpenRouter key. Optional provider routing knobs: `LLM_PROVIDER_ORDER`, `LLM_PROVIDER_SORT`, `LLM_PROVIDER_ALLOW_FALLBACKS`.
+- **Vector retrieval:** `QdrantProperties` (`src/main/java/com/composerai/api/config/QdrantProperties.java`) controls Qdrant connectivity and the `qdrant.enabled` / `QDRANT_ENABLED` gate. Local development can run with retrieval disabled.
+
+## HTTP surfaces
+
+### UI routes
+
+- `/` → `/email-client-v2` – canonical Svelte mail client.
+- `/chat-diagnostics` – server-rendered diagnostics chat surface (logging + troubleshooting).
+- `/qa/diagnostics` – diagnostics workspace (health checks, preview controls).
+- `/qa/email-file-parser` – QA email parsing workspace for `.eml` / `.txt` uploads.
+
+### Selected APIs
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/health` | Service heartbeat |
+| `GET` | `/api/chat/health` | Chat-specific heartbeat |
+| `POST` | `/api/chat` | Chat endpoint (free-form + catalog-driven payloads) |
+| `POST` | `/api/chat/stream` | SSE streaming chat |
+| `GET` | `/api/ai-functions` | Catalog metadata for AI actions |
+| `POST` | `/api/qa/parse-email` | QA-only `.eml` / `.txt` upload → parsed context |
+| `GET` | `/api/mailboxes/{mailboxId}/state` | Mailbox snapshot (session-scoped) |
+| `POST` | `/api/mailboxes/{mailboxId}/messages/{messageId}/move` | Move/archive/trash actions (session-scoped) |
 
 ## Repository Inventory
 Each bullet lists a real file (tracked in git) and what it does so you can quickly find the right extension point.
@@ -94,7 +149,7 @@ Each bullet lists a real file (tracked in git) and what it does so you can quick
 - `docs/00-architectural-entrypoint.md` — **This file**: canonical architecture reference plus file inventory (kept current).
 - `docs/email-client-v2.md` — Frontend UX write-up covering v2 mail client journeys.
 - `docs/email-context-conversation-uuids.md` — Notes on how conversation UUIDs are generated and propagated.
-- `docs/example-openai-conversation-json-2025-11-12.md` — Captured JSON transcript from an OpenAI reasoning session for troubleshooting.
+- `docs/reference-conversation-ledger.md` — Captured JSON transcript from an OpenAI reasoning session for troubleshooting.
 
 ### Backend Java Source (`src/main/java/com/composerai/api`)
 #### Boot + Config
@@ -122,7 +177,7 @@ Each bullet lists a real file (tracked in git) and what it does so you can quick
 - `controller/SystemController.java` — System health endpoints (ping/version) for uptime checks.
 - `controller/UiNonceService.java` — Server-side helper that manages UI nonce issuance; consumed via `UiSessionController`.
 - `controller/UiSessionController.java` — REST endpoints for session bootstrap and nonce refresh.
-- `controller/WebViewController.java` — Serves the Svelte SPA shell (`email-client` bundle) under `/app/email-client`.
+- `controller/WebViewController.java` — Serves the Svelte SPA shell (`email-client` bundle) under `/email-client-v2` (default landing for `/`) and hosts the diagnostics chat view at `/chat-diagnostics` (also available at `/chat`).
 
 #### Application Layer (`application/**`)
 - `application/dto/mailbox/MailboxStateSnapshotResult.java` — Use-case response describing messages, folders, and placements sent to the UI.
@@ -205,7 +260,7 @@ Each bullet lists a real file (tracked in git) and what it does so you can quick
 - `application.properties` — Default Spring configuration for local/dev environments.
 - `application-prod.properties` — Production overrides loaded when the `prod` profile is active.
 - `static/apple-touch-icon.png` — Touch icon served for iOS home screen shortcuts.
-- `static/css/chat.css` — Legacy CSS for the server-rendered chat preview.
+- `static/css/chat.css` — Stylesheet for the diagnostics chat tooling surface.
 - `static/css/layout.css` — Styles for legacy Thymeleaf layouts.
 - `static/favicon.ico`, `static/favicon.svg`, `static/favicon-96x96.png` — Favicons delivered by the Spring static handler.
 - `static/index.html` — Landing page stub for the static site variant.
@@ -213,7 +268,7 @@ Each bullet lists a real file (tracked in git) and what it does so you can quick
 - `static/site.webmanifest`, `static/web-app-manifest-192x192.png`, `static/web-app-manifest-512x512.png` — PWA manifest + icons served with the SPA bundle.
 - `templates/layout.html` — Base Thymeleaf layout shell shared across server-rendered pages.
 - `templates/index.html` — Server-rendered landing page hooking into `layout.html`.
-- `templates/chat.html` — Chat-specific Thymeleaf page used during early demos.
+- `templates/chat.html` — Diagnostics chat view (markdown logging/chat tooling) served at `/chat-diagnostics`.
 - `templates/email-client-v2.html` — Template embedding the V2 email client (Svelte bundle) with nonce injection.
 - `templates/qa/diagnostics.html` — QA diagnostics interface rendered on demand.
 - `templates/qa/email-file-parser.html` — QA UI for uploading `.eml` files and viewing parsed output.
@@ -256,7 +311,6 @@ Each bullet lists a real file (tracked in git) and what it does so you can quick
 - `EmailListPane.svelte` — List component showing message summaries with selection + virtualization logic.
 - `MailboxMoveMenu.svelte` — Menu for selecting destination folders powered by store state.
 - `MailboxSidebar.svelte` — Sidebar navigation listing folders, counts, and filter chips.
-- `MobileOverlayCoordinator.ts` — Utility that coordinates drawer/backdrop behavior across mobile sheets.
 - `MobileTopBar.svelte` — Mobile header with navigation + account controls.
 - `Modal.svelte` — Generic modal wrapper that handles focus traps and transitions.
 - `UnifiedDock.svelte` — Unified dock for all minimized components (compose windows, AI panels) with consistent styling and automatic spacing.
@@ -323,6 +377,6 @@ Each bullet lists a real file (tracked in git) and what it does so you can quick
 - `src/test/java/com/composerai/api/shared/ledger/ConversationLedgerServiceTest.java` — Ensures ledger persistence functions correctly.
 - `src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker` — Enables inline mocking (mockito-inline) in tests.
 
-## Working Notes & Next Steps
-- Keep this inventory synchronized whenever files move, arrive, or are removed—treat it as a living source of truth.
-- If you add a new subsystem, update both this inventory and `README.md`/`AGENTS.md` to maintain Step-0 clarity.
+## Maintenance
+
+Keep this inventory synchronized when files change. If you add a new subsystem, update both this inventory and `AGENTS.md`.

@@ -79,8 +79,8 @@ export function createAiCommandClient({
   conversationLedger = createConversationLedger()
 }: AiCommandClientConfig = {}) {
   const catalog = catalogStore();
-  const journey = journeyStore as any;
-  const ledger = conversationLedger as any;
+  const journey = journeyStore;
+  const ledger = conversationLedger;
 
   function beginJourney({ scope = 'global', scopeTarget = null, targetLabel = 'message', commandKey, headline }: JourneyDescriptor) {
     return journey.begin({
@@ -273,7 +273,7 @@ export function createAiCommandClient({
       recipientContext
     });
 
-    const markdown = response?.response && typeof response.response === 'string' ? response.response.trim() : '';
+    const markdown = typeof response?.response === 'string' ? response.response.trim() : '';
     const sanitizedHtml = response?.sanitizedHtml || response?.sanitizedHTML || null;
 
     let draftText = markdown;

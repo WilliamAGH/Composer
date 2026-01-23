@@ -14,6 +14,7 @@ public record ErrorResponse(
     String error,
     String message,
     int status,
+    @com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     LocalDateTime timestamp,
     String path,
     List<ValidationError> validationErrors

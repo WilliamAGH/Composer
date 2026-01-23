@@ -2,24 +2,37 @@ package com.composerai.api.service;
 
 import com.composerai.api.config.QdrantProperties;
 import com.composerai.api.dto.ChatResponse.EmailContext;
+import com.composerai.api.util.StringUtils;
 import io.qdrant.client.QdrantClient;
+import io.qdrant.client.grpc.JsonWithInt.Value;
 import io.qdrant.client.grpc.Points.SearchPoints;
 import io.qdrant.client.grpc.Points.ScoredPoint;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
+/**
+ * Service for performing semantic vector searches against the Qdrant database.
+ * Retrieves email contexts relevant to a query vector.
+ */
 @Slf4j
 @Service
 public class VectorSearchService {
     
-    
+    private static final String[] KEYS_SUBJECT = {"subject", "Subject", "title"};
+    private static final String[] KEYS_SENDER = {"sender", "from", "From", "author"};
+    private static final String[] KEYS_SNIPPET = {"snippet", "body", "content", "text"};
+    private static final String KEY_TIMESTAMP = "timestamp";
+
     private final QdrantClient qdrantClient;
     private final QdrantProperties qdrantProperties;
     private final boolean enabled;
@@ -89,19 +102,78 @@ public class VectorSearchService {
 
     private EmailContext extractEmailContext(ScoredPoint point) {
         // Extract email metadata from point payload
-        // This is a placeholder implementation
-        // In a real implementation, you would extract the actual email data from the payload
         String pointId = point.getId().hasNum()
             ? String.valueOf(point.getId().getNum())
             : point.getId().hasUuid() ? point.getId().getUuid() : "";
 
+        Map<String, Value> payload = point.getPayloadMap();
+        
+        String subject = getPayloadString(payload, KEYS_SUBJECT);
+        String sender = getPayloadString(payload, KEYS_SENDER);
+        String snippet = getPayloadString(payload, KEYS_SNIPPET);
+
+        // Parse timestamp - missing or invalid timestamps are logged and defaulted
+        LocalDateTime timestamp;
+        if (payload.containsKey(KEY_TIMESTAMP) && payload.get(KEY_TIMESTAMP).hasStringValue()) {
+            String timestampStr = payload.get(KEY_TIMESTAMP).getStringValue();
+            Optional<LocalDateTime> parsed = parseTimestamp(timestampStr);
+            if (parsed.isEmpty()) {
+                log.info("Using current time for email {} due to missing/invalid timestamp", pointId);
+            }
+            timestamp = parsed.orElseGet(LocalDateTime::now);
+        } else {
+            log.debug("No timestamp field in Qdrant payload for point {}", pointId);
+            timestamp = LocalDateTime.now();
+        }
+
         return new EmailContext(
             pointId,
-            "Sample Subject", // Extract from payload
-            "sample@email.com", // Extract from payload
-            "Sample email snippet...", // Extract from payload
+            StringUtils.defaultIfBlank(subject, "No Subject"), 
+            StringUtils.defaultIfBlank(sender, "Unknown Sender"), 
+            StringUtils.defaultIfBlank(snippet, ""),
             point.getScore(),
-            LocalDateTime.now() // Extract from payload
+            timestamp
         );
+    }
+
+    private String getPayloadString(Map<String, Value> payload, String... keys) {
+        for (String key : keys) {
+            if (payload.containsKey(key)) {
+                Value val = payload.get(key);
+                if (val.hasStringValue()) {
+                    return val.getStringValue();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Parse a timestamp string that may be in either OffsetDateTime or LocalDateTime format.
+     * Tries OffsetDateTime first (for strings with timezone like "2025-01-15T09:30:00Z"),
+     * then falls back to LocalDateTime (for plain ISO strings like "2025-01-15T09:30:00").
+     *
+     * @param timestampStr the timestamp string to parse
+     * @return Optional containing the parsed LocalDateTime, or empty if parsing fails
+     */
+    Optional<LocalDateTime> parseTimestamp(String timestampStr) {
+        if (timestampStr == null || timestampStr.isBlank()) {
+            return Optional.empty();
+        }
+
+        // Try OffsetDateTime first (handles "2025-01-15T09:30:00Z" or "2025-01-15T09:30:00+00:00")
+        try {
+            return Optional.of(OffsetDateTime.parse(timestampStr).toLocalDateTime());
+        } catch (Exception ignored) {
+            // Fall through to LocalDateTime parsing
+        }
+
+        // Try LocalDateTime (handles "2025-01-15T09:30:00")
+        try {
+            return Optional.of(LocalDateTime.parse(timestampStr));
+        } catch (Exception e) {
+            log.warn("Failed to parse timestamp '{}' from Qdrant payload: {}", timestampStr, e.getMessage());
+            return Optional.empty();
+        }
     }
 }

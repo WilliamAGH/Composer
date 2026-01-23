@@ -154,9 +154,20 @@ public final class StringUtils {
                 return (pathOnly == null || pathOnly.isBlank()) ? null : pathOnly;
             }
 
+            if ("mailto".equalsIgnoreCase(scheme)) {
+                String ssp = uri.getSchemeSpecificPart();
+                if (isBlank(ssp)) {
+                    return null;
+                }
+                // Basic email structure validation (contains @) to avoid pure garbage
+                if (!ssp.contains("@")) {
+                    return null;
+                }
+                return "mailto:" + ssp;
+            }
+
             if (!"http".equalsIgnoreCase(scheme)
-                && !"https".equalsIgnoreCase(scheme)
-                && !"mailto".equalsIgnoreCase(scheme)) {
+                && !"https".equalsIgnoreCase(scheme)) {
                 return null;
             }
 

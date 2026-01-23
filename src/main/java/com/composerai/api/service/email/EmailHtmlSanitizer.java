@@ -4,6 +4,8 @@ import com.composerai.api.util.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +24,19 @@ import java.util.List;
  */
 public final class EmailHtmlSanitizer {
 
+    private static final Logger logger = LoggerFactory.getLogger(EmailHtmlSanitizer.class);
+
     private EmailHtmlSanitizer() {}
+
+    /**
+     * Exception thrown when HTML sanitization fails.
+     * Callers should handle this explicitly rather than receiving silent empty results.
+     */
+    public static class SanitizationException extends RuntimeException {
+        public SanitizationException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
 
     /**
      * Sanitize raw email HTML for safe display in an isolated iframe.
@@ -37,6 +51,7 @@ public final class EmailHtmlSanitizer {
      *
      * @param html Raw HTML content from email
      * @return Sanitized HTML safe for iframe rendering, or null if input is null/blank
+     * @throws SanitizationException if sanitization fails due to malformed HTML or internal error
      */
     public static String sanitize(String html) {
         if (html == null || html.isBlank()) {
@@ -65,35 +80,68 @@ public final class EmailHtmlSanitizer {
             return cleaned.trim().isEmpty() ? null : cleaned.trim();
 
         } catch (Exception e) {
-            // On error, return null to prevent any potential XSS
-            return null;
+            logger.error("HTML sanitization failed for input of {} chars: {}", html.length(), e.getMessage(), e);
+            throw new SanitizationException(
+                String.format("Failed to sanitize HTML content (%d chars)", html.length()), e);
         }
     }
 
     /**
-     * Remove all JavaScript event handlers (onclick, onerror, etc.) and javascript: URLs.
+     * Remove all JavaScript event handlers (onclick, onerror, etc.) and dangerous URLs.
+     * Blocks javascript:, vbscript:, and data: (except for images) schemes.
+     * Also neutralizes SVG xlink:href attributes.
      */
     private static void removeJavaScriptHandlers(Document doc) {
         for (Element el : doc.getAllElements()) {
             // Remove all on* attributes (iterate over copy to avoid concurrent modification)
             List<String> attrsToRemove = new ArrayList<>();
             for (var attr : el.attributes()) {
-                if (attr.getKey().toLowerCase().startsWith("on")) {
+                String key = attr.getKey().toLowerCase();
+                if (key.startsWith("on")) {
                     attrsToRemove.add(attr.getKey());
+                }
+                // Check for xlink:href or href on SVG elements which can be XSS vectors
+                if (key.endsWith(":href") || key.equals("href")) {
+                    String val = attr.getValue().toLowerCase().trim();
+                    // Allow data:image in href/xlink:href as requested, but still block scripts
+                    if (isDangerousUrl(val, true)) {
+                        attrsToRemove.add(attr.getKey());
+                    }
                 }
             }
             for (String attrKey : attrsToRemove) {
                 el.removeAttr(attrKey);
             }
 
-            // Remove javascript: URLs from href and src
-            if (el.hasAttr("href") && el.attr("href").toLowerCase().trim().startsWith("javascript:")) {
-                el.removeAttr("href");
+            // Explicitly check src and href for dangerous protocols
+            if (el.hasAttr("src")) {
+                String src = el.attr("src").toLowerCase().trim();
+                // Allow data:image for src, block others
+                if (isDangerousUrl(src, true)) {
+                    el.removeAttr("src");
+                }
             }
-            if (el.hasAttr("src") && el.attr("src").toLowerCase().trim().startsWith("javascript:")) {
-                el.removeAttr("src");
+            if (el.hasAttr("href")) {
+                // Same policy for href: allow images if they are data URIs, block scripts
+                if (isDangerousUrl(el.attr("href").toLowerCase().trim(), true)) {
+                    el.removeAttr("href");
+                }
             }
         }
+    }
+
+    private static boolean isDangerousUrl(String url) {
+        return isDangerousUrl(url, false);
+    }
+
+    private static boolean isDangerousUrl(String url, boolean allowDataImages) {
+        if (url.startsWith("javascript:") || url.startsWith("vbscript:")) {
+            return true;
+        }
+        if (url.startsWith("data:")) {
+            return !(allowDataImages && url.startsWith("data:image/"));
+        }
+        return false;
     }
 
     /**

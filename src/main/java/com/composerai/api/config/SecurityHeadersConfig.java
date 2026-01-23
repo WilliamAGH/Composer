@@ -17,7 +17,6 @@ import java.io.IOException;
 @Configuration
 public class SecurityHeadersConfig {
 
-
     @Bean
     public FilterRegistrationBean<OncePerRequestFilter> hstsHeaderFilter(AppProperties appProperties) {
         FilterRegistrationBean<OncePerRequestFilter> registrationBean = new FilterRegistrationBean<>(new HstsFilter(appProperties));
@@ -33,8 +32,8 @@ public class SecurityHeadersConfig {
     }
 
     @Bean
-    public FilterRegistrationBean<OncePerRequestFilter> apiUiNonceGuardFilter() {
-        FilterRegistrationBean<OncePerRequestFilter> registrationBean = new FilterRegistrationBean<>(new ApiUiNonceGuardFilter());
+    public FilterRegistrationBean<OncePerRequestFilter> apiUiNonceGuardFilter(AppProperties appProperties) {
+        FilterRegistrationBean<OncePerRequestFilter> registrationBean = new FilterRegistrationBean<>(new ApiUiNonceGuardFilter(appProperties));
         registrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE + 2);
         return registrationBean;
     }
@@ -131,32 +130,32 @@ public class SecurityHeadersConfig {
         protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
                 throws ServletException, IOException {
 
-            // Generate nonce for this request (if needed for inline scripts)
-            String nonce = java.util.UUID.randomUUID().toString();
-            request.setAttribute("cspNonce", nonce);
-
-            // Strict CSP policy to protect against XSS attacks
+            // CSP policy aligned to bundled assets (Vite output + inline bootstrap scripts).
             // - default-src 'self': Only allow resources from same origin by default
-            // - script-src 'self' 'unsafe-inline' cdn.tailwindcss.com cdn.jsdelivr.net: Allow scripts from same origin, inline, and trusted CDNs
-            // - style-src 'self' 'unsafe-inline': Allow styles from same origin and inline (needed for styling)
-            // - img-src 'self' https: data:: Allow images from same origin, HTTPS, and data URLs
-            // - frame-src 'none': Block all iframes from external sources (sandboxed iframes for emails use srcdoc)
+            // - script-src 'self' 'unsafe-inline': Inline scripts are used for redirects/bootstrap; keep until nonced
+            // - style-src 'self' 'unsafe-inline': Tailwind build injects style tags during development
+            // - img-src 'self' https: data:: Allow app images and data URIs
+            // - connect-src 'self' https:: Allow API calls and external HTTPS endpoints when configured
+            // - frame-src 'none': Block external frames (email iframe uses srcdoc)
             // - object-src 'none': Block plugins like Flash
             // - base-uri 'self': Restrict base tag to prevent URL injection
             // - form-action 'self': Only allow form submissions to same origin
             // - frame-ancestors 'none': Prevent clickjacking (X-Frame-Options alternative)
+            // Third-party allowances (minimal):
+            // - script-src: cdn.jsdelivr.net for marked + DOMPurify
+            // - img-src: i.pravatar.cc for avatar fallback images
             String csp = "default-src 'self'; " +
-                        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; " +
-                        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-                        "font-src 'self' https://fonts.gstatic.com; " +
-                        "img-src 'self' https: data: https://i.pravatar.cc; " +
-                        "connect-src 'self' https://cdn.jsdelivr.net; " +
-                        "frame-src 'none'; " +
-                        "object-src 'none'; " +
-                        "base-uri 'self'; " +
-                        "form-action 'self'; " +
-                        "frame-ancestors 'none'; " +
-                        "upgrade-insecure-requests";
+                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
+                "style-src 'self' 'unsafe-inline'; " +
+                "font-src 'self'; " +
+                "img-src 'self' https: data: https://i.pravatar.cc; " +
+                "connect-src 'self' https:; " +
+                "frame-src 'none'; " +
+                "object-src 'none'; " +
+                "base-uri 'self'; " +
+                "form-action 'self'; " +
+                "frame-ancestors 'none'; " +
+                "upgrade-insecure-requests";
 
             response.setHeader("Content-Security-Policy", csp);
 
@@ -177,8 +176,18 @@ public class SecurityHeadersConfig {
      */
     private static class ApiUiNonceGuardFilter extends OncePerRequestFilter {
 
+        private final AppProperties appProperties;
+
+        ApiUiNonceGuardFilter(AppProperties appProperties) {
+            this.appProperties = appProperties;
+        }
+
         @Override
         protected boolean shouldNotFilter(HttpServletRequest request) {
+            // Bypass in dev mode to allow local Vite development without server-rendered nonces
+            if (appProperties.getSecurity().isDevMode()) {
+                return true;
+            }
             String path = request.getRequestURI();
             if (path == null) return true;
             if (!path.startsWith("/api/")) return true;
