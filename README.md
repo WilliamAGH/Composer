@@ -47,3 +47,10 @@ For production builds, alternative providers (OpenRouter, Ollama), and vector se
 - `/chat-diagnostics` – server-rendered diagnostics
 - `/qa/diagnostics` – health checks
 - `/qa/email-file-parser` – parse `.eml` uploads
+
+## More from William Callahan
+
+- [Other projects](https://williamcallahan.com/projects)
+- [apple-maps-java](https://github.com/WilliamAGH/apple-maps-java)
+- [TUI4J](https://github.com/WilliamAGH/tui4j)
+- [Brief](https://github.com/WilliamAGH/brief)
