@@ -14,15 +14,14 @@ import java.util.Map;
  * {@code docs/example-openai-conversation-json-2025-11-12.md}.</p>
  */
 public record ConversationEvent(
-    String eventId,
-    int index,
-    String parentEventId,
-    Instant timestamp,
-    String type,
-    String role,
-    String content,
-    List<ContextRef> contextRefs,
-    Map<String, Object> meta,
-    LlmCallPayload llm,
-    ToolCallPayload tool
-) {}
+        String eventId,
+        int index,
+        String parentEventId,
+        Instant timestamp,
+        String type,
+        String role,
+        String content,
+        List<ContextRef> contextRefs,
+        Map<String, Object> meta,
+        LlmCallPayload llm,
+        ToolCallPayload tool) {}

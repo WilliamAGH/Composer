@@ -1,26 +1,24 @@
 package com.composerai.api.controller;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import com.composerai.api.config.AppProperties;
+import com.composerai.api.model.EmailMessage;
 import com.composerai.api.service.CompanyLogoProvider;
 import com.composerai.api.service.ContextBuilder;
 import com.composerai.api.service.EmailParsingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
-
-import com.composerai.api.model.EmailMessage;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 class EmailFileParseControllerTest {
 
@@ -29,16 +27,13 @@ class EmailFileParseControllerTest {
     @Test
     void parseEmail_withNullMetadata_usesFallbackValues() throws Exception {
         ContextBuilder.EmailContextCache registry = new ContextBuilder.InMemoryEmailContextCache();
-        EmailFileParseController controller = controllerWithPayload(registry, "{\n" +
-            "  \"content\": {\"plainText\": \"Body\", \"markdown\": \"**Body**\"},\n" +
-            "  \"metadata\": {\"subject\": null, \"from\": null, \"date\": null}\n" +
-            "}");
+        EmailFileParseController controller = controllerWithPayload(
+                registry,
+                "{\n" + "  \"content\": {\"plainText\": \"Body\", \"markdown\": \"**Body**\"},\n"
+                        + "  \"metadata\": {\"subject\": null, \"from\": null, \"date\": null}\n"
+                        + "}");
         MockMultipartFile file = new MockMultipartFile(
-            "file",
-            "message.eml",
-            "message/rfc822",
-            SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8)
-        );
+                "file", "message.eml", "message/rfc822", SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8));
 
         ResponseEntity<Map<String, Object>> response = controller.parseEmail(file);
 
@@ -58,16 +53,13 @@ class EmailFileParseControllerTest {
     @Test
     void parseEmail_withDateMetadataPreservesIso() throws Exception {
         ContextBuilder.EmailContextCache registry = new ContextBuilder.InMemoryEmailContextCache();
-        EmailFileParseController controller = controllerWithPayload(registry, "{\n" +
-            "  \"content\": {\"plainText\": \"Body\", \"markdown\": \"**Body**\"},\n" +
-            "  \"metadata\": {\"subject\": \"Status\", \"from\": \"Ops\", \"date\": \"Oct 01, 2025 at 4:30 PM -07:00\", \"dateIso\": \"2025-10-01T23:30:00Z\"}\n" +
-            "}");
+        EmailFileParseController controller = controllerWithPayload(
+                registry,
+                "{\n" + "  \"content\": {\"plainText\": \"Body\", \"markdown\": \"**Body**\"},\n"
+                        + "  \"metadata\": {\"subject\": \"Status\", \"from\": \"Ops\", \"date\": \"Oct 01, 2025 at 4:30 PM -07:00\", \"dateIso\": \"2025-10-01T23:30:00Z\"}\n"
+                        + "}");
         MockMultipartFile file = new MockMultipartFile(
-            "file",
-            "message.eml",
-            "message/rfc822",
-            SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8)
-        );
+                "file", "message.eml", "message/rfc822", SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8));
 
         ResponseEntity<Map<String, Object>> response = controller.parseEmail(file);
 
@@ -79,17 +71,15 @@ class EmailFileParseControllerTest {
     @Test
     void parseEmail_sanitizesContentOutputs() throws Exception {
         ContextBuilder.EmailContextCache registry = new ContextBuilder.InMemoryEmailContextCache();
-        EmailFileParseController controller = controllerWithPayload(registry, "{\n" +
-            "  \"content\": {\"plainText\": \"Hello <script>alert('x')</script> body\", \"markdown\": \"**Hello** <script>alert(1)</script>\"},\n" +
-            "  \"metadata\": {\"subject\": \"Status\", \"from\": \"Ops\", \"date\": \"Oct 01, 2025 at 4:30 PM -07:00\"}\n" +
-            "}");
+        EmailFileParseController controller = controllerWithPayload(
+                registry,
+                "{\n"
+                        + "  \"content\": {\"plainText\": \"Hello <script>alert('x')</script> body\", \"markdown\": \"**Hello** <script>alert(1)</script>\"},\n"
+                        + "  \"metadata\": {\"subject\": \"Status\", \"from\": \"Ops\", \"date\": \"Oct 01, 2025 at 4:30 PM -07:00\"}\n"
+                        + "}");
 
         MockMultipartFile file = new MockMultipartFile(
-            "file",
-            "message.eml",
-            "message/rfc822",
-            SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8)
-        );
+                "file", "message.eml", "message/rfc822", SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8));
 
         ResponseEntity<Map<String, Object>> response = controller.parseEmail(file);
 
@@ -120,13 +110,8 @@ class EmailFileParseControllerTest {
     void parseEmail_withUnsupportedExtension_throwsException() {
         ContextBuilder.EmailContextCache registry = new ContextBuilder.InMemoryEmailContextCache();
         EmailFileParseController controller = new EmailFileParseController(
-            new EmailParsingService(registry, new ObjectMapper(), new CompanyLogoProvider(), new AppProperties()));
-        MockMultipartFile file = new MockMultipartFile(
-            "file",
-            "document.pdf",
-            "application/pdf",
-            new byte[10]
-        );
+                new EmailParsingService(registry, new ObjectMapper(), new CompanyLogoProvider(), new AppProperties()));
+        MockMultipartFile file = new MockMultipartFile("file", "document.pdf", "application/pdf", new byte[10]);
 
         assertThrows(IllegalArgumentException.class, () -> controller.parseEmail(file));
     }
@@ -135,22 +120,19 @@ class EmailFileParseControllerTest {
     void parseEmail_withReceivedHeaderUsesReceivedDate() throws Exception {
         ContextBuilder.EmailContextCache registry = new ContextBuilder.InMemoryEmailContextCache();
         EmailFileParseController controller = new EmailFileParseController(
-            new EmailParsingService(registry, new ObjectMapper(), new CompanyLogoProvider(), new AppProperties()));
-        String eml = String.join("\r\n",
-            "Received: from mail.example.net by inbound.example.net; Wed, 01 Oct 2025 18:45:00 +0530",
-            "Subject: Received fallback",
-            "From: Example <sender@example.com>",
-            "Message-ID: <abc123@example.com>",
-            "Content-Type: text/plain; charset=\"UTF-8\"",
-            "",
-            "This is a received-header test email.");
+                new EmailParsingService(registry, new ObjectMapper(), new CompanyLogoProvider(), new AppProperties()));
+        String eml = String.join(
+                "\r\n",
+                "Received: from mail.example.net by inbound.example.net; Wed, 01 Oct 2025 18:45:00 +0530",
+                "Subject: Received fallback",
+                "From: Example <sender@example.com>",
+                "Message-ID: <abc123@example.com>",
+                "Content-Type: text/plain; charset=\"UTF-8\"",
+                "",
+                "This is a received-header test email.");
 
-        MockMultipartFile file = new MockMultipartFile(
-            "file",
-            "received.eml",
-            "message/rfc822",
-            eml.getBytes(StandardCharsets.UTF_8)
-        );
+        MockMultipartFile file =
+                new MockMultipartFile("file", "received.eml", "message/rfc822", eml.getBytes(StandardCharsets.UTF_8));
 
         ResponseEntity<Map<String, Object>> response = controller.parseEmail(file);
         Map<String, Object> body = response.getBody();
@@ -186,11 +168,7 @@ class EmailFileParseControllerTest {
 
         EmailFileParseController controller = controllerWithPayload(registry, payload, props);
         MockMultipartFile file = new MockMultipartFile(
-            "file",
-            "message.eml",
-            "message/rfc822",
-            SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8)
-        );
+                "file", "message.eml", "message/rfc822", SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8));
 
         ResponseEntity<Map<String, Object>> response = controller.parseEmail(file);
         Map<String, Object> body = response.getBody();
@@ -224,11 +202,7 @@ class EmailFileParseControllerTest {
 
         EmailFileParseController controller = controllerWithPayload(registry, payload, props);
         MockMultipartFile file = new MockMultipartFile(
-            "file",
-            "dangerous.eml",
-            "message/rfc822",
-            SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8)
-        );
+                "file", "dangerous.eml", "message/rfc822", SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8));
 
         ResponseEntity<Map<String, Object>> response = controller.parseEmail(file);
         EmailMessage emailMessage = (EmailMessage) response.getBody().get("emailMessage");
@@ -263,11 +237,7 @@ class EmailFileParseControllerTest {
 
         EmailFileParseController controller = controllerWithPayload(registry, payload, props);
         MockMultipartFile file = new MockMultipartFile(
-            "file",
-            "message.eml",
-            "message/rfc822",
-            SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8)
-        );
+                "file", "message.eml", "message/rfc822", SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8));
 
         ResponseEntity<Map<String, Object>> response = controller.parseEmail(file);
         Map<String, Object> body = response.getBody();
@@ -302,11 +272,7 @@ class EmailFileParseControllerTest {
 
         EmailFileParseController controller = controllerWithPayload(registry, payload, props);
         MockMultipartFile file = new MockMultipartFile(
-            "file",
-            "message.eml",
-            "message/rfc822",
-            SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8)
-        );
+                "file", "message.eml", "message/rfc822", SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8));
 
         ResponseEntity<Map<String, Object>> response = controller.parseEmail(file);
         Map<String, Object> body = response.getBody();
@@ -336,11 +302,7 @@ class EmailFileParseControllerTest {
 
         EmailFileParseController controller = controllerWithPayload(registry, payload);
         MockMultipartFile file = new MockMultipartFile(
-            "file",
-            "message.eml",
-            "message/rfc822",
-            SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8)
-        );
+                "file", "message.eml", "message/rfc822", SAMPLE_EMAIL.getBytes(StandardCharsets.UTF_8));
 
         ResponseEntity<Map<String, Object>> first = controller.parseEmail(file);
         ResponseEntity<Map<String, Object>> second = controller.parseEmail(file);
@@ -357,13 +319,15 @@ class EmailFileParseControllerTest {
         return controllerWithPayload(registry, payload, new AppProperties());
     }
 
-    private EmailFileParseController controllerWithPayload(ContextBuilder.EmailContextCache registry, String payload, AppProperties appProperties) {
-        EmailParsingService emailParsingService = new EmailParsingService(registry, new ObjectMapper(), new CompanyLogoProvider(), appProperties) {
-            @Override
-            protected String convertEmail(com.composerai.api.service.HtmlToText.Options options) {
-                return payload;
-            }
-        };
+    private EmailFileParseController controllerWithPayload(
+            ContextBuilder.EmailContextCache registry, String payload, AppProperties appProperties) {
+        EmailParsingService emailParsingService =
+                new EmailParsingService(registry, new ObjectMapper(), new CompanyLogoProvider(), appProperties) {
+                    @Override
+                    protected String convertEmail(com.composerai.api.service.HtmlToText.Options options) {
+                        return payload;
+                    }
+                };
         return new EmailFileParseController(emailParsingService);
     }
 }

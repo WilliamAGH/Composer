@@ -10,12 +10,11 @@ import com.composerai.api.domain.port.MailboxSnapshotPort;
 import com.composerai.api.domain.port.SessionScopedMessagePlacementPort;
 import com.composerai.api.domain.service.MailboxFolderTransitionService;
 import com.composerai.api.model.EmailMessage;
+import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.Map;
 
 /**
  * Loads the current mailbox state for a session: baseline emails from the filesystem plus any
@@ -31,10 +30,9 @@ public class LoadMailboxStateSnapshotUseCase {
     private final MailboxFolderTransitionService transitionService;
 
     public LoadMailboxStateSnapshotUseCase(
-        MailboxSnapshotPort mailboxSnapshotPort,
-        SessionScopedMessagePlacementPort sessionPlacementPort,
-        MailboxFolderTransitionService transitionService
-    ) {
+            MailboxSnapshotPort mailboxSnapshotPort,
+            SessionScopedMessagePlacementPort sessionPlacementPort,
+            MailboxFolderTransitionService transitionService) {
         this.mailboxSnapshotPort = mailboxSnapshotPort;
         this.sessionPlacementPort = sessionPlacementPort;
         this.transitionService = transitionService;
@@ -51,22 +49,18 @@ public class LoadMailboxStateSnapshotUseCase {
         log.debug("Loading mailbox snapshot for mailbox={} session={}", mailboxId, sessionId);
 
         MailboxSnapshot snapshot = mailboxSnapshotPort.loadSnapshot(mailboxId);
-        Map<MessageId, MessageFolderPlacement> placements = sessionPlacementPort.findPlacements(
-            new MailboxId(mailboxId), 
-            new SessionId(sessionId)
-        );
+        Map<MessageId, MessageFolderPlacement> placements =
+                sessionPlacementPort.findPlacements(new MailboxId(mailboxId), new SessionId(sessionId));
         List<EmailMessage> resolvedMessages = transitionService.applyPlacements(snapshot, placements);
         Map<String, Integer> folderCounts = transitionService.computeFolderCounts(resolvedMessages);
         var effectiveFolders = transitionService.serializeEffectiveFolders(
-            transitionService.deriveEffectiveFolders(snapshot, placements)
-        );
+                transitionService.deriveEffectiveFolders(snapshot, placements));
 
         return new MailboxStateSnapshotResult(
-            mailboxId,
-            resolvedMessages,
-            folderCounts,
-            transitionService.serializePlacements(placements),
-            effectiveFolders
-        );
+                mailboxId,
+                resolvedMessages,
+                folderCounts,
+                transitionService.serializePlacements(placements),
+                effectiveFolders);
     }
 }

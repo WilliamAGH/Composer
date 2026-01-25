@@ -13,20 +13,19 @@ import java.util.stream.Collectors;
  * single description of prompts, defaults, and behavioural hints.
  */
 public record AiFunctionDefinition(
-    String key,
-    String label,
-    Category category,
-    String description,
-    String promptTemplate,
-    String defaultInstruction,
-    OutputFormat outputFormat,
-    SubjectMode subjectMode,
-    ContextStrategy contextStrategy,
-    boolean primary,
-    List<String> scopes,
-    Map<String, String> defaultArgs,
-    Map<String, AiFunctionVariant> variants
-) {
+        String key,
+        String label,
+        Category category,
+        String description,
+        String promptTemplate,
+        String defaultInstruction,
+        OutputFormat outputFormat,
+        SubjectMode subjectMode,
+        ContextStrategy contextStrategy,
+        boolean primary,
+        List<String> scopes,
+        Map<String, String> defaultArgs,
+        Map<String, AiFunctionVariant> variants) {
 
     public AiFunctionDefinition {
         key = key == null ? "" : key;
@@ -40,16 +39,15 @@ public record AiFunctionDefinition(
         scopes = scopes == null ? List.of() : List.copyOf(scopes);
         defaultArgs = defaultArgs == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(defaultArgs));
         variants = variants == null
-            ? Map.of()
-            : Collections.unmodifiableMap(
-                variants.entrySet().stream()
-                    .collect(Collectors.toMap(
-                        entry -> entry.getKey() == null ? "" : entry.getKey().toLowerCase(Locale.ROOT),
-                        Map.Entry::getValue,
-                        (existing, replacement) -> replacement,
-                        LinkedHashMap::new
-                    ))
-            );
+                ? Map.of()
+                : Collections.unmodifiableMap(variants.entrySet().stream()
+                        .collect(Collectors.toMap(
+                                entry -> entry.getKey() == null
+                                        ? ""
+                                        : entry.getKey().toLowerCase(Locale.ROOT),
+                                Map.Entry::getValue,
+                                (existing, replacement) -> replacement,
+                                LinkedHashMap::new)));
     }
 
     public Optional<AiFunctionVariant> variant(String variantKey) {
@@ -100,18 +98,18 @@ public record AiFunctionDefinition(
     }
 
     public record AiFunctionVariant(
-        String key,
-        String label,
-        String promptTemplate,
-        String defaultInstruction,
-        Map<String, String> defaultArgs
-    ) {
+            String key,
+            String label,
+            String promptTemplate,
+            String defaultInstruction,
+            Map<String, String> defaultArgs) {
         public AiFunctionVariant {
             key = key == null ? "" : key;
             label = label == null ? key : label;
             promptTemplate = promptTemplate == null ? "" : promptTemplate;
             defaultInstruction = defaultInstruction == null ? "" : defaultInstruction;
-            defaultArgs = defaultArgs == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(defaultArgs));
+            defaultArgs =
+                    defaultArgs == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(defaultArgs));
         }
     }
 }

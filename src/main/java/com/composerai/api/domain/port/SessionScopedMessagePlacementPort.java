@@ -4,7 +4,6 @@ import com.composerai.api.domain.model.MailboxId;
 import com.composerai.api.domain.model.MessageFolderPlacement;
 import com.composerai.api.domain.model.MessageId;
 import com.composerai.api.domain.model.SessionId;
-
 import java.util.Map;
 import java.util.Optional;
 

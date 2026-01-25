@@ -1,11 +1,6 @@
 package com.composerai.api.service;
 
 import com.composerai.api.util.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -20,6 +15,10 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import javax.imageio.ImageIO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 @Service
 public class CompanyLogoProvider {
@@ -32,10 +31,11 @@ public class CompanyLogoProvider {
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(4);
     private static final Duration TTL = Duration.ofHours(6);
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-        .connectTimeout(REQUEST_TIMEOUT)
-        .followRedirects(HttpClient.Redirect.NORMAL)
-        .build();
-    private static final String GENERIC_PERSON_AVATAR = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMjggMTI4Jz48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9J2cnIHgxPScwJScgeTE9JzAlJyB4Mj0nMCUnIHkyPScxMDAlJz48c3RvcCBvZmZzZXQ9JzAlJyBzdG9wLWNvbG9yPScjMWUyOTNiJy8+PHN0b3Agb2Zmc2V0PScxMDAlJyBzdG9wLWNvbG9yPScjMGYxNzJhJy8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9JzEyOCcgaGVpZ2h0PScxMjgnIHJ4PSczMicgZmlsbD0ndXJsKCNnKScvPjxjaXJjbGUgY3g9JzY0JyBjeT0nNDgnIHI9JzI0JyBmaWxsPSdyZ2JhKDI1NSwyNTUsMjU1LDAuODUpJy8+PHBhdGggZD0nTTMyIDEwOGMwLTE3LjY3MyAxNC4zMjctMzIgMzItMzJzMzIgMTQuMzI3IDMyIDMyJyBmaWxsPSdyZ2JhKDI1NSwyNTUsMjU1LDAuNzUpJy8+PC9zdmc+";
+            .connectTimeout(REQUEST_TIMEOUT)
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
+    private static final String GENERIC_PERSON_AVATAR =
+            "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMjggMTI4Jz48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9J2cnIHgxPScwJScgeTE9JzAlJyB4Mj0nMCUnIHkyPScxMDAlJz48c3RvcCBvZmZzZXQ9JzAlJyBzdG9wLWNvbG9yPScjMWUyOTNiJy8+PHN0b3Agb2Zmc2V0PScxMDAlJyBzdG9wLWNvbG9yPScjMGYxNzJhJy8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9JzEyOCcgaGVpZ2h0PScxMjgnIHJ4PSczMicgZmlsbD0ndXJsKCNnKScvPjxjaXJjbGUgY3g9JzY0JyBjeT0nNDgnIHI9JzI0JyBmaWxsPSdyZ2JhKDI1NSwyNTUsMjU1LDAuODUpJy8+PHBhdGggZD0nTTMyIDEwOGMwLTE3LjY3MyAxNC4zMjctMzIgMzItMzJzMzIgMTQuMzI3IDMyIDMyJyBmaWxsPSdyZ2JhKDI1NSwyNTUsMjU1LDAuNzUpJy8+PC9zdmc+";
 
     private final ConcurrentMap<String, CachedLogo> inMemoryCache = new ConcurrentHashMap<>();
 
@@ -51,13 +51,13 @@ public class CompanyLogoProvider {
             return cached.url();
         }
 
-        Optional<String> resolved = fetchValidatedLogo(normalized)
-            .or(() -> parentDomain(normalized).flatMap(this::fetchValidatedLogo));
+        Optional<String> resolved =
+                fetchValidatedLogo(normalized).or(() -> parentDomain(normalized).flatMap(this::fetchValidatedLogo));
         inMemoryCache.put(normalized, new CachedLogo(resolved.orElse(null), Instant.now()));
         resolved.ifPresentOrElse(
-            url -> logger.debug("Accepted company logo from Google S2 for domain={} size={}px", normalized, DEFAULT_SIZE),
-            () -> logger.debug("Rejected company logo for domain={} due to validation failure", normalized)
-        );
+                url -> logger.debug(
+                        "Accepted company logo from Google S2 for domain={} size={}px", normalized, DEFAULT_SIZE),
+                () -> logger.debug("Rejected company logo for domain={} due to validation failure", normalized));
         return resolved;
     }
 
@@ -107,20 +107,24 @@ public class CompanyLogoProvider {
 
     private Optional<String> fetchValidatedLogo(String normalizedDomain) {
         return fetchFromProvider(normalizedDomain, GOOGLE_S2_TEMPLATE, "Google S2")
-            .or(() -> fetchFromProvider(normalizedDomain, FAVICON_KIT_TEMPLATE, "FaviconKit"));
+                .or(() -> fetchFromProvider(normalizedDomain, FAVICON_KIT_TEMPLATE, "FaviconKit"));
     }
 
     private Optional<String> fetchFromProvider(String normalizedDomain, String template, String providerName) {
         String url = String.format(Locale.ROOT, template, normalizedDomain, DEFAULT_SIZE);
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(REQUEST_TIMEOUT)
-                .GET()
-                .build();
+                    .uri(URI.create(url))
+                    .timeout(REQUEST_TIMEOUT)
+                    .GET()
+                    .build();
             HttpResponse<byte[]> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofByteArray());
             if (response.statusCode() != 200) {
-                logger.debug("{} logo request failed for domain={} status={}", providerName, normalizedDomain, response.statusCode());
+                logger.debug(
+                        "{} logo request failed for domain={} status={}",
+                        providerName,
+                        normalizedDomain,
+                        response.statusCode());
                 return Optional.empty();
             }
 
@@ -132,13 +136,20 @@ public class CompanyLogoProvider {
 
             String contentType = response.headers().firstValue("content-type").orElse("");
             if (!contentType.startsWith("image/")) {
-                logger.debug("{} logo content-type invalid for domain={} type={}", providerName, normalizedDomain, contentType);
+                logger.debug(
+                        "{} logo content-type invalid for domain={} type={}",
+                        providerName,
+                        normalizedDomain,
+                        contentType);
                 return Optional.empty();
             }
 
             if (!hasAcceptableDimensions(body)) {
-                logger.debug("{} logo dimensions below threshold for domain={} (required>={})",
-                    providerName, normalizedDomain, MIN_ACCEPTED_SIZE);
+                logger.debug(
+                        "{} logo dimensions below threshold for domain={} (required>={})",
+                        providerName,
+                        normalizedDomain,
+                        MIN_ACCEPTED_SIZE);
                 return Optional.empty();
             }
 

@@ -1,11 +1,10 @@
 package com.composerai.api.config;
 
+import java.util.Arrays;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-
-import java.util.Arrays;
 
 /**
  * Global CORS configuration for the application.
@@ -20,10 +19,10 @@ public class CorsConfig implements WebMvcConfigurer {
     private static final String ALLOWED_HEADERS_ALL = "*";
     private static final String WILDCARD_ORIGIN_PATTERN = "*";
     private static final String CREDENTIALS_WILDCARD_ERROR =
-        "CORS configuration error: Wildcard origin '*' is not allowed when credentials are enabled. " +
-        "Configure specific origins via APP_CORS_ALLOWED_ORIGINS environment variable or " +
-        "app.cors.allowed-origins property (e.g., 'https://example.com,https://app.example.com'). " +
-        "Patterns like 'https://*.example.com' are also supported.";
+            "CORS configuration error: Wildcard origin '*' is not allowed when credentials are enabled. "
+                    + "Configure specific origins via APP_CORS_ALLOWED_ORIGINS environment variable or "
+                    + "app.cors.allowed-origins property (e.g., 'https://example.com,https://app.example.com'). "
+                    + "Patterns like 'https://*.example.com' are also supported.";
     private static final String METHOD_GET = "GET";
     private static final String METHOD_POST = "POST";
     private static final String METHOD_PUT = "PUT";
@@ -48,11 +47,11 @@ public class CorsConfig implements WebMvcConfigurer {
 
     private static void applyCorsConfiguration(CorsRegistration registration, String[] originPatterns) {
         registration
-            .allowedOriginPatterns(originPatterns)
-            .allowedMethods(METHOD_GET, METHOD_POST, METHOD_PUT, METHOD_DELETE, METHOD_OPTIONS)
-            .allowedHeaders(ALLOWED_HEADERS_ALL)
-            .allowCredentials(true)
-            .maxAge(CORS_MAX_AGE_SECONDS);
+                .allowedOriginPatterns(originPatterns)
+                .allowedMethods(METHOD_GET, METHOD_POST, METHOD_PUT, METHOD_DELETE, METHOD_OPTIONS)
+                .allowedHeaders(ALLOWED_HEADERS_ALL)
+                .allowCredentials(true)
+                .maxAge(CORS_MAX_AGE_SECONDS);
     }
 
     private static void validateCredentialedOrigins(String[] originPatterns) {
@@ -67,8 +66,8 @@ public class CorsConfig implements WebMvcConfigurer {
             return new String[0];
         }
         return Arrays.stream(configuredOrigins.split(ORIGIN_DELIMITER))
-            .map(String::trim)
-            .filter(originPattern -> !originPattern.isEmpty())
-            .toArray(String[]::new);
+                .map(String::trim)
+                .filter(originPattern -> !originPattern.isEmpty())
+                .toArray(String[]::new);
     }
 }

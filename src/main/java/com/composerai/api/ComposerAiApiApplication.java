@@ -9,5 +9,4 @@ public class ComposerAiApiApplication {
     public static void main(String[] args) {
         SpringApplication.run(ComposerAiApiApplication.class, args);
     }
-
 }

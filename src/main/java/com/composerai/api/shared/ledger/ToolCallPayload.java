@@ -7,8 +7,4 @@ package com.composerai.api.shared.ledger;
  * Responses equivalent) so operators can tie local execution back to the SDK payload.
  */
 public record ToolCallPayload(
-    String openAiToolCallJson,
-    String executionRequestJson,
-    String executionResponseJson,
-    String error
-) {}
+        String openAiToolCallJson, String executionRequestJson, String executionResponseJson, String error) {}

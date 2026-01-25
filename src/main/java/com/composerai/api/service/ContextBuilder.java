@@ -3,10 +3,6 @@ package com.composerai.api.service;
 import com.composerai.api.dto.ChatResponse.EmailContext;
 import com.composerai.api.service.email.HtmlConverter;
 import com.composerai.api.util.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -16,6 +12,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 /**
  * Builds context strings for AI chat requests.
@@ -35,8 +34,9 @@ public class ContextBuilder {
         StringBuilder context = new StringBuilder("Relevant emails:\n");
         for (int i = 0; i < emailContexts.size(); i++) {
             EmailContext email = emailContexts.get(i);
-            context.append(String.format("%d. From: %s, Subject: %s, Snippet: %s\n",
-                i + 1, email.sender(), email.subject(), email.snippet()));
+            context.append(String.format(
+                    "%d. From: %s, Subject: %s, Snippet: %s\n",
+                    i + 1, email.sender(), email.subject(), email.snippet()));
         }
         return context.toString();
     }
@@ -58,13 +58,14 @@ public class ContextBuilder {
         }
 
         String base = vectorSearchContext != null ? vectorSearchContext : "";
-        return "Uploaded email context:\n" + cleaned +
-               (StringUtils.isBlank(base) ? "" : "\n\n" + base);
+        return "Uploaded email context:\n" + cleaned + (StringUtils.isBlank(base) ? "" : "\n\n" + base);
     }
 
     public interface EmailContextCache {
         void store(String contextId, String contextForAI);
+
         Optional<String> contextForAi(String contextId);
+
         boolean hasContext(String contextId);
     }
 
@@ -92,8 +93,11 @@ public class ContextBuilder {
                 return;
             }
             contexts.put(contextId, new StoredContext(contextForAI, Instant.now()));
-            logger.debug("Stored email context: contextId={}, length={}, totalCached={}", 
-                contextId, contextForAI.length(), contexts.size());
+            logger.debug(
+                    "Stored email context: contextId={}, length={}, totalCached={}",
+                    contextId,
+                    contextForAI.length(),
+                    contexts.size());
             prune();
         }
 
@@ -105,8 +109,10 @@ public class ContextBuilder {
             }
             StoredContext stored = contexts.get(contextId);
             if (stored == null) {
-                logger.warn("Context not found in registry: contextId={}, available keys: {}", 
-                    contextId, contexts.keySet().stream().limit(5).toList());
+                logger.warn(
+                        "Context not found in registry: contextId={}, available keys: {}",
+                        contextId,
+                        contexts.keySet().stream().limit(5).toList());
                 return Optional.empty();
             }
             if (stored.isExpired()) {
@@ -115,7 +121,10 @@ public class ContextBuilder {
                 return Optional.empty();
             }
             if (!StringUtils.isBlank(stored.content())) {
-                logger.debug("Retrieved context: contextId={}, length={}", contextId, stored.content().length());
+                logger.debug(
+                        "Retrieved context: contextId={}, length={}",
+                        contextId,
+                        stored.content().length());
                 return Optional.of(stored.content());
             }
             logger.warn("Context content blank for contextId={}", contextId);

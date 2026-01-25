@@ -11,11 +11,6 @@ import com.composerai.api.util.StringUtils;
 import com.composerai.api.util.TemporalUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -29,6 +24,10 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class EmailParsingService {
@@ -36,17 +35,18 @@ public class EmailParsingService {
     private static final Logger logger = LoggerFactory.getLogger(EmailParsingService.class);
 
     private static final DateTimeFormatter DATE_WITH_OFFSET_FORMATTER =
-        DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' h:mm a xxx", Locale.US);
+            DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' h:mm a xxx", Locale.US);
 
     private final EmailContextCache emailContextRegistry;
     private final ObjectMapper objectMapper;
     private final CompanyLogoProvider companyLogoProvider;
     private final AppProperties appProperties;
 
-    public EmailParsingService(EmailContextCache emailContextRegistry,
-                               ObjectMapper objectMapper,
-                               CompanyLogoProvider companyLogoProvider,
-                               AppProperties appProperties) {
+    public EmailParsingService(
+            EmailContextCache emailContextRegistry,
+            ObjectMapper objectMapper,
+            CompanyLogoProvider companyLogoProvider,
+            AppProperties appProperties) {
         this.emailContextRegistry = emailContextRegistry;
         this.objectMapper = objectMapper;
         this.companyLogoProvider = companyLogoProvider;
@@ -113,18 +113,20 @@ public class EmailParsingService {
 
             String jsonPayload = convertEmail(options);
 
-            Map<String, Object> parsedDocument = objectMapper.readValue(
-                jsonPayload, new TypeReference<Map<String, Object>>() {});
+            Map<String, Object> parsedDocument =
+                    objectMapper.readValue(jsonPayload, new TypeReference<Map<String, Object>>() {});
 
-            Map<String, Object> content = parsedDocument.containsKey("content")
-                && parsedDocument.get("content") instanceof Map
-                ? objectMapper.convertValue(parsedDocument.get("content"), new TypeReference<Map<String, Object>>() {})
-                : Collections.emptyMap();
+            Map<String, Object> content =
+                    parsedDocument.containsKey("content") && parsedDocument.get("content") instanceof Map
+                            ? objectMapper.convertValue(
+                                    parsedDocument.get("content"), new TypeReference<Map<String, Object>>() {})
+                            : Collections.emptyMap();
 
-            Map<String, Object> metadata = parsedDocument.containsKey("metadata")
-                && parsedDocument.get("metadata") instanceof Map
-                ? objectMapper.convertValue(parsedDocument.get("metadata"), new TypeReference<Map<String, Object>>() {})
-                : Collections.emptyMap();
+            Map<String, Object> metadata =
+                    parsedDocument.containsKey("metadata") && parsedDocument.get("metadata") instanceof Map
+                            ? objectMapper.convertValue(
+                                    parsedDocument.get("metadata"), new TypeReference<Map<String, Object>>() {})
+                            : Collections.emptyMap();
 
             String plainText = String.valueOf(content.getOrDefault("plainText", ""));
             String markdown = String.valueOf(content.getOrDefault("markdown", ""));
@@ -166,32 +168,33 @@ public class EmailParsingService {
             parsedDocument.put("contextId", contextId);
 
             ParsedEmail parsedEmail = ParsedEmail.newBuilder()
-                .id(messageId)
-                .contextId(contextId)
-                .senderName(sender.name())
-                .senderEmail(sender.email())
-                .recipientName(recipient.name())
-                .recipientEmail(recipient.email())
-                .subject(subject)
-                .emailBodyRaw(cleanedPlainText)
-                .emailBodyTransformedText(cleanedPlainText)
-                .emailBodyTransformedMarkdown(sanitizedMarkdown)
-                .emailBodyHtml(renderedHtml)
-                .receivedTimestampDisplay(dateWithRelativeTime)
-                .receivedTimestampIso(dateIso != null ? dateIso.trim() : null)
-                .companyLogoUrl(companyLogoUrl)
-                .avatarUrl(deriveSenderAvatar(metadata, companyLogoUrl))
-                .preview(emailBody)
-                .parsedDocument(parsedDocument)
-                .parsedPlain(cleanedPlainText)
-                .parsedMarkdown(sanitizedMarkdown)
-                .parsedHtml(renderedHtml)
-                .metadata(metadata)
-                .originalFilename(originalFilename)
-                .build();
+                    .id(messageId)
+                    .contextId(contextId)
+                    .senderName(sender.name())
+                    .senderEmail(sender.email())
+                    .recipientName(recipient.name())
+                    .recipientEmail(recipient.email())
+                    .subject(subject)
+                    .emailBodyRaw(cleanedPlainText)
+                    .emailBodyTransformedText(cleanedPlainText)
+                    .emailBodyTransformedMarkdown(sanitizedMarkdown)
+                    .emailBodyHtml(renderedHtml)
+                    .receivedTimestampDisplay(dateWithRelativeTime)
+                    .receivedTimestampIso(dateIso != null ? dateIso.trim() : null)
+                    .companyLogoUrl(companyLogoUrl)
+                    .avatarUrl(deriveSenderAvatar(metadata, companyLogoUrl))
+                    .preview(emailBody)
+                    .parsedDocument(parsedDocument)
+                    .parsedPlain(cleanedPlainText)
+                    .parsedMarkdown(sanitizedMarkdown)
+                    .parsedHtml(renderedHtml)
+                    .metadata(metadata)
+                    .originalFilename(originalFilename)
+                    .build();
 
             String contextForAI = EmailMessageContextFormatter.buildContext(parsedEmail);
-            parsedEmail = parsedEmail.toParsedBuilder().contextForAi(contextForAI).build();
+            parsedEmail =
+                    parsedEmail.toParsedBuilder().contextForAi(contextForAI).build();
 
             emailContextRegistry.store(contextId, contextForAI);
 
@@ -233,9 +236,10 @@ public class EmailParsingService {
         }
 
         String filename = file.getOriginalFilename();
-        if (filename == null || (!filename.toLowerCase(Locale.ROOT).endsWith(".eml")
-            && !filename.toLowerCase(Locale.ROOT).endsWith(".msg")
-            && !filename.toLowerCase(Locale.ROOT).endsWith(".txt"))) {
+        if (filename == null
+                || (!filename.toLowerCase(Locale.ROOT).endsWith(".eml")
+                        && !filename.toLowerCase(Locale.ROOT).endsWith(".msg")
+                        && !filename.toLowerCase(Locale.ROOT).endsWith(".txt"))) {
             throw new IllegalArgumentException("Invalid file type. Please upload a .eml, .msg, or .txt file.");
         }
 
@@ -298,9 +302,7 @@ public class EmailParsingService {
         String prefix = candidate.substring(0, Math.min(CONTEXT_ID_PREFIX_LENGTH, candidate.length()));
         String hashSuffix = computeHashSuffix(candidate);
         String combined = prefix + "-" + hashSuffix;
-        return combined.length() <= MAX_CONTEXT_ID_LENGTH
-            ? combined
-            : combined.substring(0, MAX_CONTEXT_ID_LENGTH);
+        return combined.length() <= MAX_CONTEXT_ID_LENGTH ? combined : combined.substring(0, MAX_CONTEXT_ID_LENGTH);
     }
 
     private static String computeHashSuffix(String value) {
@@ -330,7 +332,7 @@ public class EmailParsingService {
             name = extracted.name();
             email = extracted.email();
         }
-            return new StructuredParticipant(StringUtils.defaultIfBlank(name, "Unknown sender"), email);
+        return new StructuredParticipant(StringUtils.defaultIfBlank(name, "Unknown sender"), email);
     }
 
     private static StructuredParticipant extractRecipient(Map<String, Object> metadata) {
@@ -356,7 +358,8 @@ public class EmailParsingService {
             if (start >= 0 && end > start) {
                 String name = trimmed.substring(0, start).trim();
                 String email = trimmed.substring(start + 1, end).trim();
-                return new StructuredParticipant(StringUtils.defaultIfBlank(name, null), StringUtils.defaultIfBlank(email, null));
+                return new StructuredParticipant(
+                        StringUtils.defaultIfBlank(name, null), StringUtils.defaultIfBlank(email, null));
             }
         }
         if (trimmed.contains("@")) {
@@ -411,22 +414,30 @@ public class EmailParsingService {
             logger.warn("Sanitized markdown-derived HTML was empty; markdown fallback unavailable.");
         }
 
-        String rendered = switch (mode) {
-            case HTML -> sanitizedOriginal != null ? sanitizedOriginal : sanitizedMarkdown;
-            case MARKDOWN -> sanitizedMarkdown;
-            case PLAINTEXT -> null;
-        };
+        String rendered =
+                switch (mode) {
+                    case HTML -> sanitizedOriginal != null ? sanitizedOriginal : sanitizedMarkdown;
+                    case MARKDOWN -> sanitizedMarkdown;
+                    case PLAINTEXT -> null;
+                };
 
-        String renderSource = switch (mode) {
-            case HTML -> sanitizedOriginal != null ? "HTML" : (sanitizedMarkdown != null ? "MARKDOWN_FALLBACK" : "UNAVAILABLE");
-            case MARKDOWN -> sanitizedMarkdown != null ? "MARKDOWN" : "UNAVAILABLE";
-            case PLAINTEXT -> "PLAINTEXT";
-        };
+        String renderSource =
+                switch (mode) {
+                    case HTML ->
+                        sanitizedOriginal != null
+                                ? "HTML"
+                                : (sanitizedMarkdown != null ? "MARKDOWN_FALLBACK" : "UNAVAILABLE");
+                    case MARKDOWN -> sanitizedMarkdown != null ? "MARKDOWN" : "UNAVAILABLE";
+                    case PLAINTEXT -> "PLAINTEXT";
+                };
 
         // Only log error if rendering unexpectedly failed (not PLAINTEXT mode where null is expected)
         if (rendered == null && mode != AppProperties.EmailRenderMode.PLAINTEXT) {
-            logger.error("Email rendering failed; mode={}, sanitizedOriginalPresent={}, sanitizedMarkdownPresent={}",
-                mode, sanitizedOriginal != null, sanitizedMarkdown != null);
+            logger.error(
+                    "Email rendering failed; mode={}, sanitizedOriginalPresent={}, sanitizedMarkdownPresent={}",
+                    mode,
+                    sanitizedOriginal != null,
+                    sanitizedMarkdown != null);
         } else if (rendered != null) {
             logger.info("Email rendered using mode={} (source={})", mode, renderSource);
         }
@@ -495,7 +506,6 @@ public class EmailParsingService {
             return parsedHtml;
         }
 
-
         public Map<String, Object> metadata() {
             return metadata;
         }
@@ -529,8 +539,7 @@ public class EmailParsingService {
             private Map<String, Object> metadata;
             private String originalFilename;
 
-            private Builder() {
-            }
+            private Builder() {}
 
             private Builder(ParsedEmail source) {
                 super(source);

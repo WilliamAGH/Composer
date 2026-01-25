@@ -1,5 +1,8 @@
 package com.composerai.api.service;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import com.composerai.api.config.ErrorMessagesProperties;
@@ -11,6 +14,12 @@ import com.openai.core.http.StreamResponse;
 import com.openai.models.responses.ResponseCreateParams;
 import com.openai.models.responses.ResponseStreamEvent;
 import com.openai.models.responses.ResponseTextDeltaEvent;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,16 +27,6 @@ import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Stream;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 
 class OpenAiChatServiceStreamingTest {
 
@@ -99,16 +98,15 @@ class OpenAiChatServiceStreamingTest {
     void streamResponseEmitsSanitizedHtmlChunks() {
         OpenAIClient client = Mockito.mock(OpenAIClient.class, Answers.RETURNS_DEEP_STUBS);
         Stream<ResponseStreamEvent> eventStream = Stream.of(
-            createMockEvent("First paragraph.\n\n"),
-            createMockEvent("Second paragraph with <script>alert('x')</script>.")
-        );
-        
+                createMockEvent("First paragraph.\n\n"),
+                createMockEvent("Second paragraph with <script>alert('x')</script>."));
+
         Mockito.when(client.responses().createStreaming(any(ResponseCreateParams.class)).stream())
-            .thenReturn(eventStream);
+                .thenReturn(eventStream);
 
         OpenAiProperties properties = new OpenAiProperties();
         properties.getModel().setChat("gpt-4o-mini");
-        
+
         OpenAiChatService service = new OpenAiChatService(client, properties, errorMessagesProperties);
 
         List<String> chunks = new ArrayList<>();
@@ -116,22 +114,14 @@ class OpenAiChatServiceStreamingTest {
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
         service.streamResponse(
-            new ChatCompletionCommand(
-                "What is new?",
-                "Context",
-                List.of(),
-                false,
-                null,
-                false
-            ),
-            event -> {
-                if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
-                    chunks.add(rendered.html());
-                }
-            },
-            () -> completed.set(true),
-            errorRef::set
-        );
+                new ChatCompletionCommand("What is new?", "Context", List.of(), false, null, false),
+                event -> {
+                    if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
+                        chunks.add(rendered.html());
+                    }
+                },
+                () -> completed.set(true),
+                errorRef::set);
 
         assertEquals(2, chunks.size());
         assertTrue(chunks.get(0).startsWith("<p>"));
@@ -143,13 +133,13 @@ class OpenAiChatServiceStreamingTest {
     @Test
     void streamResponsePropagatesErrorEvents() {
         OpenAIClient client = Mockito.mock(OpenAIClient.class, Answers.RETURNS_DEEP_STUBS);
-        
+
         Mockito.when(client.responses().createStreaming(any(ResponseCreateParams.class)))
-            .thenThrow(new RuntimeException("rate limited"));
+                .thenThrow(new RuntimeException("rate limited"));
 
         OpenAiProperties properties = new OpenAiProperties();
         properties.getModel().setChat("gpt-4o-mini");
-        
+
         OpenAiChatService service = new OpenAiChatService(client, properties, errorMessagesProperties);
 
         List<String> chunks = new ArrayList<>();
@@ -157,11 +147,10 @@ class OpenAiChatServiceStreamingTest {
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
         service.streamResponse(
-            new ChatCompletionCommand("msg", "ctx", List.of(), false, null, false),
-            event -> {},
-            () -> completed.set(true),
-            errorRef::set
-        );
+                new ChatCompletionCommand("msg", "ctx", List.of(), false, null, false),
+                event -> {},
+                () -> completed.set(true),
+                errorRef::set);
 
         assertTrue(chunks.isEmpty());
         assertFalse(completed.get());
@@ -172,9 +161,9 @@ class OpenAiChatServiceStreamingTest {
     @Test
     void streamResponseFailedEventSurfacesOpenAiMessage() {
         OpenAIClient client = Mockito.mock(OpenAIClient.class, Answers.RETURNS_DEEP_STUBS);
-        
+
         Mockito.when(client.responses().createStreaming(any(ResponseCreateParams.class)))
-            .thenThrow(new RuntimeException("insufficient_quota"));
+                .thenThrow(new RuntimeException("insufficient_quota"));
 
         OpenAiProperties properties = new OpenAiProperties();
         properties.getModel().setChat("gpt-4o-mini");
@@ -183,11 +172,10 @@ class OpenAiChatServiceStreamingTest {
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
         service.streamResponse(
-            new ChatCompletionCommand("msg", "ctx", List.of(), false, null, false),
-            event -> {},
-            () -> {},
-            errorRef::set
-        );
+                new ChatCompletionCommand("msg", "ctx", List.of(), false, null, false),
+                event -> {},
+                () -> {},
+                errorRef::set);
 
         assertNotNull(errorRef.get());
         assertTrue(errorRef.get().getMessage().contains("insufficient_quota"));
@@ -196,17 +184,15 @@ class OpenAiChatServiceStreamingTest {
     @Test
     void streamResponse_withCustomModel_appliesReasoningEffort() {
         OpenAIClient client = Mockito.mock(OpenAIClient.class, Answers.RETURNS_DEEP_STUBS);
-        Stream<ResponseStreamEvent> eventStream = Stream.of(
-            createMockEvent("This is a response.\n\n"),
-            createMockEvent("With reasoning.")
-        );
-        
+        Stream<ResponseStreamEvent> eventStream =
+                Stream.of(createMockEvent("This is a response.\n\n"), createMockEvent("With reasoning."));
+
         Mockito.when(client.responses().createStreaming(any(ResponseCreateParams.class)))
-            .thenReturn(streamResponse(eventStream));
+                .thenReturn(streamResponse(eventStream));
 
         OpenAiProperties customProperties = new OpenAiProperties();
         customProperties.getModel().setChat("o4-mini");
-        
+
         OpenAiChatService customModelService = new OpenAiChatService(client, customProperties, errorMessagesProperties);
 
         List<String> chunks = new ArrayList<>();
@@ -214,28 +200,21 @@ class OpenAiChatServiceStreamingTest {
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
         customModelService.streamResponse(
-            new ChatCompletionCommand(
-                "Analyze this email",
-                "Email context here",
-                List.of(),
-                true,
-                "minimal",
-                false
-            ),
-            event -> {
-                if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
-                    chunks.add(rendered.html());
-                }
-            },
-            () -> completed.set(true),
-            errorRef::set
-        );
+                new ChatCompletionCommand(
+                        "Analyze this email", "Email context here", List.of(), true, "minimal", false),
+                event -> {
+                    if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
+                        chunks.add(rendered.html());
+                    }
+                },
+                () -> completed.set(true),
+                errorRef::set);
 
         assertEquals(2, chunks.size());
         assertTrue(chunks.get(0).contains("This is a response."));
         assertTrue(completed.get());
         assertNull(errorRef.get());
-        
+
         // Verify reasoning was applied
         ArgumentCaptor<ResponseCreateParams> paramsCaptor = ArgumentCaptor.forClass(ResponseCreateParams.class);
         Mockito.verify(client.responses()).createStreaming(paramsCaptor.capture());
@@ -248,35 +227,28 @@ class OpenAiChatServiceStreamingTest {
     void streamResponse_withStandardModel_streamsWithoutReasoningEffort() {
         OpenAIClient client = Mockito.mock(OpenAIClient.class, Answers.RETURNS_DEEP_STUBS);
         Stream<ResponseStreamEvent> eventStream = Stream.of(createMockEvent("Standard response here."));
-        
+
         Mockito.when(client.responses().createStreaming(any(ResponseCreateParams.class)))
-            .thenReturn(streamResponse(eventStream));
+                .thenReturn(streamResponse(eventStream));
 
         OpenAiProperties standardProperties = new OpenAiProperties();
         standardProperties.getModel().setChat("gpt-4o-mini");
-        
-        OpenAiChatService standardModelService = new OpenAiChatService(client, standardProperties, errorMessagesProperties);
+
+        OpenAiChatService standardModelService =
+                new OpenAiChatService(client, standardProperties, errorMessagesProperties);
 
         List<String> chunks = new ArrayList<>();
         AtomicBoolean completed = new AtomicBoolean(false);
 
         standardModelService.streamResponse(
-            new ChatCompletionCommand(
-                "Test message",
-                "Context",
-                List.of(),
-                false,
-                null,
-                false
-            ),
-            event -> {
-                if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
-                    chunks.add(rendered.html());
-                }
-            },
-            () -> completed.set(true),
-            (error) -> {}
-        );
+                new ChatCompletionCommand("Test message", "Context", List.of(), false, null, false),
+                event -> {
+                    if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
+                        chunks.add(rendered.html());
+                    }
+                },
+                () -> completed.set(true),
+                (error) -> {});
 
         assertFalse(chunks.isEmpty());
         assertTrue(completed.get());
@@ -291,18 +263,10 @@ class OpenAiChatServiceStreamingTest {
         AtomicBoolean completed = new AtomicBoolean(false);
 
         nullClientService.streamResponse(
-            new ChatCompletionCommand(
-                "Test",
-                "Context",
-                List.of(),
-                true,
-                "standard",
-                false
-            ),
-            event -> {},
-            () -> completed.set(true),
-            errorRef::set
-        );
+                new ChatCompletionCommand("Test", "Context", List.of(), true, "standard", false),
+                event -> {},
+                () -> completed.set(true),
+                errorRef::set);
 
         assertNotNull(errorRef.get());
         assertTrue(errorRef.get().getMessage().contains("not configured"));
@@ -311,13 +275,13 @@ class OpenAiChatServiceStreamingTest {
 
     private ResponseStreamEvent createMockEvent(String content) {
         ResponseTextDeltaEvent textDelta = ResponseTextDeltaEvent.builder()
-            .delta(content)
-            .contentIndex(0)
-            .outputIndex(0)
-            .sequenceNumber(0)
-            .itemId("msg-" + Math.abs(content.hashCode()))
-            .logprobs(List.of())
-            .build();
+                .delta(content)
+                .contentIndex(0)
+                .outputIndex(0)
+                .sequenceNumber(0)
+                .itemId("msg-" + Math.abs(content.hashCode()))
+                .logprobs(List.of())
+                .build();
 
         return ResponseStreamEvent.ofOutputTextDelta(textDelta);
     }
@@ -349,14 +313,13 @@ class OpenAiChatServiceStreamingTest {
 
         // Simulate chunks with delays (like reasoning model thinking)
         Stream<ResponseStreamEvent> eventStream = Stream.of(
-            createMockEvent("Initial response...\n\n"),
-            delayedEvent(createMockEvent("After delay 1...\n\n"), 100), // 100ms delay
-            delayedEvent(createMockEvent("After delay 2...\n\n"), 200), // 200ms delay
-            createMockEvent("Final response.")
-        );
+                createMockEvent("Initial response...\n\n"),
+                delayedEvent(createMockEvent("After delay 1...\n\n"), 100), // 100ms delay
+                delayedEvent(createMockEvent("After delay 2...\n\n"), 200), // 200ms delay
+                createMockEvent("Final response."));
 
         Mockito.when(client.responses().createStreaming(any(ResponseCreateParams.class)))
-            .thenReturn(streamResponse(eventStream));
+                .thenReturn(streamResponse(eventStream));
 
         OpenAiProperties properties = new OpenAiProperties();
         properties.getModel().setChat("gpt-4o-mini");
@@ -368,22 +331,14 @@ class OpenAiChatServiceStreamingTest {
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
         service.streamResponse(
-            new ChatCompletionCommand(
-                "Complex analysis question",
-                "Context",
-                List.of(),
-                true,
-                "high",
-                false
-            ),
-            event -> {
-                if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
-                    chunks.add(rendered.html());
-                }
-            },
-            () -> completed.set(true),
-            errorRef::set
-        );
+                new ChatCompletionCommand("Complex analysis question", "Context", List.of(), true, "high", false),
+                event -> {
+                    if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
+                        chunks.add(rendered.html());
+                    }
+                },
+                () -> completed.set(true),
+                errorRef::set);
 
         assertEquals(4, chunks.size(), "Should receive all 4 chunks despite delays");
         assertTrue(completed.get(), "Stream should complete successfully");
@@ -405,7 +360,7 @@ class OpenAiChatServiceStreamingTest {
         }
 
         Mockito.when(client.responses().createStreaming(any(ResponseCreateParams.class)))
-            .thenReturn(streamResponse(events.stream()));
+                .thenReturn(streamResponse(events.stream()));
 
         OpenAiProperties properties = new OpenAiProperties();
         properties.getModel().setChat("gpt-4o-mini");
@@ -417,22 +372,14 @@ class OpenAiChatServiceStreamingTest {
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
         service.streamResponse(
-            new ChatCompletionCommand(
-                "Long analysis",
-                "Context",
-                List.of(),
-                false,
-                null,
-                false
-            ),
-            event -> {
-                if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
-                    chunks.add(rendered.html());
-                }
-            },
-            () -> completed.set(true),
-            errorRef::set
-        );
+                new ChatCompletionCommand("Long analysis", "Context", List.of(), false, null, false),
+                event -> {
+                    if (event instanceof OpenAiChatService.StreamEvent.RenderedHtml rendered) {
+                        chunks.add(rendered.html());
+                    }
+                },
+                () -> completed.set(true),
+                errorRef::set);
 
         assertFalse(chunks.isEmpty(), "Should receive chunks");
         assertTrue(completed.get(), "Stream should complete");
@@ -449,7 +396,7 @@ class OpenAiChatServiceStreamingTest {
 
         // Simulate timeout by throwing SocketTimeoutException
         Mockito.when(client.responses().createStreaming(any(ResponseCreateParams.class)))
-            .thenThrow(new RuntimeException("Read timed out"));
+                .thenThrow(new RuntimeException("Read timed out"));
 
         OpenAiProperties properties = new OpenAiProperties();
         properties.getModel().setChat("gpt-4o-mini");
@@ -460,23 +407,14 @@ class OpenAiChatServiceStreamingTest {
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
         service.streamResponse(
-            new ChatCompletionCommand(
-                "Test",
-                "Context",
-                List.of(),
-                false,
-                null,
-                false
-            ),
-            event -> {},
-            () -> completed.set(true),
-            errorRef::set
-        );
+                new ChatCompletionCommand("Test", "Context", List.of(), false, null, false),
+                event -> {},
+                () -> completed.set(true),
+                errorRef::set);
 
         assertFalse(completed.get(), "Stream should not complete on timeout");
         assertNotNull(errorRef.get(), "Should have error");
-        assertTrue(errorRef.get().getMessage().contains("timed out"),
-            "Error should indicate timeout");
+        assertTrue(errorRef.get().getMessage().contains("timed out"), "Error should indicate timeout");
     }
 
     private ResponseStreamEvent delayedEvent(ResponseStreamEvent event, long delayMs) {

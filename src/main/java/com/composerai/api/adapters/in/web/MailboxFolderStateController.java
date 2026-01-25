@@ -34,9 +34,10 @@ public class MailboxFolderStateController {
     private final ExecuteMessageMoveUseCase executeMessageMoveUseCase;
     private final SessionTokenResolver sessionTokenResolver;
 
-    public MailboxFolderStateController(LoadMailboxStateSnapshotUseCase loadMailboxStateSnapshotUseCase,
-                                        ExecuteMessageMoveUseCase executeMessageMoveUseCase,
-                                        SessionTokenResolver sessionTokenResolver) {
+    public MailboxFolderStateController(
+            LoadMailboxStateSnapshotUseCase loadMailboxStateSnapshotUseCase,
+            ExecuteMessageMoveUseCase executeMessageMoveUseCase,
+            SessionTokenResolver sessionTokenResolver) {
         this.loadMailboxStateSnapshotUseCase = loadMailboxStateSnapshotUseCase;
         this.executeMessageMoveUseCase = executeMessageMoveUseCase;
         this.sessionTokenResolver = sessionTokenResolver;
@@ -48,10 +49,9 @@ public class MailboxFolderStateController {
      */
     @GetMapping("/{mailboxId}/state")
     public ResponseEntity<MailboxStateSnapshotResult> loadMailboxState(
-        @PathVariable String mailboxId,
-        @RequestParam(name = "session", required = false) String sessionToken,
-        HttpServletRequest request
-    ) {
+            @PathVariable String mailboxId,
+            @RequestParam(name = "session", required = false) String sessionToken,
+            HttpServletRequest request) {
         String sessionId = sessionTokenResolver.resolveSessionId(request, sessionToken);
         log.debug("GET /api/mailboxes/{}/state (session={})", mailboxId, sessionId);
         MailboxStateSnapshotResult result = loadMailboxStateSnapshotUseCase.load(mailboxId, sessionId);
@@ -63,23 +63,19 @@ public class MailboxFolderStateController {
      */
     @PostMapping("/{mailboxId}/messages/{messageId}/move")
     public ResponseEntity<MessageMoveResult> moveMessage(
-        @PathVariable String mailboxId,
-        @PathVariable String messageId,
-        @Valid @RequestBody MessageMoveRequest requestBody,
-        HttpServletRequest servletRequest
-    ) {
-        if (requestBody.mailboxId() != null && !requestBody.mailboxId().isBlank()
-            && !requestBody.mailboxId().equalsIgnoreCase(mailboxId)) {
+            @PathVariable String mailboxId,
+            @PathVariable String messageId,
+            @Valid @RequestBody MessageMoveRequest requestBody,
+            HttpServletRequest servletRequest) {
+        if (requestBody.mailboxId() != null
+                && !requestBody.mailboxId().isBlank()
+                && !requestBody.mailboxId().equalsIgnoreCase(mailboxId)) {
             throw new IllegalArgumentException("mailboxId in path and body must match");
         }
         String sessionId = sessionTokenResolver.resolveSessionId(servletRequest, requestBody.sessionId());
         log.debug("POST /api/mailboxes/{}/messages/{}/move (session={})", mailboxId, messageId, sessionId);
-        MessageMoveCommand command = new MessageMoveCommand(
-            mailboxId,
-            sessionId,
-            messageId,
-            requestBody.targetFolderId()
-        );
+        MessageMoveCommand command =
+                new MessageMoveCommand(mailboxId, sessionId, messageId, requestBody.targetFolderId());
         MessageMoveResult result = executeMessageMoveUseCase.execute(command);
         return ResponseEntity.ok(result);
     }

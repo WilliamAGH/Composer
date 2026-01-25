@@ -5,11 +5,10 @@ import com.composerai.api.domain.model.MessageFolderPlacement;
 import com.composerai.api.domain.model.MessageId;
 import com.composerai.api.domain.model.SessionId;
 import com.composerai.api.domain.port.SessionScopedMessagePlacementPort;
-import org.springframework.stereotype.Component;
-
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.stereotype.Component;
 
 /**
  * Simple in-memory placement store keyed by mailbox + session + message.
@@ -23,8 +22,9 @@ public class SessionScopedMessagePlacementAdapter implements SessionScopedMessag
     private final Map<MailboxId, SessionStore> store = new ConcurrentHashMap<>();
 
     @Override
-    public Optional<MessageFolderPlacement> findPlacement(MailboxId mailboxId, SessionId sessionId, MessageId messageId) {
-        // mailboxKey returns a String, but store is keyed by MailboxId. 
+    public Optional<MessageFolderPlacement> findPlacement(
+            MailboxId mailboxId, SessionId sessionId, MessageId messageId) {
+        // mailboxKey returns a String, but store is keyed by MailboxId.
         // We should normalize first, then wrap.
         SessionStore sessionStore = store.get(new MailboxId(mailboxKey(mailboxId.value())));
         if (sessionStore == null) {
@@ -46,9 +46,7 @@ public class SessionScopedMessagePlacementAdapter implements SessionScopedMessag
     public void savePlacement(MessageFolderPlacement placement) {
         // Normalize key
         MailboxId normalizedKey = new MailboxId(mailboxKey(placement.mailboxId().value()));
-        store
-            .computeIfAbsent(normalizedKey, key -> new SessionStore())
-            .put(placement.sessionId(), placement);
+        store.computeIfAbsent(normalizedKey, key -> new SessionStore()).put(placement.sessionId(), placement);
     }
 
     @Override
@@ -95,9 +93,8 @@ public class SessionScopedMessagePlacementAdapter implements SessionScopedMessag
         }
 
         void put(SessionId sessionId, MessageFolderPlacement placement) {
-            sessions
-                .computeIfAbsent(sessionId, key -> new ConcurrentHashMap<>())
-                .put(placement.messageId(), placement);
+            sessions.computeIfAbsent(sessionId, key -> new ConcurrentHashMap<>())
+                    .put(placement.messageId(), placement);
         }
 
         void remove(SessionId sessionId, MessageId messageId) {

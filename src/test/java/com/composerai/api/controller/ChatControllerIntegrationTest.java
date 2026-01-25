@@ -1,25 +1,5 @@
 package com.composerai.api.controller;
 
-import com.composerai.api.ai.AiFunctionCatalogHelper;
-import com.composerai.api.config.AiFunctionCatalogProperties;
-import com.composerai.api.dto.ChatRequest;
-import com.composerai.api.dto.ChatResponse;
-import com.composerai.api.service.ChatService;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-
-import java.util.concurrent.Executor;
-import java.util.concurrent.ScheduledExecutorService;
-
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
@@ -28,6 +8,25 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.composerai.api.ai.AiFunctionCatalogHelper;
+import com.composerai.api.config.AiFunctionCatalogProperties;
+import com.composerai.api.dto.ChatRequest;
+import com.composerai.api.dto.ChatResponse;
+import com.composerai.api.service.ChatService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ScheduledExecutorService;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest({ChatController.class, SystemController.class})
 @Import(ChatControllerIntegrationTest.TestConfig.class)
@@ -63,7 +62,8 @@ class ChatControllerIntegrationTest {
         mockMvc.perform(get(HEALTH_ENDPOINT))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.status").value("ok"));
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.status")
+                        .value("ok"));
     }
 
     @Test
@@ -71,8 +71,8 @@ class ChatControllerIntegrationTest {
         ChatRequest request = new ChatRequest("", null, 5);
 
         mockMvc.perform(post(CHAT_ENDPOINT)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -85,10 +85,11 @@ class ChatControllerIntegrationTest {
         Mockito.when(chatService.processChat(any())).thenReturn(chatResponse);
 
         mockMvc.perform(post(CHAT_ENDPOINT)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.response").value("Hi"));
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.response")
+                        .value("Hi"));
     }
 
     @Test
@@ -98,25 +99,29 @@ class ChatControllerIntegrationTest {
         request.setEmailContext("A".repeat(20_001));
 
         mockMvc.perform(post(CHAT_ENDPOINT)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void chatEndpoint_ShouldReturnSanitizedHtmlField() throws Exception {
-        ChatResponse chatResponse = new ChatResponse("**Hi**", "conv-1", java.util.List.of(), "answer", "<p><strong>Hi</strong></p>");
+        ChatResponse chatResponse =
+                new ChatResponse("**Hi**", "conv-1", java.util.List.of(), "answer", "<p><strong>Hi</strong></p>");
         Mockito.when(chatService.processChat(any())).thenReturn(chatResponse);
 
         ChatRequest request = new ChatRequest("Hi", null, 5);
 
         mockMvc.perform(post(CHAT_ENDPOINT)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isOk())
-            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.sanitizedHtml").value("<p><strong>Hi</strong></p>"))
-            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.renderedHtml").value("<p><strong>Hi</strong></p>"))
-            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.response").value("**Hi**"));
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.sanitizedHtml")
+                        .value("<p><strong>Hi</strong></p>"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.renderedHtml")
+                        .value("<p><strong>Hi</strong></p>"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.response")
+                        .value("**Hi**"));
     }
 
     @Test
@@ -129,53 +134,59 @@ class ChatControllerIntegrationTest {
         // Mock the heartbeat executor to return a mock ScheduledFuture
         java.util.concurrent.ScheduledFuture<?> mockFuture = Mockito.mock(java.util.concurrent.ScheduledFuture.class);
         Mockito.<java.util.concurrent.ScheduledFuture<?>>when(sseHeartbeatExecutor.scheduleAtFixedRate(
-            any(Runnable.class),
-            org.mockito.ArgumentMatchers.anyLong(),
-            org.mockito.ArgumentMatchers.anyLong(),
-            any(java.util.concurrent.TimeUnit.class)
-        )).thenReturn(mockFuture);
+                        any(Runnable.class),
+                        org.mockito.ArgumentMatchers.anyLong(),
+                        org.mockito.ArgumentMatchers.anyLong(),
+                        any(java.util.concurrent.TimeUnit.class)))
+                .thenReturn(mockFuture);
 
         doAnswer(invocation -> {
-            Runnable runnable = invocation.getArgument(0);
-            runnable.run();
-            return null;
-        }).when(chatStreamExecutor).execute(any(Runnable.class));
+                    Runnable runnable = invocation.getArgument(0);
+                    runnable.run();
+                    return null;
+                })
+                .when(chatStreamExecutor)
+                .execute(any(Runnable.class));
 
         doAnswer(invocation -> {
-            invocation.<java.util.function.Consumer<String>>getArgument(3).accept("<p>Hello <strong>World</strong></p>");
-            invocation.<java.util.function.Consumer<?>>getArgument(4).accept(null);
-            invocation.<Runnable>getArgument(5).run();
-            return null;
-        }).when(chatService).streamChat(
-            any(ChatRequest.class),
-            org.mockito.ArgumentMatchers.anyString(),
-            org.mockito.ArgumentMatchers.anyString(),
-            org.mockito.ArgumentMatchers.<java.util.function.Consumer<String>>any(),
-            org.mockito.ArgumentMatchers.any(),
-            any(Runnable.class),
-            org.mockito.ArgumentMatchers.<java.util.function.Consumer<Throwable>>any()
-        );
+                    invocation
+                            .<java.util.function.Consumer<String>>getArgument(3)
+                            .accept("<p>Hello <strong>World</strong></p>");
+                    invocation.<java.util.function.Consumer<?>>getArgument(4).accept(null);
+                    invocation.<Runnable>getArgument(5).run();
+                    return null;
+                })
+                .when(chatService)
+                .streamChat(
+                        any(ChatRequest.class),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.<java.util.function.Consumer<String>>any(),
+                        org.mockito.ArgumentMatchers.any(),
+                        any(Runnable.class),
+                        org.mockito.ArgumentMatchers.<java.util.function.Consumer<Throwable>>any());
 
         ChatRequest request = new ChatRequest("Summarize", null, 5);
 
         mockMvc.perform(post(CHAT_ENDPOINT + "/stream")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isOk())
-            .andExpect(content().string(containsString("event:rendered_html")))
-            .andExpect(content().string(containsString("<strong>World</strong>")))
-            .andExpect(content().string(not(containsString("<script>"))));
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("event:rendered_html")))
+                .andExpect(content().string(containsString("<strong>World</strong>")))
+                .andExpect(content().string(not(containsString("<script>"))));
 
-        Mockito.verify(chatService).streamChat(
-            any(ChatRequest.class),
-            org.mockito.ArgumentMatchers.anyString(),
-            org.mockito.ArgumentMatchers.anyString(),
-            org.mockito.ArgumentMatchers.<java.util.function.Consumer<String>>any(),
-            org.mockito.ArgumentMatchers.any(),
-            any(Runnable.class),
-            org.mockito.ArgumentMatchers.<java.util.function.Consumer<Throwable>>any()
-        );
+        Mockito.verify(chatService)
+                .streamChat(
+                        any(ChatRequest.class),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.<java.util.function.Consumer<String>>any(),
+                        org.mockito.ArgumentMatchers.any(),
+                        any(Runnable.class),
+                        org.mockito.ArgumentMatchers.<java.util.function.Consumer<Throwable>>any());
     }
+
     @TestConfiguration
     static class TestConfig {
         @Bean

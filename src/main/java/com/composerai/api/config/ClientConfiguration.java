@@ -6,17 +6,21 @@ import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.core.Timeout;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.QdrantGrpcClient;
+import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.context.annotation.Configuration;
-
-import java.time.Duration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 @Slf4j
 @Configuration
-@EnableConfigurationProperties({OpenAiProperties.class, QdrantProperties.class, MagicEmailProperties.class, AiFunctionCatalogProperties.class})
+@EnableConfigurationProperties({
+    OpenAiProperties.class,
+    QdrantProperties.class,
+    MagicEmailProperties.class,
+    AiFunctionCatalogProperties.class
+})
 public class ClientConfiguration {
 
     private String resolveApiKey(OpenAiProperties openAiProperties) {
@@ -32,7 +36,8 @@ public class ClientConfiguration {
     public OpenAIClient openAIClient(OpenAiProperties openAiProperties) {
         String apiKey = resolveApiKey(openAiProperties);
         if (StringUtils.isMissing(apiKey)) {
-            log.warn("API key not configured via openai.api.key or OPENAI_API_KEY. Service will operate in degraded mode.");
+            log.warn(
+                    "API key not configured via openai.api.key or OPENAI_API_KEY. Service will operate in degraded mode.");
             return null;
         }
 
@@ -44,18 +49,19 @@ public class ClientConfiguration {
             // Detect provider capabilities for logging
             ProviderCapabilities capabilities = ProviderCapabilities.detect(baseUrl);
             log.info("Configuring OpenAI-compatible client: {}", capabilities);
-            
+
             OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder()
-                .apiKey(apiKey)
-                .timeout(Timeout.builder()
-                    .connect(Duration.ofSeconds(10))
-                    // Use finite timeout for SSE to prevent hung connections
-                    // Set to SSE timeout + 30s grace period to allow proper server-side timeout handling
-                    .read(Duration.ofSeconds(openAiProperties.getStream().getTimeoutSeconds() + 30))
-                    .write(Duration.ofSeconds(30))
-                    .build())
-                // Disable strict response validation so unknown streaming events do not kill SSE.
-                .responseValidation(false);
+                    .apiKey(apiKey)
+                    .timeout(Timeout.builder()
+                            .connect(Duration.ofSeconds(10))
+                            // Use finite timeout for SSE to prevent hung connections
+                            // Set to SSE timeout + 30s grace period to allow proper server-side timeout handling
+                            .read(Duration.ofSeconds(
+                                    openAiProperties.getStream().getTimeoutSeconds() + 30))
+                            .write(Duration.ofSeconds(30))
+                            .build())
+                    // Disable strict response validation so unknown streaming events do not kill SSE.
+                    .responseValidation(false);
 
             if (!StringUtils.isBlank(baseUrl)) {
                 builder.baseUrl(baseUrl.trim());
@@ -74,7 +80,7 @@ public class ClientConfiguration {
      * RestClient for making raw HTTP requests to OpenRouter API.
      * Used when OpenRouter-specific features (like provider routing) are needed
      * that aren't supported by the OpenAI SDK's strongly-typed API.
-     * 
+     *
      * Only used when base URL is OpenRouter - otherwise normal SDK client is used.
      */
     @ConditionalOnProperty(prefix = "openai.api", name = "key", matchIfMissing = true)
@@ -85,25 +91,22 @@ public class ClientConfiguration {
             log.warn("API key not configured - RestClient will fail if used");
             return null;
         }
-        
+
         String baseUrl = openAiProperties.getApi().getBaseUrl();
-        
+
         return org.springframework.web.client.RestClient.builder()
-            .baseUrl(baseUrl)
-            .defaultHeader("Authorization", "Bearer " + apiKey.trim())
-            .defaultHeader("Content-Type", "application/json")
-            .defaultHeader("HTTP-Referer", "https://composerai.app") // Optional: for OpenRouter analytics
-            .defaultHeader("X-Title", "Composer") // Optional: for OpenRouter analytics
-            .build();
+                .baseUrl(baseUrl)
+                .defaultHeader("Authorization", "Bearer " + apiKey.trim())
+                .defaultHeader("Content-Type", "application/json")
+                .defaultHeader("HTTP-Referer", "https://composerai.app") // Optional: for OpenRouter analytics
+                .defaultHeader("X-Title", "Composer") // Optional: for OpenRouter analytics
+                .build();
     }
 
     @Bean(destroyMethod = "close")
     public QdrantClient qdrantClient(QdrantProperties qdrantProperties) {
         QdrantGrpcClient.Builder builder = QdrantGrpcClient.newBuilder(
-            qdrantProperties.getHost(),
-            qdrantProperties.getPort(),
-            qdrantProperties.isUseTls()
-        );
+                qdrantProperties.getHost(), qdrantProperties.getPort(), qdrantProperties.isUseTls());
 
         // Attach API key if provided
         String apiKey = qdrantProperties.getApiKey();

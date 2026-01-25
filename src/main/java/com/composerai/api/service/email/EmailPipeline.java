@@ -1,20 +1,19 @@
 /**
  * EmailPipeline: orchestrates extraction and conversion based on Options
- * 
+ *
  * @author William Callahan
  * @since 2025-09-18
  * @version 0.0.1
  */
-
 package com.composerai.api.service.email;
 
 import com.composerai.api.service.HtmlToText;
 import com.composerai.api.util.StringUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MailDateFormat;
 import jakarta.mail.internet.MimeMessage;
-import jakarta.mail.MessagingException;
-
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -26,12 +25,10 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.Locale;
-import java.util.Properties;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Properties;
 
 /**
  * EmailPipeline is a thin orchestrator
@@ -46,7 +43,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public final class EmailPipeline {
 
     private static final DateTimeFormatter DISPLAY_DATE_FORMAT =
-        DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' h:mm a XXX");
+            DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' h:mm a XXX");
 
     private EmailPipeline() {}
 
@@ -57,18 +54,32 @@ public final class EmailPipeline {
                 Session session = Session.getDefaultInstance(new Properties());
                 MimeMessage message = new MimeMessage(session, in);
                 String html = EmailExtractor.extractFirstHtml(message).orElse(null);
-                String text = html != null ? null : EmailExtractor.extractFirstPlainText(message).orElse("");
+                String text = html != null
+                        ? null
+                        : EmailExtractor.extractFirstPlainText(message).orElse("");
 
                 if (options.jsonOutput) {
-                    String plain = html != null ? HtmlConverter.convertHtml(html, HtmlToText.OutputFormat.PLAIN, options.urlsPolicy, options.suppressUtility) : HtmlConverter.cleanupOutput(text, options.suppressUtility);
-                    String markdown = html != null ? HtmlConverter.convertHtml(html, HtmlToText.OutputFormat.MARKDOWN, options.urlsPolicy, options.suppressUtility) : HtmlConverter.cleanupOutput(text, options.suppressUtility);
+                    String plain = html != null
+                            ? HtmlConverter.convertHtml(
+                                    html, HtmlToText.OutputFormat.PLAIN, options.urlsPolicy, options.suppressUtility)
+                            : HtmlConverter.cleanupOutput(text, options.suppressUtility);
+                    String markdown = html != null
+                            ? HtmlConverter.convertHtml(
+                                    html, HtmlToText.OutputFormat.MARKDOWN, options.urlsPolicy, options.suppressUtility)
+                            : HtmlConverter.cleanupOutput(text, options.suppressUtility);
                     Map<String, Object> meta = new HashMap<>();
                     meta.put("messageId", StringUtils.safe(message.getMessageID()));
                     meta.put("subject", StringUtils.safe(message.getSubject()));
                     meta.put("from", StringUtils.safe(EmailExtractor.formatAddresses(message.getFrom())));
-                    meta.put("to", StringUtils.safe(EmailExtractor.formatAddresses(message.getRecipients(jakarta.mail.Message.RecipientType.TO))));
-                    meta.put("cc", StringUtils.safe(EmailExtractor.formatAddresses(message.getRecipients(jakarta.mail.Message.RecipientType.CC))));
-                    
+                    meta.put(
+                            "to",
+                            StringUtils.safe(EmailExtractor.formatAddresses(
+                                    message.getRecipients(jakarta.mail.Message.RecipientType.TO))));
+                    meta.put(
+                            "cc",
+                            StringUtils.safe(EmailExtractor.formatAddresses(
+                                    message.getRecipients(jakarta.mail.Message.RecipientType.CC))));
+
                     // Extract and format date for user-friendly display
                     DateMetadata dateMetadata = extractDateMetadata(message);
                     meta.put("date", StringUtils.safe(dateMetadata.displayLabel()));
@@ -77,27 +88,33 @@ public final class EmailPipeline {
                     if (dateMetadata.source() != null) {
                         meta.put("dateSource", dateMetadata.source());
                     }
-                    
+
                     meta.put("source", "eml-file");
                     meta.put("path", Path.of(options.inputFile).getFileName().toString());
 
                     Map<String, Object> policies = Map.of(
-                        "flattenTables", Boolean.TRUE,
-                        "stripScripts", Boolean.TRUE,
-                        "urlsPolicy", options.urlsPolicy.name().toLowerCase(Locale.ROOT),
-                        "metadataIncluded", options.includeMetadata,
-                        "suppressUtility", options.suppressUtility
-                    );
+                            "flattenTables", Boolean.TRUE,
+                            "stripScripts", Boolean.TRUE,
+                            "urlsPolicy", options.urlsPolicy.name().toLowerCase(Locale.ROOT),
+                            "metadataIncluded", options.includeMetadata,
+                            "suppressUtility", options.suppressUtility);
 
-                    String id = meta.get("messageId") != null && !meta.get("messageId").toString().isBlank()
-                        ? meta.get("messageId").toString() : com.composerai.api.service.HtmlToText.normalizeBaseName(options.inputFile);
-                    Map<String, Object> doc = EmailDocumentBuilder.buildDocument(id, meta, plain, markdown, html, policies);
+                    String id = meta.get("messageId") != null
+                                    && !meta.get("messageId").toString().isBlank()
+                            ? meta.get("messageId").toString()
+                            : com.composerai.api.service.HtmlToText.normalizeBaseName(options.inputFile);
+                    Map<String, Object> doc =
+                            EmailDocumentBuilder.buildDocument(id, meta, plain, markdown, html, policies);
                     return new ObjectMapper().writeValueAsString(doc);
                 } else {
-                    String metaHeader = options.includeMetadata ? EmailExtractor.buildMetadataHeader(message, options.format) : "";
+                    String metaHeader =
+                            options.includeMetadata ? EmailExtractor.buildMetadataHeader(message, options.format) : "";
                     if (html != null) {
-                        String body = HtmlConverter.convertHtml(html, options.format, options.urlsPolicy, options.suppressUtility);
-                        if (!options.suppressUtility && options.format == HtmlToText.OutputFormat.PLAIN && (body == null || body.isBlank())) {
+                        String body = HtmlConverter.convertHtml(
+                                html, options.format, options.urlsPolicy, options.suppressUtility);
+                        if (!options.suppressUtility
+                                && options.format == HtmlToText.OutputFormat.PLAIN
+                                && (body == null || body.isBlank())) {
                             body = HtmlConverter.convertHtml(html, options.format, HtmlToText.UrlPolicy.KEEP, false);
                         }
                         return metaHeader + body;
@@ -109,17 +126,18 @@ public final class EmailPipeline {
             Charset cs = options.charset != null ? options.charset : StandardCharsets.UTF_8;
             String html = Files.readString(Path.of(options.inputFile), cs);
             if (options.jsonOutput) {
-                String plain = HtmlConverter.convertHtml(html, HtmlToText.OutputFormat.PLAIN, options.urlsPolicy, options.suppressUtility);
-                String markdown = HtmlConverter.convertHtml(html, HtmlToText.OutputFormat.MARKDOWN, options.urlsPolicy, options.suppressUtility);
+                String plain = HtmlConverter.convertHtml(
+                        html, HtmlToText.OutputFormat.PLAIN, options.urlsPolicy, options.suppressUtility);
+                String markdown = HtmlConverter.convertHtml(
+                        html, HtmlToText.OutputFormat.MARKDOWN, options.urlsPolicy, options.suppressUtility);
                 Map<String, Object> meta = new HashMap<>();
                 meta.put("source", "html-file");
                 meta.put("path", options.inputFile);
                 Map<String, Object> policies = Map.of(
-                    "flattenTables", Boolean.TRUE,
-                    "stripScripts", Boolean.TRUE,
-                    "urlsPolicy", options.urlsPolicy.name().toLowerCase(Locale.ROOT),
-                    "suppressUtility", options.suppressUtility
-                );
+                        "flattenTables", Boolean.TRUE,
+                        "stripScripts", Boolean.TRUE,
+                        "urlsPolicy", options.urlsPolicy.name().toLowerCase(Locale.ROOT),
+                        "suppressUtility", options.suppressUtility);
                 String id = com.composerai.api.service.HtmlToText.normalizeBaseName(options.inputFile);
                 Map<String, Object> doc = EmailDocumentBuilder.buildDocument(id, meta, plain, markdown, html, policies);
                 return new ObjectMapper().writeValueAsString(doc);
@@ -159,35 +177,32 @@ public final class EmailPipeline {
         OffsetDateTime headerDate = parseDateHeader(originalDateHeader);
         if (headerDate != null) {
             return new DateMetadata(
-                headerDate,
-                DISPLAY_DATE_FORMAT.format(headerDate),
-                headerDate.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                originalDateHeader,
-                "Date"
-            );
+                    headerDate,
+                    DISPLAY_DATE_FORMAT.format(headerDate),
+                    headerDate.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
+                    originalDateHeader,
+                    "Date");
         }
 
         OffsetDateTime receivedDate = parseReceivedDate(message);
         if (receivedDate != null) {
             return new DateMetadata(
-                receivedDate,
-                DISPLAY_DATE_FORMAT.format(receivedDate),
-                receivedDate.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                originalDateHeader,
-                "Received"
-            );
+                    receivedDate,
+                    DISPLAY_DATE_FORMAT.format(receivedDate),
+                    receivedDate.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
+                    originalDateHeader,
+                    "Received");
         }
 
         java.util.Date sentDate = message.getSentDate();
         if (sentDate != null) {
             OffsetDateTime utcFallback = OffsetDateTime.ofInstant(sentDate.toInstant(), ZoneOffset.UTC);
             return new DateMetadata(
-                utcFallback,
-                DISPLAY_DATE_FORMAT.format(utcFallback),
-                utcFallback.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                originalDateHeader,
-                "SentDate"
-            );
+                    utcFallback,
+                    DISPLAY_DATE_FORMAT.format(utcFallback),
+                    utcFallback.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
+                    originalDateHeader,
+                    "SentDate");
         }
 
         return new DateMetadata(null, null, null, originalDateHeader, null);
@@ -217,8 +232,8 @@ public final class EmailPipeline {
         return null;
     }
 
-    private record DateMetadata(OffsetDateTime timestamp, String displayLabel, String isoTimestamp,
-                                String originalHeader, String source) {
+    private record DateMetadata(
+            OffsetDateTime timestamp, String displayLabel, String isoTimestamp, String originalHeader, String source) {
         DateMetadata {
             if (timestamp != null && (displayLabel == null || displayLabel.isBlank())) {
                 displayLabel = DISPLAY_DATE_FORMAT.format(timestamp);

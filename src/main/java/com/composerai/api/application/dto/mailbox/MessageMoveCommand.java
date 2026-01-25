@@ -4,12 +4,7 @@ package com.composerai.api.application.dto.mailbox;
  * Command issued by controllers when a user requests to move a message between folders.
  * Encapsulates all identifiers required to route the action through the correct mailbox + session.
  */
-public record MessageMoveCommand(
-    String mailboxId,
-    String sessionId,
-    String messageId,
-    String targetFolderId
-) {
+public record MessageMoveCommand(String mailboxId, String sessionId, String messageId, String targetFolderId) {
 
     public MessageMoveCommand {
         if (mailboxId == null || mailboxId.isBlank()) {

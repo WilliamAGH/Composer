@@ -1,11 +1,10 @@
 /**
  * EmailExtractor: MIME/EML helpers to extract HTML/text and decode headers
- * 
+ *
  * @author William Callahan
  * @since 2025-09-18
  * @version 0.0.1
  */
-
 package com.composerai.api.service.email;
 
 import jakarta.mail.Address;
@@ -16,7 +15,6 @@ import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
 import jakarta.mail.internet.MimeUtility;
-
 import java.io.InputStream;
 import java.util.Date;
 import java.util.Optional;
@@ -99,11 +97,18 @@ public final class EmailExtractor {
                 String email = ia.getAddress();
                 try {
                     if (personal != null && !personal.isBlank()) personal = MimeUtility.decodeText(personal);
-                } catch (Exception ignore) { }
-                out = (personal != null && !personal.isBlank()) ? personal + " <" + email + ">" : (email != null ? email : ia.toString());
+                } catch (Exception ignore) {
+                }
+                out = (personal != null && !personal.isBlank())
+                        ? personal + " <" + email + ">"
+                        : (email != null ? email : ia.toString());
             } else {
                 String raw = addr.toString();
-                try { out = MimeUtility.decodeText(raw); } catch (Exception e) { out = raw; }
+                try {
+                    out = MimeUtility.decodeText(raw);
+                } catch (Exception e) {
+                    out = raw;
+                }
             }
             sb.append(out);
             if (i < addresses.length - 1) sb.append("; ");
@@ -114,14 +119,18 @@ public final class EmailExtractor {
     /**
      * Build a plain metadata header block (used by both plain and markdown flows)
      */
-    public static String buildMetadataHeader(MimeMessage message, com.composerai.api.service.HtmlToText.OutputFormat format) {
+    public static String buildMetadataHeader(
+            MimeMessage message, com.composerai.api.service.HtmlToText.OutputFormat format) {
         try {
             String from = formatAddresses(message.getFrom());
             String to = formatAddresses(message.getRecipients(jakarta.mail.Message.RecipientType.TO));
             String cc = formatAddresses(message.getRecipients(jakarta.mail.Message.RecipientType.CC));
             String subject = Optional.ofNullable(message.getSubject()).orElse("");
             Date sent = message.getSentDate();
-            String iso = sent != null ? java.time.OffsetDateTime.ofInstant(sent.toInstant(), java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME) : "";
+            String iso = sent != null
+                    ? java.time.OffsetDateTime.ofInstant(sent.toInstant(), java.time.ZoneId.systemDefault())
+                            .format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                    : "";
             StringBuilder sb = new StringBuilder(256);
             sb.append("Sender: ").append(from).append('\n');
             sb.append("Recipient(s): ").append(joinRecipients(to, cc)).append('\n');
@@ -140,5 +149,3 @@ public final class EmailExtractor {
         return !to.isBlank() ? to : cc;
     }
 }
-
-

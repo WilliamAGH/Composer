@@ -47,10 +47,9 @@ public class ChatRequest {
 
     // Optional: Thinking level/reasoning effort (minimal, low, medium, high)
     @Pattern(
-        regexp = "^(minimal|low|medium|high)$",
-        flags = { Pattern.Flag.CASE_INSENSITIVE },
-        message = "thinkingLevel must be one of: minimal, low, medium, high"
-    )
+            regexp = "^(minimal|low|medium|high)$",
+            flags = {Pattern.Flag.CASE_INSENSITIVE},
+            message = "thinkingLevel must be one of: minimal, low, medium, high")
     private String thinkingLevel;
 
     // Optional: Request JSON output instead of rendered HTML

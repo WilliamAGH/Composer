@@ -3,11 +3,10 @@ package com.composerai.api.dto;
 import com.composerai.api.util.StringUtils;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
@@ -23,7 +22,12 @@ public class ChatResponse {
     private String assistantMessageId;
 
     // Custom constructors for initialization with timestamp and sanitized HTML
-    public ChatResponse(String response, String conversationId, List<EmailContext> emailContext, String intent, String sanitizedHtml) {
+    public ChatResponse(
+            String response,
+            String conversationId,
+            List<EmailContext> emailContext,
+            String intent,
+            String sanitizedHtml) {
         this.timestamp = LocalDateTime.now();
         this.response = response;
         this.conversationId = conversationId;
@@ -36,8 +40,14 @@ public class ChatResponse {
         this(response, conversationId, emailContext, intent, null);
     }
 
-    public ChatResponse(String response, String conversationId, List<EmailContext> emailContext, String intent, String sanitizedHtml,
-                        String userMessageId, String assistantMessageId) {
+    public ChatResponse(
+            String response,
+            String conversationId,
+            List<EmailContext> emailContext,
+            String intent,
+            String sanitizedHtml,
+            String userMessageId,
+            String assistantMessageId) {
         this.timestamp = LocalDateTime.now();
         this.response = response;
         this.conversationId = conversationId;
@@ -67,11 +77,10 @@ public class ChatResponse {
     }
 
     public record EmailContext(
-        String emailId,
-        String subject,
-        String sender,
-        String snippet,
-        double relevanceScore,
-        LocalDateTime emailDate
-    ) {}
+            String emailId,
+            String subject,
+            String sender,
+            String snippet,
+            double relevanceScore,
+            LocalDateTime emailDate) {}
 }

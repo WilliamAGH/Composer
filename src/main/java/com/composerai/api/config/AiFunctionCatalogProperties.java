@@ -1,14 +1,13 @@
 package com.composerai.api.config;
 
 import com.composerai.api.ai.AiFunctionDefinition;
-import lombok.Getter;
-import lombok.Setter;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * Binds {@code ai.functions.*} properties into structured definitions that drive the AI helpers.
@@ -42,7 +41,8 @@ public class AiFunctionCatalogProperties {
         private String defaultInstruction;
         private AiFunctionDefinition.OutputFormat outputFormat = AiFunctionDefinition.OutputFormat.TEXT;
         private AiFunctionDefinition.SubjectMode subjectMode = AiFunctionDefinition.SubjectMode.OPTIONAL;
-        private AiFunctionDefinition.ContextStrategy contextStrategy = AiFunctionDefinition.ContextStrategy.EMAIL_AND_UPLOADS;
+        private AiFunctionDefinition.ContextStrategy contextStrategy =
+                AiFunctionDefinition.ContextStrategy.EMAIL_AND_UPLOADS;
         private boolean primary = false;
         private List<String> scopes = List.of("panel");
         private Map<String, String> defaultArgs = new LinkedHashMap<>();
@@ -136,7 +136,8 @@ You are summarizing a single email message taken from the context above. Follow 
 - Draw valuable insights without assumptions: every inference must be traceable to the supplied context.
 Additional guidance: {{instruction}}
 """);
-        summarize.setDefaultInstruction("Summarize the selected email itself (not a chat with the user) by highlighting its key decisions, asks, and action items.");
+        summarize.setDefaultInstruction(
+                "Summarize the selected email itself (not a chat with the user) by highlighting its key decisions, asks, and action items.");
         summarize.setOutputFormat(AiFunctionDefinition.OutputFormat.TEXT);
         summarize.setSubjectMode(AiFunctionDefinition.SubjectMode.NONE);
         summarize.setPrimary(true);
@@ -146,7 +147,8 @@ Additional guidance: {{instruction}}
         DefinitionProperties translate = new DefinitionProperties();
         translate.setLabel("AI Translation");
         translate.setCategory(AiFunctionDefinition.Category.TRANSLATION);
-        translate.setPromptTemplate("Translate the email context into {{targetLanguage}}. Preserve formatting and keep proper nouns unchanged. Treat metadata such as subject lines and timestamps as reference-only—do NOT restate them unless the user explicitly requests those details or they are required by the translation task. If no target language is specified, default to English. User guidance: {{instruction}}");
+        translate.setPromptTemplate(
+                "Translate the email context into {{targetLanguage}}. Preserve formatting and keep proper nouns unchanged. Treat metadata such as subject lines and timestamps as reference-only—do NOT restate them unless the user explicitly requests those details or they are required by the translation task. If no target language is specified, default to English. User guidance: {{instruction}}");
         translate.setDefaultInstruction("Translate the selected email into the requested language.");
         translate.setOutputFormat(AiFunctionDefinition.OutputFormat.TEXT);
         translate.setSubjectMode(AiFunctionDefinition.SubjectMode.NONE);
@@ -156,9 +158,13 @@ Additional guidance: {{instruction}}
         translationDefaults.put("targetLanguage", "Spanish");
         translate.setDefaultArgs(translationDefaults);
         Map<String, VariantProperties> translationVariants = new LinkedHashMap<>();
-        translationVariants.put("es", variant("Spanish", "Translate the email into Spanish.", Map.of("targetLanguage", "Spanish")));
-        translationVariants.put("pt", variant("Portuguese", "Translate the email into Portuguese.", Map.of("targetLanguage", "Portuguese")));
-        translationVariants.put("nl", variant("Dutch", "Translate the email into Dutch.", Map.of("targetLanguage", "Dutch")));
+        translationVariants.put(
+                "es", variant("Spanish", "Translate the email into Spanish.", Map.of("targetLanguage", "Spanish")));
+        translationVariants.put(
+                "pt",
+                variant("Portuguese", "Translate the email into Portuguese.", Map.of("targetLanguage", "Portuguese")));
+        translationVariants.put(
+                "nl", variant("Dutch", "Translate the email into Dutch.", Map.of("targetLanguage", "Dutch")));
         translate.setVariants(translationVariants);
         defaults.put("translate", translate);
 
@@ -189,7 +195,8 @@ Rules:
 - Never include prose outside the JSON block.
 User guidance: {{instruction}}
 """);
-        actionsMenu.setDefaultInstruction("Suggest three concise action prompts for the user (1-2 word labels) that either draft a reply, summarize next steps, or note a coming soon capability. Tailor suggestions to the email subject and participants.");
+        actionsMenu.setDefaultInstruction(
+                "Suggest three concise action prompts for the user (1-2 word labels) that either draft a reply, summarize next steps, or note a coming soon capability. Tailor suggestions to the email subject and participants.");
         actionsMenu.setOutputFormat(AiFunctionDefinition.OutputFormat.TEXT);
         actionsMenu.setSubjectMode(AiFunctionDefinition.SubjectMode.NONE);
         actionsMenu.setScopes(List.of("panel"));

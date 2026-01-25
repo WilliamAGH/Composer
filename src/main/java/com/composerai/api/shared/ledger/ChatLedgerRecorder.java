@@ -34,11 +34,10 @@ public class ChatLedgerRecorder {
     private final OpenAiProperties openAiProperties;
 
     public ChatLedgerRecorder(
-        ConversationLedgerService ledgerService,
-        EmailContextResolver emailContextResolver,
-        ObjectMapper objectMapper,
-        OpenAiProperties openAiProperties
-    ) {
+            ConversationLedgerService ledgerService,
+            EmailContextResolver emailContextResolver,
+            ObjectMapper objectMapper,
+            OpenAiProperties openAiProperties) {
         this.ledgerService = ledgerService;
         this.emailContextResolver = emailContextResolver;
         this.objectMapper = objectMapper;
@@ -46,15 +45,17 @@ public class ChatLedgerRecorder {
     }
 
     public void recordChatCompletion(
-        ChatRequest request,
-        String conversationId,
-        OpenAiChatService.Invocation invocation,
-        String assistantContent
-    ) {
+            ChatRequest request,
+            String conversationId,
+            OpenAiChatService.Invocation invocation,
+            String assistantContent) {
         boolean shouldPersist = ledgerService.enabled();
         boolean shouldLog = openAiProperties.isLocalDebugEnabled();
-        if ((!shouldPersist && !shouldLog) || request == null || invocation == null
-                || conversationId == null || assistantContent == null) {
+        if ((!shouldPersist && !shouldLog)
+                || request == null
+                || invocation == null
+                || conversationId == null
+                || assistantContent == null) {
             return;
         }
 
@@ -62,11 +63,9 @@ public class ChatLedgerRecorder {
         List<ConversationEvent> events = new ArrayList<>();
         List<ContextRef> contextRefs = buildContextRefs(request);
         List<EmailObject> emailObjects = emailContextResolver.resolveAll(
-            contextRefs.stream().map(ContextRef::refId).toList()
-        );
+                contextRefs.stream().map(ContextRef::refId).toList());
 
-        events.add(
-            new ConversationEvent(
+        events.add(new ConversationEvent(
                 IdGenerator.uuidV7(),
                 1,
                 null,
@@ -77,21 +76,19 @@ public class ChatLedgerRecorder {
                 contextRefs,
                 Map.of(),
                 null,
-                null
-            )
-        );
+                null));
 
         LlmCallPayload llmPayload = new LlmCallPayload(
-            "openai",
-            "responses",
-            invocation.requestParams() == null ? "unknown" : invocation.requestParams().getClass().getSimpleName(),
-            serialize(invocation.requestParams()),
-            serialize(invocation.response()),
-            invocation.usage()
-        );
+                "openai",
+                "responses",
+                invocation.requestParams() == null
+                        ? "unknown"
+                        : invocation.requestParams().getClass().getSimpleName(),
+                serialize(invocation.requestParams()),
+                serialize(invocation.response()),
+                invocation.usage());
 
-        events.add(
-            new ConversationEvent(
+        events.add(new ConversationEvent(
                 IdGenerator.uuidV7(),
                 2,
                 null,
@@ -102,12 +99,9 @@ public class ChatLedgerRecorder {
                 contextRefs,
                 Map.of("jsonOutput", request.isJsonOutput()),
                 llmPayload,
-                null
-            )
-        );
+                null));
 
-        events.add(
-            new ConversationEvent(
+        events.add(new ConversationEvent(
                 IdGenerator.uuidV7(),
                 3,
                 null,
@@ -118,9 +112,7 @@ public class ChatLedgerRecorder {
                 contextRefs,
                 Map.of("jsonOutput", request.isJsonOutput()),
                 null,
-                null
-            )
-        );
+                null));
 
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("journeyScope", request.getJourneyScope());
@@ -129,14 +121,8 @@ public class ChatLedgerRecorder {
         metadata.put("conversationId", conversationId);
         metadata.values().removeIf(Objects::isNull);
 
-        ConversationEnvelope envelope = new ConversationEnvelope(
-            conversationId,
-            now,
-            LEDGER_VERSION,
-            metadata,
-            events,
-            emailObjects
-        );
+        ConversationEnvelope envelope =
+                new ConversationEnvelope(conversationId, now, LEDGER_VERSION, metadata, events, emailObjects);
         logIfLocal(envelope);
         if (shouldPersist) {
             ledgerService.persist(envelope);

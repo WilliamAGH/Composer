@@ -4,6 +4,12 @@ import com.composerai.api.config.AppProperties;
 import com.composerai.api.util.StringUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,13 +17,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Exposes UI-only session utilities (outside /api/**) so the frontend can renew its UI nonce
@@ -34,12 +33,12 @@ public class UiSessionController {
     public UiSessionController(UiNonceService uiNonceService, AppProperties appProperties) {
         this.uiNonceService = uiNonceService;
         String configured = (appProperties != null && appProperties.getCors() != null)
-            ? appProperties.getCors().getAllowedOrigins()
-            : "";
+                ? appProperties.getCors().getAllowedOrigins()
+                : "";
         this.allowedOrigins = Arrays.stream(configured.split(","))
-            .map(String::trim)
-            .filter(s -> !s.isEmpty())
-            .collect(Collectors.toList());
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
     }
 
     /**
@@ -47,11 +46,12 @@ public class UiSessionController {
      * Guarded by strict Origin/Referer checks so only the first-party UI may call it.
      */
     @PostMapping("/nonce")
-    public ResponseEntity<Map<String, String>> refreshNonce(HttpServletRequest request,
-                                                            HttpSession session,
-                                                            @RequestHeader(value = "Origin", required = false) String origin,
-                                                            @RequestHeader(value = "Referer", required = false) String referer,
-                                                            @RequestHeader(value = "X-UI-Request", required = false) String currentNonce) {
+    public ResponseEntity<Map<String, String>> refreshNonce(
+            HttpServletRequest request,
+            HttpSession session,
+            @RequestHeader(value = "Origin", required = false) String origin,
+            @RequestHeader(value = "Referer", required = false) String referer,
+            @RequestHeader(value = "X-UI-Request", required = false) String currentNonce) {
         if (!isRequestAllowed(origin, referer, request)) {
             log.warn("Nonce refresh rejected – disallowed origin={} referer={}", origin, referer);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Disallowed origin"));
@@ -60,8 +60,8 @@ public class UiSessionController {
         HttpSession activeSession = (session != null) ? session : request.getSession(true);
         Object existing = activeSession.getAttribute("UI_NONCE");
         if (existing instanceof String existingNonce
-            && !StringUtils.isBlank(currentNonce)
-            && !existingNonce.equals(currentNonce)) {
+                && !StringUtils.isBlank(currentNonce)
+                && !existingNonce.equals(currentNonce)) {
             log.warn("UI nonce mismatch detected for session id={}", activeSession.getId());
         }
 
@@ -76,12 +76,12 @@ public class UiSessionController {
         // Same-origin POSTs may omit Origin/Referer in some browsers; allow only if host matches whitelist.
         if (StringUtils.isBlank(origin) && StringUtils.isBlank(referer)) {
             StringBuilder sb = new StringBuilder()
-                .append(request.getScheme())
-                .append("://")
-                .append(request.getServerName());
+                    .append(request.getScheme())
+                    .append("://")
+                    .append(request.getServerName());
             int port = request.getServerPort();
             boolean isDefaultPort = ("http".equalsIgnoreCase(request.getScheme()) && port == 80)
-                || ("https".equalsIgnoreCase(request.getScheme()) && port == 443);
+                    || ("https".equalsIgnoreCase(request.getScheme()) && port == 443);
             if (!isDefaultPort && port > 0) {
                 sb.append(':').append(port);
             }
@@ -99,9 +99,7 @@ public class UiSessionController {
         if (normalizedValue == null) {
             return false;
         }
-        return allowedOrigins.stream()
-            .map(this::normalizeOrigin)
-            .anyMatch(normalizedValue::equals);
+        return allowedOrigins.stream().map(this::normalizeOrigin).anyMatch(normalizedValue::equals);
     }
 
     /**
@@ -124,8 +122,8 @@ public class UiSessionController {
 
             // Omit default ports
             boolean isDefaultPort = ("http".equalsIgnoreCase(scheme) && port == 80)
-                || ("https".equalsIgnoreCase(scheme) && port == 443)
-                || port == -1;
+                    || ("https".equalsIgnoreCase(scheme) && port == 443)
+                    || port == -1;
 
             if (isDefaultPort) {
                 return scheme.toLowerCase() + "://" + host.toLowerCase();

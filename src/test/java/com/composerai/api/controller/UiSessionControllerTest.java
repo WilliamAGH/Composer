@@ -1,5 +1,9 @@
 package com.composerai.api.controller;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.composerai.api.config.AiFunctionCatalogProperties;
 import com.composerai.api.config.AppProperties;
 import org.junit.jupiter.api.Test;
@@ -9,10 +13,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(UiSessionController.class)
 @Import(UiSessionControllerTest.TestConfig.class)
@@ -25,18 +25,17 @@ class UiSessionControllerTest {
     void refreshNonce_returnsValue() throws Exception {
         MockHttpSession session = new MockHttpSession();
         mockMvc.perform(post("/ui/session/nonce")
-                .header("Origin", "http://localhost:8080")
-                .header("X-UI-Request", "nonce-old")
-                .session(session))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.uiNonce").isNotEmpty());
+                        .header("Origin", "http://localhost:8080")
+                        .header("X-UI-Request", "nonce-old")
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.uiNonce").isNotEmpty());
     }
 
     @Test
     void refreshNonce_rejectsDisallowedOrigin() throws Exception {
-        mockMvc.perform(post("/ui/session/nonce")
-                .header("Origin", "http://evil.test"))
-            .andExpect(status().isForbidden());
+        mockMvc.perform(post("/ui/session/nonce").header("Origin", "http://evil.test"))
+                .andExpect(status().isForbidden());
     }
 
     static class TestConfig {

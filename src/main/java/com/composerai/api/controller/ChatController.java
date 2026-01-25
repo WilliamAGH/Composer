@@ -44,12 +44,11 @@ public class ChatController {
     private final ErrorMessagesProperties errorMessages;
 
     public ChatController(
-        ChatService chatService,
-        @Qualifier("chatStreamExecutor") Executor chatStreamExecutor,
-        @Qualifier("sseHeartbeatExecutor") ScheduledExecutorService sseHeartbeatExecutor,
-        OpenAiProperties openAiProperties,
-        ErrorMessagesProperties errorMessages
-    ) {
+            ChatService chatService,
+            @Qualifier("chatStreamExecutor") Executor chatStreamExecutor,
+            @Qualifier("sseHeartbeatExecutor") ScheduledExecutorService sseHeartbeatExecutor,
+            OpenAiProperties openAiProperties,
+            ErrorMessagesProperties errorMessages) {
         this.chatService = chatService;
         this.chatStreamExecutor = chatStreamExecutor;
         this.sseHeartbeatExecutor = sseHeartbeatExecutor;
@@ -70,7 +69,9 @@ public class ChatController {
         response.setHeader("X-Accel-Buffering", "no");
         response.setHeader("Connection", "keep-alive");
         // Timeout hint for frontend - single source of truth from OpenAiProperties
-        response.setHeader("X-Stream-Timeout-Hint", String.valueOf(openAiProperties.getStream().getTimeoutMillis()));
+        response.setHeader(
+                "X-Stream-Timeout-Hint",
+                String.valueOf(openAiProperties.getStream().getTimeoutMillis()));
 
         request.setConversationId(StringUtils.ensureConversationId(request.getConversationId()));
         final String conversationId = request.getConversationId();
@@ -79,8 +80,9 @@ public class ChatController {
 
         // Timeout from single source of truth - OpenAiProperties.Stream
         SseEmitter emitter = new SseEmitter(openAiProperties.getStream().getTimeoutMillis());
-        
-        final java.util.concurrent.atomic.AtomicBoolean completed = new java.util.concurrent.atomic.AtomicBoolean(false);
+
+        final java.util.concurrent.atomic.AtomicBoolean completed =
+                new java.util.concurrent.atomic.AtomicBoolean(false);
         final java.util.concurrent.ScheduledFuture<?> heartbeatTask = scheduleHeartbeat(emitter, completed);
 
         emitter.onTimeout(() -> {
@@ -97,16 +99,10 @@ public class ChatController {
             heartbeatTask.cancel(false);
             log.info("SSE completed for conversationId={}", conversationId);
         });
-        
+
         try {
             StreamContext context = new StreamContext(
-                conversationId, 
-                userMessageId, 
-                assistantMessageId, 
-                emitter, 
-                completed, 
-                heartbeatTask
-            );
+                    conversationId, userMessageId, assistantMessageId, emitter, completed, heartbeatTask);
             chatStreamExecutor.execute(() -> executeStream(request, context));
         } catch (java.util.concurrent.RejectedExecutionException rejection) {
             handleRejectedExecution(emitter, heartbeatTask, rejection);
@@ -114,21 +110,21 @@ public class ChatController {
         return emitter;
     }
 
-    private java.util.concurrent.ScheduledFuture<?> scheduleHeartbeat(SseEmitter emitter, java.util.concurrent.atomic.AtomicBoolean completed) {
+    private java.util.concurrent.ScheduledFuture<?> scheduleHeartbeat(
+            SseEmitter emitter, java.util.concurrent.atomic.AtomicBoolean completed) {
         // Configuration source of truth: OpenAiProperties.Stream.getHeartbeatIntervalSeconds() - 10 seconds
         return sseHeartbeatExecutor.scheduleAtFixedRate(
-            () -> {
-                if (completed.get()) return;
-                try {
-                    emitter.send(SseEmitter.event().comment(HEARTBEAT_COMMENT));
-                } catch (Exception e) {
-                    log.debug("Failed to send heartbeat", e);
-                }
-            },
-            0L,
-            openAiProperties.getStream().getHeartbeatIntervalSeconds(),
-            java.util.concurrent.TimeUnit.SECONDS
-        );
+                () -> {
+                    if (completed.get()) return;
+                    try {
+                        emitter.send(SseEmitter.event().comment(HEARTBEAT_COMMENT));
+                    } catch (Exception e) {
+                        log.debug("Failed to send heartbeat", e);
+                    }
+                },
+                0L,
+                openAiProperties.getStream().getHeartbeatIntervalSeconds(),
+                java.util.concurrent.TimeUnit.SECONDS);
     }
 
     private void executeStream(ChatRequest request, StreamContext context) {
@@ -139,32 +135,27 @@ public class ChatController {
 
             // SSE Event Routing: StreamEvents → SSE named events → Frontend SSEEventRouter
             chatService.streamChat(
-                request,
-                context.userMessageId(),
-                context.assistantMessageId(),
-                token -> handleRenderedHtml(context.emitter(), jsonOutputRequested, token),
-                message -> handleReasoning(context.emitter(), message),
-                () -> handleCompletion(context),
-                error -> handleError(context, error)
-            );
+                    request,
+                    context.userMessageId(),
+                    context.assistantMessageId(),
+                    token -> handleRenderedHtml(context.emitter(), jsonOutputRequested, token),
+                    message -> handleReasoning(context.emitter(), message),
+                    () -> handleCompletion(context),
+                    error -> handleError(context, error));
         } catch (Exception e) {
             handleStartupError(context.emitter(), e);
         }
     }
 
     private void sendMetadata(StreamContext context, boolean jsonOutputRequested) throws java.io.IOException {
-        context.emitter().send(
-            SseEmitter.event()
-                .name(SseEventType.METADATA.getEventName())
-                .data(
-                    Map.of(
-                        "conversationId", context.conversationId(),
-                        "userMessageId", context.userMessageId(),
-                        "assistantMessageId", context.assistantMessageId(),
-                        "jsonOutput", jsonOutputRequested
-                    )
-                )
-        );
+        context.emitter()
+                .send(SseEmitter.event()
+                        .name(SseEventType.METADATA.getEventName())
+                        .data(Map.of(
+                                "conversationId", context.conversationId(),
+                                "userMessageId", context.userMessageId(),
+                                "assistantMessageId", context.assistantMessageId(),
+                                "jsonOutput", jsonOutputRequested)));
     }
 
     private void handleRenderedHtml(SseEmitter emitter, boolean jsonOutputRequested, String token) {
@@ -179,7 +170,9 @@ public class ChatController {
     private void handleReasoning(SseEmitter emitter, Object message) {
         try {
             if (message != null) {
-                emitter.send(SseEmitter.event().name(SseEventType.REASONING.getEventName()).data(message));
+                emitter.send(SseEmitter.event()
+                        .name(SseEventType.REASONING.getEventName())
+                        .data(message));
             }
         } catch (Exception e) {
             log.debug("Failed to forward reasoning event", e);
@@ -190,7 +183,10 @@ public class ChatController {
         context.completed().set(true);
         context.heartbeatTask().cancel(false);
         try {
-            context.emitter().send(SseEmitter.event().name(SseEventType.DONE.getEventName()).data(STREAM_DONE_DATA));
+            context.emitter()
+                    .send(SseEmitter.event()
+                            .name(SseEventType.DONE.getEventName())
+                            .data(STREAM_DONE_DATA));
             context.emitter().complete();
         } catch (Exception e) {
             context.emitter().completeWithError(e);
@@ -200,7 +196,10 @@ public class ChatController {
     private void handleError(StreamContext context, Throwable error) {
         String safeMessage = errorMessages.getStream().getError();
         try {
-            context.emitter().send(SseEmitter.event().name(SseEventType.ERROR.getEventName()).data(safeMessage));
+            context.emitter()
+                    .send(SseEmitter.event()
+                            .name(SseEventType.ERROR.getEventName())
+                            .data(safeMessage));
             log.warn("Streaming completed with error: {} (original: {})", safeMessage, error.getMessage());
         } catch (Exception ignored) {
             log.debug("Failed to send SSE error event", ignored);
@@ -212,7 +211,8 @@ public class ChatController {
 
     private void handleStartupError(SseEmitter emitter, Exception e) {
         try {
-            emitter.send(SseEmitter.event().name(SseEventType.ERROR.getEventName()).data(ERROR_STREAM_START));
+            emitter.send(
+                    SseEmitter.event().name(SseEventType.ERROR.getEventName()).data(ERROR_STREAM_START));
             log.error(ERROR_STREAM_START, e);
         } catch (Exception ignored) {
             log.debug("Failed to send SSE startup error event", ignored);
@@ -220,10 +220,14 @@ public class ChatController {
         emitter.complete();
     }
 
-    private void handleRejectedExecution(SseEmitter emitter, java.util.concurrent.ScheduledFuture<?> heartbeatTask, java.util.concurrent.RejectedExecutionException rejection) {
+    private void handleRejectedExecution(
+            SseEmitter emitter,
+            java.util.concurrent.ScheduledFuture<?> heartbeatTask,
+            java.util.concurrent.RejectedExecutionException rejection) {
         heartbeatTask.cancel(true);
         try {
-            emitter.send(SseEmitter.event().name(SseEventType.ERROR.getEventName()).data(ERROR_SERVER_BUSY));
+            emitter.send(
+                    SseEmitter.event().name(SseEventType.ERROR.getEventName()).data(ERROR_SERVER_BUSY));
         } catch (Exception ignored) {
             log.debug("Failed to send rejection SSE error", ignored);
         }
@@ -231,13 +235,12 @@ public class ChatController {
     }
 
     private record StreamContext(
-        String conversationId,
-        String userMessageId,
-        String assistantMessageId,
-        SseEmitter emitter,
-        java.util.concurrent.atomic.AtomicBoolean completed,
-        java.util.concurrent.ScheduledFuture<?> heartbeatTask
-    ) {}
+            String conversationId,
+            String userMessageId,
+            String assistantMessageId,
+            SseEmitter emitter,
+            java.util.concurrent.atomic.AtomicBoolean completed,
+            java.util.concurrent.ScheduledFuture<?> heartbeatTask) {}
 
     @PostMapping(value = "/insights/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter insightsStream(@Valid @RequestBody ChatRequest request, HttpServletResponse response) {

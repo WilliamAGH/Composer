@@ -1,14 +1,13 @@
 package com.composerai.api.service.email;
 
 import com.composerai.api.util.StringUtils;
+import java.util.ArrayList;
+import java.util.List;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Sanitizes email HTML for safe display in isolated iframes.
@@ -82,7 +81,7 @@ public final class EmailHtmlSanitizer {
         } catch (Exception e) {
             logger.error("HTML sanitization failed for input of {} chars: {}", html.length(), e.getMessage(), e);
             throw new SanitizationException(
-                String.format("Failed to sanitize HTML content (%d chars)", html.length()), e);
+                    String.format("Failed to sanitize HTML content (%d chars)", html.length()), e);
         }
     }
 
@@ -158,15 +157,12 @@ public final class EmailHtmlSanitizer {
             String style = el.attr("style");
 
             // Replace position:fixed with position:relative to avoid viewport overlays.
-            String cleanedStyle = style
-                .replaceAll("(?i)position\\s*:\\s*fixed", "position: relative");
+            String cleanedStyle = style.replaceAll("(?i)position\\s*:\\s*fixed", "position: relative");
 
             // Sanitize background-image URLs to prevent javascript: injection
             // but preserve valid http/https/data URLs for background images
             cleanedStyle = cleanedStyle.replaceAll(
-                "(?i)background-image\\s*:\\s*url\\s*\\(\\s*['\"]?\\s*javascript:[^)]*\\)",
-                ""
-            );
+                    "(?i)background-image\\s*:\\s*url\\s*\\(\\s*['\"]?\\s*javascript:[^)]*\\)", "");
 
             // Ensure images are constrained
             if (el.tagName().equalsIgnoreCase("img")) {
@@ -189,11 +185,10 @@ public final class EmailHtmlSanitizer {
             }
 
             // Remove dangerous CSS while preserving backgrounds and colors
-            String sanitized = css
-                .replaceAll("(?i)expression\\s*\\(", "")
-                .replaceAll("(?i)url\\s*\\(\\s*['\"]?\\s*javascript:", "url(")
-                .replaceAll("(?i)@import\\s+['\"]?\\s*javascript:", "")
-                .replaceAll("(?i)position\\s*:\\s*fixed", "position: relative");
+            String sanitized = css.replaceAll("(?i)expression\\s*\\(", "")
+                    .replaceAll("(?i)url\\s*\\(\\s*['\"]?\\s*javascript:", "url(")
+                    .replaceAll("(?i)@import\\s+['\"]?\\s*javascript:", "")
+                    .replaceAll("(?i)position\\s*:\\s*fixed", "position: relative");
 
             styleTag.text(sanitized);
         }
@@ -217,12 +212,12 @@ public final class EmailHtmlSanitizer {
         }
 
         String originalClass = body.hasAttr("class") ? body.attr("class").trim() : "";
-        String combinedClass = originalClass.isBlank()
-            ? "email-original-body"
-            : "email-original-body " + originalClass;
+        String combinedClass = originalClass.isBlank() ? "email-original-body" : "email-original-body " + originalClass;
 
         StringBuilder builder = new StringBuilder();
-        builder.append("<div class=\"").append(escapeAttributeValue(combinedClass)).append("\"");
+        builder.append("<div class=\"")
+                .append(escapeAttributeValue(combinedClass))
+                .append("\"");
 
         String bodyStyle = body.hasAttr("style") ? body.attr("style").trim() : "";
         if (!bodyStyle.isBlank()) {
@@ -234,7 +229,8 @@ public final class EmailHtmlSanitizer {
             appendAttribute(builder, "bgcolor", bodyBgColor);
         }
 
-        String bodyBackground = body.hasAttr("background") ? body.attr("background").trim() : "";
+        String bodyBackground =
+                body.hasAttr("background") ? body.attr("background").trim() : "";
         if (!bodyBackground.isBlank()) {
             String safeBackground = StringUtils.sanitizeUrl(bodyBackground);
             if (safeBackground != null) {
@@ -260,19 +256,18 @@ public final class EmailHtmlSanitizer {
     }
 
     private static void appendAttribute(StringBuilder builder, String name, String value) {
-        builder.append(' ').append(name)
-            .append("=\"")
-            .append(escapeAttributeValue(value))
-            .append("\"");
+        builder.append(' ')
+                .append(name)
+                .append("=\"")
+                .append(escapeAttributeValue(value))
+                .append("\"");
     }
 
     private static String escapeAttributeValue(String value) {
-        return value
-            .replace("&", "&amp;")
-            .replace("\"", "&quot;")
-            .replace("'", "&#39;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;");
+        return value.replace("&", "&amp;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
     }
-
 }
