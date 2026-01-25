@@ -110,3 +110,7 @@ See [00-architectural-entrypoint.md](00-architectural-entrypoint.md) for:
 - Complete file inventory
 - HTTP surface documentation
 - AI function catalog details
+
+## License
+
+See [`../LICENSE.md`](../LICENSE.md).

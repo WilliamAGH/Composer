@@ -3,6 +3,7 @@
   "description": "AI email that drafts and manages your mailbox",
   "version": "0.1.2",
   "private": true,
+  "license": "SEE LICENSE IN ../../LICENSE.md",
   "homepage": "https://composerai.app",
   "type": "module",
   "scripts": {

@@ -48,6 +48,14 @@ For production builds, alternative providers (OpenRouter, Ollama), and vector se
 - `/qa/diagnostics` – health checks
 - `/qa/email-file-parser` – parse `.eml` uploads
 
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+## License
+
+See [`LICENSE.md`](LICENSE.md). Copyright © 2026 William Callahan.
+
 ## More from William Callahan
 
 - [Other projects](https://williamcallahan.com/projects)
