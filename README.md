@@ -19,18 +19,18 @@ The desktop web app has floating windows, aiming to behave like a native OS app,
 
 ## Tech stack
 
-Spring Boot 3 (Java 21) · Svelte 5 + Vite · OpenAI-compatible LLM providers · Optional Qdrant vector search
+Spring Boot 3 (Java 25) · Svelte 4 + Vite · OpenAI-compatible LLM providers · Optional Qdrant vector search
 
 ## Quick start
 
-Requires JDK 21, Maven 3.9+, Node 20+.
+Requires JDK 25, Node 20+.
 
 ```bash
 export OPENAI_API_KEY="..."
 make dev
 ```
 
-Open `http://localhost:8080`. Sample emails live in `data/eml/`.
+Open `http://localhost:5173/app/email-client/`. Sample emails live in `data/eml/`.
 
 For production builds, alternative providers (OpenRouter, Ollama), and vector search setup, see [docs/getting-started.md](docs/getting-started.md).
 

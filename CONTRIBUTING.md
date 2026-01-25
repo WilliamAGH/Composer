@@ -16,8 +16,7 @@ Contributions and feedback are welcome, and Pull Requests (PRs) are encouraged.
 ## Development setup
 
 Requirements:
-- JDK 21
-- Maven 3.9+
+- JDK 25
 - Node 20+
 - `npm` (the only supported JS package manager for this repo)
 
@@ -25,7 +24,7 @@ Common commands:
 - `make dev` – run Spring Boot + Vite dev server together
 - `make run` – run Spring Boot only (`SPRING_PROFILES_ACTIVE=local`)
 - `make fe-dev` – run Vite dev server only
-- `make test` – run backend tests (`mvn test`)
+- `make test` – run backend tests (`./gradlew test`)
 - `make lint` – run Java + frontend linters
 - `make build` – build the frontend bundle + Spring Boot JAR
 
@@ -37,7 +36,7 @@ You’ll usually need `OPENAI_API_KEY` (or compatible provider credentials). See
 - Add tests for new functionality and bug fixes when feasible.
 - Update documentation when behavior, config, or UX changes.
 - Follow repository conventions in `AGENTS.md` (type-safety, clean boundaries, no monoliths, etc.).
-- Don’t commit build artifacts or local dependencies (`node_modules/`, `dist/`, `target/`, or `src/main/resources/static/app/email-client/`).
+- Don’t commit build artifacts or local dependencies (`node_modules/`, `dist/`, `build/`, `target/`, or `src/main/resources/static/app/email-client/`).
 
 ## Reporting issues
 

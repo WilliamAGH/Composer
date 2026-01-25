@@ -18,17 +18,11 @@ replay_pid*
 tmp/
 frontend/email-client/src/generated/tailwind.css
 
-# Maven
-target/
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.versionsBackup
-pom.xml.next
-release.properties
-dependency-reduced-pom.xml
-buildNumber.properties
-.mvn/timing.properties
-.mvn/wrapper/maven-wrapper.jar
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
 
 # IntelliJ IDEA (share only selected project files)
 .idea/
@@ -58,14 +52,15 @@ buildNumber.properties
 !.vscode/launch.json
 !.vscode/tasks.json
 
-# Eclipse - keep project config files
+# Eclipse
 .metadata/
 .recommenders/
 .target/
-# Keep these Eclipse project files:
-# .classpath
-# .project
-# .settings/
+.classpath
+.project
+.settings/
+.factorypath
+
 
 # Build outputs (root-level folders only)
 /out/

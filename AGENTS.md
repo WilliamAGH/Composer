@@ -109,9 +109,9 @@ Operational guidance for autonomous contributors extending Composer, an email AI
 
 ## [TL1] Tooling & Commands
 
-- [TL1a] Builds: `make build` (Vite → Maven), `make build-vite`, `make build-java`, `make run`.
-- [TL1b] Lint: `make lint` (SpotBugs, Oxlint, Stylelint, Maven Enforcer).
-- [TL1c] Tests: `mvn test`; validate Docker with `make docker-build TAG=local` when deps change.
+- [TL1a] Builds: `make build` (Vite → Gradle), `make build-vite`, `make build-java`, `make run`.
+- [TL1b] Lint: `make lint` (SpotBugs, Oxlint, Stylelint).
+- [TL1c] Tests: `make test`; validate Docker with `make docker-build TAG=local` when deps change.
 - [TL1d] Temporary artifacts: ALL markdown/test/doc/temp files in `tmp/` unless user requests otherwise; delete when done.
 - [TL1e] Never commit `node_modules/` or built assets (`src/main/resources/static/app/email-client/`).
 - [TL1f] Package Manager: `npm` is the ONLY supported package manager. `bun`, `pnpm`, `yarn` are PROHIBITED.
@@ -123,7 +123,7 @@ Operational guidance for autonomous contributors extending Composer, an email AI
 Refer to `README.md` for runtime versions and `docs/00-architectural-entrypoint.md` for architectural map.
 
 - Frontend: Svelte + Vite at `frontend/email-client`, served as static assets under `/app/email-client/`.
-- Backend: Java 21 + Spring Boot 3; REST under `/api/**`; typed `@ConfigurationProperties` under `app.` prefix.
+- Backend: Java 25 + Spring Boot 3; REST under `/api/**`; typed `@ConfigurationProperties` under `app.` prefix.
 
 ## Repository Structure
 
@@ -182,7 +182,7 @@ Before marking task complete:
 
 ## OpenAI SDK
 
-Before modifying OpenAI integration: read version from `pom.xml` (currently `4.6.1`), inspect artifact at `~/.m2/repository/com/openai/openai-java-core/<VERSION>/`, review examples at [`openai-java-example`](https://github.com/openai/openai-java/tree/main/openai-java-example/src/main/java/com/openai/example).
+Before modifying OpenAI integration: read version from `build.gradle.kts` (currently `4.6.1`), review examples at [`openai-java-example`](https://github.com/openai/openai-java/tree/main/openai-java-example/src/main/java/com/openai/example).
 
 ## Database & Migrations
 

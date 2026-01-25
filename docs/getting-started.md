@@ -2,8 +2,7 @@
 
 ## Requirements
 
-- JDK 21
-- Maven 3.9+
+- JDK 25
 - Node 20+ (frontend toolchain)
 
 ## Setup
