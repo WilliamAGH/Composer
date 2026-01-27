@@ -9,7 +9,8 @@ Operational guidance for autonomous contributors extending Composer, an email AI
 - [CC1a-d] Clean Code & DDD (Mandatory)
 - [ID1a-d] Idiomatic Patterns & Defaults
 - [FS1a-j] File Creation & Type Safety (exhaustive search, typed records, no maps, clean architecture)
-- [MO1a-c] No Monoliths (>500 LOC, shrink on touch, new features in new files)
+- [LOC1a-e] Line Count Ceiling (350 lines max; SRP enforcer; zero tolerance)
+- [MO1a-g] No Monoliths (Strict SRP; Decision Logic; Extension/OCP)
 - [ND1a-c] Naming Discipline (no generic names, intent-revealing identifiers)
 - [AB1a-d] Abstraction Discipline (no anemic wrappers, abstractions earn reuse)
 - [CS1a-h] Code Smells (primitive obsession, data clumps, feature envy, magic literals)
@@ -68,14 +69,27 @@ Operational guidance for autonomous contributors extending Composer, an email AI
 - [FS1f] Convention over configuration: prefer Spring Boot defaults and existing utilities.
 - [FS1g] Ban map/bloated tooling: no `toMap()/fromMap()`, no stringly helpers, no redundant adapters.
 - [FS1h] No generic utilities: reject `*Utils/*Helper/*Common`; banned: `BaseMapper<T>`, `GenericRepository<T,ID>`, `SharedUtils`.
-- [FS1i] Large files (>500 LOC): extract only pieces you touch into clean-architecture roots; avoid broad refactors.
+- [FS1i] File size discipline: see [LOC1a] and [MO1a].
 - [FS1j] Domain value types: identifiers (`EmailId`, `ThreadId`), amounts (`Money`), slugs wrap in records with constructor validation—never raw primitives across API boundaries.
+
+## [LOC1] Line Count Ceiling (Repo-Wide)
+
+- [LOC1a] All written, non-generated source files in this repository MUST be <= 350 lines (`wc -l`), including `AGENTS.md`
+- [LOC1b] SRP Enforcer: This 350-line "stick" forces modularity (DDD/SRP); > 350 lines = too many responsibilities (see [MO1d])
+- [LOC1c] Zero Tolerance: No edits allowed to files > 350 LOC (even legacy); you MUST split/retrofit before applying your change
+- [LOC1d] Enforcement: run line count checks and treat failures as merge blockers
+- [LOC1e] Exempt files: generated content, lockfiles, and large example/data dumps
 
 ## [MO1] No Monoliths
 
-- [MO1a] Monolith = >500 LOC or multi-concern catch-all (`*Utils/*Helper/*Common`).
-- [MO1b] New functionality starts in new files in canonical roots. Never add code to monoliths.
-- [MO1c] Shrink on touch: when editing monoliths, extract at least one seam and net-decrease file size. If unsafe, stop and ask.
+- [MO1a] No monoliths: avoid multi-concern files and catch-all modules
+- [MO1b] New work starts in new files; when touching a monolith, extract at least one seam
+- [MO1c] If safe extraction impossible, halt and ask
+- [MO1d] Strict SRP: each unit serves one actor; separate logic that changes for different reasons
+- [MO1e] Boundary rule: cross-module interaction happens only through explicit, typed contracts with dependencies pointing inward; don’t reach into other modules’ internals or mix web/use-case/domain/persistence concerns in one unit
+- [MO1f] Decision Logic: New feature → New file; Bug fix → Edit existing; Logic change → Extract/Replace
+- [MO1g] Extension (OCP): Add functionality via new classes/composition; do not modify stable code to add features
+-   Contract: `docs/contracts/code-change.md`
 
 ## [ND1] Naming Discipline
 
