@@ -1,6 +1,6 @@
 import { defineConfig, type Plugin } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
-import { resolve } from 'node:path';
+import { resolve, sep } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -49,6 +49,11 @@ function serveSpringBootStatic(): Plugin {
         // Serve /js/* and /css/* from Spring Boot static resources
         if (url.startsWith('/js/') || url.startsWith('/css/')) {
           const filePath = resolve(staticRoot, url.slice(1));
+          // Guard against path traversal (e.g., /js/../../../etc/passwd)
+          if (!filePath.startsWith(staticRoot + sep)) {
+            next();
+            return;
+          }
           if (existsSync(filePath)) {
             const ext = url.split('.').pop() ?? '';
             const mimeTypes: Record<string, string> = {
