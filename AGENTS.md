@@ -25,8 +25,6 @@ Operational guidance for autonomous contributors extending Composer, an email AI
 
 ---
 
----
-
 ## [ZA1] Epistemic Humility (Zero Assumptions)
 
 - [ZA1a] **Assume Blindness**: Your training data for APIs/versions is FALSE until verified.
@@ -240,7 +238,7 @@ Before marking task complete:
 
 ## OpenAI SDK
 
-Before modifying OpenAI integration: read version from `build.gradle.kts` (currently `4.6.1`), review examples at [`openai-java-example`](https://github.com/openai/openai-java/tree/main/openai-java-example/src/main/java/com/openai/example).
+Before modifying OpenAI integration: read version from `build.gradle.kts` (currently `4.16.1`), review examples at [`openai-java-example`](https://github.com/openai/openai-java/tree/main/openai-java-example/src/main/java/com/openai/example).
 
 ## Database & Migrations
 
