@@ -19,7 +19,7 @@ The desktop web app has floating windows, aiming to behave like a native OS app,
 
 ## Tech stack
 
-Spring Boot 3 (Java 25) · Svelte 4 + Vite · OpenAI-compatible LLM providers · Optional Qdrant vector search
+Spring Boot 3 (Java 25) · Svelte 5 + Vite · OpenAI-compatible LLM providers · Optional Qdrant vector search
 
 ## Quick start
 
