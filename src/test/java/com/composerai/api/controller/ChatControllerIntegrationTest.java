@@ -22,8 +22,8 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -36,25 +36,28 @@ class ChatControllerIntegrationTest {
     private static final String CHAT_ENDPOINT = BASE_API_PATH + "/chat";
     private static final String HEALTH_ENDPOINT = BASE_API_PATH + "/health";
 
+    /** Matches @Size(max = 20000) on ChatRequest.emailContext. */
+    private static final int EMAIL_CONTEXT_MAX_CHARS = 20_000;
+
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private ChatService chatService;
 
-    @MockBean(name = "chatStreamExecutor")
+    @MockitoBean(name = "chatStreamExecutor")
     private Executor chatStreamExecutor;
 
-    @MockBean(name = "sseHeartbeatExecutor")
+    @MockitoBean(name = "sseHeartbeatExecutor")
     private ScheduledExecutorService sseHeartbeatExecutor;
 
-    @MockBean
+    @MockitoBean
     private com.composerai.api.config.OpenAiProperties openAiProperties;
 
-    @MockBean
+    @MockitoBean
     private com.composerai.api.config.ErrorMessagesProperties errorMessagesProperties;
 
     @Test
@@ -96,7 +99,7 @@ class ChatControllerIntegrationTest {
     void chatEndpoint_WithOversizedEmailContext_ShouldReturnBadRequest() throws Exception {
         ChatRequest request = new ChatRequest("Hi", null, 5);
         request.setContextId("ctx-123");
-        request.setEmailContext("A".repeat(20_001));
+        request.setEmailContext("A".repeat(EMAIL_CONTEXT_MAX_CHARS + 1));
 
         mockMvc.perform(post(CHAT_ENDPOINT)
                         .contentType(MediaType.APPLICATION_JSON)
