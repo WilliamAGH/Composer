@@ -110,9 +110,9 @@ public class ContextBuilder {
             StoredContext stored = contexts.get(contextId);
             if (stored == null) {
                 logger.warn(
-                        "Context not found in registry: contextId={}, available keys: {}",
+                        "Context not found in registry: contextId={}, cachedCount={}",
                         contextId,
-                        contexts.keySet().stream().limit(5).toList());
+                        contexts.size());
                 return Optional.empty();
             }
             if (stored.isExpired()) {
