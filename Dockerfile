@@ -1,15 +1,31 @@
-ARG BASE_IMAGE=eclipse-temurin:25-jre
-ARG BUILD_IMAGE=eclipse-temurin:25-jdk
+##
+## Multi-stage build for ComposerAI (Svelte frontend + Spring Boot backend)
+## Note: Requires DOCKER_BUILDKIT=1 for cache mount support
+##
+ARG BASE_IMAGE=public.ecr.aws/docker/library/eclipse-temurin:25-jre
+ARG BUILD_IMAGE=public.ecr.aws/docker/library/eclipse-temurin:25-jdk
 ARG NODE_IMAGE=public.ecr.aws/docker/library/node:22.17.0-alpine
 
-# 1) Build frontend (Svelte) into Spring static path
+# ================================
+# 1) FRONTEND BUILD STAGE (Svelte)
+# ================================
 FROM ${NODE_IMAGE} AS fe_builder
 USER root
 WORKDIR /workspace
+
+# Copy package files first for npm cache layer
+COPY frontend/email-client/package*.json frontend/email-client/
+
+# Install dependencies with cache mount
+RUN --mount=type=cache,target=/root/.npm \
+    cd frontend/email-client && npm ci
+
 # Copy entire repo so Vite outDir relative path resolves to src/main/resources/static/...
 COPY . .
 WORKDIR /workspace/frontend/email-client
-RUN npm ci && npm run build && \
+
+# Build frontend
+RUN npm run build && \
     echo "Verifying frontend build output..." && \
     if [ ! -d ../../src/main/resources/static/app/email-client ]; then \
         echo "ERROR: Frontend build output directory missing - check npm build logs"; \
@@ -21,33 +37,69 @@ RUN npm ci && npm run build && \
         ls -la ../../src/main/resources/static/app/email-client/; \
     fi
 
-# 2) Build backend (Spring Boot) with Gradle, including built frontend assets
+# ================================
+# 2) BACKEND BUILD STAGE (Spring Boot)
+# ================================
 FROM ${BUILD_IMAGE} AS builder
 WORKDIR /workspace
-COPY gradle/ gradle/
-COPY gradlew build.gradle.kts settings.gradle.kts gradle.properties ./
-# Grant execution rights to gradlew
-RUN chmod +x gradlew
-# Download dependencies (this layer will be cached if gradle files don't change)
-RUN ./gradlew dependencies --no-daemon
 
+# 1. Gradle wrapper (rarely changes)
+COPY gradlew .
+COPY gradle/ gradle/
+RUN chmod +x gradlew
+
+# 2. Build configuration (changes occasionally)
+COPY build.gradle.kts settings.gradle.kts gradle.properties ./
+
+# 3. Download dependencies with cache mount
+RUN --mount=type=cache,target=/root/.gradle \
+    ./gradlew dependencies --no-daemon --quiet
+
+# 4. Copy source and frontend assets
 COPY src src
-# Overlay built FE assets into resources before packaging so they are bundled in the JAR
 COPY --from=fe_builder /workspace/src/main/resources/static/app/email-client /workspace/src/main/resources/static/app/email-client
-RUN echo "Verifying frontend assets before Gradle build..." && \
+
+# 5. Build JAR with cache mount
+RUN --mount=type=cache,target=/root/.gradle \
+    echo "Verifying frontend assets before Gradle build..." && \
     ls -la /workspace/src/main/resources/static/app/email-client/ && \
     ./gradlew bootJar --no-daemon -x test
 
-# 3) Runtime image
+# ================================
+# 3) RUNTIME STAGE
+# ================================
 FROM ${BASE_IMAGE} AS runtime
+
+# 1. System packages (never changes) - FIRST for maximum cache reuse
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. Create non-root user (never changes)
+RUN groupadd --system app \
+    && useradd --uid 10001 --gid app --home-dir /app --no-create-home --shell /usr/sbin/nologin app
+
 WORKDIR /app
+
+# 3. Static data (rarely changes)
+COPY data /app/data
+
+# 4. Environment (rarely changes)
 ENV SPRING_PROFILES_ACTIVE=prod
 ENV JAVA_OPTS=""
-# Copy application JAR
+
+# 5. Application JAR (changes every build) - LAST for optimal caching
 COPY --from=builder /workspace/build/libs/*.jar /app/app.jar
-# Copy static assets (also present inside the JAR) for optional external serving
+
+# 6. Copy static assets (also present inside the JAR) for optional external serving
 COPY --from=builder /workspace/src/main/resources/static /app/static
-# Copy bundled sample email data for the email client view
-COPY data /app/data
+
+# 7. Finalize permissions
+RUN chown -R app:app /app
+USER app
+
 EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -fsS --connect-timeout 2 --max-time 3 http://localhost:8080/actuator/health || exit 1
+
 ENTRYPOINT ["/bin/sh","-c","java ${JAVA_OPTS} -jar /app/app.jar"]
