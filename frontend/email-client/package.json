@@ -24,6 +24,7 @@
     "lint:all": "npm run lint && npm run lint:css"
   },
   "dependencies": {
+    "glob": "^10.5.0",
     "lucide-svelte": "^0.453.0",
     "zod": "^3.25.76"
   },
