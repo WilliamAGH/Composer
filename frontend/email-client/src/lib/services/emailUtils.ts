@@ -25,7 +25,6 @@ type MessageLike = Partial<EmailMessage> & {
   emailBodyTransformedText?: string | null;
   emailBodyTransformedMarkdown?: string | null;
   emailBodyHtml?: string | null;
-  contextForAI?: string | null;
 };
 
 export function mapEmailMessage(message: MessageLike = {}, index = 0) {
@@ -53,7 +52,7 @@ export function mapEmailMessage(message: MessageLike = {}, index = 0) {
     avatar: message?.avatarUrl || message?.companyLogoUrl || '',
     labels: Array.isArray(message?.labels) ? message.labels : [],
     companyLogoUrl: message?.companyLogoUrl || null,
-    contextForAi: message?.contextForAi || message?.contextForAI || null
+    contextForAi: message?.contextForAi || null
   };
 }
 

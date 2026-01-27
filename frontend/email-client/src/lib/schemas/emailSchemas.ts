@@ -8,10 +8,33 @@
 import { z } from 'zod/v4';
 
 /**
- * Schema for individual email messages from the backend.
- * Fields use nullish() where API may omit OR send null.
+ * Type guard for plain objects with string keys.
+ * Arrays pass typeof === 'object' but should not be treated as field containers.
  */
-export const EmailMessageSchema = z.object({
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Normalizes backend field naming to frontend conventions.
+ * Backend uses @JsonProperty("contextForAI") but frontend uses contextForAi.
+ * Zod strips unknown keys, so we must normalize before validation.
+ */
+function normalizeEmailFields(data: unknown): unknown {
+  if (!isPlainObject(data)) return data;
+
+  // Copy contextForAI → contextForAi if backend sent uppercase variant
+  if ('contextForAI' in data && !('contextForAi' in data)) {
+    return { ...data, contextForAi: data.contextForAI };
+  }
+  return data;
+}
+
+/**
+ * Core schema shape for email messages.
+ * Separated from preprocessing for clean type inference.
+ */
+const EmailMessageSchemaShape = z.object({
   id: z.string(),
   contextId: z.string().nullish(),
   senderName: z.string().nullish(),
@@ -34,6 +57,16 @@ export const EmailMessageSchema = z.object({
   preview: z.string(),
   contextForAi: z.string().nullish()
 });
+
+/**
+ * Schema for individual email messages from the backend.
+ * Fields use nullish() where API may omit OR send null.
+ * Preprocesses to normalize contextForAI → contextForAi field naming.
+ */
+export const EmailMessageSchema = z.preprocess(
+  normalizeEmailFields,
+  EmailMessageSchemaShape
+);
 
 /**
  * TypeScript type derived from schema - single source of truth.
