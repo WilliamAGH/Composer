@@ -25,4 +25,4 @@
       emitClose();
     }
   }}
-/>
+></button>

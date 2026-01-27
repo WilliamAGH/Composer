@@ -34,7 +34,15 @@
   export let formatFullDateFn = () => '';
 
   const dispatch = createEventDispatcher();
-  const preferredVariantOrder = ['es', 'pt', 'nl'];
+
+  /** Ordered list of translation language codes shown in the translate submenu. */
+  const PREFERRED_TRANSLATION_LANGUAGES = ['es', 'pt', 'nl'];
+  /** Delay in ms before emitting command to allow menu animation to complete. */
+  const MENU_ANIMATION_DELAY_MS = 100;
+  /** Vertical offset in px for positioning the overflow menu below its trigger. */
+  const MENU_VERTICAL_OFFSET_PX = 8;
+  /** Gray placeholder avatar with question mark, shown when email.avatar and companyLogoUrl are unavailable. */
+  const DEFAULT_AVATAR_SVG = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 120 120%22%3E%3Crect fill=%22%23e2e8f0%22 width=%22120%22 height=%22120%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22system-ui%22 font-size=%2248%22 fill=%22%2394a3b8%22%3E%3F%3C/text%3E%3C/svg%3E';
   let moveMenuOpen = false;
   let localMoveMenuButton = null;
   let moveMenuRef = null;
@@ -54,7 +62,7 @@
   function buildVariantOptions(rawVariants) {
     if (!Array.isArray(rawVariants)) return [];
     const map = new Map(rawVariants.map((variant) => [variant.key, variant]));
-    return preferredVariantOrder.map((key) => map.get(key)).filter(Boolean);
+    return PREFERRED_TRANSLATION_LANGUAGES.map((key) => map.get(key)).filter(Boolean);
   }
 
   function handleVariantSelect(variantKey) {
@@ -62,7 +70,7 @@
     // Defer to ensure menu animations can complete before any parent re-renders
     setTimeout(() => {
       emit('commandSelect', { key: translateEntry.key, variantKey });
-    }, 100);
+    }, MENU_ANIMATION_DELAY_MS);
     closeMoreMenu();
   }
 
@@ -135,7 +143,7 @@
   function positionOverflowMenu() {
     if (!moreMenuButton || !moreMenuRef) return;
     const buttonRect = moreMenuButton.getBoundingClientRect();
-    moreMenuRef.style.top = `${buttonRect.bottom + 8}px`;
+    moreMenuRef.style.top = `${buttonRect.bottom + MENU_VERTICAL_OFFSET_PX}px`;
   }
 
   $: if (moreMenuOpen && moreMenuButton && moreMenuRef) {
@@ -158,7 +166,7 @@
           </button>
         {:else}
           <img
-            src={email.avatar || email.companyLogoUrl || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 120 120%22%3E%3Crect fill=%22%23e2e8f0%22 width=%22120%22 height=%22120%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22system-ui%22 font-size=%2248%22 fill=%22%2394a3b8%22%3E%3F%3C/text%3E%3C/svg%3E'}
+            src={email.avatar || email.companyLogoUrl || DEFAULT_AVATAR_SVG}
             alt={escapeHtmlFn(email.from)}
             class="email-header-mobile__avatar"
             loading="lazy" />
@@ -252,7 +260,7 @@
                   <ChevronLeft class="h-4 w-4" />
                   <span>Back</span>
                 </button>
-                <div class="mobile-overflow-menu__divider" />
+                <div class="mobile-overflow-menu__divider"></div>
                 <div class="mobile-overflow-menu__eyebrow">Translate To</div>
                 {#each orderedVariants as variant (variant.key)}
                   <button type="button" class="mobile-overflow-menu__item" on:click={() => handleVariantSelect(variant.key)}>
@@ -260,7 +268,7 @@
                     <span>{variant.label}</span>
                   </button>
                 {/each}
-                <div class="mobile-overflow-menu__divider" />
+                <div class="mobile-overflow-menu__divider"></div>
                 <button type="button" class="mobile-overflow-menu__item" on:click={() => { emit('comingSoon', { label: 'Translate customization' }); closeMoreMenu(); }}>
                   <Sparkles class="h-4 w-4" />
                   <span>Customize</span>
@@ -292,7 +300,7 @@
   {:else}
     <div class="flex items-start gap-3">
       <div class="flex items-start gap-3 min-w-0 flex-1">
-        <img src={email.avatar || email.companyLogoUrl || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 120 120%22%3E%3Crect fill=%22%23e2e8f0%22 width=%22120%22 height=%22120%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22system-ui%22 font-size=%2248%22 fill=%22%2394a3b8%22%3E%3F%3C/text%3E%3C/svg%3E'} alt={escapeHtmlFn(email.from)} class="h-12 w-12 rounded-full object-cover shrink-0" loading="lazy" />
+        <img src={email.avatar || email.companyLogoUrl || DEFAULT_AVATAR_SVG} alt={escapeHtmlFn(email.from)} class="h-12 w-12 rounded-full object-cover shrink-0" loading="lazy" />
         <div class="min-w-0 flex-1">
           <h2 class="text-lg font-semibold text-slate-900 break-words">{escapeHtmlFn(email.subject)}</h2>
           <div class="flex items-center gap-1 text-sm text-slate-600 flex-wrap">
