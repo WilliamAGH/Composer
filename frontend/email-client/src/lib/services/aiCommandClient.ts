@@ -172,13 +172,19 @@ export function createAiCommandClient({
     journey.advance(journeyToken, 'ai:context-search');
 
     try {
-      const data = await executeCatalogCommand(command, payload);
+      const validationResult = await executeCatalogCommand(command, payload);
+      if (!validationResult.success) {
+        // Validation failure already logged by executeCatalogCommand
+        journey.fail(journeyToken);
+        throw new Error('AI command response validation failed');
+      }
+      const responseData = validationResult.data;
       journey.advance(journeyToken, 'ai:llm-thinking');
       journey.complete(journeyToken);
-      if (conversationKey && data?.conversationId) {
-        ledger.write(conversationKey, data.conversationId);
+      if (conversationKey && responseData.conversationId) {
+        ledger.write(conversationKey, responseData.conversationId);
       }
-      return data;
+      return responseData;
     } catch (error) {
       journey.fail(journeyToken);
       throw error;

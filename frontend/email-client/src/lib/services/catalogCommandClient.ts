@@ -1,4 +1,14 @@
-import { postJsonWithNonce } from './sessionNonceClient';
+/**
+ * AI catalog command client with Zod-validated responses.
+ * All responses are validated at runtime - validation failures are logged with full context.
+ */
+
+import { postJsonValidated, postJsonVoid } from './sessionNonceClient';
+import {
+  ChatResponsePayloadSchema,
+  type ChatResponsePayload
+} from '../schemas/catalogSchemas';
+import type { ValidationResult } from '../validation/result';
 
 export interface ChatRequestPayload {
   message: string;
@@ -23,43 +33,34 @@ export interface ChatRequestPayload {
   targetLabel?: string | null;
 }
 
-export interface ChatResponseEmailContext {
-  emailId: string;
-  subject: string;
-  sender: string;
-  snippet: string;
-  relevanceScore: number;
-  emailDate: string;
-}
-
-export interface ChatResponsePayload {
-  response?: string | null;
-  sanitizedHtml?: string | null;
-  sanitizedHTML?: string | null;
-  conversationId?: string | null;
-  emailContext?: ChatResponseEmailContext[];
-  timestamp?: string;
-  intent?: string | null;
-  userMessageId?: string | null;
-  assistantMessageId?: string | null;
-  renderedHtml?: string | null;
-}
-
-/**
- * Calls the backend catalog command endpoint so every UI surface reuses the same transport + retry logic.
- */
-export async function executeCatalogCommand(commandKey: string, payload: ChatRequestPayload): Promise<ChatResponsePayload> {
-  if (!commandKey) {
-    throw new Error('commandKey is required');
-  }
-  return postJsonWithNonce<ChatResponsePayload>(`/api/catalog-commands/${encodeURIComponent(commandKey)}/execute`, payload);
-}
-
 export interface DraftContextPayload {
   contextId: string;
   content: string;
 }
 
+/**
+ * Executes an AI catalog command with Zod validation.
+ * Returns discriminated union - callers MUST check success before using data.
+ */
+export async function executeCatalogCommand(
+  commandKey: string,
+  payload: ChatRequestPayload
+): Promise<ValidationResult<ChatResponsePayload>> {
+  if (!commandKey) {
+    throw new Error('commandKey is required');
+  }
+  return postJsonValidated(
+    `/api/catalog-commands/${encodeURIComponent(commandKey)}/execute`,
+    ChatResponsePayloadSchema,
+    `catalog-command:${commandKey}`,
+    payload
+  );
+}
+
+/**
+ * Uploads draft context for AI processing.
+ * Uses postJsonVoid since response is empty (202 Accepted).
+ */
 export async function uploadDraftContext(payload: DraftContextPayload): Promise<void> {
   if (!payload?.contextId) {
     throw new Error('contextId is required');
@@ -67,5 +68,8 @@ export async function uploadDraftContext(payload: DraftContextPayload): Promise<
   if (!payload?.content) {
     throw new Error('content is required');
   }
-  await postJsonWithNonce('/api/catalog-commands/draft-context', payload);
+  await postJsonVoid('/api/catalog-commands/draft-context', payload);
 }
+
+// Re-export types for callers
+export type { ChatResponsePayload };

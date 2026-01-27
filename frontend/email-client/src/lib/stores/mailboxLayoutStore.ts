@@ -1,11 +1,21 @@
 import { derived, writable, get } from 'svelte/store';
-import { computeMailboxCounts, mapEmailMessage, type FrontendEmailMessage } from '../services/emailUtils';
+import { computeMailboxCounts } from '../services/emailUtils';
 import { filterEmailsByMailbox } from '../services/mailboxFiltering';
-import { fetchMailboxStateSnapshot, moveMailboxMessage, type MailboxStateSnapshotResult, type MessageMoveResult } from '../services/mailboxStateClient';
+import { fetchMailboxStateSnapshot, moveMailboxMessage, type MailboxStateSnapshot, type MessageMoveResult } from '../services/mailboxStateClient';
+import {
+  normalizeMessages,
+  normalizeDraftMessage,
+  normalizeEffectiveFolderMap,
+  normalizeFolderId,
+  mergeLabelsWithFolder,
+  deriveFolderFromLabels,
+  resolveFolderFromMap,
+  type FrontendEmailMessage
+} from './mailboxFolderLabels';
 
 type Message = FrontendEmailMessage;
 type FolderMap = Record<string, string>;
-type SnapshotPayload = MailboxStateSnapshotResult | MessageMoveResult | null;
+type SnapshotPayload = MailboxStateSnapshot | MessageMoveResult | null;
 
 /**
  * Creates the mailbox layout store that tracks message payloads, folder placements, drafts, and drawer UI.
@@ -145,7 +155,7 @@ export function createMailboxLayoutStore(
   function applyMailboxMove(messageId: string, targetMailbox: string) {
     updateEmailsAndCounts((list) =>
       list.map((entry) =>
-        entry.id === messageId ? { ...entry, labels: mergeLabels(entry.labels || [], targetMailbox) } : entry
+        entry.id === messageId ? { ...entry, labels: mergeLabelsWithFolder(entry.labels || [], targetMailbox) } : entry
       )
     );
     updateFolderMapping(messageId, targetMailbox);
@@ -179,19 +189,24 @@ export function createMailboxLayoutStore(
    */
   async function loadMailboxState(mailboxId: string) {
     if (!mailboxId) return null;
-    const snapshot = await fetchMailboxStateSnapshot(mailboxId);
-    if (snapshot?.messages) {
+    const validationResult = await fetchMailboxStateSnapshot(mailboxId);
+    if (!validationResult.success) {
+      // Validation failure already logged by fetchMailboxStateSnapshot
+      return null;
+    }
+    const snapshot = validationResult.data;
+    if (snapshot.messages) {
       hydrateEmails(snapshot.messages, snapshot.effectiveFolders || null);
-    } else if (snapshot?.effectiveFolders) {
+    } else if (snapshot.effectiveFolders) {
       setEffectiveFolders(snapshot.effectiveFolders);
     }
-    if (snapshot?.folderCounts) {
+    if (snapshot.folderCounts) {
       mailboxCounts.set(snapshot.folderCounts);
     }
-    if (snapshot?.placements) {
+    if (snapshot.placements) {
       messagePlacements.set(snapshot.placements);
     }
-    if (!snapshot?.messages && !snapshot?.effectiveFolders) {
+    if (!snapshot.messages && !snapshot.effectiveFolders) {
       setEffectiveFolders(null);
     }
     return snapshot;
@@ -209,10 +224,19 @@ export function createMailboxLayoutStore(
     markMovePending(messageId);
     applyMailboxMove(messageId, targetFolderId);
     try {
-      const result = await moveMailboxMessage({ mailboxId, messageId, targetFolderId });
-      reconcileMailboxMoveResult(result);
+      const validationResult = await moveMailboxMessage({ mailboxId, messageId, targetFolderId });
+      if (!validationResult.success) {
+        // Validation failure already logged - revert optimistic update
+        if (previousLabels) {
+          revertMailboxMove(messageId, previousLabels, previousFolderId);
+        }
+        registerMoveError(messageId, 'Server response validation failed');
+        return null;
+      }
+      const moveResult = validationResult.data;
+      reconcileMailboxMoveResult(moveResult);
       clearMovePending(messageId);
-      return result;
+      return moveResult;
     } catch (error) {
       if (previousLabels) {
         revertMailboxMove(messageId, previousLabels, previousFolderId);
@@ -248,7 +272,7 @@ export function createMailboxLayoutStore(
   function markDraftAsSent(draftId: string | null) {
     if (!draftId) return;
     updateEmailsAndCounts((list) =>
-      list.map((entry) => (entry.id === draftId ? { ...entry, labels: mergeLabels(entry.labels || [], 'sent') } : entry))
+      list.map((entry) => (entry.id === draftId ? { ...entry, labels: mergeLabelsWithFolder(entry.labels || [], 'sent') } : entry))
     );
     updateFolderMapping(draftId, 'sent');
     updatePlacementForMessage(draftId, 'sent');
@@ -390,91 +414,4 @@ export function createMailboxLayoutStore(
     deleteDraftMessage,
     resolveFolderForMessage
   };
-}
-
-function normalizeMessages(list: any[]) {
-  if (!Array.isArray(list)) return [];
-  return list.map((message, index) => (isUiMessage(message) ? message : mapEmailMessage(message, index)));
-}
-
-function isUiMessage(message: any): message is Message {
-  return Boolean(message && typeof message.from === 'string' && typeof message.subject === 'string' && 'contentText' in message);
-}
-
-function mergeLabels(existing: string[], targetMailbox: string) {
-  const labels = Array.isArray(existing) ? existing.map((label) => `${label}`.toLowerCase()) : [];
-  const cleaned = labels.filter((label) => !EXCLUSIVE_LABELS.has(label));
-  if (targetMailbox === 'archive') cleaned.push('archive');
-  if (targetMailbox === 'trash') cleaned.push('trash');
-  if (targetMailbox === 'sent') cleaned.push('sent');
-  if (targetMailbox === 'drafts') cleaned.push('drafts');
-  return Array.from(new Set(cleaned));
-}
-
-function deriveFolderFromLabels(labels: string[] = []) {
-  const normalized = labels.map((label) => `${label}`.toLowerCase());
-  if (normalized.some((label) => label === 'trash' || label === 'deleted')) return 'trash';
-  if (normalized.some((label) => label === 'archive' || label === 'archived')) return 'archive';
-  if (normalized.includes('sent')) return 'sent';
-  if (normalized.includes('drafts') || normalized.includes('draft')) return 'drafts';
-  return 'inbox';
-}
-
-function normalizeDraftMessage(draft: { id: string; to?: string; subject?: string; body?: string }) {
-  const nowIso = new Date().toISOString();
-  const pseudo = {
-    id: draft.id,
-    contextId: draft.id,
-    senderName: 'You',
-    senderEmail: 'you@example.com',
-    recipientName: draft.to || '',
-    recipientEmail: draft.to || '',
-    subject: draft.subject || 'Untitled draft',
-    emailBodyRaw: draft.body || '',
-    emailBodyTransformedText: draft.body || '',
-    emailBodyTransformedMarkdown: draft.body || '',
-    emailBodyHtml: null,
-    llmSummary: null,
-    receivedTimestampIso: nowIso,
-    receivedTimestampDisplay: 'Just now',
-    labels: ['drafts'],
-    contextForAi: null
-  };
-  return mapEmailMessage(pseudo);
-}
-
-const EXCLUSIVE_LABELS = new Set(['archive', 'archived', 'trash', 'deleted', 'sent', 'drafts', 'draft']);
-const SUPPORTED_FOLDERS = new Set(['inbox', 'archive', 'trash', 'sent', 'drafts']);
-
-function normalizeEffectiveFolderMap(folderMap: FolderMap | null, referenceList: Message[] = []) {
-  const normalized: FolderMap = {};
-  if (folderMap && typeof folderMap === 'object') {
-    for (const [messageId, folderId] of Object.entries(folderMap)) {
-      if (typeof messageId !== 'string' || !messageId) continue;
-      normalized[messageId] = normalizeFolderId(folderId);
-    }
-  }
-  if (Array.isArray(referenceList)) {
-    for (const message of referenceList) {
-      if (!message?.id || normalized[message.id]) continue;
-      normalized[message.id] = deriveFolderFromLabels(message.labels || []);
-    }
-  }
-  return normalized;
-}
-
-function resolveFolderFromMap(folderMap: FolderMap, message: Message | null) {
-  if (!message || !message.id) return 'inbox';
-  if (folderMap && typeof folderMap === 'object' && folderMap[message.id]) {
-    return normalizeFolderId(folderMap[message.id]);
-  }
-  return deriveFolderFromLabels(message.labels || []);
-}
-
-function normalizeFolderId(folderId: string | null | undefined) {
-  const normalized = typeof folderId === 'string' ? folderId.trim().toLowerCase() : '';
-  if (SUPPORTED_FOLDERS.has(normalized)) {
-    return normalized;
-  }
-  return 'inbox';
 }

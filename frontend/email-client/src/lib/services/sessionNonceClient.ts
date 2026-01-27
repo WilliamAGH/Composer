@@ -1,7 +1,23 @@
+import { z } from 'zod/v4';
 import { getMailboxSessionToken } from './mailboxSessionService';
+import type { ValidationResult } from '../validation/result';
+import { validationSuccess, validationFailure } from '../validation/result';
+import { logZodFailure } from '../validation/zodLogging';
 
 let uiNonce: string | null = null;
 let refreshPromise: Promise<string> | null = null;
+
+/** Interval in milliseconds between chat heartbeat pings to keep session alive. */
+const CHAT_HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000;
+
+function extractErrorMessage(raw: unknown, status: number): string {
+  if (typeof raw === 'object' && raw !== null) {
+    const asRecord = raw as Record<string, unknown>;
+    if (typeof asRecord.message === 'string') return asRecord.message;
+    if (typeof asRecord.error === 'string') return asRecord.error;
+  }
+  return `HTTP ${status}`;
+}
 
 export const CLIENT_WARNING_EVENT = 'composer:client-warning' as const;
 
@@ -32,6 +48,10 @@ export function getUiNonce() {
   return uiNonce;
 }
 
+const NonceRefreshResponseSchema = z.object({
+  uiNonce: z.string()
+});
+
 /**
  * Refreshes the servlet UI nonce. Concurrent refreshes share a single request.
  */
@@ -41,14 +61,17 @@ export async function refreshUiNonce() {
   attachSessionHeaders(headers);
   refreshPromise = (async () => {
     const resp = await fetch('/ui/session/nonce', { method: 'POST', headers });
-    const data = await resp.json().catch(() => null);
+    const raw: unknown = await resp.json().catch(() => null);
     if (!resp.ok) {
-      throw new Error((data && data.error) || `HTTP ${resp.status}`);
+      const errorMessage = extractErrorMessage(raw, resp.status);
+      throw new Error(errorMessage);
     }
-    if (!data?.uiNonce) {
-      throw new Error('Nonce refresh response missing uiNonce');
+    const parseResult = NonceRefreshResponseSchema.safeParse(raw);
+    if (!parseResult.success) {
+      logZodFailure('refreshUiNonce [nonce-refresh]', parseResult.error, raw);
+      throw new Error('Nonce refresh response validation failed');
     }
-    const refreshedNonce = String(data.uiNonce);
+    const refreshedNonce = parseResult.data.uiNonce;
     uiNonce = refreshedNonce;
     return refreshedNonce;
   })();
@@ -81,6 +104,7 @@ async function fetchWithNonce(url: string, init: JsonRequestInit = {}, allowRetr
 
 /**
  * POST helper that JSON-serializes the body and retries once when the nonce expires.
+ * @deprecated Use postJsonValidated with a Zod schema for type-safe responses.
  */
 export async function postJsonWithNonce<T = unknown>(url: string, body?: unknown, init: JsonRequestInit = {}) {
   const resp = await fetchWithNonce(url, { ...init, method: 'POST', body: JSON.stringify(body ?? null) });
@@ -93,6 +117,7 @@ export async function postJsonWithNonce<T = unknown>(url: string, body?: unknown
 
 /**
  * GET helper used by heartbeat endpoints.
+ * @deprecated Use getJsonValidated with a Zod schema for type-safe responses.
  */
 export async function getJsonWithNonce<T = unknown>(url: string, init: JsonRequestInit = {}) {
   const resp = await fetchWithNonce(url, { ...init, method: 'GET' });
@@ -104,9 +129,102 @@ export async function getJsonWithNonce<T = unknown>(url: string, init: JsonReque
 }
 
 /**
+ * Type-safe POST helper with Zod validation. Logs failures with full context.
+ * Returns discriminated union - callers MUST check success before accessing data.
+ *
+ * @param url - API endpoint
+ * @param schema - Zod schema for response validation
+ * @param recordId - Identifier for logging which request failed
+ * @param body - Request body (will be JSON-serialized)
+ * @param init - Additional fetch options
+ */
+export async function postJsonValidated<T>(
+  url: string,
+  schema: z.ZodType<T>,
+  recordId: string,
+  body?: unknown,
+  init: JsonRequestInit = {}
+): Promise<ValidationResult<T>> {
+  const resp = await fetchWithNonce(url, { ...init, method: 'POST', body: JSON.stringify(body ?? null) });
+  const raw: unknown = await resp.json().catch(() => null);
+
+  if (!resp.ok) {
+    const errorMessage = extractErrorMessage(raw, resp.status);
+    throw new Error(errorMessage);
+  }
+
+  const parseResult = schema.safeParse(raw);
+  if (!parseResult.success) {
+    logZodFailure(`postJsonValidated [${recordId}]`, parseResult.error, raw);
+    return validationFailure(parseResult.error);
+  }
+
+  return validationSuccess(parseResult.data);
+}
+
+/**
+ * Type-safe GET helper with Zod validation. Logs failures with full context.
+ * Returns discriminated union - callers MUST check success before accessing data.
+ *
+ * @param url - API endpoint
+ * @param schema - Zod schema for response validation
+ * @param recordId - Identifier for logging which request failed
+ * @param init - Additional fetch options
+ */
+export async function getJsonValidated<T>(
+  url: string,
+  schema: z.ZodType<T>,
+  recordId: string,
+  init: JsonRequestInit = {}
+): Promise<ValidationResult<T>> {
+  const resp = await fetchWithNonce(url, { ...init, method: 'GET' });
+  const raw: unknown = await resp.json().catch(() => null);
+
+  if (!resp.ok) {
+    const errorMessage = extractErrorMessage(raw, resp.status);
+    throw new Error(errorMessage);
+  }
+
+  const parseResult = schema.safeParse(raw);
+  if (!parseResult.success) {
+    logZodFailure(`getJsonValidated [${recordId}]`, parseResult.error, raw);
+    return validationFailure(parseResult.error);
+  }
+
+  return validationSuccess(parseResult.data);
+}
+
+/**
+ * POST helper for fire-and-forget endpoints that return empty or minimal responses.
+ * Throws on HTTP errors. Returns void on success - no body validation needed.
+ *
+ * Use this ONLY for endpoints where:
+ * 1. Response is 202 Accepted with empty body, OR
+ * 2. Response body is intentionally ignored (fire-and-forget pattern)
+ *
+ * @param url - API endpoint
+ * @param body - Request body (will be JSON-serialized)
+ * @param init - Additional fetch options
+ */
+export async function postJsonVoid(
+  url: string,
+  body?: unknown,
+  init: JsonRequestInit = {}
+): Promise<void> {
+  const resp = await fetchWithNonce(url, { ...init, method: 'POST', body: JSON.stringify(body ?? null) });
+
+  if (!resp.ok) {
+    const raw: unknown = await resp.json().catch(() => null);
+    const errorMessage = extractErrorMessage(raw, resp.status);
+    throw new Error(errorMessage);
+  }
+  // Success - no body to validate
+}
+
+/**
  * Starts the chat heartbeat interval and returns a cleanup function.
  */
-export function startChatHeartbeat(intervalMs = 5 * 60 * 1000) {
+export function startChatHeartbeat(intervalMs = CHAT_HEARTBEAT_INTERVAL_MS) {
   const heartbeat = async () => {
     if (!uiNonce) return;
     try {

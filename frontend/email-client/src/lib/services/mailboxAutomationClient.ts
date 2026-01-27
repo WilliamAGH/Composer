@@ -1,4 +1,4 @@
-import { postJsonWithNonce } from './sessionNonceClient';
+import { postJsonVoid } from './sessionNonceClient';
 
 export interface MailboxAutomationRequest {
   mailboxId: string;
@@ -10,11 +10,12 @@ export interface MailboxAutomationRequest {
 
 /**
  * Invokes the mailbox automation endpoint which runs catalog commands across the filtered mailbox context.
+ * Uses postJsonVoid since this is a fire-and-forget request.
  */
-export async function launchMailboxAutomation(request: MailboxAutomationRequest) {
+export async function launchMailboxAutomation(request: MailboxAutomationRequest): Promise<void> {
   const { mailboxId, ...body } = request;
   if (!mailboxId) {
     throw new Error('mailboxId is required to launch automation');
   }
-  return postJsonWithNonce(`/api/mailboxes/${encodeURIComponent(mailboxId)}/automation`, body);
+  await postJsonVoid(`/api/mailboxes/${encodeURIComponent(mailboxId)}/automation`, body);
 }
