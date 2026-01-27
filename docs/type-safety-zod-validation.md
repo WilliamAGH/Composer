@@ -117,7 +117,7 @@ export type EmailMessage = z.infer<typeof EmailMessageSchema>;
 
 When validation fails, the console shows:
 
-```
+```text
 [Zod] parseMailboxState [primary] validation failed
 Issues:
   - messages.0.labels: Expected array, received null
