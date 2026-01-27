@@ -3,6 +3,7 @@ import { getMailboxSessionToken } from './mailboxSessionService';
 import type { ValidationResult } from '../validation/result';
 import { validationSuccess, validationFailure } from '../validation/result';
 import { logZodFailure } from '../validation/zodLogging';
+import { pushToast } from '../stores/errorStore';
 
 let uiNonce: string | null = null;
 let refreshPromise: Promise<string> | null = null;
@@ -17,6 +18,19 @@ function extractErrorMessage(raw: unknown, status: number): string {
     if (typeof asRecord.error === 'string') return asRecord.error;
   }
   return `HTTP ${status}`;
+}
+
+/**
+ * Push an error toast for an API failure. Call this from catch blocks
+ * when you want to show the user a transient error notification.
+ *
+ * @param error - The caught error (Error object or unknown)
+ * @param fallbackMessage - Message to show if error has no message
+ * @returns The toast ID (can be used to dismiss early)
+ */
+export function showApiErrorToast(error: unknown, fallbackMessage = 'Request failed'): string {
+  const message = error instanceof Error ? error.message : fallbackMessage;
+  return pushToast(message, { severity: 'error' });
 }
 
 export const CLIENT_WARNING_EVENT = 'composer:client-warning' as const;

@@ -1,6 +1,7 @@
 {
   "ignores": [
     "lucide-svelte",
+    "postcss",
     "postcss-html",
     "stylelint",
     "stylelint-config-html",
@@ -11,7 +12,8 @@
     "@tailwindcss/typography",
     "autoprefixer",
     "svelte-check",
-    "tailwindcss"
+    "tailwindcss",
+    "typescript"
   ],
   "skip-missing": true,
   "detectors": [
