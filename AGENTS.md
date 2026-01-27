@@ -27,15 +27,16 @@ Operational guidance for autonomous contributors extending Composer, an email AI
 
 ---
 
-## [ZA1] Zero Tolerance Policy
+## [ZA1] Epistemic Humility (Zero Assumptions)
 
-- [ZA1a] **Zero Assumptions**: Do not assume behavior, APIs, or versions. Verify in the codebase/docs first.
-- [ZA1b] **Source Verification**: For dependency code questions, inspect `~/.m2` JARs or `~/.gradle/caches/` (backend) or `frontend/email-client/node_modules` (frontend) first; fallback to upstream GitHub; never answer without referencing code.
-- [ZA1c] **Forbidden Practices**:
+- [ZA1a] **Assume Blindness**: Your training data for APIs/versions is FALSE until verified.
+- [ZA1b] **Scout Phase**: Before coding, use tools (`context7`, `perplexity`) and check local sources (`~/.m2`, `~/.gradle`, `node_modules`) to verify existence/signatures of APIs.
+- [ZA1c] **Source Verification**: For dependency code questions, inspect `~/.m2` JARs or `~/.gradle/caches/` (backend) or `frontend/email-client/node_modules` (frontend) first; fallback to upstream GitHub; never answer without referencing code.
+- [ZA1d] **Forbidden Practices**:
   - No `Map<String, Object>`, raw types, unchecked casts, `@SuppressWarnings`, or `eslint-disable` in production.
   - No trusting memory—verify every import/API/config against current docs.
-- [ZA1d] **Mandatory Research**: You MUST research dependency questions and correct usage. Never use legacy or `@deprecated` usage from dependencies. Ensure correct usage by reviewing related code directly in `node_modules` or Gradle caches and using online tool calls.
-- [ZA1e] **Dependency Search**: To search `node_modules` efficiently with `ast-grep`, target specific packages: `ast-grep run --pattern '...' node_modules/<package>`. Do NOT scan the entire `node_modules` folder.
+- [ZA1e] **Mandatory Research**: You MUST research dependency questions and correct usage. Never use legacy or `@deprecated` usage from dependencies. Ensure correct usage by reviewing related code directly in `node_modules` or Gradle caches and using online tool calls.
+- [ZA1f] **Dependency Search**: To search `node_modules` efficiently with `ast-grep`, target specific packages: `ast-grep run --pattern '...' node_modules/<package>`. Do NOT scan the entire `node_modules` folder.
 
 ## [CC1] Clean Code & DDD (Mandatory)
 

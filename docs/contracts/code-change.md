@@ -41,7 +41,8 @@ If any bullet fails, create a new type and inject it explicitly.
 
 ## Create-new-type checklist (before you write code)
 
-1. **Search/reuse first**: confirm a type/pattern doesn’t already exist ([FS1a], [ZA1a]).
+1. **Scout & Verify**: Use `context7`/`perplexity` for docs and check local sources (`~/.gradle`, `node_modules`) to prove your API assumptions are true ([ZA1a]).
+2. **Search/reuse first**: confirm a type/pattern doesn’t already exist ([FS1a], [ZA1a]).
 2. **Pick the correct layer** (web → use case → domain → adapters/out) ([AR1a]).
 3. **Pick the correct feature package** (feature-first, lowercase, singular nouns).
 4. **Name by role** (ban generic names; suffix declares meaning) ([ND1a-b]).
