@@ -4,6 +4,10 @@ Operational guidance for autonomous contributors extending Composer, an email AI
 
 ## Rule Summary [SUM]
 
+- [ZA1a-d] Zero Tolerance Policy (zero assumptions, validation, forbidden practices, dependency verification)
+- [GT1a-j] Git & Permissions (escalate first, no destructive commands, no lock deletion)
+- [CC1a-d] Clean Code & DDD (Mandatory)
+- [ID1a-d] Idiomatic Patterns & Defaults
 - [FS1a-j] File Creation & Type Safety (exhaustive search, typed records, no maps, clean architecture)
 - [MO1a-c] No Monoliths (>500 LOC, shrink on touch, new features in new files)
 - [ND1a-c] Naming Discipline (no generic names, intent-revealing identifiers)
@@ -16,8 +20,43 @@ Operational guidance for autonomous contributors extending Composer, an email AI
 - [TS1a-e] Testing Standards (coverage mandatory, observable behavior, refactor-resilient)
 - [GT1a-d] Git & Permissions (escalate first, no destructive commands, no lock deletion)
 - [TL1a-f] Tooling & Commands (make targets, tmp/ artifacts, npm-only, compliance checklist)
+- [ZV1a-h] Zod Validation (discriminated unions, never swallow errors, record identification)
 
 ---
+
+---
+
+## [ZA1] Zero Tolerance Policy
+
+- [ZA1a] **Zero Assumptions**: Do not assume behavior, APIs, or versions. Verify in the codebase/docs first.
+- [ZA1b] **Source Verification**: For dependency code questions, inspect `~/.m2` JARs or `~/.gradle/caches/` (backend) or `frontend/email-client/node_modules` (frontend) first; fallback to upstream GitHub; never answer without referencing code.
+- [ZA1c] **Forbidden Practices**:
+  - No `Map<String, Object>`, raw types, unchecked casts, `@SuppressWarnings`, or `eslint-disable` in production.
+  - No trusting memory—verify every import/API/config against current docs.
+- [ZA1d] **Mandatory Research**: You MUST research dependency questions and correct usage. Never use legacy or `@deprecated` usage from dependencies. Ensure correct usage by reviewing related code directly in `node_modules` or Gradle caches and using online tool calls.
+- [ZA1e] **Dependency Search**: To search `node_modules` efficiently with `ast-grep`, target specific packages: `ast-grep run --pattern '...' node_modules/<package>`. Do NOT scan the entire `node_modules` folder.
+
+## [CC1] Clean Code & DDD (Mandatory)
+
+- [CC1a] **Mandatory Principles**: Clean Code principles (Robert C. Martin) and Domain-Driven Design (DDD) are **mandatory** and required in this repository.
+- [CC1b] **DRY (Don't Repeat Yourself)**: Avoid redundant code. Reuse code where appropriate and consistent with clean code principles.
+- [CC1c] **YAGNI (You Aren't Gonna Need It)**: Do not build features or abstractions "just in case". Implement only what is required for the current task.
+- [CC1d] **Clean Architecture**: Dependencies point inward. Domain logic has zero framework imports.
+
+## [ID1] Idiomatic Patterns & Defaults
+
+- [ID1a] **Defaults First**: Always prefer the idiomatic, expected, and default patterns provided by the framework, library, or SDK (Spring Boot, Svelte, Tailwind, etc.).
+- [ID1b] **Custom Justification**: Custom implementations require a compelling reason. If you can't justify it, use the standard way.
+- [ID1c] **No Reinventing**: Do not build custom utilities for things the platform already does.
+- [ID1d] **Dependencies**: Make careful use of dependencies. Do not make assumptions—use the correct idiomatic behavior to avoid boilerplate.
+
+## [DS1] Dependency Source Verification
+
+- [DS1a] **Locate**: Find source JARs in Gradle cache: `find ~/.gradle/caches/modules-2/files-2.1 -name "*-sources.jar" | grep <artifact>`.
+- [DS1b] **List**: View JAR contents without extraction: `unzip -l <jar_path> | grep <ClassName>`.
+- [DS1c] **Read**: Pipe specific file content to stdout: `unzip -p <jar_path> <internal/path/to/Class.java>`.
+- [DS1d] **Search**: To use `ast-grep` on dependencies, pipe content directly: `unzip -p <jar> <file> | ast-grep run --pattern '...' --lang java --stdin`. No temp files required.
+- [DS1e] **Efficiency**: Do not extract full JARs. Use CLI piping for instant access.
 
 ## [FS1] File Creation & Type Safety
 
@@ -102,10 +141,14 @@ Operational guidance for autonomous contributors extending Composer, an email AI
 
 ## [GT1] Git & Permissions
 
-- [GT1a] Escalate first: when commands fail due to sandbox/permissions, re-run with escalated permissions before alternatives.
-- [GT1b] No destructive git: avoid `reset --hard`, `checkout -- <path>`, `clean`, lock deletion unless user provides exact command.
-- [GT1c] Never delete `.git/index.lock`; escalate original command; if still fails, surface stderr and wait.
-- [GT1d] No `Co-authored-by` or AI attribution in commits; no `--amend`, `--rebase`, or history-altering commands.
+- [GT1a] All git commands require elevated permissions; never run without escalation.
+- [GT1b] Never remove `.git/index.lock` automatically—stop and ask the user or seek explicit approval.
+- [GT1c] Read-only git commands (e.g., `git status`, `git diff`, `git log`, `git show`) never require permission. Any git command that writes to the working tree, index, or history requires explicit permission.
+- [GT1d] Do not skip commit signing or hooks; no `--no-verify`. No `Co-authored-by` or AI attribution.
+- [GT1e] Commit messages: one logical change per commit; follow README guidance; no amend/branch changes without instruction; treat existing changes as intentional.
+- [GT1f] Destructive git commands are prohibited unless explicitly ordered by the user (e.g., `git restore`, `git reset`, force checkout).
+- [GT1g] Treat existing staged/unstaged changes as intentional unless the user says otherwise; never “clean up” someone else’s work unprompted.
+- [GT1h] Examples of write operations that require permission: `git add`, `git commit`, `git checkout`, `git merge`, `git rebase`, `git reset`, `git restore`, `git clean`, `git cherry-pick`.
 
 ## [TL1] Tooling & Commands
 
@@ -188,3 +231,23 @@ Before modifying OpenAI integration: read version from `build.gradle.kts` (curre
 
 - No Flyway/Liquibase. Agents may author .sql in `tmp/` with header `-- DO NOT RUN — REVIEW ONLY`.
 - Agents never execute migrations. All SQL is for human review/execution.
+
+---
+
+## [ZV1] Zod Validation (Frontend)
+
+Runtime validation for API responses using Zod v4. See `docs/type-safety-zod-validation.md` for full guide.
+
+- [ZV1a] **Import Pattern**: Use `import { z } from 'zod/v4';` - never bare `'zod'`.
+- [ZV1b] **Discriminated Unions**: API calls return `ValidationResult<T>` - never raw data or null.
+- [ZV1c] **Never Swallow Errors**: Every validation failure logs with: context, field path, expected, received, record ID.
+- [ZV1d] **Record Identification**: Every `logZodFailure` call MUST include record identifier (e.g., `mailbox-state:primary`).
+- [ZV1e] **Forbidden Patterns**:
+  - No `schema.parse()` - throws and crashes rendering
+  - No `safeParse().data ?? default` - swallows errors silently
+  - No `as T` assertions for external data
+  - No empty catch blocks
+- [ZV1f] **Schema Location**: Schemas in `frontend/email-client/src/lib/schemas/` - no barrel files, direct imports only.
+- [ZV1g] **Type Derivation**: Types derived from schemas via `z.infer<typeof Schema>` - never duplicated interfaces.
+- [ZV1h] **API Contract Match**: Schema `optional()`/`nullable()`/`nullish()` must match actual API response shape.
+
