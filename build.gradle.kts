@@ -89,8 +89,10 @@ tasks.withType<Test> {
         "-XX:+EnableDynamicAgentLoading",
         "-Djdk.attach.allowAttachSelf=true",
         "-Dmockito.mock-maker=subclass",
-        "--add-opens",
-        "java.base/java.lang=ALL-UNNAMED",
+        "--add-opens", "java.base/java.lang=ALL-UNNAMED",
+        // Suppress sun.misc.Unsafe deprecation warnings from gRPC/Netty (Qdrant client dependency)
+        // See: https://netty.io/wiki/java-24-and-sun.misc.unsafe.html
+        "--sun-misc-unsafe-memory-access=allow",
     )
 }
 
@@ -150,4 +152,7 @@ springBoot {
 
 tasks.withType<org.springframework.boot.gradle.tasks.run.BootRun> {
     systemProperty("spring.classformat.ignore", "true")
+    // Suppress sun.misc.Unsafe deprecation warnings from gRPC/Netty (Qdrant client dependency)
+    // See: https://netty.io/wiki/java-24-and-sun.misc.unsafe.html
+    jvmArgs("--sun-misc-unsafe-memory-access=allow")
 }
