@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.IntStream;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class VectorSearchService {
 
+    private static final int SEARCH_TIMEOUT_SECONDS = 10;
     private static final String[] KEYS_SUBJECT = {"subject", "Subject", "title"};
     private static final String[] KEYS_SENDER = {"sender", "from", "From", "author"};
     private static final String[] KEYS_SNIPPET = {"snippet", "body", "content", "text"};
@@ -64,11 +67,12 @@ public class VectorSearchService {
                     .setWithPayload(withPayloadSelector)
                     .build();
 
-            List<ScoredPoint> searchResults =
-                    qdrantClient.searchAsync(searchRequest).get();
+            List<ScoredPoint> scoredPoints =
+                    qdrantClient.searchAsync(searchRequest)
+                            .get(SEARCH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
             List<EmailContext> emailContexts = new ArrayList<>();
-            for (ScoredPoint point : searchResults) {
+            for (ScoredPoint point : scoredPoints) {
                 EmailContext context = extractEmailContext(point);
                 emailContexts.add(context);
             }
@@ -79,6 +83,9 @@ public class VectorSearchService {
         } catch (InterruptedException e) {
             log.warn("Qdrant search interrupted", e);
             Thread.currentThread().interrupt();
+            return List.of();
+        } catch (TimeoutException e) {
+            log.warn("Qdrant search timed out after {} seconds", SEARCH_TIMEOUT_SECONDS);
             return List.of();
         } catch (ExecutionException e) {
             log.warn("Qdrant search failed", e.getCause() != null ? e.getCause() : e);
