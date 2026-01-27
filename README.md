@@ -30,7 +30,7 @@ export OPENAI_API_KEY="..."
 make dev
 ```
 
-Open `http://localhost:5173/app/email-client/`. Sample emails live in `data/eml/`.
+Open `http://localhost:5183/app/email-client/`. Sample emails live in `data/eml/`.
 
 For production builds, alternative providers (OpenRouter, Ollama), and vector search setup, see [docs/getting-started.md](docs/getting-started.md).
 

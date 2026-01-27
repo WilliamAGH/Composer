@@ -88,10 +88,10 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    port: 5183,
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8090',
         changeOrigin: true,
         cookieDomainRewrite: 'localhost',
         configure: (proxy) => {
@@ -101,7 +101,7 @@ export default defineConfig({
         },
       },
       '/ui': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8090',
         changeOrigin: true,
         cookieDomainRewrite: 'localhost',
         configure: (proxy) => {

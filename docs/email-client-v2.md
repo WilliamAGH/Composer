@@ -48,7 +48,7 @@ Email safety model
 
 Local development
 - Spring only (serve built assets): `make build-java` (after a Vite build) and `make run` then open `/email-client-v2`.
-- Frontend dev (recommended): `make fe-dev` (Vite on :5173, proxies /api to Spring). Keep Spring running with `make run` for APIs.
+- Frontend dev (recommended): `make fe-dev` (Vite on :5183, proxies /api to Spring). Keep Spring running with `make run` for APIs.
 
 Build and deploy
 - Single entry: `make build` → builds Vite bundle then packages the Spring Boot JAR.

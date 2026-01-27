@@ -25,7 +25,7 @@ class UiSessionControllerTest {
     void refreshNonce_returnsValue() throws Exception {
         MockHttpSession session = new MockHttpSession();
         mockMvc.perform(post("/ui/session/nonce")
-                        .header("Origin", "http://localhost:8080")
+                        .header("Origin", "http://localhost:8090")
                         .header("X-UI-Request", "nonce-old")
                         .session(session))
                 .andExpect(status().isOk())
@@ -42,7 +42,7 @@ class UiSessionControllerTest {
         @Bean
         AppProperties appProperties() {
             AppProperties properties = new AppProperties();
-            properties.getCors().setAllowedOrigins("http://localhost:8080,https://composerai.app");
+            properties.getCors().setAllowedOrigins("http://localhost:8090,http://localhost:5183,https://composerai.app");
             return properties;
         }
 

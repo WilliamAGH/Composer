@@ -1,6 +1,6 @@
 APP_NAME ?= composerai-api
 TAG ?= local
-PORT ?= 8080
+PORT ?= 8090
 PROFILE ?= local
 
 .PHONY: help run dev build build-vite build-java java-compile test clean lint docker-build docker-run-local docker-run-prod fe-dev clean-frontend
@@ -27,10 +27,10 @@ run:
 
 # Dev mode: run Java backend + Svelte dev server together with unified logs
 # Uses awk to add colored prefixes while preserving output
-# Access via http://localhost:5173 (Vite proxies /api and /ui to Spring Boot on :8080)
+# Access via http://localhost:5183 (Vite proxies /api and /ui to Spring Boot on :8090)
 dev:
-	@echo "Starting Java backend (port 8080) + Svelte dev server (port 5173)..."
-	@echo "Access the app at: http://localhost:5173/app/email-client/"
+	@echo "Starting Java backend (port 8090) + Svelte dev server (port 5183)..."
+	@echo "Access the app at: http://localhost:5183/app/email-client/"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@trap 'kill 0' INT TERM; \
 	(cd frontend/email-client && npm install --silent && npm run dev 2>&1 | awk '{print "\033[36m[vite]\033[0m " $$0; fflush()}') & \
@@ -112,7 +112,7 @@ docker-build:
 	docker build --build-arg APP_NAME=$(APP_NAME) -t $(APP_NAME):$(TAG) .
 
 docker-run-local:
-	docker run --rm -p $(PORT):8080 --name $(APP_NAME) \
+	docker run --rm -p $(PORT):8090 --name $(APP_NAME) \
 	 -e SPRING_PROFILES_ACTIVE=local \
 	 -e OPENAI_API_KEY=${OPENAI_API_KEY} \
 	 -e OPENAI_BASE_URL=${OPENAI_BASE_URL} \
@@ -121,7 +121,7 @@ docker-run-local:
 	 $(APP_NAME):$(TAG)
 
 docker-run-prod:
-	docker run --rm -p $(PORT):8080 --name $(APP_NAME) \
+	docker run --rm -p $(PORT):8090 --name $(APP_NAME) \
 	 -e SPRING_PROFILES_ACTIVE=prod \
 	 -e OPENAI_API_KEY=$${OPENAI_API_KEY} \
 	 -e OPENAI_BASE_URL=$${OPENAI_BASE_URL} \

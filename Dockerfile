@@ -99,9 +99,9 @@ COPY --from=builder /workspace/src/main/resources/static /app/static
 RUN chown -R app:app /app
 USER app
 
-EXPOSE 8080
+EXPOSE 8090
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD curl -fsS --connect-timeout 2 --max-time 3 http://localhost:8080/actuator/health || exit 1
+    CMD curl -fsS --connect-timeout 2 --max-time 3 http://localhost:8090/actuator/health || exit 1
 
 ENTRYPOINT ["/bin/sh","-c","java ${JAVA_OPTS} -jar /app/app.jar"]
