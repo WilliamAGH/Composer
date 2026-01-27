@@ -1,11 +1,11 @@
 // Gradle build script for ComposerAI API
-// Configures Spring Boot 3.4.2, Java 25, Spotless, and SpotBugs
+// Configures Spring Boot 3.5.10, Java 25, Spotless, and SpotBugs
 plugins {
     java
-    id("org.springframework.boot") version "3.4.2"
+    id("org.springframework.boot") version "3.5.10"
     id("io.spring.dependency-management") version "1.1.7"
-    id("com.diffplug.spotless") version "6.25.0"
-    id("com.github.spotbugs") version "6.0.18"
+    id("com.diffplug.spotless") version "8.1.0"
+    id("com.github.spotbugs") version "6.4.8"
 }
 
 group = "com.composerai"
@@ -46,18 +46,16 @@ dependencies {
     testCompileOnly("org.projectlombok:lombok:1.18.42")
     testAnnotationProcessor("org.projectlombok:lombok:1.18.42")
 
-    // OpenAI
-    implementation("com.openai:openai-java:4.6.1")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // OpenAI (manages its own OkHttp dependency)
+    implementation("com.openai:openai-java:4.16.1")
 
-    // Qdrant
-    implementation("io.qdrant:client:1.7.0")
-    implementation("com.google.protobuf:protobuf-java:3.25.5")
-    implementation("com.google.guava:guava:32.1.3-jre")
+    // Qdrant (uses gRPC 1.65.1 + protobuf 3.25.x internally)
+    implementation("io.qdrant:client:1.16.2")
+    implementation("com.google.guava:guava:33.5.0-jre")
 
     // Parsing / Conversion
-    implementation("org.jsoup:jsoup:1.17.2")
-    implementation("com.sun.mail:jakarta.mail:2.0.1")
+    implementation("org.jsoup:jsoup:1.22.1")
+    implementation("org.eclipse.angus:angus-mail:2.0.4")
 
     // Flexmark (Markdown)
     implementation("com.vladsch.flexmark:flexmark:0.64.8")
@@ -68,18 +66,18 @@ dependencies {
     implementation("com.vladsch.flexmark:flexmark-html2md-converter:0.64.8")
 
     // ImageIO
-    implementation("com.twelvemonkeys.imageio:imageio-core:3.12.0")
-    implementation("com.twelvemonkeys.imageio:imageio-bmp:3.12.0")
+    implementation("com.twelvemonkeys.imageio:imageio-core:3.13.0")
+    implementation("com.twelvemonkeys.imageio:imageio-bmp:3.13.0")
 
-    // Dotenv
-    implementation("me.paulschwarz:spring-dotenv:4.0.0")
+    // Dotenv (Spring Boot 3 module)
+    implementation("me.paulschwarz:springboot3-dotenv:5.1.0")
 
     // Testing
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // Spotbugs
-    spotbugs("com.github.spotbugs:spotbugs:4.8.6")
+    spotbugs("com.github.spotbugs:spotbugs:4.9.8")
     spotbugs("com.h3xstream.findsecbugs:findsecbugs-plugin:1.13.0")
 }
 
@@ -99,7 +97,7 @@ spotless {
     java {
         target("src/**/*.java")
         // Use Palantir Java Format (safer for newer JDKs)
-        palantirJavaFormat("2.83.0")
+        palantirJavaFormat("2.84.0")
         removeUnusedImports()
         trimTrailingWhitespace()
         endWithNewline()

@@ -1,6 +1,6 @@
 ARG BASE_IMAGE=eclipse-temurin:25-jre
 ARG BUILD_IMAGE=eclipse-temurin:25-jdk
-ARG NODE_IMAGE=registry.access.redhat.com/ubi9/nodejs-20:latest
+ARG NODE_IMAGE=public.ecr.aws/docker/library/node:22.17.0-alpine
 
 # 1) Build frontend (Svelte) into Spring static path
 FROM ${NODE_IMAGE} AS fe_builder
