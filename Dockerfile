@@ -16,8 +16,12 @@ WORKDIR /workspace
 # Upgrade npm to v11 for lockfileVersion 3 compatibility (separate layer, no cache mount)
 RUN npm install -g npm@11
 
-# Copy package files for npm cache layer
-COPY frontend/email-client/package*.json frontend/email-client/
+# Copy package files explicitly (glob patterns can fail in some Docker contexts)
+COPY frontend/email-client/package.json frontend/email-client/package.json
+COPY frontend/email-client/package-lock.json frontend/email-client/package-lock.json
+
+# Debug: verify files exist before npm ci
+RUN ls -la frontend/email-client/
 
 # Install dependencies with cache mount (npm 11 is now fully available)
 RUN --mount=type=cache,target=/root/.npm \
