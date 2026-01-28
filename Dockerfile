@@ -21,8 +21,9 @@ RUN npm install -g npm@10
 COPY frontend/email-client/package.json frontend/email-client/package.json
 COPY frontend/email-client/package-lock.json frontend/email-client/package-lock.json
 
-# Install dependencies (no cache mount - corrupted cache causes "lockfile not found" errors)
-RUN cd frontend/email-client && npm ci
+# Install dependencies with cache mount for faster rebuilds
+RUN --mount=type=cache,target=/root/.npm \
+    cd frontend/email-client && npm ci
 
 # Copy entire repo so Vite outDir relative path resolves to src/main/resources/static/...
 COPY . .
