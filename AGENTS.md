@@ -171,6 +171,7 @@ Operational guidance for autonomous contributors extending Composer, an email AI
 - [TL1d] Temporary artifacts: ALL markdown/test/doc/temp files in `tmp/` unless user requests otherwise; delete when done.
 - [TL1e] Never commit `node_modules/` or built assets (`src/main/resources/static/app/email-client/`).
 - [TL1f] Package Manager: `npm` is the ONLY supported package manager. `bun`, `pnpm`, `yarn` are PROHIBITED.
+- [TL1g] npm overrides MUST NOT target direct dependencies; pin the direct dependency version instead to keep `npm ci` consistent.
 
 ---
 
@@ -263,4 +264,3 @@ Runtime validation for API responses using Zod v4. See `docs/type-safety-zod-val
 - [ZV1f] **Schema Location**: Schemas in `frontend/email-client/src/lib/schemas/` - no barrel files, direct imports only.
 - [ZV1g] **Type Derivation**: Types derived from schemas via `z.infer<typeof Schema>` - never duplicated interfaces.
 - [ZV1h] **API Contract Match**: Schema `optional()`/`nullable()`/`nullish()` must match actual API response shape.
-
