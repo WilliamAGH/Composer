@@ -153,12 +153,15 @@ export async function getJsonWithNonce<T = unknown>(url: string, init: JsonReque
 /**
  * Type-safe POST helper with Zod validation. Logs failures with full context.
  * Returns discriminated union - callers MUST check success before accessing data.
+ * Throws on non-OK HTTP responses (via extractErrorMessage).
  *
  * @param url - API endpoint
  * @param schema - Zod schema for response validation
  * @param recordId - Identifier for logging which request failed
  * @param body - Request body (will be JSON-serialized)
  * @param init - Additional fetch options
+ * @throws Error on network failures or non-2xx HTTP responses
+ * @returns ValidationResult - validationSuccess with data or validationFailure with Zod error
  */
 export async function postJsonValidated<T>(
   url: string,
@@ -271,7 +274,8 @@ export function startChatHeartbeat(intervalMs = CHAT_HEARTBEAT_INTERVAL_MS) {
     }
   };
 
-  const timerId = window.setInterval(heartbeat, intervalMs);
+  // Wrap async function to satisfy setInterval's void return expectation
+  const timerId = window.setInterval(() => void heartbeat(), intervalMs);
   return () => window.clearInterval(timerId);
 }
 
