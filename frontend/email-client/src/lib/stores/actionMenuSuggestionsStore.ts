@@ -114,20 +114,24 @@ export function createActionMenuSuggestionsStore({
     }
   }
 
-  function sanitizeOption(option: any) {
+  function sanitizeOption(option: unknown) {
     if (!option || typeof option !== "object") return null;
-    const rawLabel = typeof option.label === "string" ? option.label.trim() : "";
+    const optionRecord = option as Record<string, unknown>;
+    const rawLabel = typeof optionRecord.label === "string" ? optionRecord.label.trim() : "";
     if (!rawLabel) return null;
     const words = rawLabel.split(/\s+/).filter(Boolean);
     if (words.length === 0 || words.length > 3) return null;
-    const normalizedType = (option.actionType || "").toLowerCase();
+    const actionTypeRaw =
+      typeof optionRecord.actionType === "string" ? optionRecord.actionType : "";
+    const normalizedType = actionTypeRaw.toLowerCase();
     const actionType = normalizedType === "comingsoon" ? "comingSoon" : normalizedType || "summary";
     const commandKey =
-      option.commandKey ||
+      (typeof optionRecord.commandKey === "string" ? optionRecord.commandKey : null) ||
       (actionType === "summary" ? "summarize" : actionType === "compose" ? "compose" : null);
-    const commandVariant = option.commandVariant || null;
+    const commandVariant =
+      typeof optionRecord.commandVariant === "string" ? optionRecord.commandVariant : null;
     const instruction =
-      typeof option.instruction === "string" ? option.instruction.trim() || null : null;
+      typeof optionRecord.instruction === "string" ? optionRecord.instruction.trim() || null : null;
 
     // Filter out translate actions since they have a dedicated UI control
     if (commandKey === "translate" || rawLabel.toLowerCase().includes("translat")) {
@@ -136,7 +140,7 @@ export function createActionMenuSuggestionsStore({
 
     return {
       id:
-        option.id ||
+        (typeof optionRecord.id === "string" ? optionRecord.id : null) ||
         `ai-action-${rawLabel
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, "-")

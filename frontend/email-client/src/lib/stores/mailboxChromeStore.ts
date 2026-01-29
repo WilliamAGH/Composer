@@ -1,10 +1,11 @@
 import { derived, writable, get, type Readable } from "svelte/store";
 import type { MailboxDataStore } from "./mailboxDataStore";
+import type { FrontendEmailMessage } from "./mailboxFolderLabels";
 
 export interface MailboxChromeStore {
   stores: {
     selectedEmailId: Readable<string | null>;
-    selectedEmail: Readable<any>;
+    selectedEmail: Readable<FrontendEmailMessage | null>;
     sidebarOpen: Readable<boolean>;
     drawerMode: Readable<boolean>;
     drawerVisible: Readable<boolean>;

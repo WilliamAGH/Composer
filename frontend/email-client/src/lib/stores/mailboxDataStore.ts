@@ -21,6 +21,17 @@ import {
 type Message = FrontendEmailMessage;
 type FolderCounts = Record<string, number>;
 
+/** Shape for snapshot data passed to initializeSnapshot. */
+type SnapshotPayload = MailboxStateSnapshot | MessageMoveResult | null;
+
+/** Shape for draft session data passed to saveDraftSession. */
+interface DraftSessionPayload {
+  id: string;
+  to?: string;
+  subject?: string;
+  body?: string;
+}
+
 export interface MailboxDataStore {
   stores: {
     emails: Readable<Message[]>;
@@ -32,9 +43,9 @@ export interface MailboxDataStore {
     pendingMoves: Readable<Set<string>>;
     moveErrors: Readable<Record<string, string>>;
   };
-  initializeSnapshot: (snapshot: any) => void;
+  initializeSnapshot: (snapshot: SnapshotPayload) => void;
   hydrateEmails: (
-    nextEmails: any[],
+    nextEmails: unknown[],
     effectiveFoldersOverride?: Record<string, string> | null,
   ) => void;
   selectMailbox: (target: string) => void;
@@ -45,7 +56,7 @@ export interface MailboxDataStore {
     messageId: string;
     targetFolderId: string;
   }) => Promise<MessageMoveResult | null>;
-  saveDraftSession: (draft: any) => void;
+  saveDraftSession: (draft: DraftSessionPayload | null) => void;
   markDraftAsSent: (draftId: string) => void;
   deleteDraftMessage: (draftId: string) => void;
   resolveFolderForMessage: (message: Message | null) => string;
@@ -53,7 +64,7 @@ export interface MailboxDataStore {
 }
 
 export function createMailboxDataStore(
-  initialEmails: any[] = [],
+  initialEmails: unknown[] = [],
   initialFolderCounts: FolderCounts | null = null,
   initialEffectiveFolders: Record<string, string> | null = null,
 ): MailboxDataStore {
@@ -79,9 +90,9 @@ export function createMailboxDataStore(
       ),
   );
 
-  function initializeSnapshot(snapshot: any) {
+  function initializeSnapshot(snapshot: SnapshotPayload) {
     if (!snapshot) return;
-    const nextEmails = normalizeMessages(snapshot.emails || snapshot.messages || []);
+    const nextEmails = normalizeMessages(snapshot.emails ?? snapshot.messages ?? []);
     emails.set(nextEmails);
     if (snapshot.folderCounts) {
       mailboxCounts.set(snapshot.folderCounts);
@@ -97,7 +108,7 @@ export function createMailboxDataStore(
   }
 
   function hydrateEmails(
-    nextEmails: any[],
+    nextEmails: unknown[],
     effectiveFoldersOverride: Record<string, string> | null = null,
   ) {
     const normalized = normalizeMessages(nextEmails);
@@ -186,7 +197,7 @@ export function createMailboxDataStore(
     }
   }
 
-  function saveDraftSession(draft: any) {
+  function saveDraftSession(draft: DraftSessionPayload | null) {
     if (!draft || !draft.id) return;
     const normalizedDraft = normalizeDraftMessage(draft);
     updateEmailsAndCounts((list) => {

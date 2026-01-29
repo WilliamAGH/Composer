@@ -111,11 +111,11 @@ export function createAiPanelStore() {
   };
 }
 
-function removeKey<T extends Record<string, unknown>>(map: T, key: string) {
+function removeKey<T extends Record<string, unknown>>(map: T | null | undefined, key: string): T {
   if (!map || !(key in map)) {
-    return (map || {}) as T;
+    return (map ?? {}) as T;
   }
-  const next = { ...map } as Record<string, unknown>;
+  const next = { ...map };
   delete next[key];
-  return next as T;
+  return next;
 }

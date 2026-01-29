@@ -22,12 +22,20 @@ type Message = FrontendEmailMessage;
 type FolderMap = Record<string, string>;
 type SnapshotPayload = MailboxStateSnapshot | MessageMoveResult | null;
 
+/** Shape for draft session data passed to saveDraftSession. */
+interface DraftSessionPayload {
+  id: string;
+  to?: string;
+  subject?: string;
+  body?: string;
+}
+
 /**
  * Creates the mailbox layout store that tracks message payloads, folder placements, drafts, and drawer UI.
  * Every move/archive/delete call funnels through this store to keep optimistic updates and server responses aligned.
  */
 export function createMailboxLayoutStore(
-  initialEmails: any[] = [],
+  initialEmails: unknown[] = [],
   initialFolderCounts: Record<string, number> | null = null,
   initialEffectiveFolders: FolderMap | null = null,
 ) {
@@ -88,7 +96,7 @@ export function createMailboxLayoutStore(
   /**
    * Normalizes raw email payloads and recalculates folder counters.
    */
-  function hydrateEmails(nextEmails: any[], effectiveFoldersOverride: FolderMap | null = null) {
+  function hydrateEmails(nextEmails: unknown[], effectiveFoldersOverride: FolderMap | null = null) {
     const normalized = normalizeMessages(nextEmails);
     emails.set(normalized);
     mailboxCounts.set(computeMailboxCounts(normalized));
@@ -277,7 +285,7 @@ export function createMailboxLayoutStore(
   /**
    * Persists an in-progress compose window as a draft entry.
    */
-  function saveDraftSession(draft: any) {
+  function saveDraftSession(draft: DraftSessionPayload | null) {
     if (!draft || !draft.id) return;
     const normalizedDraft = normalizeDraftMessage(draft);
     updateEmailsAndCounts((list) => {
