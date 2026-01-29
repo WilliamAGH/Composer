@@ -21,7 +21,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: "22.17.0"
+          node-version-file: ".nvmrc"
           cache: "npm"
           cache-dependency-path: frontend/email-client/package-lock.json
 
