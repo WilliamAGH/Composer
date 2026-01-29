@@ -56,7 +56,7 @@ export async function handleAiCommand({
   const ready = await ensureCatalogLoaded();
   if (!ready) throw new Error("AI helpers are unavailable. Please refresh and try again.");
   const catalog = get(catalogStore);
-  const fn = getFunctionMeta(catalog, command) as AiFunctionSummary | null;
+  const fn = getFunctionMeta(catalog, command);
   if (!fn) throw new Error("Command unavailable.");
   const variant = resolveVariant(fn, commandVariant);
   const commandArgs = mergeDefaultArgs(fn, variant);

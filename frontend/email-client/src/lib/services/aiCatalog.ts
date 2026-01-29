@@ -21,7 +21,10 @@ export function catalogStore() {
   return catalog;
 }
 
-export function getFunctionMeta(data: AiFunctionCatalogDto | null, key: string) {
+export function getFunctionMeta(
+  data: AiFunctionCatalogDto | null,
+  key: string,
+): AiFunctionSummary | null {
   if (!data || !key) return null;
   return data.functionsByKey?.[key] || null;
 }

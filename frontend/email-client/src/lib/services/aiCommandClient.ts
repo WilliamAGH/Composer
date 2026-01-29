@@ -4,13 +4,15 @@ import {
   getFunctionMeta,
   mergeDefaultArgs,
   resolveDefaultInstruction,
+  type AiFunctionSummary,
+  type AiFunctionVariantSummary,
 } from "./aiCatalog";
 import {
   buildEmailContextString,
   deriveRecipientContext,
   normalizeRecipient,
 } from "./emailContextConstructor";
-import { parseSubjectAndBody } from "./emailUtils";
+import { parseSubjectAndBody, type FrontendEmailMessage } from "./emailUtils";
 import { deriveHeadline } from "./aiCommandHandler";
 import { sanitizeHtml } from "./sanitizeHtml";
 import { executeCatalogCommand } from "./catalogCommandClient";
@@ -19,6 +21,16 @@ import { createConversationLedger } from "./conversationLedger";
 import { createAiJourneyStore } from "./aiJourneyStore";
 
 export type CatalogEnsureFn = () => Promise<boolean> | boolean;
+
+/** Payload shape for compose window context passed to AI prefill. */
+interface ComposeWindowPayload {
+  quotedContext?: string;
+  to?: string;
+  subject?: string;
+  body?: string;
+  recipientName?: string;
+  recipientEmail?: string;
+}
 
 interface CallOptions {
   contextId?: string | null;
@@ -30,7 +42,7 @@ interface CallOptions {
   commandVariant?: string | null;
   commandArgs?: Record<string, string> | null;
   emailContext?: string | null;
-  fallbackEmail?: any;
+  fallbackEmail?: FrontendEmailMessage | null;
   recipientContext?: { name?: string; email?: string } | null;
 }
 
@@ -38,7 +50,7 @@ interface RunOptions {
   command: string;
   commandVariant?: string | null;
   instructionOverride?: string | null;
-  selectedEmail?: any;
+  selectedEmail?: FrontendEmailMessage | null;
   journeyScope?: string;
   journeyScopeTarget?: string | null;
   journeyLabel?: string | null;
@@ -55,9 +67,9 @@ interface PrefillOptions {
     isReply?: boolean;
   };
   windowId: string;
-  windowPayload?: any;
-  selectedEmail?: any;
-  relatedEmail?: any;
+  windowPayload?: ComposeWindowPayload;
+  selectedEmail?: FrontendEmailMessage | null;
+  relatedEmail?: FrontendEmailMessage | null;
 }
 
 interface AiCommandClientConfig {
@@ -119,8 +131,8 @@ export function createAiCommandClient({
     } = options;
 
     const targetLabel = journeyLabel || subject || fallbackEmail?.subject || "message";
-    const conversationKey = (ledger.resolveKey({ journeyScope, journeyScopeTarget, contextId }) ??
-      null) as string | null;
+    const conversationKey =
+      ledger.resolveKey({ journeyScope, journeyScopeTarget, contextId }) ?? null;
     const scopedConversationId = conversationKey ? ledger.read(conversationKey) : null;
     const payload: ChatRequestPayload = {
       instruction,
@@ -149,7 +161,7 @@ export function createAiCommandClient({
     }
 
     const catalogSnapshot = get(catalog);
-    const commandMeta: any = getFunctionMeta(catalogSnapshot, command);
+    const commandMeta = getFunctionMeta(catalogSnapshot, command);
     if (command && commandMeta) {
       payload.aiCommand = command;
       if (commandVariant) {
@@ -228,13 +240,14 @@ export function createAiCommandClient({
       throw new Error("AI helpers are unavailable. Please refresh and try again.");
     }
     const catalogSnapshot = get(catalog);
-    const meta: any = getFunctionMeta(catalogSnapshot, command);
+    const meta = getFunctionMeta(catalogSnapshot, command);
     if (!meta) {
       throw new Error("Command unavailable.");
     }
     const variant =
       commandVariant && Array.isArray(meta.variants)
-        ? meta.variants.find((entry: any) => entry.key === commandVariant) || null
+        ? meta.variants.find((entry: AiFunctionVariantSummary) => entry.key === commandVariant) ||
+          null
         : null;
     const mergedArgs = overrideArgs || mergeDefaultArgs(meta, variant);
     const instruction = instructionOverride || resolveDefaultInstruction(meta, variant);
@@ -271,7 +284,7 @@ export function createAiCommandClient({
       throw new Error("AI helpers are unavailable. Please try again.");
     }
     const catalogSnapshot = get(catalog);
-    const fn: any = getFunctionMeta(catalogSnapshot, command);
+    const fn = getFunctionMeta(catalogSnapshot, command);
     if (!fn) {
       throw new Error("Command unavailable.");
     }
