@@ -8,7 +8,7 @@
  * @see docs/type-safety-zod-validation.md
  */
 
-import { z } from 'zod/v4';
+import { z } from "zod/v4";
 
 /**
  * Extracts and logs human-readable Zod validation failure details.
@@ -17,11 +17,7 @@ import { z } from 'zod/v4';
  * @param error - The error to log (handles ZodError specially, logs others as-is)
  * @param payload - The raw payload that failed validation (for context)
  */
-export function logZodFailure(
-  context: string,
-  error: unknown,
-  payload?: unknown
-): void {
+export function logZodFailure(context: string, error: unknown, payload?: unknown): void {
   const payloadKeys = extractPayloadKeys(payload);
 
   if (error instanceof z.ZodError) {
@@ -29,14 +25,14 @@ export function logZodFailure(
 
     console.error(
       `[Zod] ${context} validation failed\n` +
-        `Issues:\n${issueSummaries.join('\n')}\n` +
-        `Payload keys: ${payloadKeys.join(', ') || '(none)'}`
+        `Issues:\n${issueSummaries.join("\n")}\n` +
+        `Payload keys: ${payloadKeys.join(", ") || "(none)"}`,
     );
 
     console.error(`[Zod] ${context} - full details:`, {
       prettifiedError: z.prettifyError(error),
       issues: error.issues,
-      payload
+      payload,
     });
   } else {
     console.error(`[Zod] ${context} validation failed (non-ZodError):`, error);
@@ -49,18 +45,15 @@ export function logZodFailure(
 function formatZodIssues(error: z.ZodError): string[] {
   const maxIssues = 10;
   return error.issues.slice(0, maxIssues).map((issue) => {
-    const path = issue.path.length > 0 ? issue.path.join('.') : '(root)';
+    const path = issue.path.length > 0 ? issue.path.join(".") : "(root)";
 
     // Zod v4: 'input' contains the failing value, 'received' for type errors
-    const inputValue = 'input' in issue ? issue.input : undefined;
-    const receivedValue = 'received' in issue ? issue.received : undefined;
+    const inputValue = "input" in issue ? issue.input : undefined;
+    const receivedValue = "received" in issue ? issue.received : undefined;
     const actualValue = receivedValue ?? inputValue;
 
-    const received =
-      actualValue !== undefined
-        ? ` (received: ${JSON.stringify(actualValue)})`
-        : '';
-    const expected = 'expected' in issue ? ` (expected: ${issue.expected})` : '';
+    const received = actualValue !== undefined ? ` (received: ${JSON.stringify(actualValue)})` : "";
+    const expected = "expected" in issue ? ` (expected: ${issue.expected})` : "";
 
     return `  - ${path}: ${issue.message}${expected}${received}`;
   });
@@ -70,7 +63,7 @@ function formatZodIssues(error: z.ZodError): string[] {
  * Extracts top-level keys from payload for context logging.
  */
 function extractPayloadKeys(payload: unknown): string[] {
-  if (typeof payload !== 'object' || payload === null) {
+  if (typeof payload !== "object" || payload === null) {
     return [];
   }
   return Object.keys(payload).slice(0, 20);
@@ -93,6 +86,6 @@ export function createScopedZodLogger(baseContext: string) {
   return {
     failure(recordId: string, error: z.ZodError, payload?: unknown): void {
       logZodFailure(`${baseContext} [${recordId}]`, error, payload);
-    }
+    },
   };
 }

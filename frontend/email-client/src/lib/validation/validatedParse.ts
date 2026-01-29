@@ -5,10 +5,10 @@
  * @see docs/type-safety-zod-validation.md
  */
 
-import { z } from 'zod/v4';
-import type { ValidationResult } from './result';
-import { validationSuccess, validationFailure } from './result';
-import { logZodFailure, createScopedZodLogger } from './zodLogging';
+import { z } from "zod/v4";
+import type { ValidationResult } from "./result";
+import { validationSuccess, validationFailure } from "./result";
+import { logZodFailure, createScopedZodLogger } from "./zodLogging";
 
 /**
  * Validates unknown data against a Zod schema with mandatory error logging.
@@ -26,7 +26,7 @@ import { logZodFailure, createScopedZodLogger } from './zodLogging';
 export function validateWithLogging<T>(
   schema: z.ZodType<T>,
   raw: unknown,
-  recordId: string
+  recordId: string,
 ): ValidationResult<T> {
   const result = schema.safeParse(raw);
 
@@ -52,7 +52,7 @@ export function validateArrayWithLogging<T>(
   schema: z.ZodType<T>,
   rawItems: unknown[],
   context: string,
-  extractId: (item: unknown) => string
+  extractId: (item: unknown) => string,
 ): { validItems: T[]; failureCount: number } {
   const logger = createScopedZodLogger(context);
   const validItems: T[] = [];
@@ -84,17 +84,13 @@ export function validateArrayWithLogging<T>(
  * @param recordId - REQUIRED identifier for debugging
  * @throws Error with descriptive message if validation fails
  */
-export function validateOrThrow<T>(
-  schema: z.ZodType<T>,
-  raw: unknown,
-  recordId: string
-): T {
+export function validateOrThrow<T>(schema: z.ZodType<T>, raw: unknown, recordId: string): T {
   const result = validateWithLogging(schema, raw, recordId);
 
   if (!result.success) {
     const issueCount = result.error.issues.length;
     throw new Error(
-      `Validation failed for ${recordId}: ${issueCount} issue(s). See console for details.`
+      `Validation failed for ${recordId}: ${issueCount} issue(s). See console for details.`,
     );
   }
 

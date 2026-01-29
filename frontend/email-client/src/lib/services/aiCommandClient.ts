@@ -1,18 +1,22 @@
-import { get } from 'svelte/store';
+import { get } from "svelte/store";
 import {
   catalogStore,
   getFunctionMeta,
   mergeDefaultArgs,
-  resolveDefaultInstruction
-} from './aiCatalog';
-import { buildEmailContextString, deriveRecipientContext, normalizeRecipient } from './emailContextConstructor';
-import { parseSubjectAndBody } from './emailUtils';
-import { deriveHeadline } from './aiCommandHandler';
-import { sanitizeHtml } from './sanitizeHtml';
-import { executeCatalogCommand } from './catalogCommandClient';
-import type { ChatRequestPayload } from './catalogCommandClient';
-import { createConversationLedger } from './conversationLedger';
-import { createAiJourneyStore } from './aiJourneyStore';
+  resolveDefaultInstruction,
+} from "./aiCatalog";
+import {
+  buildEmailContextString,
+  deriveRecipientContext,
+  normalizeRecipient,
+} from "./emailContextConstructor";
+import { parseSubjectAndBody } from "./emailUtils";
+import { deriveHeadline } from "./aiCommandHandler";
+import { sanitizeHtml } from "./sanitizeHtml";
+import { executeCatalogCommand } from "./catalogCommandClient";
+import type { ChatRequestPayload } from "./catalogCommandClient";
+import { createConversationLedger } from "./conversationLedger";
+import { createAiJourneyStore } from "./aiJourneyStore";
 
 export type CatalogEnsureFn = () => Promise<boolean> | boolean;
 
@@ -76,20 +80,26 @@ interface JourneyDescriptor {
 export function createAiCommandClient({
   ensureCatalogLoaded = async () => true,
   journeyStore = createAiJourneyStore(),
-  conversationLedger = createConversationLedger()
+  conversationLedger = createConversationLedger(),
 }: AiCommandClientConfig = {}) {
   const catalog = catalogStore();
   const journey = journeyStore;
   const ledger = conversationLedger;
 
-  function beginJourney({ scope = 'global', scopeTarget = null, targetLabel = 'message', commandKey, headline }: JourneyDescriptor) {
+  function beginJourney({
+    scope = "global",
+    scopeTarget = null,
+    targetLabel = "message",
+    commandKey,
+    headline,
+  }: JourneyDescriptor) {
     return journey.begin({
       scope,
       scopeTarget,
       targetLabel,
       commandKey,
-      headline: headline || 'Working on your request',
-      subhead: scope === 'global' ? 'Composer assistant' : 'Mailbox assistant'
+      headline: headline || "Working on your request",
+      subhead: scope === "global" ? "Composer assistant" : "Mailbox assistant",
     });
   }
 
@@ -97,7 +107,7 @@ export function createAiCommandClient({
     const {
       contextId,
       subject,
-      journeyScope = 'global',
+      journeyScope = "global",
       journeyScopeTarget = null,
       journeyLabel,
       journeyHeadline,
@@ -105,11 +115,12 @@ export function createAiCommandClient({
       commandArgs,
       emailContext,
       fallbackEmail,
-      recipientContext
+      recipientContext,
     } = options;
 
-    const targetLabel = journeyLabel || subject || fallbackEmail?.subject || 'message';
-    const conversationKey = (ledger.resolveKey({ journeyScope, journeyScopeTarget, contextId }) ?? null) as string | null;
+    const targetLabel = journeyLabel || subject || fallbackEmail?.subject || "message";
+    const conversationKey = (ledger.resolveKey({ journeyScope, journeyScopeTarget, contextId }) ??
+      null) as string | null;
     const scopedConversationId = conversationKey ? ledger.read(conversationKey) : null;
     const payload: ChatRequestPayload = {
       instruction,
@@ -122,11 +133,17 @@ export function createAiCommandClient({
       journeyHeadline,
       maxResults: 5,
       thinkingEnabled: false,
-      jsonOutput: false
+      jsonOutput: false,
     };
-    const journeyToken = beginJourney({ scope: journeyScope, scopeTarget: journeyScopeTarget, targetLabel, commandKey: command, headline: journeyHeadline });
+    const journeyToken = beginJourney({
+      scope: journeyScope,
+      scopeTarget: journeyScopeTarget,
+      targetLabel,
+      commandKey: command,
+      headline: journeyHeadline,
+    });
 
-    const trimmedContextId = typeof contextId === 'string' ? contextId.trim() : null;
+    const trimmedContextId = typeof contextId === "string" ? contextId.trim() : null;
     if (trimmedContextId) {
       payload.contextId = trimmedContextId;
     }
@@ -169,17 +186,17 @@ export function createAiCommandClient({
       }
     }
 
-    journey.advance(journeyToken, 'ai:context-search');
+    journey.advance(journeyToken, "ai:context-search");
 
     try {
       const validationResult = await executeCatalogCommand(command, payload);
       if (!validationResult.success) {
         // Validation failure already logged by executeCatalogCommand
         journey.fail(journeyToken);
-        throw new Error('AI command response validation failed');
+        throw new Error("AI command response validation failed");
       }
       const responseData = validationResult.data;
-      journey.advance(journeyToken, 'ai:llm-thinking');
+      journey.advance(journeyToken, "ai:llm-thinking");
       journey.complete(journeyToken);
       if (conversationKey && responseData.conversationId) {
         ledger.write(conversationKey, responseData.conversationId);
@@ -197,30 +214,31 @@ export function createAiCommandClient({
       commandVariant = null,
       instructionOverride = null,
       selectedEmail = null,
-      journeyScope = 'global',
+      journeyScope = "global",
       journeyScopeTarget = null,
       journeyLabel = null,
-      commandArgs: overrideArgs = null
+      commandArgs: overrideArgs = null,
     } = options;
 
     if (!command) {
-      throw new Error('Command is required.');
+      throw new Error("Command is required.");
     }
     const ready = await ensureCatalogLoaded();
     if (!ready) {
-      throw new Error('AI helpers are unavailable. Please refresh and try again.');
+      throw new Error("AI helpers are unavailable. Please refresh and try again.");
     }
     const catalogSnapshot = get(catalog);
     const meta: any = getFunctionMeta(catalogSnapshot, command);
     if (!meta) {
-      throw new Error('Command unavailable.');
+      throw new Error("Command unavailable.");
     }
-    const variant = commandVariant && Array.isArray(meta.variants)
-      ? meta.variants.find((entry: any) => entry.key === commandVariant) || null
-      : null;
+    const variant =
+      commandVariant && Array.isArray(meta.variants)
+        ? meta.variants.find((entry: any) => entry.key === commandVariant) || null
+        : null;
     const mergedArgs = overrideArgs || mergeDefaultArgs(meta, variant);
     const instruction = instructionOverride || resolveDefaultInstruction(meta, variant);
-    const headline = deriveHeadline(command, meta.label || 'Assistant');
+    const headline = deriveHeadline(command, meta.label || "Assistant");
 
     const result = await call(command, instruction, {
       contextId: selectedEmail?.contextId,
@@ -231,7 +249,7 @@ export function createAiCommandClient({
       journeyHeadline: headline,
       commandVariant: variant?.key || null,
       commandArgs: mergedArgs,
-      fallbackEmail: selectedEmail
+      fallbackEmail: selectedEmail,
     });
 
     return {
@@ -239,59 +257,59 @@ export function createAiCommandClient({
       meta,
       variant,
       args: mergedArgs,
-      headline
+      headline,
     };
   }
 
   async function prefill(options: PrefillOptions) {
     const { command, detail, windowId, windowPayload, selectedEmail, relatedEmail } = options;
     if (!command) {
-      throw new Error('Command key required for compose prefill.');
+      throw new Error("Command key required for compose prefill.");
     }
     const ready = await ensureCatalogLoaded();
     if (!ready) {
-      throw new Error('AI helpers are unavailable. Please try again.');
+      throw new Error("AI helpers are unavailable. Please try again.");
     }
     const catalogSnapshot = get(catalog);
     const fn: any = getFunctionMeta(catalogSnapshot, command);
     if (!fn) {
-      throw new Error('Command unavailable.');
+      throw new Error("Command unavailable.");
     }
     const instruction = detail.instructionOverride || resolveDefaultInstruction(fn, null);
-    const journeyHeadline = deriveHeadline(command, fn.label || 'Assistant');
+    const journeyHeadline = deriveHeadline(command, fn.label || "Assistant");
     const commandArgs = mergeDefaultArgs(fn, null);
     const related = relatedEmail || selectedEmail || null;
     const recipientContext = deriveRecipientContext({
       toInput: detail.to,
       composePayload: windowPayload,
-      fallbackEmail: related
+      fallbackEmail: related,
     });
 
     const response = await call(command, instruction, {
       contextId: related?.contextId || related?.id || null,
       subject: detail.subject || related?.subject,
-      journeyScope: 'compose',
+      journeyScope: "compose",
       journeyScopeTarget: windowId,
-      journeyLabel: detail.subject || related?.subject || 'draft',
+      journeyLabel: detail.subject || related?.subject || "draft",
       journeyHeadline,
       commandArgs,
       fallbackEmail: related,
-      recipientContext
+      recipientContext,
     });
 
-    const markdown = typeof response?.response === 'string' ? response.response.trim() : '';
+    const markdown = typeof response?.response === "string" ? response.response.trim() : "";
     const sanitizedHtml = response?.sanitizedHtml || response?.sanitizedHTML || null;
 
     let draftText = markdown;
     if (!draftText && sanitizedHtml) {
-      const temp = document.createElement('div');
+      const temp = document.createElement("div");
       // Defense-in-depth: re-sanitize on client even though server sanitized
       temp.innerHTML = sanitizeHtml(sanitizedHtml);
-      draftText = temp.textContent?.trim() || '';
+      draftText = temp.textContent?.trim() || "";
     }
 
     let parsedSubject = detail.subject;
-    let parsedBody = detail.draft || '';
+    let parsedBody = detail.draft || "";
     if (draftText) {
       const parsed = parseSubjectAndBody(draftText);
       parsedSubject = parsed.subject || parsedSubject;
@@ -306,14 +324,14 @@ export function createAiCommandClient({
       response,
       draft: {
         subject: parsedSubject,
-        body: parsedBody
-      }
+        body: parsedBody,
+      },
     };
   }
 
   return {
     call,
     run,
-    prefill
+    prefill,
   };
 }

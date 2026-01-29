@@ -12,16 +12,16 @@
  * Selected for accessibility (WCAG AA contrast with white text) and visual variety.
  */
 const AVATAR_COLORS = [
-  'bg-blue-500',
-  'bg-purple-500',
-  'bg-green-500',
-  'bg-orange-500',
-  'bg-pink-500',
-  'bg-indigo-500',
-  'bg-teal-500',
-  'bg-red-500',
-  'bg-cyan-500',
-  'bg-amber-500'
+  "bg-blue-500",
+  "bg-purple-500",
+  "bg-green-500",
+  "bg-orange-500",
+  "bg-pink-500",
+  "bg-indigo-500",
+  "bg-teal-500",
+  "bg-red-500",
+  "bg-cyan-500",
+  "bg-amber-500",
 ];
 
 /**
@@ -50,16 +50,16 @@ function hashString(str: string) {
  * extractInitials('', 'bob@example.com') // => 'BO'
  */
 function extractInitials(name: string | null | undefined, email: string | null | undefined) {
-  const source = (name && name.trim()) || (email && email.trim()) || '??';
+  const source = (name && name.trim()) || (email && email.trim()) || "??";
 
   // Remove email domain if using email as source
-  const cleanSource = source.includes('@') ? source.split('@')[0] : source;
+  const cleanSource = source.includes("@") ? source.split("@")[0] : source;
 
   // Split on whitespace, punctuation, or camelCase
   const parts = cleanSource
-    .replace(/[._-]/g, ' ')
+    .replace(/[._-]/g, " ")
     .split(/\s+/)
-    .filter(part => part.length > 0);
+    .filter((part) => part.length > 0);
 
   if (parts.length >= 2) {
     // Two or more parts: take first char of first two parts
@@ -73,7 +73,7 @@ function extractInitials(name: string | null | undefined, email: string | null |
   }
 
   // Fallback for edge cases
-  return '??';
+  return "??";
 }
 
 /**
@@ -91,11 +91,14 @@ function extractInitials(name: string | null | undefined, email: string | null |
  * getLetterAvatarData('', 'bob@example.com')
  * // => { initials: 'BO', colorClass: 'bg-green-500' }
  */
-export function getLetterAvatarData(name: string | null | undefined, email: string | null | undefined) {
+export function getLetterAvatarData(
+  name: string | null | undefined,
+  email: string | null | undefined,
+) {
   const initials = extractInitials(name, email);
 
   // Use name or email for color selection (prefer name for consistency)
-  const colorSource = (name && name.trim()) || (email && email.trim()) || 'default';
+  const colorSource = (name && name.trim()) || (email && email.trim()) || "default";
   const colorIndex = hashString(colorSource) % AVATAR_COLORS.length;
   const colorClass = AVATAR_COLORS[colorIndex];
 

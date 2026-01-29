@@ -5,14 +5,14 @@
  * @see docs/type-safety-zod-validation.md
  */
 
-import { z } from 'zod/v4';
+import { z } from "zod/v4";
 
 /**
  * Type guard for plain objects with string keys.
  * Arrays pass typeof === 'object' but should not be treated as field containers.
  */
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
@@ -24,7 +24,7 @@ function normalizeEmailFields(data: unknown): unknown {
   if (!isPlainObject(data)) return data;
 
   // Copy contextForAI → contextForAi if backend sent uppercase variant
-  if ('contextForAI' in data && !('contextForAi' in data)) {
+  if ("contextForAI" in data && !("contextForAi" in data)) {
     return { ...data, contextForAi: data.contextForAI };
   }
   return data;
@@ -55,7 +55,7 @@ const EmailMessageSchemaShape = z.object({
   starred: z.boolean(),
   read: z.boolean(),
   preview: z.string(),
-  contextForAi: z.string().nullish()
+  contextForAi: z.string().nullish(),
 });
 
 /**
@@ -63,10 +63,7 @@ const EmailMessageSchemaShape = z.object({
  * Fields use nullish() where API may omit OR send null.
  * Preprocesses to normalize contextForAI → contextForAi field naming.
  */
-export const EmailMessageSchema = z.preprocess(
-  normalizeEmailFields,
-  EmailMessageSchemaShape
-);
+export const EmailMessageSchema = z.preprocess(normalizeEmailFields, EmailMessageSchemaShape);
 
 /**
  * TypeScript type derived from schema - single source of truth.
@@ -77,11 +74,11 @@ export type EmailMessage = z.infer<typeof EmailMessageSchema>;
  * Extracts record identifier for logging from raw email data.
  */
 export function extractEmailRecordId(raw: unknown): string {
-  if (typeof raw === 'object' && raw !== null && 'id' in raw) {
+  if (typeof raw === "object" && raw !== null && "id" in raw) {
     const idValue = (raw as Record<string, unknown>).id;
-    if (typeof idValue === 'string') {
+    if (typeof idValue === "string") {
       return idValue;
     }
   }
-  return 'unknown-email';
+  return "unknown-email";
 }

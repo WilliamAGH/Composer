@@ -1,6 +1,6 @@
-import { createWindowNoticeStore } from '../window/WindowNoticeStore';
+import { createWindowNoticeStore } from "../window/WindowNoticeStore";
 
-type DiagnosticLevel = 'info' | 'warn' | 'error';
+type DiagnosticLevel = "info" | "warn" | "error";
 
 export type ClientDiagnosticEntry = {
   level: DiagnosticLevel;
@@ -26,20 +26,24 @@ declare global {
  * @param {string} message
  * @param {Error|undefined} error
  */
-export function recordClientDiagnostic(level: DiagnosticLevel = 'info', message = '', error: Error | null = null) {
+export function recordClientDiagnostic(
+  level: DiagnosticLevel = "info",
+  message = "",
+  error: Error | null = null,
+) {
   const entry: ClientDiagnosticEntry = {
     level,
-    message: message || '',
+    message: message || "",
     detail: error?.message || null,
     stack: error?.stack || null,
-    at: Date.now()
+    at: Date.now(),
   };
   diagnosticsBuffer.push(entry);
   if (diagnosticsBuffer.length > MAX_DIAGNOSTICS) {
     diagnosticsBuffer.shift();
   }
 
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     const existing = Array.isArray(window.__COMPOSER_DIAGNOSTICS__)
       ? window.__COMPOSER_DIAGNOSTICS__
       : [];
@@ -55,9 +59,11 @@ export function recordClientDiagnostic(level: DiagnosticLevel = 'info', message 
  * Broadcasts client warnings and optionally surfaces them via a toast.
  * @param {{message?: string, error?: Error, silent?: boolean, level?: 'info'|'warn'|'error'}} detail
  */
-export function processClientWarning(detail: { message?: string; error?: Error; silent?: boolean; level?: DiagnosticLevel } = {}) {
-  const { message, error, silent = false, level = 'warn' } = detail || {};
-  recordClientDiagnostic(level, message || 'Client warning', error);
+export function processClientWarning(
+  detail: { message?: string; error?: Error; silent?: boolean; level?: DiagnosticLevel } = {},
+) {
+  const { message, error, silent = false, level = "warn" } = detail || {};
+  recordClientDiagnostic(level, message || "Client warning", error);
   if (!silent && message) {
     showWindowNotice(message);
   }
@@ -67,7 +73,7 @@ export function processClientWarning(detail: { message?: string; error?: Error; 
  * Public window notice store consumed by WindowNotice + overlays.
  */
 export const windowNoticeStore = {
-  subscribe: noticeStore.subscribe
+  subscribe: noticeStore.subscribe,
 };
 
 /**

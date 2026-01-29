@@ -1,5 +1,10 @@
-import { writable, type Writable } from 'svelte/store';
-import { buildAiJourney, type AiJourneyEvent, type JourneyContext, type JourneyStep } from '../aiJourney';
+import { writable, type Writable } from "svelte/store";
+import {
+  buildAiJourney,
+  type AiJourneyEvent,
+  type JourneyContext,
+  type JourneyStep,
+} from "../aiJourney";
 
 export type AiJourneyOverlayState = {
   token: string | null;
@@ -33,7 +38,12 @@ export type AiJourneyStore = {
  * Encapsulates the AI journey overlay/timers so multiple components can coordinate without duplicating
  * state logic. Stored in JS for reuse outside App.svelte.
  */
-const JOURNEY_ORDER: AiJourneyEvent[] = ['ai:payload-prep', 'ai:context-search', 'ai:llm-thinking', 'ai:writing-summary'];
+const JOURNEY_ORDER: AiJourneyEvent[] = [
+  "ai:payload-prep",
+  "ai:context-search",
+  "ai:llm-thinking",
+  "ai:writing-summary",
+];
 
 export function createAiJourneyStore(): AiJourneyStore {
   const overlay = writable<AiJourneyOverlayState>(baseState());
@@ -46,21 +56,21 @@ export function createAiJourneyStore(): AiJourneyStore {
       steps: buildAiJourney(),
       activeStepId: null,
       completed: new Set(),
-      headline: 'Working on your request',
-      subhead: 'Composer assistant',
-      scope: 'global',
+      headline: "Working on your request",
+      subhead: "Composer assistant",
+      scope: "global",
       scopeTarget: null,
-      commandKey: null
+      commandKey: null,
     };
   }
 
   function begin({
-    scope = 'global',
-    targetLabel = 'message',
+    scope = "global",
+    targetLabel = "message",
     commandKey,
     headline = null,
     subhead = null,
-    scopeTarget = null
+    scopeTarget = null,
   }: {
     scope?: string;
     targetLabel?: string;
@@ -72,7 +82,10 @@ export function createAiJourneyStore(): AiJourneyStore {
     clear();
     const context: JourneyContext = { targetLabel, command: commandKey };
     const steps = buildAiJourney(context);
-    const token = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+    const token =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random()}`;
     overlay.set({
       token,
       visible: true,
@@ -81,9 +94,9 @@ export function createAiJourneyStore(): AiJourneyStore {
       scopeTarget,
       completed: new Set(),
       activeStepId: steps[0]?.id || null,
-      headline: headline || 'Working on your request',
-      subhead: subhead || (scope === 'global' ? 'Composer assistant' : 'Mailbox assistant'),
-      commandKey
+      headline: headline || "Working on your request",
+      subhead: subhead || (scope === "global" ? "Composer assistant" : "Mailbox assistant"),
+      commandKey,
     });
     return token;
   }
@@ -101,17 +114,37 @@ export function createAiJourneyStore(): AiJourneyStore {
 
   function complete(token: string | null) {
     clear();
-    advance(token, 'ai:writing-summary');
-    timer = setTimeout(() => overlay.update((state) => state.token === token ? { ...state, visible: false, token: null } : state), 600);
+    advance(token, "ai:writing-summary");
+    timer = setTimeout(
+      () =>
+        overlay.update((state) =>
+          state.token === token ? { ...state, visible: false, token: null } : state,
+        ),
+      600,
+    );
   }
 
   function fail(token: string | null) {
     clear();
-    overlay.update((state) => state.token === token
-      ? { ...state, headline: 'Unable to finish that request', subhead: 'Please retry in a moment', completed: new Set(), activeStepId: null, visible: true }
-      : state
+    overlay.update((state) =>
+      state.token === token
+        ? {
+            ...state,
+            headline: "Unable to finish that request",
+            subhead: "Please retry in a moment",
+            completed: new Set(),
+            activeStepId: null,
+            visible: true,
+          }
+        : state,
     );
-    timer = setTimeout(() => overlay.update((state) => state.token === token ? { ...state, visible: false, token: null } : state), 1500);
+    timer = setTimeout(
+      () =>
+        overlay.update((state) =>
+          state.token === token ? { ...state, visible: false, token: null } : state,
+        ),
+      1500,
+    );
   }
 
   function clear() {

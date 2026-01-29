@@ -1,4 +1,4 @@
-import { postJsonVoid } from './sessionNonceClient';
+import { postJsonVoid } from "./sessionNonceClient";
 
 export interface MailboxAutomationRequest {
   mailboxId: string;
@@ -15,7 +15,7 @@ export interface MailboxAutomationRequest {
 export async function launchMailboxAutomation(request: MailboxAutomationRequest): Promise<void> {
   const { mailboxId, ...body } = request;
   if (!mailboxId) {
-    throw new Error('mailboxId is required to launch automation');
+    throw new Error("mailboxId is required to launch automation");
   }
   await postJsonVoid(`/api/mailboxes/${encodeURIComponent(mailboxId)}/automation`, body);
 }

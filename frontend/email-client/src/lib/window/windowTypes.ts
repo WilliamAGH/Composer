@@ -1,19 +1,19 @@
-import { formatRecipientDisplay } from '../services/emailContextConstructor';
-import { normalizeReplySubject } from '../services/emailSubjectPrefixHandler';
-import type { FrontendEmailMessage } from '../services/emailUtils';
+import { formatRecipientDisplay } from "../services/emailContextConstructor";
+import { normalizeReplySubject } from "../services/emailSubjectPrefixHandler";
+import type { FrontendEmailMessage } from "../services/emailUtils";
 
-export type WindowKindType = 'compose' | 'summary';
-export type WindowModeType = 'floating' | 'docked';
+export type WindowKindType = "compose" | "summary";
+export type WindowModeType = "floating" | "docked";
 
 export const WindowKind = Object.freeze({
-  COMPOSE: 'compose',
-  SUMMARY: 'summary'
-}) satisfies Record<'COMPOSE' | 'SUMMARY', WindowKindType>;
+  COMPOSE: "compose",
+  SUMMARY: "summary",
+}) satisfies Record<"COMPOSE" | "SUMMARY", WindowKindType>;
 
 export const WindowMode = Object.freeze({
-  FLOATING: 'floating',
-  DOCKED: 'docked'
-}) satisfies Record<'FLOATING' | 'DOCKED', WindowModeType>;
+  FLOATING: "floating",
+  DOCKED: "docked",
+}) satisfies Record<"FLOATING" | "DOCKED", WindowModeType>;
 
 export type DraftSnapshot = {
   subject: string;
@@ -65,15 +65,15 @@ export type SummaryWindowDescriptor = {
 export type WindowDescriptor = ComposeWindowDescriptor | SummaryWindowDescriptor;
 
 function toTrimmed(value: string | null | undefined) {
-  return typeof value === 'string' ? value.trim() : '';
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function fallbackUuid() {
-  return 'win-' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  return "win-" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
 export function createWindowId() {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
   }
   return fallbackUuid();
@@ -86,36 +86,43 @@ export type ComposeWindowOverrides = Partial<ComposeWindowPayload> & {
   contextId?: string | null;
 };
 
-export function createComposeWindow(email: Partial<FrontendEmailMessage> = {}, overrides: ComposeWindowOverrides = {}): ComposeWindowDescriptor {
-  const safeRecipientName = toTrimmed(overrides.recipientName ?? email.senderName ?? '');
-  const safeRecipientEmail = toTrimmed(overrides.recipientEmail ?? email.fromEmail ?? '');
+export function createComposeWindow(
+  email: Partial<FrontendEmailMessage> = {},
+  overrides: ComposeWindowOverrides = {},
+): ComposeWindowDescriptor {
+  const safeRecipientName = toTrimmed(overrides.recipientName ?? email.senderName ?? "");
+  const safeRecipientEmail = toTrimmed(overrides.recipientEmail ?? email.fromEmail ?? "");
   const defaultToValue = formatRecipientDisplay(safeRecipientName, safeRecipientEmail);
   return {
     id: createWindowId(),
     kind: WindowKind.COMPOSE,
     mode: WindowMode.FLOATING,
     minimized: false,
-    contextId: overrides.contextId !== undefined ? overrides.contextId : (email.id || null),
-    title: overrides.title || normalizeReplySubject(email.subject) || 'New Message',
+    contextId: overrides.contextId !== undefined ? overrides.contextId : email.id || null,
+    title: overrides.title || normalizeReplySubject(email.subject) || "New Message",
     payload: {
       to: overrides.to ?? defaultToValue,
       recipientName: safeRecipientName,
       recipientEmail: safeRecipientEmail,
-      subject: overrides.subject ?? (email.subject ? normalizeReplySubject(email.subject) : ''),
-      body: overrides.body ?? '',
+      subject: overrides.subject ?? (email.subject ? normalizeReplySubject(email.subject) : ""),
+      body: overrides.body ?? "",
       hasQuotedContext: overrides.hasQuotedContext ?? false,
-      quotedContext: overrides.quotedContext ?? '',
+      quotedContext: overrides.quotedContext ?? "",
       bodyVersion: overrides.bodyVersion ?? 0,
       isReply: overrides.isReply ?? Boolean(email && email.id),
       isForward: overrides.isForward ?? false,
       draftContextId: overrides.draftContextId ?? null,
       draftContextFingerprint: overrides.draftContextFingerprint ?? null,
-      draftHistory: overrides.draftHistory ?? []
-    }
+      draftHistory: overrides.draftHistory ?? [],
+    },
   };
 }
 
-export function createSummaryWindow(email: Partial<FrontendEmailMessage> = {}, html = '', title = 'Summary'): SummaryWindowDescriptor {
+export function createSummaryWindow(
+  email: Partial<FrontendEmailMessage> = {},
+  html = "",
+  title = "Summary",
+): SummaryWindowDescriptor {
   const contextId = email.id || createWindowId();
   return {
     id: createWindowId(),
@@ -123,10 +130,10 @@ export function createSummaryWindow(email: Partial<FrontendEmailMessage> = {}, h
     mode: WindowMode.DOCKED,
     minimized: false,
     contextId,
-    title: title || 'Summary',
+    title: title || "Summary",
     payload: {
       emailId: email.id || null,
-      html: html || '<div class="text-sm text-slate-500">No summary yet.</div>'
-    }
+      html: html || '<div class="text-sm text-slate-500">No summary yet.</div>',
+    },
   };
 }

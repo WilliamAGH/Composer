@@ -3,12 +3,9 @@
  * All responses are validated at runtime - validation failures are logged with full context.
  */
 
-import { postJsonValidated, postJsonVoid } from './sessionNonceClient';
-import {
-  ChatResponsePayloadSchema,
-  type ChatResponsePayload
-} from '../schemas/catalogSchemas';
-import type { ValidationResult } from '../validation/result';
+import { postJsonValidated, postJsonVoid } from "./sessionNonceClient";
+import { ChatResponsePayloadSchema, type ChatResponsePayload } from "../schemas/catalogSchemas";
+import type { ValidationResult } from "../validation/result";
 
 export interface ChatRequestPayload {
   message: string;
@@ -18,7 +15,7 @@ export interface ChatRequestPayload {
   emailContext?: string | null;
   contextId?: string | null;
   thinkingEnabled?: boolean;
-  thinkingLevel?: 'minimal' | 'low' | 'medium' | 'high';
+  thinkingLevel?: "minimal" | "low" | "medium" | "high";
   jsonOutput?: boolean;
   aiCommand?: string | null;
   commandVariant?: string | null;
@@ -44,16 +41,16 @@ export interface DraftContextPayload {
  */
 export async function executeCatalogCommand(
   commandKey: string,
-  payload: ChatRequestPayload
+  payload: ChatRequestPayload,
 ): Promise<ValidationResult<ChatResponsePayload>> {
   if (!commandKey) {
-    throw new Error('commandKey is required');
+    throw new Error("commandKey is required");
   }
   return postJsonValidated(
     `/api/catalog-commands/${encodeURIComponent(commandKey)}/execute`,
     ChatResponsePayloadSchema,
     `catalog-command:${commandKey}`,
-    payload
+    payload,
   );
 }
 
@@ -63,12 +60,12 @@ export async function executeCatalogCommand(
  */
 export async function uploadDraftContext(payload: DraftContextPayload): Promise<void> {
   if (!payload?.contextId) {
-    throw new Error('contextId is required');
+    throw new Error("contextId is required");
   }
   if (!payload?.content) {
-    throw new Error('content is required');
+    throw new Error("content is required");
   }
-  await postJsonVoid('/api/catalog-commands/draft-context', payload);
+  await postJsonVoid("/api/catalog-commands/draft-context", payload);
 }
 
 // Re-export types for callers

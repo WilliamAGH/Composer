@@ -5,7 +5,7 @@
  * @see docs/type-safety-zod-validation.md
  */
 
-import { z } from 'zod/v4';
+import { z } from "zod/v4";
 
 /**
  * Success case: validated data is available.
@@ -46,7 +46,7 @@ export function validationFailure(error: z.ZodError): ValidationFailure {
  * Type guard to narrow ValidationResult to success case.
  */
 export function isValidationSuccess<T>(
-  result: ValidationResult<T>
+  result: ValidationResult<T>,
 ): result is ValidationSuccess<T> {
   return result.success === true;
 }
@@ -54,8 +54,6 @@ export function isValidationSuccess<T>(
 /**
  * Type guard to narrow ValidationResult to failure case.
  */
-export function isValidationFailure<T>(
-  result: ValidationResult<T>
-): result is ValidationFailure {
+export function isValidationFailure<T>(result: ValidationResult<T>): result is ValidationFailure {
   return result.success === false;
 }

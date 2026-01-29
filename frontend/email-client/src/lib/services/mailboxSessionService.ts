@@ -9,7 +9,7 @@ export function ensureMailboxSessionToken(seedToken?: string | null) {
     mailboxSessionToken = seedToken;
     return mailboxSessionToken;
   }
-  if (!mailboxSessionToken && typeof crypto !== 'undefined' && crypto.randomUUID) {
+  if (!mailboxSessionToken && typeof crypto !== "undefined" && crypto.randomUUID) {
     mailboxSessionToken = crypto.randomUUID();
   }
   if (!mailboxSessionToken) {

@@ -3,7 +3,7 @@
  * Shared by mailboxDataStore and mailboxLayoutStore to ensure consistent folder derivation.
  */
 
-import { mapEmailMessage, type FrontendEmailMessage } from '../services/emailUtils';
+import { mapEmailMessage, type FrontendEmailMessage } from "../services/emailUtils";
 
 // Re-export for consumers
 export type { FrontendEmailMessage };
@@ -13,37 +13,29 @@ type FolderMap = Record<string, string>;
 
 /** Labels that represent mutually exclusive folder placements. */
 export const EXCLUSIVE_FOLDER_LABELS = new Set([
-  'archive',
-  'archived',
-  'trash',
-  'deleted',
-  'sent',
-  'drafts',
-  'draft'
+  "archive",
+  "archived",
+  "trash",
+  "deleted",
+  "sent",
+  "drafts",
+  "draft",
 ]);
 
 /** Canonical folder identifiers supported by the mailbox UI. */
-export const SUPPORTED_FOLDER_IDS = new Set([
-  'inbox',
-  'archive',
-  'trash',
-  'sent',
-  'drafts'
-]);
+export const SUPPORTED_FOLDER_IDS = new Set(["inbox", "archive", "trash", "sent", "drafts"]);
 
 /**
  * Merges an existing label array with a target mailbox placement.
  * Removes any exclusive labels before adding the new target.
  */
 export function mergeLabelsWithFolder(existing: string[], targetMailbox: string): string[] {
-  const labels = Array.isArray(existing)
-    ? existing.map((label) => `${label}`.toLowerCase())
-    : [];
+  const labels = Array.isArray(existing) ? existing.map((label) => `${label}`.toLowerCase()) : [];
   const cleaned = labels.filter((label) => !EXCLUSIVE_FOLDER_LABELS.has(label));
-  if (targetMailbox === 'archive') cleaned.push('archive');
-  if (targetMailbox === 'trash') cleaned.push('trash');
-  if (targetMailbox === 'sent') cleaned.push('sent');
-  if (targetMailbox === 'drafts') cleaned.push('drafts');
+  if (targetMailbox === "archive") cleaned.push("archive");
+  if (targetMailbox === "trash") cleaned.push("trash");
+  if (targetMailbox === "sent") cleaned.push("sent");
+  if (targetMailbox === "drafts") cleaned.push("drafts");
   return Array.from(new Set(cleaned));
 }
 
@@ -53,11 +45,11 @@ export function mergeLabelsWithFolder(existing: string[], targetMailbox: string)
  */
 export function deriveFolderFromLabels(labels: string[] = []): string {
   const normalized = labels.map((label) => `${label}`.toLowerCase());
-  if (normalized.some((label) => label === 'trash' || label === 'deleted')) return 'trash';
-  if (normalized.some((label) => label === 'archive' || label === 'archived')) return 'archive';
-  if (normalized.includes('sent')) return 'sent';
-  if (normalized.includes('drafts') || normalized.includes('draft')) return 'drafts';
-  return 'inbox';
+  if (normalized.some((label) => label === "trash" || label === "deleted")) return "trash";
+  if (normalized.some((label) => label === "archive" || label === "archived")) return "archive";
+  if (normalized.includes("sent")) return "sent";
+  if (normalized.includes("drafts") || normalized.includes("draft")) return "drafts";
+  return "inbox";
 }
 
 /**
@@ -65,11 +57,11 @@ export function deriveFolderFromLabels(labels: string[] = []): string {
  * Returns 'inbox' for unrecognized or empty values.
  */
 export function normalizeFolderId(folderId: string | null | undefined): string {
-  const normalized = typeof folderId === 'string' ? folderId.trim().toLowerCase() : '';
+  const normalized = typeof folderId === "string" ? folderId.trim().toLowerCase() : "";
   if (SUPPORTED_FOLDER_IDS.has(normalized)) {
     return normalized;
   }
-  return 'inbox';
+  return "inbox";
 }
 
 /**
@@ -77,8 +69,8 @@ export function normalizeFolderId(folderId: string | null | undefined): string {
  * falling back to label-based derivation.
  */
 export function resolveFolderFromMap(folderMap: FolderMap, message: Message | null): string {
-  if (!message || !message.id) return 'inbox';
-  if (folderMap && typeof folderMap === 'object' && folderMap[message.id]) {
+  if (!message || !message.id) return "inbox";
+  if (folderMap && typeof folderMap === "object" && folderMap[message.id]) {
     return normalizeFolderId(folderMap[message.id]);
   }
   return deriveFolderFromLabels(message.labels || []);
@@ -90,7 +82,9 @@ export function resolveFolderFromMap(folderMap: FolderMap, message: Message | nu
 export function normalizeMessages(list: unknown[]): Message[] {
   if (!Array.isArray(list)) return [];
   return list.map((message, index) =>
-    isUiMessage(message) ? message : mapEmailMessage(message as Parameters<typeof mapEmailMessage>[0], index)
+    isUiMessage(message)
+      ? message
+      : mapEmailMessage(message as Parameters<typeof mapEmailMessage>[0], index),
   );
 }
 
@@ -100,12 +94,12 @@ export function normalizeMessages(list: unknown[]): Message[] {
 export function isUiMessage(message: unknown): message is Message {
   return Boolean(
     message &&
-      typeof message === 'object' &&
-      'from' in message &&
-      typeof (message as Message).from === 'string' &&
-      'subject' in message &&
-      typeof (message as Message).subject === 'string' &&
-      'contentText' in message
+    typeof message === "object" &&
+    "from" in message &&
+    typeof (message as Message).from === "string" &&
+    "subject" in message &&
+    typeof (message as Message).subject === "string" &&
+    "contentText" in message,
   );
 }
 
@@ -115,12 +109,12 @@ export function isUiMessage(message: unknown): message is Message {
  */
 export function normalizeEffectiveFolderMap(
   folderMap: FolderMap | null,
-  referenceList: Message[] = []
+  referenceList: Message[] = [],
 ): FolderMap {
   const normalized: FolderMap = {};
-  if (folderMap && typeof folderMap === 'object') {
+  if (folderMap && typeof folderMap === "object") {
     for (const [messageId, folderId] of Object.entries(folderMap)) {
-      if (typeof messageId !== 'string' || !messageId) continue;
+      if (typeof messageId !== "string" || !messageId) continue;
       normalized[messageId] = normalizeFolderId(folderId);
     }
   }
@@ -146,20 +140,20 @@ export function normalizeDraftMessage(draft: {
   const pseudo = {
     id: draft.id,
     contextId: draft.id,
-    senderName: 'You',
-    senderEmail: 'you@example.com',
-    recipientName: draft.to || '',
-    recipientEmail: draft.to || '',
-    subject: draft.subject || 'Untitled draft',
-    emailBodyRaw: draft.body || '',
-    emailBodyTransformedText: draft.body || '',
-    emailBodyTransformedMarkdown: draft.body || '',
+    senderName: "You",
+    senderEmail: "you@example.com",
+    recipientName: draft.to || "",
+    recipientEmail: draft.to || "",
+    subject: draft.subject || "Untitled draft",
+    emailBodyRaw: draft.body || "",
+    emailBodyTransformedText: draft.body || "",
+    emailBodyTransformedMarkdown: draft.body || "",
     emailBodyHtml: null,
     llmSummary: null,
     receivedTimestampIso: nowIso,
-    receivedTimestampDisplay: 'Just now',
-    labels: ['drafts'],
-    contextForAi: null
+    receivedTimestampDisplay: "Just now",
+    labels: ["drafts"],
+    contextForAi: null,
   };
   return mapEmailMessage(pseudo);
 }

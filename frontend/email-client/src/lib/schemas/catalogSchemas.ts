@@ -4,7 +4,7 @@
  * @see docs/type-safety-zod-validation.md
  */
 
-import { z } from 'zod/v4';
+import { z } from "zod/v4";
 
 /**
  * Schema for AI function variant summary.
@@ -13,7 +13,7 @@ export const AiFunctionVariantSummarySchema = z.object({
   key: z.string(),
   label: z.string(),
   defaultInstruction: z.string().nullable(),
-  defaultArgs: z.record(z.string(), z.string())
+  defaultArgs: z.record(z.string(), z.string()),
 });
 
 export type AiFunctionVariantSummary = z.infer<typeof AiFunctionVariantSummarySchema>;
@@ -33,7 +33,7 @@ export const AiFunctionSummarySchema = z.object({
   primary: z.boolean(),
   scopes: z.array(z.string()),
   defaultArgs: z.record(z.string(), z.string()),
-  variants: z.array(AiFunctionVariantSummarySchema)
+  variants: z.array(AiFunctionVariantSummarySchema),
 });
 
 export type AiFunctionSummary = z.infer<typeof AiFunctionSummarySchema>;
@@ -46,11 +46,11 @@ export const AiFunctionCatalogDtoSchema = z.object({
     z.object({
       category: z.string(),
       label: z.string(),
-      functionKeys: z.array(z.string())
-    })
+      functionKeys: z.array(z.string()),
+    }),
   ),
   functionsByKey: z.record(z.string(), AiFunctionSummarySchema),
-  primaryCommands: z.array(z.string())
+  primaryCommands: z.array(z.string()),
 });
 
 export type AiFunctionCatalogDto = z.infer<typeof AiFunctionCatalogDtoSchema>;
@@ -64,7 +64,7 @@ export const ChatResponseEmailContextSchema = z.object({
   sender: z.string(),
   snippet: z.string(),
   relevanceScore: z.number(),
-  emailDate: z.string()
+  emailDate: z.string(),
 });
 
 export type ChatResponseEmailContext = z.infer<typeof ChatResponseEmailContextSchema>;
@@ -82,7 +82,7 @@ export const ChatResponsePayloadSchema = z.object({
   intent: z.string().nullish(),
   userMessageId: z.string().nullish(),
   assistantMessageId: z.string().nullish(),
-  renderedHtml: z.string().nullish()
+  renderedHtml: z.string().nullish(),
 });
 
 export type ChatResponsePayload = z.infer<typeof ChatResponsePayloadSchema>;

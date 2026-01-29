@@ -7,14 +7,20 @@
 export type SelectedEmailResolver = () => { contextId?: string | null; id?: string | null } | null;
 
 export interface ConversationLedger {
-  resolveKey: (params?: { journeyScope?: string | null; journeyScopeTarget?: string | null; contextId?: string | null }) => string | null;
+  resolveKey: (params?: {
+    journeyScope?: string | null;
+    journeyScopeTarget?: string | null;
+    contextId?: string | null;
+  }) => string | null;
   read: (key: string | null) => string | null;
   write: (key: string | null, conversationId: string | null) => void;
   GLOBAL_KEY: string;
 }
 
-export function createConversationLedger(getSelectedEmail: SelectedEmailResolver = () => null): ConversationLedger {
-  const GLOBAL_KEY = '__global__';
+export function createConversationLedger(
+  getSelectedEmail: SelectedEmailResolver = () => null,
+): ConversationLedger {
+  const GLOBAL_KEY = "__global__";
   const ledger = new Map<string, string>();
 
   function normalizeKey(key: string | null) {
@@ -22,16 +28,20 @@ export function createConversationLedger(getSelectedEmail: SelectedEmailResolver
   }
 
   function resolveKey({
-    journeyScope = 'global',
+    journeyScope = "global",
     journeyScopeTarget = null,
-    contextId = null
-  }: { journeyScope?: string | null; journeyScopeTarget?: string | null; contextId?: string | null } = {}) {
-    const scope = (journeyScope || 'global').toLowerCase();
-    if (scope === 'panel') {
-      const selected = typeof getSelectedEmail === 'function' ? getSelectedEmail() : null;
+    contextId = null,
+  }: {
+    journeyScope?: string | null;
+    journeyScopeTarget?: string | null;
+    contextId?: string | null;
+  } = {}) {
+    const scope = (journeyScope || "global").toLowerCase();
+    if (scope === "panel") {
+      const selected = typeof getSelectedEmail === "function" ? getSelectedEmail() : null;
       return journeyScopeTarget || contextId || selected?.contextId || selected?.id || null;
     }
-    if (scope === 'compose') {
+    if (scope === "compose") {
       return journeyScopeTarget || contextId || null;
     }
     return GLOBAL_KEY;
@@ -52,6 +62,6 @@ export function createConversationLedger(getSelectedEmail: SelectedEmailResolver
     resolveKey,
     read,
     write,
-    GLOBAL_KEY
+    GLOBAL_KEY,
   };
 }

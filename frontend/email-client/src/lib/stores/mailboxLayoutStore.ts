@@ -1,7 +1,12 @@
-import { derived, writable, get } from 'svelte/store';
-import { computeMailboxCounts } from '../services/emailUtils';
-import { filterEmailsByMailbox } from '../services/mailboxFiltering';
-import { fetchMailboxStateSnapshot, moveMailboxMessage, type MailboxStateSnapshot, type MessageMoveResult } from '../services/mailboxStateClient';
+import { derived, writable, get } from "svelte/store";
+import { computeMailboxCounts } from "../services/emailUtils";
+import { filterEmailsByMailbox } from "../services/mailboxFiltering";
+import {
+  fetchMailboxStateSnapshot,
+  moveMailboxMessage,
+  type MailboxStateSnapshot,
+  type MessageMoveResult,
+} from "../services/mailboxStateClient";
 import {
   normalizeMessages,
   normalizeDraftMessage,
@@ -10,8 +15,8 @@ import {
   mergeLabelsWithFolder,
   deriveFolderFromLabels,
   resolveFolderFromMap,
-  type FrontendEmailMessage
-} from './mailboxFolderLabels';
+  type FrontendEmailMessage,
+} from "./mailboxFolderLabels";
 
 type Message = FrontendEmailMessage;
 type FolderMap = Record<string, string>;
@@ -24,28 +29,38 @@ type SnapshotPayload = MailboxStateSnapshot | MessageMoveResult | null;
 export function createMailboxLayoutStore(
   initialEmails: any[] = [],
   initialFolderCounts: Record<string, number> | null = null,
-  initialEffectiveFolders: FolderMap | null = null
+  initialEffectiveFolders: FolderMap | null = null,
 ) {
   const normalizedInitial = normalizeMessages(initialEmails);
   const emails = writable<Message[]>(normalizedInitial);
-  const initialEffectiveMap = normalizeEffectiveFolderMap(initialEffectiveFolders, normalizedInitial);
+  const initialEffectiveMap = normalizeEffectiveFolderMap(
+    initialEffectiveFolders,
+    normalizedInitial,
+  );
   const selectedEmailId = writable<string | null>(null);
-  const mailbox = writable('inbox');
-  const search = writable('');
+  const mailbox = writable("inbox");
+  const search = writable("");
   const sidebarOpen = writable(true);
   const drawerMode = writable(false);
   const drawerVisible = writable(false);
   const messagePlacements = writable<Record<string, string>>({});
-  const mailboxCounts = writable<Record<string, number>>(initialFolderCounts ?? computeMailboxCounts(normalizedInitial));
+  const mailboxCounts = writable<Record<string, number>>(
+    initialFolderCounts ?? computeMailboxCounts(normalizedInitial),
+  );
   const messageFolders = writable(initialEffectiveMap);
   const pendingMoves = writable<Set<string>>(new Set());
   const moveErrors = writable<Record<string, string>>({});
 
-  const filteredEmails = derived([emails, mailbox, search, messageFolders], ([$emails, $mailbox, $search, $folders]) =>
-    filterEmailsByMailbox($emails, $mailbox, $search, (email) => resolveFolderFromMap($folders, email))
+  const filteredEmails = derived(
+    [emails, mailbox, search, messageFolders],
+    ([$emails, $mailbox, $search, $folders]) =>
+      filterEmailsByMailbox($emails, $mailbox, $search, (email) =>
+        resolveFolderFromMap($folders, email),
+      ),
   );
-  const selectedEmail = derived([emails, selectedEmailId], ([$emails, $selectedId]) =>
-    $emails.find((email) => email.id === $selectedId) || null
+  const selectedEmail = derived(
+    [emails, selectedEmailId],
+    ([$emails, $selectedId]) => $emails.find((email) => email.id === $selectedId) || null,
   );
 
   /**
@@ -86,7 +101,9 @@ export function createMailboxLayoutStore(
   function selectEmailById(id: string | null) {
     selectedEmailId.set(id);
     if (!id) return;
-    emails.update((list) => list.map((email) => (email.id === id ? { ...email, read: true } : email)));
+    emails.update((list) =>
+      list.map((email) => (email.id === id ? { ...email, read: true } : email)),
+    );
   }
 
   /**
@@ -155,8 +172,10 @@ export function createMailboxLayoutStore(
   function applyMailboxMove(messageId: string, targetMailbox: string) {
     updateEmailsAndCounts((list) =>
       list.map((entry) =>
-        entry.id === messageId ? { ...entry, labels: mergeLabelsWithFolder(entry.labels || [], targetMailbox) } : entry
-      )
+        entry.id === messageId
+          ? { ...entry, labels: mergeLabelsWithFolder(entry.labels || [], targetMailbox) }
+          : entry,
+      ),
     );
     updateFolderMapping(messageId, targetMailbox);
     updatePlacementForMessage(messageId, targetMailbox);
@@ -215,7 +234,15 @@ export function createMailboxLayoutStore(
   /**
    * Calls the move endpoint while keeping optimistic UI in sync.
    */
-  async function moveMessageRemote({ mailboxId, messageId, targetFolderId }: { mailboxId: string; messageId: string; targetFolderId: string }) {
+  async function moveMessageRemote({
+    mailboxId,
+    messageId,
+    targetFolderId,
+  }: {
+    mailboxId: string;
+    messageId: string;
+    targetFolderId: string;
+  }) {
     if (!mailboxId || !messageId || !targetFolderId) return null;
     if (get(pendingMoves).has(messageId)) return null;
     const previousMessage = get(emails).find((entry) => entry.id === messageId) || null;
@@ -230,7 +257,7 @@ export function createMailboxLayoutStore(
         if (previousLabels) {
           revertMailboxMove(messageId, previousLabels, previousFolderId);
         }
-        registerMoveError(messageId, 'Server response validation failed');
+        registerMoveError(messageId, "Server response validation failed");
         return null;
       }
       const moveResult = validationResult.data;
@@ -241,7 +268,7 @@ export function createMailboxLayoutStore(
       if (previousLabels) {
         revertMailboxMove(messageId, previousLabels, previousFolderId);
       }
-      const message = error instanceof Error ? error.message : 'Unable to move message.';
+      const message = error instanceof Error ? error.message : "Unable to move message.";
       registerMoveError(messageId, message);
       throw error;
     }
@@ -262,8 +289,8 @@ export function createMailboxLayoutStore(
       next[index] = { ...next[index], ...normalizedDraft };
       return next;
     });
-    updateFolderMapping(draft.id, 'drafts');
-    updatePlacementForMessage(draft.id, 'drafts');
+    updateFolderMapping(draft.id, "drafts");
+    updatePlacementForMessage(draft.id, "drafts");
   }
 
   /**
@@ -272,10 +299,14 @@ export function createMailboxLayoutStore(
   function markDraftAsSent(draftId: string | null) {
     if (!draftId) return;
     updateEmailsAndCounts((list) =>
-      list.map((entry) => (entry.id === draftId ? { ...entry, labels: mergeLabelsWithFolder(entry.labels || [], 'sent') } : entry))
+      list.map((entry) =>
+        entry.id === draftId
+          ? { ...entry, labels: mergeLabelsWithFolder(entry.labels || [], "sent") }
+          : entry,
+      ),
     );
-    updateFolderMapping(draftId, 'sent');
-    updatePlacementForMessage(draftId, 'sent');
+    updateFolderMapping(draftId, "sent");
+    updatePlacementForMessage(draftId, "sent");
   }
 
   /**
@@ -296,7 +327,7 @@ export function createMailboxLayoutStore(
    * Returns the effective folder for a message, factoring in session placements.
    */
   function resolveFolderForMessage(message: Message | null) {
-    if (!message) return 'inbox';
+    if (!message) return "inbox";
     const folders = get(messageFolders);
     return resolveFolderFromMap(folders, message);
   }
@@ -314,7 +345,7 @@ export function createMailboxLayoutStore(
   function updatePlacementForMessage(messageId: string, targetFolderId: string | null) {
     messagePlacements.update((map) => {
       const next = { ...map };
-      if (!targetFolderId || targetFolderId === 'inbox') {
+      if (!targetFolderId || targetFolderId === "inbox") {
         delete next[messageId];
       } else {
         next[messageId] = targetFolderId;
@@ -341,9 +372,9 @@ export function createMailboxLayoutStore(
     });
   }
 
-  function revertMailboxMove(messageId: string, labels: string[], previousFolderId = 'inbox') {
+  function revertMailboxMove(messageId: string, labels: string[], previousFolderId = "inbox") {
     updateEmailsAndCounts((list) =>
-      list.map((entry) => (entry.id === messageId ? { ...entry, labels: [...labels] } : entry))
+      list.map((entry) => (entry.id === messageId ? { ...entry, labels: [...labels] } : entry)),
     );
     updateFolderMapping(messageId, previousFolderId);
     updatePlacementForMessage(messageId, deriveFolderFromLabels(labels));
@@ -376,7 +407,10 @@ export function createMailboxLayoutStore(
     moveErrors.update((map) => ({ ...map, [messageId]: message }));
   }
 
-  function setEffectiveFolders(folderMap: FolderMap | null, referenceList: Message[] | null = null) {
+  function setEffectiveFolders(
+    folderMap: FolderMap | null,
+    referenceList: Message[] | null = null,
+  ) {
     const reference = Array.isArray(referenceList) ? referenceList : get(emails);
     messageFolders.set(normalizeEffectiveFolderMap(folderMap, reference));
   }
@@ -394,7 +428,7 @@ export function createMailboxLayoutStore(
       mailboxCounts,
       filteredEmails,
       pendingMoves: { subscribe: pendingMoves.subscribe },
-      moveErrors: { subscribe: moveErrors.subscribe }
+      moveErrors: { subscribe: moveErrors.subscribe },
     },
     initializeSnapshot,
     hydrateEmails,
@@ -412,6 +446,6 @@ export function createMailboxLayoutStore(
     saveDraftSession,
     markDraftAsSent,
     deleteDraftMessage,
-    resolveFolderForMessage
+    resolveFolderForMessage,
   };
 }

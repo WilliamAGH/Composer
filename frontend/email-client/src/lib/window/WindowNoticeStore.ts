@@ -1,4 +1,4 @@
-import { writable, type Readable } from 'svelte/store';
+import { writable, type Readable } from "svelte/store";
 
 export interface WindowNoticeStore extends Readable<string> {
   show: (message: string, duration?: number) => void;
@@ -11,7 +11,7 @@ export interface WindowNoticeStore extends Readable<string> {
  * @returns {{subscribe: import('svelte/store').Readable<string>['subscribe'], show: (message: string, duration?: number) => void, clear: () => void}}
  */
 export function createWindowNoticeStore(): WindowNoticeStore {
-  const notice = writable('');
+  const notice = writable("");
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   function show(message: string, duration = 4000) {
@@ -24,7 +24,7 @@ export function createWindowNoticeStore(): WindowNoticeStore {
       clearTimeout(timer);
     }
     timer = setTimeout(() => {
-      notice.set('');
+      notice.set("");
       timer = null;
     }, duration);
   }
@@ -34,12 +34,12 @@ export function createWindowNoticeStore(): WindowNoticeStore {
       clearTimeout(timer);
       timer = null;
     }
-    notice.set('');
+    notice.set("");
   }
 
   return {
     subscribe: notice.subscribe,
     show,
-    clear
+    clear,
   };
 }

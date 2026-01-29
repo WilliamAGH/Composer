@@ -1,6 +1,6 @@
-import { readable, derived, type Readable } from 'svelte/store';
+import { readable, derived, type Readable } from "svelte/store";
 
-export type ViewportTier = 'mobile' | 'tablet' | 'desktop' | 'wide';
+export type ViewportTier = "mobile" | "tablet" | "desktop" | "wide";
 
 export type ViewportMeasurement = {
   width: number;
@@ -27,7 +27,7 @@ export const VIEWPORT_BREAKPOINTS = {
   mobile: 640,
   tablet: 1024,
   desktop: 1280,
-  wide: 1536
+  wide: 1536,
 } as const;
 
 /**
@@ -47,10 +47,10 @@ const DEFAULT_STATE: ViewportSnapshot = {
   isTablet: false,
   isDesktop: false,
   isWide: false,
-  tier: 'mobile'
+  tier: "mobile",
 };
 
-const isBrowser = typeof window !== 'undefined';
+const isBrowser = typeof window !== "undefined";
 let latestSnapshot: ViewportSnapshot = DEFAULT_STATE;
 
 /**
@@ -62,8 +62,8 @@ function measureViewports(): ViewportMeasurement {
   const visual = window.visualViewport;
   const layoutWidth = window.innerWidth || document.documentElement?.clientWidth || 0;
   const layoutHeight = window.innerHeight || document.documentElement?.clientHeight || 0;
-  const visualWidth = typeof visual?.width === 'number' ? visual.width : null;
-  const visualHeight = typeof visual?.height === 'number' ? visual.height : null;
+  const visualWidth = typeof visual?.width === "number" ? visual.width : null;
+  const visualHeight = typeof visual?.height === "number" ? visual.height : null;
   const deviceWidth = window.screen?.width
     ? window.screen.width / (window.devicePixelRatio || 1)
     : null;
@@ -95,12 +95,18 @@ type MediaQueryMap = {
 } | null;
 
 function createMediaQueries(): MediaQueryMap {
-  if (!isBrowser || typeof window.matchMedia !== 'function') return null;
+  if (!isBrowser || typeof window.matchMedia !== "function") return null;
   return {
-    mobile: window.matchMedia(`(max-width: ${VIEWPORT_BREAKPOINTS.mobile - MEDIA_QUERY_MAX_WIDTH_OFFSET}px)`),
-    tablet: window.matchMedia(`(min-width: ${VIEWPORT_BREAKPOINTS.mobile}px) and (max-width: ${VIEWPORT_BREAKPOINTS.tablet - MEDIA_QUERY_MAX_WIDTH_OFFSET}px)`),
-    desktop: window.matchMedia(`(min-width: ${VIEWPORT_BREAKPOINTS.tablet}px) and (max-width: ${VIEWPORT_BREAKPOINTS.wide - MEDIA_QUERY_MAX_WIDTH_OFFSET}px)`),
-    wide: window.matchMedia(`(min-width: ${VIEWPORT_BREAKPOINTS.wide}px)`)
+    mobile: window.matchMedia(
+      `(max-width: ${VIEWPORT_BREAKPOINTS.mobile - MEDIA_QUERY_MAX_WIDTH_OFFSET}px)`,
+    ),
+    tablet: window.matchMedia(
+      `(min-width: ${VIEWPORT_BREAKPOINTS.mobile}px) and (max-width: ${VIEWPORT_BREAKPOINTS.tablet - MEDIA_QUERY_MAX_WIDTH_OFFSET}px)`,
+    ),
+    desktop: window.matchMedia(
+      `(min-width: ${VIEWPORT_BREAKPOINTS.tablet}px) and (max-width: ${VIEWPORT_BREAKPOINTS.wide - MEDIA_QUERY_MAX_WIDTH_OFFSET}px)`,
+    ),
+    wide: window.matchMedia(`(min-width: ${VIEWPORT_BREAKPOINTS.wide}px)`),
   };
 }
 
@@ -110,7 +116,7 @@ function computeMatches(measurement: ViewportMeasurement, queries: MediaQueryMap
       mobile: queries.mobile.matches,
       tablet: queries.tablet.matches,
       desktop: queries.desktop.matches,
-      wide: queries.wide.matches
+      wide: queries.wide.matches,
     };
   }
   const width = measurement.width;
@@ -118,15 +124,20 @@ function computeMatches(measurement: ViewportMeasurement, queries: MediaQueryMap
     mobile: width < VIEWPORT_BREAKPOINTS.mobile,
     tablet: width >= VIEWPORT_BREAKPOINTS.mobile && width < VIEWPORT_BREAKPOINTS.tablet,
     desktop: width >= VIEWPORT_BREAKPOINTS.tablet && width < VIEWPORT_BREAKPOINTS.wide,
-    wide: width >= VIEWPORT_BREAKPOINTS.wide
+    wide: width >= VIEWPORT_BREAKPOINTS.wide,
   };
 }
 
-function determineTier(matches: { mobile: boolean; tablet: boolean; desktop: boolean; wide: boolean }): ViewportTier {
-  if (matches.mobile) return 'mobile';
-  if (matches.tablet) return 'tablet';
-  if (matches.desktop) return 'desktop';
-  return 'wide';
+function determineTier(matches: {
+  mobile: boolean;
+  tablet: boolean;
+  desktop: boolean;
+  wide: boolean;
+}): ViewportTier {
+  if (matches.mobile) return "mobile";
+  if (matches.tablet) return "tablet";
+  if (matches.desktop) return "desktop";
+  return "wide";
 }
 
 function buildState(queries: MediaQueryMap): ViewportSnapshot {
@@ -138,16 +149,16 @@ function buildState(queries: MediaQueryMap): ViewportSnapshot {
     isTablet: matches.tablet,
     isDesktop: matches.desktop,
     isWide: matches.wide,
-    tier: determineTier(matches)
+    tier: determineTier(matches),
   };
 }
 
 function registerMediaQueryListener(mql: MediaQueryList | null | undefined, handler: () => void) {
   if (!mql) return () => {};
   const listener = () => handler();
-  if (typeof mql.addEventListener === 'function') {
-    mql.addEventListener('change', listener);
-    return () => mql.removeEventListener('change', listener);
+  if (typeof mql.addEventListener === "function") {
+    mql.addEventListener("change", listener);
+    return () => mql.removeEventListener("change", listener);
   }
   mql.addListener(listener);
   return () => mql.removeListener(listener);
@@ -179,31 +190,32 @@ export const viewportState: Readable<ViewportSnapshot> = readable(DEFAULT_STATE,
 
   update();
 
-  const removeResize = () => window.removeEventListener('resize', scheduleUpdate);
-  window.addEventListener('resize', scheduleUpdate, { passive: true });
+  const removeResize = () => window.removeEventListener("resize", scheduleUpdate);
+  window.addEventListener("resize", scheduleUpdate, { passive: true });
 
   const visual = window.visualViewport;
   const removeVisual = visual
     ? (() => {
-        visual.addEventListener('resize', scheduleUpdate, { passive: true });
-        return () => visual.removeEventListener('resize', scheduleUpdate);
+        visual.addEventListener("resize", scheduleUpdate, { passive: true });
+        return () => visual.removeEventListener("resize", scheduleUpdate);
       })()
     : () => {};
 
   const orientation = window.screen?.orientation;
-  const removeOrientation = orientation && typeof orientation.addEventListener === 'function'
-    ? (() => {
-        orientation.addEventListener('change', scheduleUpdate);
-        return () => orientation.removeEventListener('change', scheduleUpdate);
-      })()
-    : () => {};
+  const removeOrientation =
+    orientation && typeof orientation.addEventListener === "function"
+      ? (() => {
+          orientation.addEventListener("change", scheduleUpdate);
+          return () => orientation.removeEventListener("change", scheduleUpdate);
+        })()
+      : () => {};
 
   const removeMedia = queries
     ? [
         registerMediaQueryListener(queries.mobile, scheduleUpdate),
         registerMediaQueryListener(queries.tablet, scheduleUpdate),
         registerMediaQueryListener(queries.desktop, scheduleUpdate),
-        registerMediaQueryListener(queries.wide, scheduleUpdate)
+        registerMediaQueryListener(queries.wide, scheduleUpdate),
       ]
     : [];
 
@@ -212,7 +224,7 @@ export const viewportState: Readable<ViewportSnapshot> = readable(DEFAULT_STATE,
     removeVisual();
     removeOrientation();
     removeMedia.forEach((dispose) => dispose());
-    if (typeof frame === 'number') {
+    if (typeof frame === "number") {
       window.cancelAnimationFrame(frame);
     }
   };
@@ -237,4 +249,7 @@ export const isWide = derived(viewportState, ($state) => $state.isWide);
 /**
  * Lightweight size store for components that only care about width/height.
  */
-export const viewportSize = derived(viewportState, ($state) => ({ width: $state.width, height: $state.height }));
+export const viewportSize = derived(viewportState, ($state) => ({
+  width: $state.width,
+  height: $state.height,
+}));

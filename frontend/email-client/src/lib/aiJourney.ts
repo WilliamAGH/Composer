@@ -1,5 +1,9 @@
-export type AiJourneyEvent = 'ai:payload-prep' | 'ai:context-search' | 'ai:llm-thinking' | 'ai:writing-summary';
-export type JourneyIconToken = 'sparkles' | 'search' | 'brain' | 'pen';
+export type AiJourneyEvent =
+  | "ai:payload-prep"
+  | "ai:context-search"
+  | "ai:llm-thinking"
+  | "ai:writing-summary";
+export type JourneyIconToken = "sparkles" | "search" | "brain" | "pen";
 export type JourneyContext = { targetLabel?: string | null; command?: string | null };
 export type JourneyCopyTemplate = {
   title: string | ((ctx: JourneyContext) => string);
@@ -21,67 +25,85 @@ export type JourneyStep = {
 
 const baseSteps: JourneyStepTemplate[] = [
   {
-    id: 'ai:payload-prep',
-    icon: 'sparkles',
-    sourceOfTruth: 'App.svelte:buildEmailContextString / callAiCommand payload assembly',
+    id: "ai:payload-prep",
+    icon: "sparkles",
+    sourceOfTruth: "App.svelte:buildEmailContextString / callAiCommand payload assembly",
     copy: {
-      title: (ctx = {}) => `Analyzing your ${ctx.targetLabel?.trim() || 'message'}`,
-      detail: 'Packaging cleaned markdown, subject, and participants before handing work to ChatService.',
+      title: (ctx = {}) => `Analyzing your ${ctx.targetLabel?.trim() || "message"}`,
+      detail:
+        "Packaging cleaned markdown, subject, and participants before handing work to ChatService.",
     },
   },
   {
-    id: 'ai:context-search',
-    icon: 'search',
-    sourceOfTruth: 'ChatService.prepareChatContext → VectorSearchService.searchSimilarEmails (Qdrant).',
+    id: "ai:context-search",
+    icon: "search",
+    sourceOfTruth:
+      "ChatService.prepareChatContext → VectorSearchService.searchSimilarEmails (Qdrant).",
     copy: {
-      title: 'Searching for related context',
-      detail: 'Vector search (Qdrant) looks up semantically similar emails to enrich the prompt.',
+      title: "Searching for related context",
+      detail: "Vector search (Qdrant) looks up semantically similar emails to enrich the prompt.",
     },
   },
   {
-    id: 'ai:llm-thinking',
-    icon: 'brain',
-    sourceOfTruth: 'OpenAiChatService.generateResponse reasoning / thinking block.',
+    id: "ai:llm-thinking",
+    icon: "brain",
+    sourceOfTruth: "OpenAiChatService.generateResponse reasoning / thinking block.",
     copy: {
-      title: 'Thinking',
-      detail: 'Letting the reasoning model plan its response before anything is streamed back.',
+      title: "Thinking",
+      detail: "Letting the reasoning model plan its response before anything is streamed back.",
     },
   },
   {
-    id: 'ai:writing-summary',
-    icon: 'pen',
-    sourceOfTruth: 'OpenAiChatService.generateResponse → HtmlConverter markdown sanitization + UI render.',
+    id: "ai:writing-summary",
+    icon: "pen",
+    sourceOfTruth:
+      "OpenAiChatService.generateResponse → HtmlConverter markdown sanitization + UI render.",
     copy: {
-      title: 'Writing summary of my observations',
-      detail: 'Polishing the answer and formatting sanitized HTML before inserting it into the UI.',
+      title: "Writing summary of my observations",
+      detail: "Polishing the answer and formatting sanitized HTML before inserting it into the UI.",
     },
   },
 ];
 
-function resolveTemplateValue(template: string | ((ctx: JourneyContext) => string) | undefined, ctx: JourneyContext) {
+function resolveTemplateValue(
+  template: string | ((ctx: JourneyContext) => string) | undefined,
+  ctx: JourneyContext,
+) {
   if (!template) return undefined;
-  return typeof template === 'function' ? template(ctx) : template;
+  return typeof template === "function" ? template(ctx) : template;
 }
 
 function normalizeOverride(
-  override: JourneyCopyTemplate | string | ((ctx: JourneyContext) => JourneyCopyTemplate | string) | undefined,
-  ctx: JourneyContext
+  override:
+    | JourneyCopyTemplate
+    | string
+    | ((ctx: JourneyContext) => JourneyCopyTemplate | string)
+    | undefined,
+  ctx: JourneyContext,
 ) {
   if (!override) return undefined;
-  if (typeof override === 'function') {
+  if (typeof override === "function") {
     const result = override(ctx);
-    if (typeof result === 'string') {
+    if (typeof result === "string") {
       return { title: result };
     }
     return result;
   }
-  if (typeof override === 'string') {
+  if (typeof override === "string") {
     return { title: override };
   }
   return override;
 }
 
-export function buildAiJourney(ctx: JourneyContext = {}, overrides?: Partial<Record<AiJourneyEvent, JourneyCopyTemplate | string | ((ctx: JourneyContext) => JourneyCopyTemplate | string)>>): JourneyStep[] {
+export function buildAiJourney(
+  ctx: JourneyContext = {},
+  overrides?: Partial<
+    Record<
+      AiJourneyEvent,
+      JourneyCopyTemplate | string | ((ctx: JourneyContext) => JourneyCopyTemplate | string)
+    >
+  >,
+): JourneyStep[] {
   return baseSteps.map((step) => {
     const override = normalizeOverride(overrides?.[step.id], ctx);
     const effective = {
@@ -92,7 +114,7 @@ export function buildAiJourney(ctx: JourneyContext = {}, overrides?: Partial<Rec
     return {
       id: step.id,
       icon: step.icon,
-      title: effective.title || '',
+      title: effective.title || "",
       detail: effective.detail,
       sourceOfTruth: step.sourceOfTruth,
     };

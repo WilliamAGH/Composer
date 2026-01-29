@@ -3,10 +3,10 @@
  * without instantiating hidden components. Java holds the canonical catalog data, while this client-side
  * helper handles fetching/merging in the browser.
  */
-import { writable, get, type Writable } from 'svelte/store';
-import type { AiFunctionCatalogDto, AiFunctionSummary, AiFunctionVariantSummary } from '../../main';
-export type { AiFunctionCatalogDto, AiFunctionSummary, AiFunctionVariantSummary } from '../../main';
-import { dispatchClientWarning } from './sessionNonceClient';
+import { writable, get, type Writable } from "svelte/store";
+import type { AiFunctionCatalogDto, AiFunctionSummary, AiFunctionVariantSummary } from "../../main";
+export type { AiFunctionCatalogDto, AiFunctionSummary, AiFunctionVariantSummary } from "../../main";
+import { dispatchClientWarning } from "./sessionNonceClient";
 
 const catalog: Writable<AiFunctionCatalogDto | null> = writable(null);
 let fetchPromise: Promise<boolean> | null = null;
@@ -29,7 +29,7 @@ export function getFunctionMeta(data: AiFunctionCatalogDto | null, key: string) 
 export function mergeDefaultArgs(
   meta: AiFunctionSummary | null,
   variant: AiFunctionVariantSummary | null,
-  overrides: Record<string, string | null | undefined> = {}
+  overrides: Record<string, string | null | undefined> = {},
 ) {
   const merged: Record<string, string> = {};
   if (meta?.defaultArgs) {
@@ -39,14 +39,17 @@ export function mergeDefaultArgs(
     Object.assign(merged, variant.defaultArgs);
   }
   Object.entries(overrides ?? {}).forEach(([k, v]) => {
-    if (k && typeof v === 'string' && v.length > 0) merged[k] = v;
+    if (k && typeof v === "string" && v.length > 0) merged[k] = v;
   });
   return merged;
 }
 
-export function resolveDefaultInstruction(meta: AiFunctionSummary | null, variant: AiFunctionVariantSummary | null) {
+export function resolveDefaultInstruction(
+  meta: AiFunctionSummary | null,
+  variant: AiFunctionVariantSummary | null,
+) {
   if (variant?.defaultInstruction) return variant.defaultInstruction;
-  return meta?.defaultInstruction || 'Assist with the selected email.';
+  return meta?.defaultInstruction || "Assist with the selected email.";
 }
 
 export async function ensureCatalogLoaded(initialValue?: AiFunctionCatalogDto | null) {
@@ -56,7 +59,7 @@ export async function ensureCatalogLoaded(initialValue?: AiFunctionCatalogDto | 
   }
   if (get(catalog)) return true;
   if (!fetchPromise) {
-    fetchPromise = fetch('/api/ai-functions', { headers: { Accept: 'application/json' } })
+    fetchPromise = fetch("/api/ai-functions", { headers: { Accept: "application/json" } })
       .then((resp) => {
         if (!resp.ok) throw new Error(`Failed to load catalog (HTTP ${resp.status})`);
         return resp.json() as Promise<AiFunctionCatalogDto>;
@@ -73,7 +76,7 @@ export async function ensureCatalogLoaded(initialValue?: AiFunctionCatalogDto | 
     await fetchPromise;
     return true;
   } catch (error) {
-    dispatchClientWarning({ message: 'Unable to load AI function catalog.', error });
+    dispatchClientWarning({ message: "Unable to load AI function catalog.", error });
     return false;
   }
 }

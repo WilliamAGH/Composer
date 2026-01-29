@@ -6,13 +6,13 @@
  * - Fatal: render/initialization errors that require user action
  */
 
-import { writable, derived } from 'svelte/store';
+import { writable, derived } from "svelte/store";
 
 export interface ToastError {
   id: string;
   message: string;
   detail?: string;
-  severity: 'error' | 'warning' | 'info';
+  severity: "error" | "warning" | "info";
   timestamp: number;
 }
 
@@ -35,15 +35,15 @@ let nextToastId = 0;
  */
 export function pushToast(
   message: string,
-  options: { detail?: string; severity?: ToastError['severity'] } = {}
+  options: { detail?: string; severity?: ToastError["severity"] } = {},
 ): string {
   const id = `toast-${++nextToastId}`;
   const toast: ToastError = {
     id,
     message,
     detail: options.detail,
-    severity: options.severity ?? 'error',
-    timestamp: Date.now()
+    severity: options.severity ?? "error",
+    timestamp: Date.now(),
   };
 
   toastQueue.update((queue) => [...queue, toast]);
@@ -64,11 +64,14 @@ export function dismissToast(id: string): void {
 /**
  * Set a fatal error that requires user acknowledgment or page reload.
  */
-export function setFatalError(message: string, options: { detail?: string; error?: Error } = {}): void {
+export function setFatalError(
+  message: string,
+  options: { detail?: string; error?: Error } = {},
+): void {
   fatalError.set({
     message,
     detail: options.detail,
-    error: options.error
+    error: options.error,
   });
 }
 
@@ -82,10 +85,13 @@ export function clearFatalError(): void {
 /**
  * Convenience: push error from catch block, extracting message from Error objects.
  */
-export function pushErrorToast(error: unknown, fallbackMessage = 'An unexpected error occurred'): string {
+export function pushErrorToast(
+  error: unknown,
+  fallbackMessage = "An unexpected error occurred",
+): string {
   const message = error instanceof Error ? error.message : fallbackMessage;
-  const detail = error instanceof Error ? error.stack?.split('\n')[1]?.trim() : undefined;
-  return pushToast(message, { detail, severity: 'error' });
+  const detail = error instanceof Error ? error.stack?.split("\n")[1]?.trim() : undefined;
+  return pushToast(message, { detail, severity: "error" });
 }
 
 // Exported stores (read-only derived for components)

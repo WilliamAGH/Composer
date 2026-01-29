@@ -4,8 +4,8 @@
  * @see docs/type-safety-zod-validation.md
  */
 
-import { z } from 'zod/v4';
-import { EmailMessageSchema } from './emailSchemas';
+import { z } from "zod/v4";
+import { EmailMessageSchema } from "./emailSchemas";
 
 /**
  * Schema for mailbox state snapshot response.
@@ -18,7 +18,7 @@ export const MailboxStateSnapshotSchema = z.object({
   placements: z.record(z.string(), z.string()),
   effectiveFolders: z.record(z.string(), z.string()),
   selectedEmailId: z.string().nullish(),
-  emails: z.array(EmailMessageSchema).optional()
+  emails: z.array(EmailMessageSchema).optional(),
 });
 
 export type MailboxStateSnapshot = z.infer<typeof MailboxStateSnapshotSchema>;
@@ -37,7 +37,7 @@ export const MessageMoveResultSchema = z.object({
   messages: z.array(EmailMessageSchema),
   effectiveFolders: z.record(z.string(), z.string()),
   selectedEmailId: z.string().nullish(),
-  emails: z.array(EmailMessageSchema).optional()
+  emails: z.array(EmailMessageSchema).optional(),
 });
 
 export type MessageMoveResult = z.infer<typeof MessageMoveResultSchema>;

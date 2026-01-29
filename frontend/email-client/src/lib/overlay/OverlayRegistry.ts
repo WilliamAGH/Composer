@@ -1,7 +1,7 @@
-import { writable, type Readable } from 'svelte/store';
-import type { SvelteComponent } from 'svelte';
+import { writable, type Readable } from "svelte/store";
+import type { SvelteComponent } from "svelte";
 
-export type OverlayPresenter = 'backdrop' | 'sheet' | 'modal';
+export type OverlayPresenter = "backdrop" | "sheet" | "modal";
 
 export interface OverlayInstance {
   id: string;
@@ -39,7 +39,7 @@ export function createOverlayRegistry() {
       key: config.key,
       presenter: config.presenter,
       priority: config.priority,
-      instances: []
+      instances: [],
     };
     entries.set(config.key, entry);
 
@@ -71,6 +71,6 @@ export function createOverlayRegistry() {
   return {
     subscribe,
     register,
-    unregister
+    unregister,
   };
 }

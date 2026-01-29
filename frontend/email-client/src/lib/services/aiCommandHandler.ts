@@ -1,20 +1,34 @@
-import { get } from 'svelte/store';
-import { createComposeWindow, WindowKind, type ComposeWindowDescriptor } from '../window/windowTypes';
-import type { WindowManager } from '../window/windowStore';
-import { mergeDefaultArgs, resolveDefaultInstruction, getFunctionMeta, type AiFunctionSummary, type AiFunctionVariantSummary } from './aiCatalog';
-import { parseSubjectAndBody } from './emailUtils';
-import { normalizeReplySubject } from './emailSubjectPrefixHandler';
-import { deriveRecipientContext, buildEmailContextString } from './emailContextConstructor';
-import type { Readable } from 'svelte/store';
-import type { AiFunctionCatalogDto } from '../../main';
-import { uploadDraftContext, type ChatResponsePayload } from './catalogCommandClient';
-import type { FrontendEmailMessage } from './emailUtils';
+import { get } from "svelte/store";
+import {
+  createComposeWindow,
+  WindowKind,
+  type ComposeWindowDescriptor,
+} from "../window/windowTypes";
+import type { WindowManager } from "../window/windowStore";
+import {
+  mergeDefaultArgs,
+  resolveDefaultInstruction,
+  getFunctionMeta,
+  type AiFunctionSummary,
+  type AiFunctionVariantSummary,
+} from "./aiCatalog";
+import { parseSubjectAndBody } from "./emailUtils";
+import { normalizeReplySubject } from "./emailSubjectPrefixHandler";
+import { deriveRecipientContext, buildEmailContextString } from "./emailContextConstructor";
+import type { Readable } from "svelte/store";
+import type { AiFunctionCatalogDto } from "../../main";
+import { uploadDraftContext, type ChatResponsePayload } from "./catalogCommandClient";
+import type { FrontendEmailMessage } from "./emailUtils";
 
 type CatalogStore = Readable<AiFunctionCatalogDto | null>;
 
 type SelectedEmail = FrontendEmailMessage;
 
-type CallAiCommandFn = (command: string, instruction: string, options: Record<string, unknown>) => Promise<ChatResponsePayload | null>;
+type CallAiCommandFn = (
+  command: string,
+  instruction: string,
+  options: Record<string, unknown>,
+) => Promise<ChatResponsePayload | null>;
 
 /**
  * Centralizes AI-command handling so App.svelte can delegate compose/summary logic. By isolating this in
@@ -28,7 +42,7 @@ export async function handleAiCommand({
   catalogStore,
   windowManager,
   callAiCommand,
-  ensureCatalogLoaded
+  ensureCatalogLoaded,
 }: {
   command: string;
   commandVariant?: string | null;
@@ -40,30 +54,32 @@ export async function handleAiCommand({
   ensureCatalogLoaded: () => Promise<boolean>;
 }) {
   const ready = await ensureCatalogLoaded();
-  if (!ready) throw new Error('AI helpers are unavailable. Please refresh and try again.');
+  if (!ready) throw new Error("AI helpers are unavailable. Please refresh and try again.");
   const catalog = get(catalogStore);
   const fn = getFunctionMeta(catalog, command) as AiFunctionSummary | null;
-  if (!fn) throw new Error('Command unavailable.');
+  if (!fn) throw new Error("Command unavailable.");
   const variant = resolveVariant(fn, commandVariant);
   const commandArgs = mergeDefaultArgs(fn, variant);
-  const title = fn.label || 'Assistant';
-  const targetsCompose = Array.isArray(fn.scopes) && fn.scopes.includes('compose');
+  const title = fn.label || "Assistant";
+  const targetsCompose = Array.isArray(fn.scopes) && fn.scopes.includes("compose");
 
   if (targetsCompose) {
     const existingCompose = findMatchingComposeWindow(windowManager, selectedEmail?.id || null);
-    const descriptor = existingCompose || createComposeWindow(selectedEmail, {
-      to: selectedEmail.fromEmail || '',
-      subject: normalizeReplySubject(selectedEmail.subject || ''),
-      isReply: true,
-      title: selectedEmail.subject ? `Reply: ${selectedEmail.subject}` : fn.label || 'Compose'
-    });
+    const descriptor =
+      existingCompose ||
+      createComposeWindow(selectedEmail, {
+        to: selectedEmail.fromEmail || "",
+        subject: normalizeReplySubject(selectedEmail.subject || ""),
+        isReply: true,
+        title: selectedEmail.subject ? `Reply: ${selectedEmail.subject}` : fn.label || "Compose",
+      });
 
     if (existingCompose) {
       windowManager.focus(descriptor.id);
     } else {
       const result = windowManager.open(descriptor);
       if (!result.ok) {
-        throw new Error('Close or minimize an existing draft before opening another.');
+        throw new Error("Close or minimize an existing draft before opening another.");
       }
     }
 
@@ -78,31 +94,36 @@ export async function handleAiCommand({
       callAiCommand,
       commandArgs,
       recipientContext: {
-        name: descriptor.payload?.recipientName || '',
-        email: descriptor.payload?.recipientEmail || ''
-      }
+        name: descriptor.payload?.recipientName || "",
+        email: descriptor.payload?.recipientEmail || "",
+      },
     });
     return { type: WindowKind.COMPOSE, id: descriptor.id };
   }
 
   const instruction = instructionOverride || resolveDefaultInstruction(fn, variant);
   if (!selectedEmail) {
-    throw new Error('Select an email first.');
+    throw new Error("Select an email first.");
   }
 
   const data = await callAiCommand(command, instruction, {
     contextId: selectedEmail.contextId,
     subject: selectedEmail.subject,
-    journeyScope: 'panel',
+    journeyScope: "panel",
     journeyScopeTarget: selectedEmail.id || selectedEmail.contextId || null,
     journeyLabel: selectedEmail.subject,
     journeyHeadline: deriveHeadline(command, title),
     commandVariant: variant?.key || null,
-    commandArgs
+    commandArgs,
   });
-  const html = (data?.response && window.Composer?.renderMarkdown ? window.Composer.renderMarkdown(data.response) : '')
-    || (data?.sanitizedHtml || data?.sanitizedHTML || '')
-    || '<div class="text-sm text-slate-500">No response received.</div>';
+  const html =
+    (data?.response && window.Composer?.renderMarkdown
+      ? window.Composer.renderMarkdown(data.response)
+      : "") ||
+    data?.sanitizedHtml ||
+    data?.sanitizedHTML ||
+    "" ||
+    '<div class="text-sm text-slate-500">No response received.</div>';
   const contextId = selectedEmail.contextId || selectedEmail.id || null;
   return {
     type: WindowKind.SUMMARY,
@@ -111,17 +132,20 @@ export async function handleAiCommand({
     title,
     command,
     commandLabel: title,
-    raw: data
+    raw: data,
   };
 }
 
-function findMatchingComposeWindow(windowManager: WindowManager, contextId: string | null): ComposeWindowDescriptor | null {
+function findMatchingComposeWindow(
+  windowManager: WindowManager,
+  contextId: string | null,
+): ComposeWindowDescriptor | null {
   const openWindows = get(windowManager.windows);
   if (!Array.isArray(openWindows) || openWindows.length === 0) return null;
   if (contextId === null) return null;
   const match = openWindows.find(
     (win): win is ComposeWindowDescriptor =>
-      win.kind === WindowKind.COMPOSE && win.contextId === contextId
+      win.kind === WindowKind.COMPOSE && win.contextId === contextId,
   );
   return match || null;
 }
@@ -136,7 +160,7 @@ async function draftWithAi({
   windowManager,
   callAiCommand,
   commandArgs,
-  recipientContext = null
+  recipientContext = null,
 }: {
   descriptor: ComposeWindowDescriptor;
   command: string;
@@ -153,36 +177,36 @@ async function draftWithAi({
   const data = await callAiCommand(command, instruction, {
     contextId: selectedEmail.contextId,
     subject: descriptor.payload.subject,
-    journeyScope: 'compose',
+    journeyScope: "compose",
     journeyScopeTarget: descriptor.id,
-    journeyLabel: descriptor.payload.subject || selectedEmail.subject || 'reply',
-    journeyHeadline: deriveHeadline(command, fn.label || 'Assistant'),
+    journeyLabel: descriptor.payload.subject || selectedEmail.subject || "reply",
+    journeyHeadline: deriveHeadline(command, fn.label || "Assistant"),
     commandVariant: variant?.key || null,
     commandArgs,
-    recipientContext
+    recipientContext,
   });
-  let draftText = (data?.response && data.response.trim()) || '';
+  let draftText = (data?.response && data.response.trim()) || "";
   const htmlContent = data?.sanitizedHtml || data?.sanitizedHTML;
   if (!draftText && htmlContent) {
-    const temp = document.createElement('div');
+    const temp = document.createElement("div");
     temp.innerHTML = htmlContent;
     draftText = temp.textContent.trim();
   }
   if (draftText) {
     const parsed = parseSubjectAndBody(draftText);
-    const previousSubject = descriptor.payload?.subject || '';
-    const previousBody = descriptor.payload?.body || '';
+    const previousSubject = descriptor.payload?.subject || "";
+    const previousBody = descriptor.payload?.body || "";
     const nextSubject = parsed.subject || descriptor.payload.subject || previousSubject;
     const nextBody = parsed.body || draftText;
     const hasChanges = nextSubject !== previousSubject || nextBody !== previousBody;
     if (hasChanges) {
       windowManager.pushDraftHistory(descriptor.id, {
         subject: previousSubject,
-        body: previousBody
+        body: previousBody,
       });
       windowManager.updateComposeDraft(descriptor.id, {
         subject: nextSubject,
-        body: nextBody
+        body: nextBody,
       });
     }
   }
@@ -190,17 +214,17 @@ async function draftWithAi({
 
 export function deriveHeadline(command: string, fallback?: string | null) {
   switch (command) {
-    case 'summarize':
-      return 'Summarizing this email';
-    case 'translate':
-      return 'Translating the thread';
-    case 'draft':
-    case 'compose':
-      return 'Drafting your reply';
-    case 'tone':
-      return 'Retuning the tone';
+    case "summarize":
+      return "Summarizing this email";
+    case "translate":
+      return "Translating the thread";
+    case "draft":
+    case "compose":
+      return "Drafting your reply";
+    case "tone":
+      return "Retuning the tone";
     default:
-      return fallback || 'Working on your request';
+      return fallback || "Working on your request";
   }
 }
 
@@ -209,20 +233,25 @@ function resolveVariant(meta: AiFunctionSummary, variantKey?: string | null) {
   return meta.variants.find((variant) => variant.key === variantKey) || null;
 }
 
-export function buildComposeInstruction(command: string, currentDraft: string, isReply: boolean, meta: AiFunctionSummary) {
+export function buildComposeInstruction(
+  command: string,
+  currentDraft: string,
+  isReply: boolean,
+  meta: AiFunctionSummary,
+) {
   const fallback = resolveDefaultInstruction(meta, null);
-  if (command === 'draft') {
+  if (command === "draft") {
     if (currentDraft && currentDraft.length > 0) {
-      return `Improve this ${isReply ? 'reply' : 'draft'} while preserving the intent:\n\n${currentDraft}`;
+      return `Improve this ${isReply ? "reply" : "draft"} while preserving the intent:\n\n${currentDraft}`;
     }
     return isReply ? fallback : `${fallback}`;
   }
-  if (command === 'compose') {
+  if (command === "compose") {
     return currentDraft && currentDraft.length > 0
       ? `Polish this email draft and make it clear and concise:\n\n${currentDraft}`
       : fallback;
   }
-  if (command === 'tone') {
+  if (command === "tone") {
     return currentDraft && currentDraft.length > 0
       ? `Adjust the tone of this email to be friendly but professional:\n\n${currentDraft}`
       : fallback;
@@ -236,7 +265,7 @@ export async function ensureDraftContext({
   draft,
   subject,
   recipientContext,
-  fallbackEmail
+  fallbackEmail,
 }: {
   windowManager: WindowManager;
   windowConfig: ComposeWindowDescriptor;
@@ -245,7 +274,7 @@ export async function ensureDraftContext({
   recipientContext: { name?: string; email?: string } | null;
   fallbackEmail?: SelectedEmail | null;
 }) {
-  const currentDraft = typeof draft === 'string' ? draft : '';
+  const currentDraft = typeof draft === "string" ? draft : "";
   const fingerprint = computeDraftFingerprint(subject, currentDraft);
   const existingId = windowConfig.payload?.draftContextId || null;
   const existingFingerprint = windowConfig.payload?.draftContextFingerprint || null;
@@ -254,17 +283,19 @@ export async function ensureDraftContext({
   }
 
   const contextId = existingId || createDraftContextId();
-  const safeRecipient = recipientContext || deriveRecipientContext({
-    composePayload: windowConfig.payload,
-    fallbackEmail
-  });
+  const safeRecipient =
+    recipientContext ||
+    deriveRecipientContext({
+      composePayload: windowConfig.payload,
+      fallbackEmail,
+    });
   const contextContent = buildEmailContextString({
-    subject: subject || fallbackEmail?.subject || 'Draft',
-    senderName: 'Current draft author',
-    recipientName: safeRecipient?.name || '',
-    recipientEmail: safeRecipient?.email || '',
+    subject: subject || fallbackEmail?.subject || "Draft",
+    senderName: "Current draft author",
+    recipientName: safeRecipient?.name || "",
+    recipientEmail: safeRecipient?.email || "",
     contentMarkdown: currentDraft,
-    contentText: currentDraft
+    contentText: currentDraft,
   });
   await uploadDraftContext({ contextId, content: contextContent });
   windowManager.syncComposeContext(windowConfig.id, { contextId, fingerprint });
@@ -277,7 +308,7 @@ export async function ensureDraftContext({
  * (detecting whether a draft's subject/body has changed since the last AI command).
  */
 function computeDraftFingerprint(subject: string | null | undefined, body: string) {
-  const source = `${subject || ''}\u0000${body || ''}`;
+  const source = `${subject || ""}\u0000${body || ""}`;
   let hash = 0;
   for (let i = 0; i < source.length; i += 1) {
     hash = (hash << 5) - hash + source.charCodeAt(i);
@@ -287,7 +318,7 @@ function computeDraftFingerprint(subject: string | null | undefined, body: strin
 }
 
 function createDraftContextId() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return `draft-${crypto.randomUUID()}`;
   }
   return `draft-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
@@ -301,7 +332,7 @@ export async function runComposeWindowAi({
   ensureCatalogLoaded,
   callAiCommand,
   resolveEmailById,
-  selectedEmail
+  selectedEmail,
 }: {
   windowManager: WindowManager;
   windowConfig: ComposeWindowDescriptor | null;
@@ -320,51 +351,57 @@ export async function runComposeWindowAi({
   selectedEmail?: SelectedEmail;
 }) {
   if (!windowConfig || !detail?.command) {
-    throw new Error('Compose window unavailable.');
+    throw new Error("Compose window unavailable.");
   }
   const ready = await ensureCatalogLoaded();
   if (!ready) {
-    throw new Error('AI helpers are unavailable. Please try again.');
+    throw new Error("AI helpers are unavailable. Please try again.");
   }
   const catalog = get(catalogStore);
   const fn = getFunctionMeta(catalog, detail.command);
   if (!fn) {
-    throw new Error('Command unavailable.');
+    throw new Error("Command unavailable.");
   }
-  const instruction = detail.instructionOverride || buildComposeInstruction(detail.command, detail.draft || '', Boolean(detail.isReply), fn);
-  const relatedEmail = windowConfig.contextId ? resolveEmailById?.(windowConfig.contextId) : selectedEmail || null;
+  const instruction =
+    detail.instructionOverride ||
+    buildComposeInstruction(detail.command, detail.draft || "", Boolean(detail.isReply), fn);
+  const relatedEmail = windowConfig.contextId
+    ? resolveEmailById?.(windowConfig.contextId)
+    : selectedEmail || null;
   const commandArgs = mergeDefaultArgs(fn, null);
   const recipientContext = deriveRecipientContext({
     toInput: detail.to,
     composePayload: windowConfig.payload,
-    fallbackEmail: relatedEmail
+    fallbackEmail: relatedEmail,
   });
-  const draftBody = typeof detail.draft === 'string' ? detail.draft : (windowConfig.payload?.body || '');
-  const effectiveSubject = detail.subject || windowConfig.payload?.subject || relatedEmail?.subject || '';
+  const draftBody =
+    typeof detail.draft === "string" ? detail.draft : windowConfig.payload?.body || "";
+  const effectiveSubject =
+    detail.subject || windowConfig.payload?.subject || relatedEmail?.subject || "";
   const draftContextId = await ensureDraftContext({
     windowManager,
     windowConfig,
     draft: draftBody,
     subject: effectiveSubject,
     recipientContext,
-    fallbackEmail: relatedEmail
+    fallbackEmail: relatedEmail,
   });
   const contextIdForCommand = draftContextId || relatedEmail?.contextId || relatedEmail?.id || null;
 
   const data = await callAiCommand(detail.command, instruction, {
     contextId: contextIdForCommand,
     subject: effectiveSubject || relatedEmail?.subject,
-    journeyScope: 'compose',
+    journeyScope: "compose",
     journeyScopeTarget: windowConfig.id,
-    journeyLabel: effectiveSubject || 'draft',
-    journeyHeadline: deriveHeadline(detail.command, fn.label || 'Assistant'),
+    journeyLabel: effectiveSubject || "draft",
+    journeyHeadline: deriveHeadline(detail.command, fn.label || "Assistant"),
     commandArgs,
-    recipientContext
+    recipientContext,
   });
-  let draftText = (data?.response && data.response.trim()) || '';
+  let draftText = (data?.response && data.response.trim()) || "";
   const htmlContent = data?.sanitizedHtml || data?.sanitizedHTML;
   if (!draftText && htmlContent) {
-    const temp = document.createElement('div');
+    const temp = document.createElement("div");
     temp.innerHTML = htmlContent;
     draftText = temp.textContent.trim();
   }
@@ -375,20 +412,20 @@ export async function runComposeWindowAi({
     if (quote && !updatedBody.includes(quote.trim())) {
       updatedBody = `${updatedBody.trimEnd()}\n\n${quote}`;
     }
-    const previousSubject = typeof detail.subject === 'string'
-      ? detail.subject
-      : (windowConfig.payload?.subject || '');
+    const previousSubject =
+      typeof detail.subject === "string" ? detail.subject : windowConfig.payload?.subject || "";
     const previousBody = draftBody;
-    const nextSubject = parsed.subject || detail.subject || windowConfig.payload?.subject || previousSubject;
+    const nextSubject =
+      parsed.subject || detail.subject || windowConfig.payload?.subject || previousSubject;
     const hasChanges = nextSubject !== previousSubject || updatedBody !== previousBody;
     if (hasChanges) {
       windowManager.pushDraftHistory(windowConfig.id, {
         subject: previousSubject,
-        body: previousBody
+        body: previousBody,
       });
       windowManager.updateComposeDraft(windowConfig.id, {
         subject: nextSubject,
-        body: updatedBody
+        body: updatedBody,
       });
     }
   }

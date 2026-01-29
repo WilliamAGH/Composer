@@ -1,53 +1,61 @@
 const DEFAULT_ALLOWED_TAGS = new Set([
-  'a',
-  'abbr',
-  'b',
-  'blockquote',
-  'br',
-  'code',
-  'div',
-  'em',
-  'h1',
-  'h2',
-  'h3',
-  'h4',
-  'h5',
-  'h6',
-  'hr',
-  'i',
-  'img',
-  'li',
-  'ol',
-  'p',
-  'pre',
-  'span',
-  'strong',
-  'table',
-  'tbody',
-  'td',
-  'th',
-  'thead',
-  'tr',
-  'u',
-  'ul'
+  "a",
+  "abbr",
+  "b",
+  "blockquote",
+  "br",
+  "code",
+  "div",
+  "em",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "hr",
+  "i",
+  "img",
+  "li",
+  "ol",
+  "p",
+  "pre",
+  "span",
+  "strong",
+  "table",
+  "tbody",
+  "td",
+  "th",
+  "thead",
+  "tr",
+  "u",
+  "ul",
 ]);
 
 /**
  * Tags whose content should be completely discarded (not unwrapped as text).
  * These contain non-renderable content like CSS, scripts, or document metadata.
  */
-const DISCARD_CONTENT_TAGS = new Set(['style', 'script', 'head', 'title', 'meta', 'link', 'noscript']);
+const DISCARD_CONTENT_TAGS = new Set([
+  "style",
+  "script",
+  "head",
+  "title",
+  "meta",
+  "link",
+  "noscript",
+]);
 
-const GLOBAL_ATTRS = new Set(['title', 'aria-label', 'role', 'tabindex', 'dir']);
-const URI_ATTRS = new Set(['href', 'src']);
-const SAFE_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:'];
+const GLOBAL_ATTRS = new Set(["title", "aria-label", "role", "tabindex", "dir"]);
+const URI_ATTRS = new Set(["href", "src"]);
+const SAFE_PROTOCOLS = ["http:", "https:", "mailto:", "tel:"];
 
 const ATTRS_PER_TAG: Record<string, string[]> = {
-  a: ['href', 'target', 'rel'],
-  img: ['src', 'alt', 'title', 'width', 'height'],
-  table: ['border', 'cellpadding', 'cellspacing'],
-  td: ['colspan', 'rowspan'],
-  th: ['colspan', 'rowspan']
+  a: ["href", "target", "rel"],
+  img: ["src", "alt", "title", "width", "height"],
+  table: ["border", "cellpadding", "cellspacing"],
+  td: ["colspan", "rowspan"],
+  th: ["colspan", "rowspan"],
 };
 
 /**
@@ -56,16 +64,16 @@ const ATTRS_PER_TAG: Record<string, string[]> = {
  * Falls back to entity-escaping when DOM APIs are unavailable (SSR).
  */
 export function sanitizeHtml(input: string | null | undefined): string {
-  if (!input || typeof input !== 'string') {
-    return '';
+  if (!input || typeof input !== "string") {
+    return "";
   }
 
-  if (typeof window === 'undefined' || typeof DOMParser === 'undefined') {
+  if (typeof window === "undefined" || typeof DOMParser === "undefined") {
     return escapeHtml(input);
   }
 
   const parser = new DOMParser();
-  const doc = parser.parseFromString(input, 'text/html');
+  const doc = parser.parseFromString(input, "text/html");
   const body = doc.body;
   sanitizeNode(body);
   return body.innerHTML;
@@ -102,7 +110,7 @@ function sanitizeAttributes(element: HTMLElement, tag: string) {
   const allowedAttrs = new Set([...GLOBAL_ATTRS, ...(ATTRS_PER_TAG[tag] || [])]);
   for (const attr of Array.from(element.attributes)) {
     const attrName = attr.name.toLowerCase();
-    if (!allowedAttrs.has(attrName) && !attrName.startsWith('data-')) {
+    if (!allowedAttrs.has(attrName) && !attrName.startsWith("data-")) {
       element.removeAttribute(attr.name);
       continue;
     }
@@ -114,19 +122,19 @@ function sanitizeAttributes(element: HTMLElement, tag: string) {
       }
     }
 
-    if (attrName === 'target') {
-      element.setAttribute('rel', 'noopener noreferrer');
+    if (attrName === "target") {
+      element.setAttribute("rel", "noopener noreferrer");
     }
   }
 }
 
 function isSafeUri(value: string) {
   const trimmed = value.trim();
-  if (trimmed.startsWith('#')) {
+  if (trimmed.startsWith("#")) {
     return true;
   }
   try {
-    const url = new URL(trimmed, 'http://localhost');
+    const url = new URL(trimmed, "http://localhost");
     return SAFE_PROTOCOLS.includes(url.protocol);
   } catch {
     return false;
@@ -147,10 +155,9 @@ function unwrapElement(element: HTMLElement) {
 
 function escapeHtml(input: string) {
   return input
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
-

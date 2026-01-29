@@ -1,4 +1,4 @@
-import { writable, get, type Writable } from 'svelte/store';
+import { writable, get, type Writable } from "svelte/store";
 
 type PanelResponseMap = Record<string, unknown>;
 type PanelErrorMap = Record<string, string>;
@@ -61,7 +61,7 @@ export function createAiPanelStore() {
 
   function recordError(key: string | null, message?: string | null) {
     if (!key) return;
-    errors.update((map) => ({ ...map, [key]: message || 'Unable to complete request.' }));
+    errors.update((map) => ({ ...map, [key]: message || "Unable to complete request." }));
   }
 
   function clearEntry(key: string | null) {
@@ -82,9 +82,9 @@ export function createAiPanelStore() {
   }
 
   function errorFor(key: string | null) {
-    if (!key) return '';
+    if (!key) return "";
     const snapshot = get(errors);
-    return snapshot[key] || '';
+    return snapshot[key] || "";
   }
 
   return {
@@ -94,7 +94,7 @@ export function createAiPanelStore() {
       sessionActive,
       minimized,
       maximized,
-      activeKey
+      activeKey,
     },
     setActiveKey,
     beginSession,
@@ -107,7 +107,7 @@ export function createAiPanelStore() {
     recordError,
     clearError,
     responseFor,
-    errorFor
+    errorFor,
   };
 }
 
