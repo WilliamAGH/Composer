@@ -70,7 +70,11 @@ export function normalizeFolderId(folderId: string | null | undefined): string {
  */
 export function resolveFolderFromMap(folderMap: FolderMap, message: Message | null): string {
   if (!message || !message.id) return "inbox";
-  if (folderMap && typeof folderMap === "object" && folderMap[message.id]) {
+  if (
+    folderMap &&
+    typeof folderMap === "object" &&
+    Object.prototype.hasOwnProperty.call(folderMap, message.id)
+  ) {
     return normalizeFolderId(folderMap[message.id]);
   }
   return deriveFolderFromLabels(message.labels || []);
@@ -79,7 +83,7 @@ export function resolveFolderFromMap(folderMap: FolderMap, message: Message | nu
 /**
  * Normalizes a raw message list into frontend-compatible message objects.
  */
-export function normalizeMessages(list: unknown[]): Message[] {
+export function normalizeMessages(list: unknown[] | null | undefined): Message[] {
   if (!Array.isArray(list)) return [];
   return list.map((message, index) =>
     isUiMessage(message)
@@ -99,7 +103,8 @@ export function isUiMessage(message: unknown): message is Message {
     typeof (message as Message).from === "string" &&
     "subject" in message &&
     typeof (message as Message).subject === "string" &&
-    "contentText" in message,
+    "contentText" in message &&
+    typeof (message as Message).contentText === "string",
   );
 }
 
