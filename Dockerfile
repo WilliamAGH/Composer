@@ -4,7 +4,7 @@
 ##
 ARG BASE_IMAGE=public.ecr.aws/docker/library/eclipse-temurin:25-jre
 ARG BUILD_IMAGE=public.ecr.aws/docker/library/eclipse-temurin:25-jdk
-ARG NODE_IMAGE=public.ecr.aws/docker/library/node:22.17.0-alpine
+ARG NODE_IMAGE=public.ecr.aws/docker/library/node:22.22.0-alpine
 
 # ================================
 # 1) FRONTEND BUILD STAGE (Svelte)
