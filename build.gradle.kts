@@ -150,6 +150,12 @@ springBoot {
     mainClass.set("com.composerai.api.ComposerAiApiApplication")
 }
 
+// Disable the plain JAR task to ensure only the fat JAR is produced.
+// This prevents Docker COPY failures when *.jar matches multiple files.
+tasks.jar {
+    enabled = false
+}
+
 tasks.withType<org.springframework.boot.gradle.tasks.run.BootRun> {
     systemProperty("spring.classformat.ignore", "true")
     // Suppress sun.misc.Unsafe deprecation warnings from gRPC/Netty (Qdrant client dependency)
