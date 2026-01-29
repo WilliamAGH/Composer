@@ -70,6 +70,12 @@
       "rules": {
         "import/no-mutable-exports": "off"
       }
+    },
+    {
+      "files": ["src/main.ts", "src/App.svelte"],
+      "rules": {
+        "import/no-unassigned-import": "off"
+      }
     }
   ],
   "ignorePatterns": [

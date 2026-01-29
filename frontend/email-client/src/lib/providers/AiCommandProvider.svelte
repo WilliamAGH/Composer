@@ -13,8 +13,7 @@
 </script>
 
 <script>
-  import { onMount } from 'svelte';
-  import { setContext } from 'svelte';
+  import { onMount, setContext } from 'svelte';
   import { catalogStore, hydrateCatalog, ensureCatalogLoaded } from '../services/aiCatalog';
   import { createAiJourneyStore } from '../services/aiJourneyStore';
   import { createConversationLedger } from '../services/conversationLedger';

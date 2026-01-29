@@ -17,7 +17,7 @@ import MobileTopBar from './lib/MobileTopBar.svelte';
   import AiSummaryMobileSheet from './lib/AiSummaryMobileSheet.svelte';
   import ComingSoonModal from './lib/ComingSoonModal.svelte';
   import WindowNotice from './lib/WindowNotice.svelte';
-  import { Sparkles } from 'lucide-svelte';
+  import { Sparkles, ChevronLeft, ChevronRight } from 'lucide-svelte';
 import OverlayStack from './lib/overlay/OverlayStack.svelte';
 import { createOverlayController } from './lib/overlay/OverlayController';
 import { provideOverlayController } from './lib/overlay/overlayContext';
@@ -29,7 +29,6 @@ import { getFunctionMeta, mergeDefaultArgs, resolveDefaultInstruction } from './
 import { handleAiCommand, deriveHeadline, runComposeWindowAi } from './lib/services/aiCommandHandler';
 import { deriveRecipientContext } from './lib/services/emailContextConstructor';
   import { buildReplyPrefill, buildForwardPrefill } from './lib/services/composePrefill';
-import { ChevronLeft, ChevronRight } from 'lucide-svelte';
 import { MAILBOX_ACTION_FALLBACKS, PRIMARY_TOOLBAR_PREFERENCE } from './lib/constants/catalogActions';
 import { escapeHtmlContent, renderMarkdownContent, formatRelativeTimestamp, formatFullTimestamp } from './lib/services/emailFormatting';
   import { createActionMenuSuggestionsStore } from './lib/stores/actionMenuSuggestionsStore';
