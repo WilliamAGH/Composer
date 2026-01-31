@@ -186,8 +186,7 @@ public class SecurityHeadersConfig {
      */
     private static class ApiUiNonceGuardFilter extends OncePerRequestFilter {
 
-        private static final String NONCE_EXPIRED_MESSAGE =
-                "UI nonce expired. Refresh the page and retry the request.";
+        private static final String NONCE_EXPIRED_MESSAGE = "UI nonce expired. Refresh the page and retry the request.";
         private static final String NONCE_INVALID_MESSAGE =
                 "UI nonce missing or invalid. Refresh the page and retry the request.";
         private static final String ERROR_JSON_TEMPLATE = "{\"error\":\"%s\"}";
