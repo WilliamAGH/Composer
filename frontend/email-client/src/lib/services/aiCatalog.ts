@@ -6,7 +6,8 @@
 import { writable, get, type Writable } from "svelte/store";
 import type { AiFunctionCatalogDto, AiFunctionSummary, AiFunctionVariantSummary } from "../../main";
 export type { AiFunctionCatalogDto, AiFunctionSummary, AiFunctionVariantSummary } from "../../main";
-import { dispatchClientWarning } from "./sessionNonceClient";
+import { AiFunctionCatalogDtoSchema } from "../schemas/catalogSchemas";
+import { dispatchClientWarning, getJsonValidated } from "./sessionNonceClient";
 
 const catalog: Writable<AiFunctionCatalogDto | null> = writable(null);
 let fetchPromise: Promise<boolean> | null = null;
@@ -62,13 +63,21 @@ export async function ensureCatalogLoaded(initialValue?: AiFunctionCatalogDto | 
   }
   if (get(catalog)) return true;
   if (!fetchPromise) {
-    fetchPromise = fetch("/api/ai-functions", { headers: { Accept: "application/json" } })
-      .then((resp) => {
-        if (!resp.ok) throw new Error(`Failed to load catalog (HTTP ${resp.status})`);
-        return resp.json() as Promise<AiFunctionCatalogDto>;
-      })
-      .then((json) => {
-        catalog.set(json);
+    fetchPromise = getJsonValidated(
+      "/api/ai-functions",
+      AiFunctionCatalogDtoSchema,
+      "ai-function-catalog",
+      { headers: { Accept: "application/json" } },
+    )
+      .then((result) => {
+        if (!result.success) {
+          dispatchClientWarning({
+            message: "AI function catalog validation failed.",
+            error: result.error,
+          });
+          return false;
+        }
+        catalog.set(result.data);
         return true;
       })
       .finally(() => {
@@ -76,8 +85,8 @@ export async function ensureCatalogLoaded(initialValue?: AiFunctionCatalogDto | 
       });
   }
   try {
-    await fetchPromise;
-    return true;
+    const loaded = await fetchPromise;
+    return loaded;
   } catch (error) {
     dispatchClientWarning({ message: "Unable to load AI function catalog.", error });
     return false;
