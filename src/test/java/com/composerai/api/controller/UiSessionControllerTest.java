@@ -60,7 +60,7 @@ class UiSessionControllerTest {
         // Use a fixed clock to simulate issuance time
         java.time.Clock fixedClock = java.time.Clock.fixed(now, java.time.ZoneId.systemDefault());
         UiNonceService serviceAtIssueTime = new UiNonceService(fixedClock);
-        
+
         String issuedNonce = serviceAtIssueTime.issueSessionNonce(session);
 
         // Advance time by EXPIRED_MINUTES to simulate expiration
