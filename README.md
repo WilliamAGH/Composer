@@ -51,7 +51,7 @@ See [`LICENSE.md`](LICENSE.md). Copyright © 2026 William Callahan.
 
 ## [Other projects from William Callahan](https://williamcallahan.com/projects)
 
-- [Apple-Maps-Java](https://github.com/WilliamAGH/apple-maps-java)
-- [Java Chat](https://javachat.ai) - Learn programming with AI and access to a library of knowledge on the language
+- [Apple-Maps-Java](https://github.com/WilliamAGH/apple-maps-java) - Library for adding free Apple Maps API access to your Java and Kotlin apps
+- [Java Chat](https://javachat.ai) [(GitHub)](https://github.com/WilliamAGH/java-chat) - Learn programming with AI and access to a library of knowledge on the language
 - [TUI4J](https://github.com/WilliamAGH/tui4j) - Library to build beautiful terminal applications in Java and Kotlin
 - [Brief](https://github.com/WilliamAGH/brief) - Modern terminal application for AI chat with built-in tool calling
