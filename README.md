@@ -41,13 +41,6 @@ For production builds, alternative providers (OpenRouter, Ollama), and vector se
 - [Email Client](docs/email-client-v2.md) – frontend architecture, window system, email safety model
 - [Context & Conversations](docs/email-context-conversation-uuids.md) – how identifiers flow between UI and API
 
-## Routes
-
-- `/` – Redirects to `/email-client-v2` (Svelte email client)
-- `/chat-diagnostics` – server-rendered diagnostics
-- `/qa/diagnostics` – health checks
-- `/qa/email-file-parser` – parse `.eml` uploads
-
 ## Contributing
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md).
@@ -56,9 +49,9 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 See [`LICENSE.md`](LICENSE.md). Copyright © 2026 William Callahan.
 
-## More from William Callahan
+## [Other projects from William Callahan](https://williamcallahan.com/projects)
 
-- [Other projects](https://williamcallahan.com/projects)
-- [apple-maps-java](https://github.com/WilliamAGH/apple-maps-java)
-- [TUI4J](https://github.com/WilliamAGH/tui4j)
-- [Brief](https://github.com/WilliamAGH/brief)
+- [Apple-Maps-Java](https://github.com/WilliamAGH/apple-maps-java)
+- [Java Chat](https://javachat.ai) - Learn programming with AI and access to a library of knowledge on the language
+- [TUI4J](https://github.com/WilliamAGH/tui4j) - Library to build beautiful terminal applications in Java and Kotlin
+- [Brief](https://github.com/WilliamAGH/brief) - Modern terminal application for AI chat with built-in tool calling
