@@ -110,7 +110,18 @@ async function fetchWithNonce(url: string, init: JsonRequestInit = {}, allowRetr
   const response = await fetch(url, { ...init, headers });
 
   if (response.status === 403 && allowRetry) {
-    await refreshUiNonce();
+    try {
+      await refreshUiNonce();
+    } catch (refreshError) {
+      const actionHref =
+        typeof window !== "undefined" ? window.location.href : "https://composerai.app";
+      pushToast("Session expired", {
+        severity: "error",
+        actionLabel: "Reload page",
+        actionHref,
+      });
+      throw refreshError;
+    }
     return fetchWithNonce(url, init, false);
   }
   return response;
