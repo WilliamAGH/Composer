@@ -36,16 +36,19 @@ public class UiSessionController {
     private static final String ERROR_MSG_DISALLOWED = "Disallowed origin";
 
     private final UiNonceService uiNonceService;
-    private final List<String> allowedOrigins;
+    private final List<String> normalizedAllowedOrigins;
 
     public UiSessionController(UiNonceService uiNonceService, AppProperties appProperties) {
         this.uiNonceService = uiNonceService;
         String configured = (appProperties != null && appProperties.getCors() != null)
                 ? appProperties.getCors().getAllowedOrigins()
                 : "";
-        this.allowedOrigins = Arrays.stream(configured.split(","))
+        // Pre-normalize allowed origins at construction time to avoid repeated computation per request
+        this.normalizedAllowedOrigins = Arrays.stream(configured.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
+                .map(this::normalizeOrigin)
+                .filter(java.util.Objects::nonNull)
                 .collect(Collectors.toList());
     }
 
@@ -104,7 +107,7 @@ public class UiSessionController {
         if (normalizedOrigin == null) {
             return false;
         }
-        return allowedOrigins.stream().map(this::normalizeOrigin).anyMatch(normalizedOrigin::equals);
+        return normalizedAllowedOrigins.contains(normalizedOrigin);
     }
 
     /**
