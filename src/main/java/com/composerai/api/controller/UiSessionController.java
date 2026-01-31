@@ -58,14 +58,12 @@ public class UiSessionController {
         }
 
         HttpSession activeSession = (session != null) ? session : request.getSession(true);
-        Object existing = activeSession.getAttribute("UI_NONCE");
-        if (existing instanceof String existingNonce
-                && !StringUtils.isBlank(currentNonce)
-                && !existingNonce.equals(currentNonce)) {
+        UiNonceService.UiNonceValidation validation = uiNonceService.validateNonce(activeSession, currentNonce);
+        if (!StringUtils.isBlank(currentNonce) && !validation.valid() && !validation.expired()) {
             log.warn("UI nonce mismatch detected for session id={}", activeSession.getId());
         }
 
-        String nonce = uiNonceService.getOrCreateSessionNonce(activeSession);
+        String nonce = uiNonceService.issueSessionNonce(activeSession);
         return ResponseEntity.ok(Map.of("uiNonce", nonce));
     }
 
@@ -91,27 +89,27 @@ public class UiSessionController {
         return false;
     }
 
-    private boolean matchesAllowed(String value) {
-        if (StringUtils.isBlank(value)) {
+    private boolean matchesAllowed(String candidateOrigin) {
+        if (StringUtils.isBlank(candidateOrigin)) {
             return false;
         }
-        String normalizedValue = normalizeOrigin(value);
-        if (normalizedValue == null) {
+        String normalizedOrigin = normalizeOrigin(candidateOrigin);
+        if (normalizedOrigin == null) {
             return false;
         }
-        return allowedOrigins.stream().map(this::normalizeOrigin).anyMatch(normalizedValue::equals);
+        return allowedOrigins.stream().map(this::normalizeOrigin).anyMatch(normalizedOrigin::equals);
     }
 
     /**
      * Normalize origin/referer to scheme://host:port format for exact matching.
      * Prevents prefix attacks like "https://composerai.app.evil.com" matching "https://composerai.app".
      */
-    private String normalizeOrigin(String value) {
-        if (StringUtils.isBlank(value)) {
+    private String normalizeOrigin(String candidateOrigin) {
+        if (StringUtils.isBlank(candidateOrigin)) {
             return null;
         }
         try {
-            URI uri = new URI(value);
+            URI uri = new URI(candidateOrigin);
             String scheme = uri.getScheme();
             String host = uri.getHost();
             int port = uri.getPort();

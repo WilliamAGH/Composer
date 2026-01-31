@@ -1,5 +1,6 @@
 package com.composerai.api.config;
 
+import com.composerai.api.controller.UiNonceService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,9 +34,10 @@ public class SecurityHeadersConfig {
     }
 
     @Bean
-    public FilterRegistrationBean<OncePerRequestFilter> apiUiNonceGuardFilter(AppProperties appProperties) {
+    public FilterRegistrationBean<OncePerRequestFilter> apiUiNonceGuardFilter(
+            AppProperties appProperties, UiNonceService uiNonceService) {
         FilterRegistrationBean<OncePerRequestFilter> registrationBean =
-                new FilterRegistrationBean<>(new ApiUiNonceGuardFilter(appProperties));
+                new FilterRegistrationBean<>(new ApiUiNonceGuardFilter(appProperties, uiNonceService));
         registrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE + 2);
         return registrationBean;
     }
@@ -184,10 +186,18 @@ public class SecurityHeadersConfig {
      */
     private static class ApiUiNonceGuardFilter extends OncePerRequestFilter {
 
-        private final AppProperties appProperties;
+        private static final String NONCE_EXPIRED_MESSAGE =
+                "UI nonce expired. Refresh the page and retry the request.";
+        private static final String NONCE_INVALID_MESSAGE =
+                "UI nonce missing or invalid. Refresh the page and retry the request.";
+        private static final String ERROR_JSON_TEMPLATE = "{\"error\":\"%s\"}";
 
-        ApiUiNonceGuardFilter(AppProperties appProperties) {
+        private final AppProperties appProperties;
+        private final UiNonceService uiNonceService;
+
+        ApiUiNonceGuardFilter(AppProperties appProperties, UiNonceService uiNonceService) {
             this.appProperties = appProperties;
+            this.uiNonceService = uiNonceService;
         }
 
         @Override
@@ -211,16 +221,13 @@ public class SecurityHeadersConfig {
             try {
                 jakarta.servlet.http.HttpSession session = request.getSession(false);
                 String headerNonce = request.getHeader("X-UI-Request");
-                Object sessionNonce = (session == null) ? null : session.getAttribute("UI_NONCE");
+                UiNonceService.UiNonceValidation validation = uiNonceService.validateNonce(session, headerNonce);
 
-                if (session == null
-                        || sessionNonce == null
-                        || headerNonce == null
-                        || headerNonce.isBlank()
-                        || !headerNonce.equals(sessionNonce.toString())) {
+                if (!validation.valid()) {
+                    String message = validation.expired() ? NONCE_EXPIRED_MESSAGE : NONCE_INVALID_MESSAGE;
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                     response.setContentType("application/json");
-                    response.getWriter().write("{\"error\":\"Forbidden\"}");
+                    response.getWriter().write(String.format(ERROR_JSON_TEMPLATE, message));
                     return;
                 }
                 filterChain.doFilter(request, response);
