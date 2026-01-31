@@ -36,7 +36,13 @@
     >
       <svelte:component this={iconMap[toast.severity]} class="toast__icon {iconColorMap[toast.severity]}" />
       <div class="toast__content">
-        <p class="toast__message">{toast.message}</p>
+        <p class="toast__message">
+          {toast.message}
+          {#if toast.actionLabel && toast.actionHref}
+            <span class="toast__divider"> — </span>
+            <a class="toast__action" href={toast.actionHref}>{toast.actionLabel}</a>
+          {/if}
+        </p>
         {#if toast.detail}
           <p class="toast__detail">{toast.detail}</p>
         {/if}
@@ -93,6 +99,19 @@
     font-size: 0.875rem;
     font-weight: 500;
     line-height: 1.4;
+  }
+
+  .toast__divider {
+    opacity: 0.6;
+  }
+
+  .toast__action {
+    font-weight: 600;
+    text-decoration: underline;
+  }
+
+  .toast__action:hover {
+    opacity: 0.85;
   }
 
   .toast__detail {

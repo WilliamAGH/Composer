@@ -12,6 +12,8 @@ export interface ToastError {
   id: string;
   message: string;
   detail?: string;
+  actionLabel?: string;
+  actionHref?: string;
   severity: "error" | "warning" | "info";
   timestamp: number;
 }
@@ -35,13 +37,20 @@ let nextToastId = 0;
  */
 export function pushToast(
   message: string,
-  options: { detail?: string; severity?: ToastError["severity"] } = {},
+  options: {
+    detail?: string;
+    severity?: ToastError["severity"];
+    actionLabel?: string;
+    actionHref?: string;
+  } = {},
 ): string {
   const id = `toast-${++nextToastId}`;
   const toast: ToastError = {
     id,
     message,
     detail: options.detail,
+    actionLabel: options.actionLabel,
+    actionHref: options.actionHref,
     severity: options.severity ?? "error",
     timestamp: Date.now(),
   };
