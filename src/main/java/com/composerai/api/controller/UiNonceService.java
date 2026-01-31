@@ -13,6 +13,17 @@ public class UiNonceService {
     private static final String SESSION_ISSUED_AT_KEY = "UI_NONCE_ISSUED_AT";
     private static final long NONCE_TTL_MINUTES = 15L;
     private static final Duration NONCE_TTL = Duration.ofMinutes(NONCE_TTL_MINUTES);
+    private static final int NONCE_LENGTH = 24;
+
+    private final java.time.Clock clock;
+
+    public UiNonceService() {
+        this(java.time.Clock.systemUTC());
+    }
+
+    public UiNonceService(java.time.Clock clock) {
+        this.clock = clock;
+    }
 
     /**
      * Returns the current nonce if still valid; otherwise generates a new nonce.
@@ -21,12 +32,14 @@ public class UiNonceService {
      * @return active or newly issued UI nonce
      */
     public String getOrCreateSessionNonce(HttpSession session) {
-        String currentNonce = readSessionNonce(session);
-        Instant issuedAt = readIssuedAt(session);
-        if (currentNonce != null && issuedAt != null && !isExpired(issuedAt)) {
-            return currentNonce;
+        synchronized (session) {
+            String currentNonce = readSessionNonce(session);
+            Instant issuedAt = readIssuedAt(session);
+            if (currentNonce != null && issuedAt != null && !isExpired(issuedAt)) {
+                return currentNonce;
+            }
+            return issueSessionNonce(session);
         }
-        return issueSessionNonce(session);
     }
 
     /**
@@ -37,9 +50,9 @@ public class UiNonceService {
      */
     public String issueSessionNonce(HttpSession session) {
         synchronized (session) {
-            String generatedNonce = IdGenerator.generate(24);
+            String generatedNonce = IdGenerator.generate(NONCE_LENGTH);
             session.setAttribute(SESSION_NONCE_KEY, generatedNonce);
-            session.setAttribute(SESSION_ISSUED_AT_KEY, Instant.now());
+            session.setAttribute(SESSION_ISSUED_AT_KEY, Instant.now(clock));
             return generatedNonce;
         }
     }
@@ -55,22 +68,24 @@ public class UiNonceService {
         if (session == null || providedNonce == null || providedNonce.isBlank()) {
             return UiNonceValidation.ofInvalid();
         }
-        String currentNonce = readSessionNonce(session);
-        Instant issuedAt = readIssuedAt(session);
-        if (currentNonce == null || issuedAt == null) {
-            return UiNonceValidation.ofInvalid();
+        synchronized (session) {
+            String currentNonce = readSessionNonce(session);
+            Instant issuedAt = readIssuedAt(session);
+            if (currentNonce == null || issuedAt == null) {
+                return UiNonceValidation.ofInvalid();
+            }
+            if (!currentNonce.equals(providedNonce)) {
+                return UiNonceValidation.ofInvalid();
+            }
+            if (isExpired(issuedAt)) {
+                return UiNonceValidation.ofExpired();
+            }
+            return UiNonceValidation.ofValid();
         }
-        if (!currentNonce.equals(providedNonce)) {
-            return UiNonceValidation.ofInvalid();
-        }
-        if (isExpired(issuedAt)) {
-            return UiNonceValidation.ofExpired();
-        }
-        return UiNonceValidation.ofValid();
     }
 
     private boolean isExpired(Instant issuedAt) {
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         Duration age = Duration.between(issuedAt, now);
         return age.compareTo(NONCE_TTL) > 0;
     }

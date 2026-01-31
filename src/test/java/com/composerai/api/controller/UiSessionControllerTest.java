@@ -32,7 +32,6 @@ class UiSessionControllerTest {
     @Autowired
     private UiNonceService uiNonceService;
 
-    private static final String ISSUED_AT_KEY = "UI_NONCE_ISSUED_AT";
     private static final long EXPIRED_MINUTES = 16L;
 
     @Test
@@ -57,10 +56,18 @@ class UiSessionControllerTest {
     @Test
     void validateNonce_rejectsExpiredNonce() {
         MockHttpSession session = new MockHttpSession();
-        String issuedNonce = uiNonceService.issueSessionNonce(session);
-        session.setAttribute(ISSUED_AT_KEY, Instant.now().minus(Duration.ofMinutes(EXPIRED_MINUTES)));
+        Instant now = Instant.now();
+        // Use a fixed clock to simulate issuance time
+        java.time.Clock fixedClock = java.time.Clock.fixed(now, java.time.ZoneId.systemDefault());
+        UiNonceService serviceAtIssueTime = new UiNonceService(fixedClock);
+        
+        String issuedNonce = serviceAtIssueTime.issueSessionNonce(session);
 
-        UiNonceService.UiNonceValidation validation = uiNonceService.validateNonce(session, issuedNonce);
+        // Advance time by EXPIRED_MINUTES to simulate expiration
+        java.time.Clock expiredClock = java.time.Clock.offset(fixedClock, Duration.ofMinutes(EXPIRED_MINUTES));
+        UiNonceService serviceAtValidationTime = new UiNonceService(expiredClock);
+
+        UiNonceService.UiNonceValidation validation = serviceAtValidationTime.validateNonce(session, issuedNonce);
         org.junit.jupiter.api.Assertions.assertFalse(validation.valid());
         org.junit.jupiter.api.Assertions.assertTrue(validation.expired());
     }
