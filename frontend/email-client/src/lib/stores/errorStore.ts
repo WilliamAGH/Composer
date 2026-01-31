@@ -29,6 +29,7 @@ const fatalError = writable<FatalError | null>(null);
 
 /** Auto-dismiss delay in milliseconds */
 const TOAST_DURATION_MS = 6000;
+const DEFAULT_ERROR_MESSAGE = "An unexpected error occurred";
 
 let nextToastId = 0;
 
@@ -96,7 +97,7 @@ export function clearFatalError(): void {
  */
 export function pushErrorToast(
   error: unknown,
-  fallbackMessage = "An unexpected error occurred",
+  fallbackMessage = DEFAULT_ERROR_MESSAGE,
 ): string {
   const message = error instanceof Error ? error.message : fallbackMessage;
   const detail = error instanceof Error ? error.stack?.split("\n")[1]?.trim() : undefined;

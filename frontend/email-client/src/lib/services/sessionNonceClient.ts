@@ -11,6 +11,11 @@ let refreshPromise: Promise<string> | null = null;
 /** Interval in milliseconds between chat heartbeat pings to keep session alive. */
 const CHAT_HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000;
 
+const DEFAULT_API_ERROR_MESSAGE = "Request failed";
+const SESSION_EXPIRED_MESSAGE = "Session expired";
+const RELOAD_ACTION_LABEL = "Reload page";
+const DEFAULT_RELOAD_URL = "https://composerai.app";
+
 function extractErrorMessage(raw: unknown, status: number): string {
   if (typeof raw === "object" && raw !== null) {
     const asRecord = raw as Record<string, unknown>;
@@ -28,7 +33,7 @@ function extractErrorMessage(raw: unknown, status: number): string {
  * @param fallbackMessage - Message to show if error has no message
  * @returns The toast ID (can be used to dismiss early)
  */
-export function showApiErrorToast(error: unknown, fallbackMessage = "Request failed"): string {
+export function showApiErrorToast(error: unknown, fallbackMessage = DEFAULT_API_ERROR_MESSAGE): string {
   const message = error instanceof Error ? error.message : fallbackMessage;
   return pushToast(message, { severity: "error" });
 }
@@ -74,15 +79,15 @@ export async function refreshUiNonce() {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   attachSessionHeaders(headers);
   refreshPromise = (async () => {
-    const resp = await fetch("/ui/session/nonce", { method: "POST", headers });
-    const raw: unknown = await resp.json().catch(() => null);
-    if (!resp.ok) {
-      const errorMessage = extractErrorMessage(raw, resp.status);
+    const response = await fetch("/ui/session/nonce", { method: "POST", headers });
+    const responsePayload: unknown = await response.json().catch(() => null);
+    if (!response.ok) {
+      const errorMessage = extractErrorMessage(responsePayload, response.status);
       throw new Error(errorMessage);
     }
-    const parseResult = NonceRefreshResponseSchema.safeParse(raw);
+    const parseResult = NonceRefreshResponseSchema.safeParse(responsePayload);
     if (!parseResult.success) {
-      logZodFailure("refreshUiNonce [nonce-refresh]", parseResult.error, raw);
+      logZodFailure("refreshUiNonce [nonce-refresh]", parseResult.error, responsePayload);
       throw new Error("Nonce refresh response validation failed");
     }
     const refreshedNonce = parseResult.data.uiNonce;
@@ -114,10 +119,10 @@ async function fetchWithNonce(url: string, init: JsonRequestInit = {}, allowRetr
       await refreshUiNonce();
     } catch (refreshError) {
       const actionHref =
-        typeof window !== "undefined" ? window.location.href : "https://composerai.app";
-      pushToast("Session expired", {
+        typeof window !== "undefined" ? window.location.href : DEFAULT_RELOAD_URL;
+      pushToast(SESSION_EXPIRED_MESSAGE, {
         severity: "error",
-        actionLabel: "Reload page",
+        actionLabel: RELOAD_ACTION_LABEL,
         actionHref,
       });
       throw refreshError;
@@ -136,14 +141,14 @@ export async function postJsonWithNonce<T = unknown>(
   body?: unknown,
   init: JsonRequestInit = {},
 ) {
-  const resp = await fetchWithNonce(url, {
+  const response = await fetchWithNonce(url, {
     ...init,
     method: "POST",
     body: JSON.stringify(body ?? null),
   });
-  const data = await resp.json().catch(() => null);
-  if (!resp.ok) {
-    throw new Error((data && (data.message || data.error)) || `HTTP ${resp.status}`);
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error((data && (data.message || data.error)) || `HTTP ${response.status}`);
   }
   return data as T;
 }
@@ -153,10 +158,10 @@ export async function postJsonWithNonce<T = unknown>(
  * @deprecated Use getJsonValidated with a Zod schema for type-safe responses.
  */
 export async function getJsonWithNonce<T = unknown>(url: string, init: JsonRequestInit = {}) {
-  const resp = await fetchWithNonce(url, { ...init, method: "GET" });
-  const data = await resp.json().catch(() => null);
-  if (!resp.ok) {
-    throw new Error((data && (data.message || data.error)) || `HTTP ${resp.status}`);
+  const response = await fetchWithNonce(url, { ...init, method: "GET" });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error((data && (data.message || data.error)) || `HTTP ${response.status}`);
   }
   return data as T;
 }
@@ -181,21 +186,21 @@ export async function postJsonValidated<T>(
   body?: unknown,
   init: JsonRequestInit = {},
 ): Promise<ValidationResult<T>> {
-  const resp = await fetchWithNonce(url, {
+  const response = await fetchWithNonce(url, {
     ...init,
     method: "POST",
     body: JSON.stringify(body ?? null),
   });
-  const raw: unknown = await resp.json().catch(() => null);
+  const responsePayload: unknown = await response.json().catch(() => null);
 
-  if (!resp.ok) {
-    const errorMessage = extractErrorMessage(raw, resp.status);
+  if (!response.ok) {
+    const errorMessage = extractErrorMessage(responsePayload, response.status);
     throw new Error(errorMessage);
   }
 
-  const parseResult = schema.safeParse(raw);
+  const parseResult = schema.safeParse(responsePayload);
   if (!parseResult.success) {
-    logZodFailure(`postJsonValidated [${recordId}]`, parseResult.error, raw);
+    logZodFailure(`postJsonValidated [${recordId}]`, parseResult.error, responsePayload);
     return validationFailure(parseResult.error);
   }
 
@@ -217,17 +222,17 @@ export async function getJsonValidated<T>(
   recordId: string,
   init: JsonRequestInit = {},
 ): Promise<ValidationResult<T>> {
-  const resp = await fetchWithNonce(url, { ...init, method: "GET" });
-  const raw: unknown = await resp.json().catch(() => null);
+  const response = await fetchWithNonce(url, { ...init, method: "GET" });
+  const responsePayload: unknown = await response.json().catch(() => null);
 
-  if (!resp.ok) {
-    const errorMessage = extractErrorMessage(raw, resp.status);
+  if (!response.ok) {
+    const errorMessage = extractErrorMessage(responsePayload, response.status);
     throw new Error(errorMessage);
   }
 
-  const parseResult = schema.safeParse(raw);
+  const parseResult = schema.safeParse(responsePayload);
   if (!parseResult.success) {
-    logZodFailure(`getJsonValidated [${recordId}]`, parseResult.error, raw);
+    logZodFailure(`getJsonValidated [${recordId}]`, parseResult.error, responsePayload);
     return validationFailure(parseResult.error);
   }
 
@@ -251,15 +256,15 @@ export async function postJsonVoid(
   body?: unknown,
   init: JsonRequestInit = {},
 ): Promise<void> {
-  const resp = await fetchWithNonce(url, {
+  const response = await fetchWithNonce(url, {
     ...init,
     method: "POST",
     body: JSON.stringify(body ?? null),
   });
 
-  if (!resp.ok) {
-    const raw: unknown = await resp.json().catch(() => null);
-    const errorMessage = extractErrorMessage(raw, resp.status);
+  if (!response.ok) {
+    const responsePayload: unknown = await response.json().catch(() => null);
+    const errorMessage = extractErrorMessage(responsePayload, response.status);
     throw new Error(errorMessage);
   }
   // Success - no body to validate
