@@ -220,6 +220,8 @@ public class SecurityHeadersConfig {
         protected void doFilterInternal(
                 HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
                 throws ServletException, IOException {
+            // Narrow try/catch to nonce validation only; downstream exceptions must propagate
+            // to preserve 5xx semantics and avoid masking real server errors (per [RC1a]).
             try {
                 jakarta.servlet.http.HttpSession session = request.getSession(false);
                 String headerNonce = request.getHeader(HEADER_UI_NONCE);
@@ -232,7 +234,6 @@ public class SecurityHeadersConfig {
                     response.getWriter().write(String.format(ERROR_JSON_TEMPLATE, message));
                     return;
                 }
-                filterChain.doFilter(request, response);
             } catch (Exception e) {
                 SecurityHeadersConfig.log.warn(
                         "API guard rejection: method={}, path={}", request.getMethod(), request.getRequestURI(), e);
@@ -241,7 +242,10 @@ public class SecurityHeadersConfig {
                     response.setContentType("application/json");
                     response.getWriter().write("{\"error\":\"Forbidden\"}");
                 }
+                return;
             }
+
+            filterChain.doFilter(request, response);
         }
     }
 }
