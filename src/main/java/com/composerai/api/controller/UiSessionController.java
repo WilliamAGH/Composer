@@ -129,7 +129,7 @@ public class UiSessionController {
                 return scheme.toLowerCase() + "://" + host.toLowerCase() + ":" + port;
             }
         } catch (URISyntaxException e) {
-            log.debug("Failed to parse origin: {}", value, e);
+            log.debug("Failed to parse origin: {}", candidateOrigin, e);
             return null;
         }
     }

@@ -53,20 +53,20 @@ public class UiNonceService {
      */
     public UiNonceValidation validateNonce(HttpSession session, String providedNonce) {
         if (session == null || providedNonce == null || providedNonce.isBlank()) {
-            return UiNonceValidation.invalid();
+            return UiNonceValidation.ofInvalid();
         }
         String currentNonce = readSessionNonce(session);
         Instant issuedAt = readIssuedAt(session);
         if (currentNonce == null || issuedAt == null) {
-            return UiNonceValidation.invalid();
+            return UiNonceValidation.ofInvalid();
         }
         if (!currentNonce.equals(providedNonce)) {
-            return UiNonceValidation.invalid();
+            return UiNonceValidation.ofInvalid();
         }
         if (isExpired(issuedAt)) {
-            return UiNonceValidation.expired();
+            return UiNonceValidation.ofExpired();
         }
-        return UiNonceValidation.valid();
+        return UiNonceValidation.ofValid();
     }
 
     private boolean isExpired(Instant issuedAt) {
@@ -98,15 +98,15 @@ public class UiNonceService {
      * @param expired whether the nonce is specifically expired
      */
     public record UiNonceValidation(boolean valid, boolean expired) {
-        public static UiNonceValidation valid() {
+        public static UiNonceValidation ofValid() {
             return new UiNonceValidation(true, false);
         }
 
-        public static UiNonceValidation expired() {
+        public static UiNonceValidation ofExpired() {
             return new UiNonceValidation(false, true);
         }
 
-        public static UiNonceValidation invalid() {
+        public static UiNonceValidation ofInvalid() {
             return new UiNonceValidation(false, false);
         }
     }
