@@ -190,6 +190,9 @@ public class SecurityHeadersConfig {
         private static final String NONCE_INVALID_MESSAGE =
                 "UI nonce missing or invalid. Refresh the page and retry the request.";
         private static final String ERROR_JSON_TEMPLATE = "{\"error\":\"%s\"}";
+        private static final String API_PATH_PREFIX = "/api/";
+        private static final String HEALTH_CHECK_PATH = "/api/chat/health";
+        private static final String HEADER_UI_NONCE = "X-UI-Request";
 
         private final AppProperties appProperties;
         private final UiNonceService uiNonceService;
@@ -207,9 +210,9 @@ public class SecurityHeadersConfig {
             }
             String path = request.getRequestURI();
             if (path == null) return true;
-            if (!path.startsWith("/api/")) return true;
+            if (!path.startsWith(API_PATH_PREFIX)) return true;
             if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
-            if ("GET".equalsIgnoreCase(request.getMethod()) && "/api/chat/health".equals(path)) return true;
+            if ("GET".equalsIgnoreCase(request.getMethod()) && HEALTH_CHECK_PATH.equals(path)) return true;
             return false;
         }
 
@@ -219,7 +222,7 @@ public class SecurityHeadersConfig {
                 throws ServletException, IOException {
             try {
                 jakarta.servlet.http.HttpSession session = request.getSession(false);
-                String headerNonce = request.getHeader("X-UI-Request");
+                String headerNonce = request.getHeader(HEADER_UI_NONCE);
                 UiNonceService.UiNonceValidation validation = uiNonceService.validateNonce(session, headerNonce);
 
                 if (!validation.valid()) {
