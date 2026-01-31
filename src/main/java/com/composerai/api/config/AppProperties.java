@@ -50,7 +50,8 @@ public class AppProperties {
          * Comma-separated list of allowed origins. Example:
          * https://composerai.app,https://dev.composerai.app
          */
-        private String allowedOrigins = "http://localhost:8090,http://localhost:5183,https://composerai.app,https://dev.composerai.app";
+        private String allowedOrigins =
+                "http://localhost:8090,http://localhost:5183,https://composerai.app,https://dev.composerai.app";
     }
 
     @Getter

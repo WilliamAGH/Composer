@@ -42,7 +42,9 @@ class UiSessionControllerTest {
         @Bean
         AppProperties appProperties() {
             AppProperties properties = new AppProperties();
-            properties.getCors().setAllowedOrigins("http://localhost:8090,http://localhost:5183,https://composerai.app");
+            properties
+                    .getCors()
+                    .setAllowedOrigins("http://localhost:8090,http://localhost:5183,https://composerai.app");
             return properties;
         }
 

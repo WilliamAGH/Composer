@@ -68,8 +68,7 @@ public class VectorSearchService {
                     .build();
 
             List<ScoredPoint> scoredPoints =
-                    qdrantClient.searchAsync(searchRequest)
-                            .get(SEARCH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                    qdrantClient.searchAsync(searchRequest).get(SEARCH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
             List<EmailContext> emailContexts = new ArrayList<>();
             for (ScoredPoint point : scoredPoints) {
