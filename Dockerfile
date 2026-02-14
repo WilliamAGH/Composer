@@ -108,4 +108,4 @@ EXPOSE 8090
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD curl -fsS --connect-timeout 2 --max-time 3 http://localhost:${PORT}/actuator/health || exit 1
 
-ENTRYPOINT ["/bin/sh","-c","java ${JAVA_OPTS} -jar /app/app.jar"]
+ENTRYPOINT ["/bin/sh","-c","exec java ${JAVA_OPTS} -jar /app/app.jar"]
