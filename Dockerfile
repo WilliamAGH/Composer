@@ -1,5 +1,5 @@
 ##
-## Multi-stage build for ComposerAI (Svelte frontend + Spring Boot backend)
+## Multi-stage build for Composer (Svelte frontend + Spring Boot backend)
 ## Note: Requires DOCKER_BUILDKIT=1 for cache mount support
 ##
 ARG BASE_IMAGE=public.ecr.aws/docker/library/eclipse-temurin:25-jre

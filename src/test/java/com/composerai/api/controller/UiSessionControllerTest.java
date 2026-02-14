@@ -94,7 +94,7 @@ class UiSessionControllerTest {
             AppProperties properties = new AppProperties();
             properties
                     .getCors()
-                    .setAllowedOrigins("http://localhost:8090,http://localhost:5183,https://composerai.app");
+                    .setAllowedOrigins("http://localhost:8090,http://localhost:5183,https://composer.email");
             return properties;
         }
 

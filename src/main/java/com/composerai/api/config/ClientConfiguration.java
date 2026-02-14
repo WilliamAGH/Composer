@@ -98,7 +98,7 @@ public class ClientConfiguration {
                 .baseUrl(baseUrl)
                 .defaultHeader("Authorization", "Bearer " + apiKey.trim())
                 .defaultHeader("Content-Type", "application/json")
-                .defaultHeader("HTTP-Referer", "https://composerai.app") // Optional: for OpenRouter analytics
+                .defaultHeader("HTTP-Referer", "https://composer.email") // Optional: for OpenRouter analytics
                 .defaultHeader("X-Title", "Composer") // Optional: for OpenRouter analytics
                 .build();
     }

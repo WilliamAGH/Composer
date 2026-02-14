@@ -1,4 +1,4 @@
-# Contributing to ComposerAI
+# Contributing to Composer
 
 Found a bug or have a feature request? Please open an issue in this repository.
 

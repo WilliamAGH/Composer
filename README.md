@@ -1,12 +1,12 @@
 # Composer
 
-[![Composer Desktop](src/main/resources/static/img/composer-screenshot.png)](https://composerai.app)
+[![Composer Desktop](src/main/resources/static/img/composer-screenshot.png)](https://composer.email)
 
 Composer is an experimental email client exploring what is possible when AI is well integrated into everyday software. The vision was to build and test features that are not just a chatbot sidebar, but tooling that anticipates what you might need before you ask for it.
 
 ## Why this exists
 
-Most AI integrations are reactive: open a panel, write a prompt, wait, copy-paste. ComposerAI anticipates that quietly by analyzing the data and UI in the current context and surfaces actions [it believes] you're likely to take next.
+Most AI integrations are reactive: open a panel, write a prompt, wait, copy-paste. Composer anticipates that quietly by analyzing the data and UI in the current context and surfaces actions [it believes] you're likely to take next.
 
 - **Anticipatory suggestions** — Select an email and the app surfaces contextual actions (summarize, draft reply, flag follow-up) without prompting.
 - **One-click depth** — Summarize, translate, adjust tone, or draft replies. The AI sees the full thread and adapts to who you're replying to.

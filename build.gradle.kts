@@ -1,4 +1,4 @@
-// Gradle build script for ComposerAI API
+// Gradle build script for Composer API
 // Configures Spring Boot 3.5.10, Java 25, Spotless, and SpotBugs
 plugins {
     java
@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "com.composerai"
-version = "0.0.1-SNAPSHOT"
+version = "0.0.2-SNAPSHOT"
 
 java {
     toolchain {

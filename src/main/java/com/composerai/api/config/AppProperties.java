@@ -48,10 +48,10 @@ public class AppProperties {
     public static class Cors {
         /**
          * Comma-separated list of allowed origins. Example:
-         * https://composerai.app,https://dev.composerai.app
+         * https://composer.email,https://dev.composer.email
          */
         private String allowedOrigins =
-                "http://localhost:8090,http://localhost:5183,https://composerai.app,https://dev.composerai.app";
+                "http://localhost:8090,http://localhost:5183,https://composer.email,https://dev.composer.email";
     }
 
     @Getter
