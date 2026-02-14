@@ -2,7 +2,6 @@ package com.composerai.api.service;
 
 import com.composerai.api.config.QdrantProperties;
 import com.composerai.api.dto.ChatResponse.EmailContext;
-import com.composerai.api.util.StringUtils;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.grpc.JsonWithInt.Value;
 import io.qdrant.client.grpc.Points.ScoredPoint;
@@ -30,6 +29,9 @@ import org.springframework.stereotype.Service;
 public class VectorSearchService {
 
     private static final int SEARCH_TIMEOUT_SECONDS = 10;
+    private static final String DEFAULT_SUBJECT = "No Subject";
+    private static final String DEFAULT_SENDER = "Unknown Sender";
+    private static final String DEFAULT_SNIPPET = "";
     private static final String[] KEYS_SUBJECT = {"subject", "Subject", "title"};
     private static final String[] KEYS_SENDER = {"sender", "from", "From", "author"};
     private static final String[] KEYS_SNIPPET = {"snippet", "body", "content", "text"};
@@ -102,7 +104,9 @@ public class VectorSearchService {
     private List<Float> convertFloatArrayToList(float[] array) {
         return array == null
                 ? List.of()
-                : IntStream.range(0, array.length).mapToObj(i -> array[i]).toList();
+                : IntStream.range(0, array.length)
+                        .mapToObj(index -> array[index])
+                        .toList();
     }
 
     private EmailContext extractEmailContext(ScoredPoint point) {
@@ -133,11 +137,18 @@ public class VectorSearchService {
 
         return new EmailContext(
                 pointId,
-                StringUtils.defaultIfBlank(subject, "No Subject"),
-                StringUtils.defaultIfBlank(sender, "Unknown Sender"),
-                StringUtils.defaultIfBlank(snippet, ""),
+                defaultIfBlank(subject, DEFAULT_SUBJECT),
+                defaultIfBlank(sender, DEFAULT_SENDER),
+                defaultIfBlank(snippet, DEFAULT_SNIPPET),
                 point.getScore(),
                 timestamp);
+    }
+
+    private static String defaultIfBlank(String candidateText, String fallbackText) {
+        if (candidateText == null || candidateText.isBlank()) {
+            return fallbackText;
+        }
+        return candidateText;
     }
 
     private String getPayloadString(Map<String, Value> payload, String... keys) {
