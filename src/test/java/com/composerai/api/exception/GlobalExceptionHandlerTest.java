@@ -1,16 +1,16 @@
 package com.composerai.api.exception;
 
-import com.composerai.api.dto.ErrorResponse;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.composerai.api.dto.ErrorResponse;
+import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.slf4j.LoggerFactory;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class GlobalExceptionHandlerTest {
 
@@ -69,8 +69,8 @@ class GlobalExceptionHandlerTest {
             assertEquals("internal_error", response.getBody().error());
 
             // Ensure the handler would have logged an error without allowing it to reach console output
-            assertTrue(listAppender.list.stream()
-                .anyMatch(event -> "Unhandled exception for request to /api/chat".equals(event.getFormattedMessage())));
+            assertTrue(listAppender.list.stream().anyMatch(event -> "Unhandled exception for request to /api/chat"
+                    .equals(event.getFormattedMessage())));
         } finally {
             logger.detachAppender(listAppender);
             logger.setAdditive(originalAdditive);

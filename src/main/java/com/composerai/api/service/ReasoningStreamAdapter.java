@@ -8,7 +8,6 @@ import com.openai.models.responses.ResponseReasoningSummaryTextDoneEvent;
 import com.openai.models.responses.ResponseReasoningTextDeltaEvent;
 import com.openai.models.responses.ResponseReasoningTextDoneEvent;
 import com.openai.models.responses.ResponseStreamEvent;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -49,8 +48,14 @@ public final class ReasoningStreamAdapter {
         FAILED("reasoning-failed");
 
         private final String eventName;
-        Type(String eventName) { this.eventName = eventName; }
-        String eventName() { return eventName; }
+
+        Type(String eventName) {
+            this.eventName = eventName;
+        }
+
+        String eventName() {
+            return eventName;
+        }
 
         Phase phase() {
             return switch (this) {
@@ -62,12 +67,18 @@ public final class ReasoningStreamAdapter {
         }
     }
 
-    public sealed interface ReasoningEvent permits SummaryPartAdded, SummaryPartDone, SummaryTextDelta,
-        SummaryTextDone, TextDelta, TextDone, Failure {
+    public sealed interface ReasoningEvent
+            permits SummaryPartAdded, SummaryPartDone, SummaryTextDelta, SummaryTextDone, TextDelta, TextDone, Failure {
         Type type();
+
         String eventName();
+
         Object payload();
-        default ReasoningMessage toMessage() { return toMessage(null); }
+
+        default ReasoningMessage toMessage() {
+            return toMessage(null);
+        }
+
         default ReasoningMessage toMessage(String thinkingLevel) {
             Phase phase = type().phase();
             Object payload = payload();
@@ -76,77 +87,174 @@ public final class ReasoningStreamAdapter {
     }
 
     record SummaryPartAdded(ResponseReasoningSummaryPartAddedEvent value) implements ReasoningEvent {
-        SummaryPartAdded { Objects.requireNonNull(value, "value"); }
-        @Override public Type type() { return Type.SUMMARY_PART_ADDED; }
-        @Override public String eventName() { return type().eventName(); }
-        @Override public Object payload() {
-            return new SummaryPartPayload(value.itemId(), value.summaryIndex(), value.outputIndex(), value.sequenceNumber(), value.part());
+        SummaryPartAdded {
+            Objects.requireNonNull(value, "value");
+        }
+
+        @Override
+        public Type type() {
+            return Type.SUMMARY_PART_ADDED;
+        }
+
+        @Override
+        public String eventName() {
+            return type().eventName();
+        }
+
+        @Override
+        public Object payload() {
+            return new SummaryPartPayload(
+                    value.itemId(), value.summaryIndex(), value.outputIndex(), value.sequenceNumber(), value.part());
         }
     }
 
     record SummaryPartDone(ResponseReasoningSummaryPartDoneEvent value) implements ReasoningEvent {
-        SummaryPartDone { Objects.requireNonNull(value, "value"); }
-        @Override public Type type() { return Type.SUMMARY_PART_DONE; }
-        @Override public String eventName() { return type().eventName(); }
-        @Override public Object payload() {
-            return new SummaryPartPayload(value.itemId(), value.summaryIndex(), value.outputIndex(), value.sequenceNumber(), value.part());
+        SummaryPartDone {
+            Objects.requireNonNull(value, "value");
+        }
+
+        @Override
+        public Type type() {
+            return Type.SUMMARY_PART_DONE;
+        }
+
+        @Override
+        public String eventName() {
+            return type().eventName();
+        }
+
+        @Override
+        public Object payload() {
+            return new SummaryPartPayload(
+                    value.itemId(), value.summaryIndex(), value.outputIndex(), value.sequenceNumber(), value.part());
         }
     }
 
     record SummaryTextDelta(ResponseReasoningSummaryTextDeltaEvent value) implements ReasoningEvent {
-        SummaryTextDelta { Objects.requireNonNull(value, "value"); }
-        @Override public Type type() { return Type.SUMMARY_TEXT_DELTA; }
-        @Override public String eventName() { return type().eventName(); }
-        @Override public Object payload() {
-            return new SummaryTextPayload(value.itemId(), value.summaryIndex(), value.outputIndex(), value.sequenceNumber(), value.delta());
+        SummaryTextDelta {
+            Objects.requireNonNull(value, "value");
+        }
+
+        @Override
+        public Type type() {
+            return Type.SUMMARY_TEXT_DELTA;
+        }
+
+        @Override
+        public String eventName() {
+            return type().eventName();
+        }
+
+        @Override
+        public Object payload() {
+            return new SummaryTextPayload(
+                    value.itemId(), value.summaryIndex(), value.outputIndex(), value.sequenceNumber(), value.delta());
         }
     }
 
     record SummaryTextDone(ResponseReasoningSummaryTextDoneEvent value) implements ReasoningEvent {
-        SummaryTextDone { Objects.requireNonNull(value, "value"); }
-        @Override public Type type() { return Type.SUMMARY_TEXT_DONE; }
-        @Override public String eventName() { return type().eventName(); }
-        @Override public Object payload() {
-            return new SummaryTextPayload(value.itemId(), value.summaryIndex(), value.outputIndex(), value.sequenceNumber(), value.text());
+        SummaryTextDone {
+            Objects.requireNonNull(value, "value");
+        }
+
+        @Override
+        public Type type() {
+            return Type.SUMMARY_TEXT_DONE;
+        }
+
+        @Override
+        public String eventName() {
+            return type().eventName();
+        }
+
+        @Override
+        public Object payload() {
+            return new SummaryTextPayload(
+                    value.itemId(), value.summaryIndex(), value.outputIndex(), value.sequenceNumber(), value.text());
         }
     }
 
     record TextDelta(ResponseReasoningTextDeltaEvent value) implements ReasoningEvent {
-        TextDelta { Objects.requireNonNull(value, "value"); }
-        @Override public Type type() { return Type.TEXT_DELTA; }
-        @Override public String eventName() { return type().eventName(); }
-        @Override public Object payload() {
+        TextDelta {
+            Objects.requireNonNull(value, "value");
+        }
+
+        @Override
+        public Type type() {
+            return Type.TEXT_DELTA;
+        }
+
+        @Override
+        public String eventName() {
+            return type().eventName();
+        }
+
+        @Override
+        public Object payload() {
             return new TextPayload(value.itemId(), value.outputIndex(), value.sequenceNumber(), value.delta());
         }
     }
 
     record TextDone(ResponseReasoningTextDoneEvent value) implements ReasoningEvent {
-        TextDone { Objects.requireNonNull(value, "value"); }
-        @Override public Type type() { return Type.TEXT_DONE; }
-        @Override public String eventName() { return type().eventName(); }
-        @Override public Object payload() {
+        TextDone {
+            Objects.requireNonNull(value, "value");
+        }
+
+        @Override
+        public Type type() {
+            return Type.TEXT_DONE;
+        }
+
+        @Override
+        public String eventName() {
+            return type().eventName();
+        }
+
+        @Override
+        public Object payload() {
             return new TextPayload(value.itemId(), value.outputIndex(), value.sequenceNumber(), value.text());
         }
     }
 
     record Failure(ResponseFailedEvent value) implements ReasoningEvent {
-        Failure { Objects.requireNonNull(value, "value"); }
-        @Override public Type type() { return Type.FAILED; }
-        @Override public String eventName() { return type().eventName(); }
-        @Override public Object payload() {
-            return new FailurePayload(value.sequenceNumber(), value.response() == null ? null : value.response().id(), value);
+        Failure {
+            Objects.requireNonNull(value, "value");
+        }
+
+        @Override
+        public Type type() {
+            return Type.FAILED;
+        }
+
+        @Override
+        public String eventName() {
+            return type().eventName();
+        }
+
+        @Override
+        public Object payload() {
+            return new FailurePayload(
+                    value.sequenceNumber(),
+                    value.response() == null ? null : value.response().id(),
+                    value);
         }
     }
 
     record SummaryPartPayload(String itemId, long summaryIndex, long outputIndex, long sequenceNumber, Object part) {}
 
-    record SummaryTextPayload(String itemId, long summaryIndex, long outputIndex, long sequenceNumber, Object content) {}
+    record SummaryTextPayload(
+            String itemId, long summaryIndex, long outputIndex, long sequenceNumber, Object content) {}
 
     record TextPayload(String itemId, long outputIndex, long sequenceNumber, Object content) {}
 
     record FailurePayload(long sequenceNumber, String responseId, Object raw) {}
 
-    public enum Phase { THINKING, PROGRESS, STREAMING, FAILED }
+    public enum Phase {
+        THINKING,
+        PROGRESS,
+        STREAMING,
+        FAILED
+    }
 
     public record ReasoningMessage(Type type, Phase phase, String displayLabel, Long step, Object payload) {}
 
@@ -184,19 +292,19 @@ public final class ReasoningStreamAdapter {
 
     private static ReasoningMessage buildMessage(Type type, Phase phase, Object payload, String thinkingLevel) {
         return new ReasoningMessage(
-            type,
-            phase,
-            computeDisplayLabel(phase, payload, normalizeThinkingLabel(thinkingLevel)),
-            extractStep(payload),
-            payload
-        );
+                type,
+                phase,
+                computeDisplayLabel(phase, payload, normalizeThinkingLabel(thinkingLevel)),
+                extractStep(payload),
+                payload);
     }
 
     private static String computeDisplayLabel(Phase phase, Object payload, String normalizedThinkingLabel) {
         return switch (phase) {
-            case THINKING -> normalizedThinkingLabel == null || normalizedThinkingLabel.isBlank()
-                ? "Reasoning…"
-                : "Reasoning… " + normalizedThinkingLabel + " effort";
+            case THINKING ->
+                normalizedThinkingLabel == null || normalizedThinkingLabel.isBlank()
+                        ? "Reasoning…"
+                        : "Reasoning… " + normalizedThinkingLabel + " effort";
             case PROGRESS -> {
                 Long step = extractStep(payload);
                 yield step != null ? "Reasoning step " + step : "Reasoning in progress…";

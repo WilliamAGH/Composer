@@ -31,8 +31,7 @@
 </script>
 
 <script>
-  import { onDestroy, onMount } from 'svelte';
-  import { setContext } from 'svelte';
+  import { onDestroy, onMount, setContext } from 'svelte';
   import { createMailboxDataStore } from '../stores/mailboxDataStore';
   import { createMailboxChromeStore } from '../stores/mailboxChromeStore';
   import { createMailboxResponsiveState } from '../stores/mailboxResponsiveState';

@@ -31,7 +31,8 @@ public class ErrorMessagesProperties {
     @Getter
     @Setter
     public static class Chat {
-        private String processingError = "I apologize, but I encountered an error while processing your request. Please try again.";
+        private String processingError =
+                "I apologize, but I encountered an error while processing your request. Please try again.";
     }
 
     @Getter

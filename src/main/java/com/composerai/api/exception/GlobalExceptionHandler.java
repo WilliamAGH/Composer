@@ -3,6 +3,7 @@ package com.composerai.api.exception;
 import com.composerai.api.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,8 +16,6 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import java.util.List;
-
 /**
  * Global exception handler for all REST controllers.
  * Provides centralized, DRY error handling with consistent response format.
@@ -26,34 +25,26 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-
     /**
      * Handle validation errors from @Valid annotations.
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationException(
-            MethodArgumentNotValidException ex,
-            HttpServletRequest request) {
+            MethodArgumentNotValidException ex, HttpServletRequest request) {
 
         log.debug("Validation failed for request to {} - {}", request.getRequestURI(), ex.getMessage());
 
-        List<ErrorResponse.ValidationError> validationErrors = ex.getBindingResult()
-            .getFieldErrors()
-            .stream()
-            .map(error -> new ErrorResponse.ValidationError(
-                error.getField(),
-                error.getDefaultMessage(),
-                error.getRejectedValue()
-            ))
-            .toList();
+        List<ErrorResponse.ValidationError> validationErrors = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> new ErrorResponse.ValidationError(
+                        error.getField(), error.getDefaultMessage(), error.getRejectedValue()))
+                .toList();
 
         ErrorResponse errorResponse = new ErrorResponse(
-            "validation_error",
-            "Validation failed for request",
-            HttpStatus.BAD_REQUEST.value(),
-            request.getRequestURI(),
-            validationErrors
-        );
+                "validation_error",
+                "Validation failed for request",
+                HttpStatus.BAD_REQUEST.value(),
+                request.getRequestURI(),
+                validationErrors);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
@@ -63,27 +54,21 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponse> handleConstraintViolation(
-            ConstraintViolationException ex,
-            HttpServletRequest request) {
+            ConstraintViolationException ex, HttpServletRequest request) {
 
         log.debug("Constraint violation for request to {} - {}", request.getRequestURI(), ex.getMessage());
 
-        List<ErrorResponse.ValidationError> validationErrors = ex.getConstraintViolations()
-            .stream()
-            .map(violation -> new ErrorResponse.ValidationError(
-                violation.getPropertyPath().toString(),
-                violation.getMessage(),
-                violation.getInvalidValue()
-            ))
-            .toList();
+        List<ErrorResponse.ValidationError> validationErrors = ex.getConstraintViolations().stream()
+                .map(violation -> new ErrorResponse.ValidationError(
+                        violation.getPropertyPath().toString(), violation.getMessage(), violation.getInvalidValue()))
+                .toList();
 
         ErrorResponse errorResponse = new ErrorResponse(
-            "constraint_violation",
-            "Request validation failed",
-            HttpStatus.BAD_REQUEST.value(),
-            request.getRequestURI(),
-            validationErrors
-        );
+                "constraint_violation",
+                "Request validation failed",
+                HttpStatus.BAD_REQUEST.value(),
+                request.getRequestURI(),
+                validationErrors);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
@@ -93,17 +78,15 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleMessageNotReadable(
-            HttpMessageNotReadableException ex,
-            HttpServletRequest request) {
+            HttpMessageNotReadableException ex, HttpServletRequest request) {
 
         log.debug("Malformed request body for {} - {}", request.getRequestURI(), ex.getMessage());
 
         ErrorResponse errorResponse = new ErrorResponse(
-            "malformed_request",
-            "Request body is malformed or cannot be parsed",
-            HttpStatus.BAD_REQUEST.value(),
-            request.getRequestURI()
-        );
+                "malformed_request",
+                "Request body is malformed or cannot be parsed",
+                HttpStatus.BAD_REQUEST.value(),
+                request.getRequestURI());
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
@@ -113,24 +96,21 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(
-            MethodArgumentTypeMismatchException ex,
-            HttpServletRequest request) {
+            MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
 
-        log.debug("Type mismatch for parameter '{}' in request to {} - {}",
-            ex.getName(), request.getRequestURI(), ex.getMessage());
+        log.debug(
+                "Type mismatch for parameter '{}' in request to {} - {}",
+                ex.getName(),
+                request.getRequestURI(),
+                ex.getMessage());
 
         String message = String.format(
-            "Parameter '%s' must be of type %s",
-            ex.getName(),
-            ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown"
-        );
+                "Parameter '%s' must be of type %s",
+                ex.getName(),
+                ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown");
 
-        ErrorResponse errorResponse = new ErrorResponse(
-            "type_mismatch",
-            message,
-            HttpStatus.BAD_REQUEST.value(),
-            request.getRequestURI()
-        );
+        ErrorResponse errorResponse =
+                new ErrorResponse("type_mismatch", message, HttpStatus.BAD_REQUEST.value(), request.getRequestURI());
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
@@ -140,8 +120,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(
-            MaxUploadSizeExceededException ex,
-            HttpServletRequest request) {
+            MaxUploadSizeExceededException ex, HttpServletRequest request) {
 
         log.debug("File upload size exceeded for {}", request.getRequestURI());
 
@@ -152,11 +131,7 @@ public class GlobalExceptionHandler {
         }
 
         ErrorResponse errorResponse = new ErrorResponse(
-            "file_too_large",
-            message,
-            HttpStatus.PAYLOAD_TOO_LARGE.value(),
-            request.getRequestURI()
-        );
+                "file_too_large", message, HttpStatus.PAYLOAD_TOO_LARGE.value(), request.getRequestURI());
 
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(errorResponse);
     }
@@ -165,18 +140,15 @@ public class GlobalExceptionHandler {
      * Handle 404 - endpoint not found.
      */
     @ExceptionHandler(NoHandlerFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNotFound(
-            NoHandlerFoundException ex,
-            HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleNotFound(NoHandlerFoundException ex, HttpServletRequest request) {
 
         log.debug("No handler found for {} {}", ex.getHttpMethod(), ex.getRequestURL());
 
         ErrorResponse errorResponse = new ErrorResponse(
-            "not_found",
-            String.format("No endpoint found for %s %s", ex.getHttpMethod(), ex.getRequestURL()),
-            HttpStatus.NOT_FOUND.value(),
-            request.getRequestURI()
-        );
+                "not_found",
+                String.format("No endpoint found for %s %s", ex.getHttpMethod(), ex.getRequestURL()),
+                HttpStatus.NOT_FOUND.value(),
+                request.getRequestURI());
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
     }
@@ -187,9 +159,8 @@ public class GlobalExceptionHandler {
      * JSON serialization errors).
      */
     @ExceptionHandler(NoResourceFoundException.class)
-    public ResponseEntity<ErrorResponse> handleResourceNotFound(
-            NoResourceFoundException ex,
-            HttpServletRequest request) throws NoResourceFoundException {
+    public ResponseEntity<ErrorResponse> handleResourceNotFound(NoResourceFoundException ex, HttpServletRequest request)
+            throws NoResourceFoundException {
 
         if (!isApiRequest(request)) {
             // Non-API static asset – allow container to generate the usual 404 without JSON body.
@@ -197,11 +168,7 @@ public class GlobalExceptionHandler {
         }
 
         ErrorResponse errorResponse = new ErrorResponse(
-            "not_found",
-            "Requested resource was not found",
-            HttpStatus.NOT_FOUND.value(),
-            request.getRequestURI()
-        );
+                "not_found", "Requested resource was not found", HttpStatus.NOT_FOUND.value(), request.getRequestURI());
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
     }
@@ -211,17 +178,15 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(
-            IllegalArgumentException ex,
-            HttpServletRequest request) {
+            IllegalArgumentException ex, HttpServletRequest request) {
 
         log.debug("Illegal argument for request to {} - {}", request.getRequestURI(), ex.getMessage());
 
         ErrorResponse errorResponse = new ErrorResponse(
-            "invalid_argument",
-            ex.getMessage() != null ? ex.getMessage() : "Invalid argument provided",
-            HttpStatus.BAD_REQUEST.value(),
-            request.getRequestURI()
-        );
+                "invalid_argument",
+                ex.getMessage() != null ? ex.getMessage() : "Invalid argument provided",
+                HttpStatus.BAD_REQUEST.value(),
+                request.getRequestURI());
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
@@ -230,18 +195,15 @@ public class GlobalExceptionHandler {
      * Handle illegal state exceptions (server state issues).
      */
     @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ErrorResponse> handleIllegalState(
-            IllegalStateException ex,
-            HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException ex, HttpServletRequest request) {
 
         log.warn("Illegal state encountered for request to {}", request.getRequestURI(), ex);
 
         ErrorResponse errorResponse = new ErrorResponse(
-            "server_error",
-            "The server is in an invalid state to process this request",
-            HttpStatus.INTERNAL_SERVER_ERROR.value(),
-            request.getRequestURI()
-        );
+                "server_error",
+                "The server is in an invalid state to process this request",
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                request.getRequestURI());
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
@@ -251,17 +213,15 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(UnsupportedOperationException.class)
     public ResponseEntity<ErrorResponse> handleUnsupportedOperation(
-            UnsupportedOperationException ex,
-            HttpServletRequest request) {
+            UnsupportedOperationException ex, HttpServletRequest request) {
 
         log.debug("Unsupported operation for request to {} - {}", request.getRequestURI(), ex.getMessage());
 
         ErrorResponse errorResponse = new ErrorResponse(
-            "unsupported_operation",
-            ex.getMessage() != null ? ex.getMessage() : "This operation is not supported",
-            HttpStatus.NOT_IMPLEMENTED.value(),
-            request.getRequestURI()
-        );
+                "unsupported_operation",
+                ex.getMessage() != null ? ex.getMessage() : "This operation is not supported",
+                HttpStatus.NOT_IMPLEMENTED.value(),
+                request.getRequestURI());
 
         return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(errorResponse);
     }
@@ -269,26 +229,21 @@ public class GlobalExceptionHandler {
     /**
      * Catch-all handler for any unhandled exceptions.
      * Logs full stack trace but returns safe generic message to client.
-     * 
+     *
      * IMPORTANT: Silently ignores browser diagnostic requests (Chrome DevTools, Firefox, etc.)
      * to prevent log pollution. These requests are normal browser behavior and should not
      * generate error traces in production logs.
      */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(
-            Exception ex,
-            HttpServletRequest request) throws Exception {
+    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex, HttpServletRequest request)
+            throws Exception {
 
         String requestUri = request.getRequestURI();
 
         // Silently ignore browser diagnostic/devtools requests to prevent log pollution
         if (isBrowserDiagnosticRequest(requestUri)) {
-            ErrorResponse errorResponse = new ErrorResponse(
-                "not_found",
-                "Resource not found",
-                HttpStatus.NOT_FOUND.value(),
-                requestUri
-            );
+            ErrorResponse errorResponse =
+                    new ErrorResponse("not_found", "Resource not found", HttpStatus.NOT_FOUND.value(), requestUri);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
         }
 
@@ -302,11 +257,10 @@ public class GlobalExceptionHandler {
 
         // Return generic error to client (don't leak internal details)
         ErrorResponse errorResponse = new ErrorResponse(
-            "internal_error",
-            "An unexpected error occurred while processing your request",
-            HttpStatus.INTERNAL_SERVER_ERROR.value(),
-            requestUri
-        );
+                "internal_error",
+                "An unexpected error occurred while processing your request",
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                requestUri);
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
@@ -314,22 +268,24 @@ public class GlobalExceptionHandler {
     /**
      * Check if a request URI is a known browser diagnostic request.
      * These are automated requests from browsers' DevTools, extensions, or built-in features.
-     * 
+     *
      * @param uri The request URI to check
      * @return true if this is a known browser diagnostic request that should be silently ignored
      */
     private boolean isBrowserDiagnosticRequest(String uri) {
-        return uri != null && (
-            // Chrome DevTools configuration requests
-            uri.contains("/.well-known/appspecific/") ||
-            uri.contains("/com.chrome.devtools") ||
-            // Firefox devtools
-            uri.contains("/.well-known/firefox/") ||
-            // Common browser diagnostic endpoints
-            uri.endsWith(".map") ||
-            uri.contains("/sourcemap") ||
-            uri.contains("/__webpack_hmr")
-        );
+        return uri != null
+                && (
+                // Chrome DevTools configuration requests
+                uri.contains("/.well-known/appspecific/")
+                        || uri.contains("/com.chrome.devtools")
+                        ||
+                        // Firefox devtools
+                        uri.contains("/.well-known/firefox/")
+                        ||
+                        // Common browser diagnostic endpoints
+                        uri.endsWith(".map")
+                        || uri.contains("/sourcemap")
+                        || uri.contains("/__webpack_hmr"));
     }
 
     private boolean isApiRequest(HttpServletRequest request) {

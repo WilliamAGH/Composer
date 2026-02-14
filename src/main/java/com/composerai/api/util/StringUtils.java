@@ -166,18 +166,11 @@ public final class StringUtils {
                 return "mailto:" + ssp;
             }
 
-            if (!"http".equalsIgnoreCase(scheme)
-                && !"https".equalsIgnoreCase(scheme)) {
+            if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
                 return null;
             }
 
-            java.net.URI cleaned = new java.net.URI(
-                uri.getScheme(),
-                uri.getAuthority(),
-                uri.getPath(),
-                null,
-                null
-            );
+            java.net.URI cleaned = new java.net.URI(uri.getScheme(), uri.getAuthority(), uri.getPath(), null, null);
 
             String output = cleaned.toString();
             if (output.length() > 2048) {

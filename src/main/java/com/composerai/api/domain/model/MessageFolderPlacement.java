@@ -1,9 +1,8 @@
 package com.composerai.api.domain.model;
 
+import com.composerai.api.util.StringUtils;
 import java.time.Instant;
 import java.util.Objects;
-
-import com.composerai.api.util.StringUtils;
 
 /**
  * Captures the session-scoped folder assignment for a specific message.
@@ -59,9 +58,9 @@ public final class MessageFolderPlacement {
         if (this == o) return true;
         if (!(o instanceof MessageFolderPlacement that)) return false;
         return Objects.equals(mailboxId, that.mailboxId)
-            && Objects.equals(sessionId, that.sessionId)
-            && Objects.equals(messageId, that.messageId)
-            && Objects.equals(folderIdentifier, that.folderIdentifier);
+                && Objects.equals(sessionId, that.sessionId)
+                && Objects.equals(messageId, that.messageId)
+                && Objects.equals(folderIdentifier, that.folderIdentifier);
     }
 
     @Override
@@ -76,8 +75,7 @@ public final class MessageFolderPlacement {
         private MailFolderIdentifier folderIdentifier;
         private Instant updatedAt;
 
-        private Builder() {
-        }
+        private Builder() {}
 
         private Builder(MessageFolderPlacement source) {
             this.mailboxId = source.mailboxId;

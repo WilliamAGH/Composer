@@ -1,10 +1,36 @@
-import { derived, get, writable, type Readable } from 'svelte/store';
-import { computeMailboxCounts, mapEmailMessage } from '../services/emailUtils';
-import { filterEmailsByMailbox } from '../services/mailboxFiltering';
-import { fetchMailboxStateSnapshot, moveMailboxMessage, type MailboxStateSnapshotResult, type MessageMoveResult } from '../services/mailboxStateClient';
+import { derived, get, writable, type Readable } from "svelte/store";
+import { computeMailboxCounts } from "../services/emailUtils";
+import { filterEmailsByMailbox } from "../services/mailboxFiltering";
+import {
+  fetchMailboxStateSnapshot,
+  moveMailboxMessage,
+  type MailboxStateSnapshot,
+  type MessageMoveResult,
+} from "../services/mailboxStateClient";
+import {
+  normalizeMessages,
+  normalizeDraftMessage,
+  normalizeEffectiveFolderMap,
+  normalizeFolderId,
+  mergeLabelsWithFolder,
+  deriveFolderFromLabels,
+  resolveFolderFromMap,
+  type FrontendEmailMessage,
+} from "./mailboxFolderLabels";
 
-type Message = ReturnType<typeof mapEmailMessage>;
+type Message = FrontendEmailMessage;
 type FolderCounts = Record<string, number>;
+
+/** Shape for snapshot data passed to initializeSnapshot. */
+type SnapshotPayload = MailboxStateSnapshot | MessageMoveResult | null;
+
+/** Shape for draft session data passed to saveDraftSession. */
+interface DraftSessionPayload {
+  id: string;
+  to?: string;
+  subject?: string;
+  body?: string;
+}
 
 export interface MailboxDataStore {
   stores: {
@@ -17,13 +43,20 @@ export interface MailboxDataStore {
     pendingMoves: Readable<Set<string>>;
     moveErrors: Readable<Record<string, string>>;
   };
-  initializeSnapshot: (snapshot: any) => void;
-  hydrateEmails: (nextEmails: any[], effectiveFoldersOverride?: Record<string, string> | null) => void;
+  initializeSnapshot: (snapshot: SnapshotPayload) => void;
+  hydrateEmails: (
+    nextEmails: unknown[],
+    effectiveFoldersOverride?: Record<string, string> | null,
+  ) => void;
   selectMailbox: (target: string) => void;
   setSearch: (value: string) => void;
-  loadMailboxState: (mailboxId: string) => Promise<MailboxStateSnapshotResult | null>;
-  moveMessageRemote: (params: { mailboxId: string; messageId: string; targetFolderId: string }) => Promise<MessageMoveResult | null>;
-  saveDraftSession: (draft: any) => void;
+  loadMailboxState: (mailboxId: string) => Promise<MailboxStateSnapshot | null>;
+  moveMessageRemote: (params: {
+    mailboxId: string;
+    messageId: string;
+    targetFolderId: string;
+  }) => Promise<MessageMoveResult | null>;
+  saveDraftSession: (draft: DraftSessionPayload | null) => void;
   markDraftAsSent: (draftId: string) => void;
   deleteDraftMessage: (draftId: string) => void;
   resolveFolderForMessage: (message: Message | null) => string;
@@ -31,27 +64,35 @@ export interface MailboxDataStore {
 }
 
 export function createMailboxDataStore(
-  initialEmails: any[] = [],
+  initialEmails: unknown[] = [],
   initialFolderCounts: FolderCounts | null = null,
-  initialEffectiveFolders: Record<string, string> | null = null
+  initialEffectiveFolders: Record<string, string> | null = null,
 ): MailboxDataStore {
   const normalizedInitial = normalizeMessages(initialEmails);
   const emails = writable<Message[]>(normalizedInitial);
-  const mailbox = writable('inbox');
-  const search = writable('');
+  const mailbox = writable("inbox");
+  const search = writable("");
   const messagePlacements = writable<Record<string, string>>({});
-  const mailboxCounts = writable<FolderCounts>(initialFolderCounts ?? computeMailboxCounts(normalizedInitial));
-  const messageFolders = writable<Record<string, string>>(normalizeEffectiveFolderMap(initialEffectiveFolders, normalizedInitial));
+  const mailboxCounts = writable<FolderCounts>(
+    initialFolderCounts ?? computeMailboxCounts(normalizedInitial),
+  );
+  const messageFolders = writable<Record<string, string>>(
+    normalizeEffectiveFolderMap(initialEffectiveFolders, normalizedInitial),
+  );
   const pendingMoves = writable<Set<string>>(new Set());
   const moveErrors = writable<Record<string, string>>({});
 
-  const filteredEmails: Readable<Message[]> = derived([emails, mailbox, search, messageFolders], ([$emails, $mailbox, $search, $folders]) =>
-    filterEmailsByMailbox<Message>($emails, $mailbox, $search, (email) => resolveFolderFromMap($folders, email))
+  const filteredEmails: Readable<Message[]> = derived(
+    [emails, mailbox, search, messageFolders],
+    ([$emails, $mailbox, $search, $folders]) =>
+      filterEmailsByMailbox<Message>($emails, $mailbox, $search, (email) =>
+        resolveFolderFromMap($folders, email),
+      ),
   );
 
-  function initializeSnapshot(snapshot: any) {
+  function initializeSnapshot(snapshot: SnapshotPayload) {
     if (!snapshot) return;
-    const nextEmails = normalizeMessages(snapshot.emails || snapshot.messages || []);
+    const nextEmails = normalizeMessages(snapshot.emails ?? snapshot.messages ?? []);
     emails.set(nextEmails);
     if (snapshot.folderCounts) {
       mailboxCounts.set(snapshot.folderCounts);
@@ -66,7 +107,10 @@ export function createMailboxDataStore(
     }
   }
 
-  function hydrateEmails(nextEmails: any[], effectiveFoldersOverride: Record<string, string> | null = null) {
+  function hydrateEmails(
+    nextEmails: unknown[],
+    effectiveFoldersOverride: Record<string, string> | null = null,
+  ) {
     const normalized = normalizeMessages(nextEmails);
     emails.set(normalized);
     mailboxCounts.set(computeMailboxCounts(normalized));
@@ -75,38 +119,53 @@ export function createMailboxDataStore(
 
   function markEmailRead(id: string | null) {
     if (!id) return;
-    emails.update((list) => list.map((email) => (email.id === id ? { ...email, read: true } : email)));
+    emails.update((list) =>
+      list.map((email) => (email.id === id ? { ...email, read: true } : email)),
+    );
   }
 
   function selectMailbox(target: string) {
-    mailbox.set(target || 'inbox');
+    mailbox.set(target || "inbox");
   }
 
   function setSearch(value: string) {
-    search.set(value || '');
+    search.set(value || "");
   }
 
   async function loadMailboxState(mailboxId: string) {
     if (!mailboxId) return null;
-    const snapshot = await fetchMailboxStateSnapshot(mailboxId);
-    if (snapshot?.messages) {
+    const validationResult = await fetchMailboxStateSnapshot(mailboxId);
+    if (!validationResult.success) {
+      // Validation failure already logged by fetchMailboxStateSnapshot
+      return null;
+    }
+    const snapshot = validationResult.data;
+    if (snapshot.messages) {
       hydrateEmails(snapshot.messages, snapshot.effectiveFolders || null);
-    } else if (snapshot?.effectiveFolders) {
+    } else if (snapshot.effectiveFolders) {
       setEffectiveFolders(snapshot.effectiveFolders);
     }
-    if (snapshot?.folderCounts) {
+    if (snapshot.folderCounts) {
       mailboxCounts.set(snapshot.folderCounts);
     }
-    if (snapshot?.placements) {
+    if (snapshot.placements) {
       messagePlacements.set(snapshot.placements);
     }
-    if (!snapshot?.messages && !snapshot?.effectiveFolders) {
+    if (!snapshot.messages && !snapshot.effectiveFolders) {
       setEffectiveFolders(null);
     }
     return snapshot;
   }
 
-  async function moveMessageRemote({ mailboxId, messageId, targetFolderId }: { mailboxId: string; messageId: string; targetFolderId: string }) {
+  async function moveMessageRemote({
+    mailboxId,
+    messageId,
+    targetFolderId,
+  }: {
+    mailboxId: string;
+    messageId: string;
+    targetFolderId: string;
+  }) {
     if (!mailboxId || !messageId || !targetFolderId) return null;
     if (get(pendingMoves).has(messageId)) return null;
     const previousMessage = get(emails).find((entry) => entry.id === messageId);
@@ -115,21 +174,30 @@ export function createMailboxDataStore(
     markMovePending(messageId);
     applyMailboxMove(messageId, targetFolderId);
     try {
-      const result = await moveMailboxMessage({ mailboxId, messageId, targetFolderId });
-      reconcileMailboxMoveResult(result);
+      const validationResult = await moveMailboxMessage({ mailboxId, messageId, targetFolderId });
+      if (!validationResult.success) {
+        // Validation failure already logged - revert optimistic update
+        if (previousLabels) {
+          revertMailboxMove(messageId, previousLabels, previousFolderId);
+        }
+        registerMoveError(messageId, "Server response validation failed");
+        return null;
+      }
+      const moveResult = validationResult.data;
+      reconcileMailboxMoveResult(moveResult);
       clearMovePending(messageId);
-      return result;
+      return moveResult;
     } catch (error: unknown) {
       if (previousLabels) {
         revertMailboxMove(messageId, previousLabels, previousFolderId);
       }
-      const fallbackMessage = error instanceof Error ? error.message : 'Unable to move message.';
+      const fallbackMessage = error instanceof Error ? error.message : "Unable to move message.";
       registerMoveError(messageId, fallbackMessage);
       throw error;
     }
   }
 
-  function saveDraftSession(draft: any) {
+  function saveDraftSession(draft: DraftSessionPayload | null) {
     if (!draft || !draft.id) return;
     const normalizedDraft = normalizeDraftMessage(draft);
     updateEmailsAndCounts((list) => {
@@ -141,17 +209,21 @@ export function createMailboxDataStore(
       next[index] = { ...next[index], ...normalizedDraft };
       return next;
     });
-    updateFolderMapping(draft.id, 'drafts');
-    updatePlacementForMessage(draft.id, 'drafts');
+    updateFolderMapping(draft.id, "drafts");
+    updatePlacementForMessage(draft.id, "drafts");
   }
 
   function markDraftAsSent(draftId: string) {
     if (!draftId) return;
     updateEmailsAndCounts((list) =>
-      list.map((entry) => (entry.id === draftId ? { ...entry, labels: mergeLabels(entry.labels || [], 'sent') } : entry))
+      list.map((entry) =>
+        entry.id === draftId
+          ? { ...entry, labels: mergeLabelsWithFolder(entry.labels || [], "sent") }
+          : entry,
+      ),
     );
-    updateFolderMapping(draftId, 'sent');
-    updatePlacementForMessage(draftId, 'sent');
+    updateFolderMapping(draftId, "sent");
+    updatePlacementForMessage(draftId, "sent");
   }
 
   function deleteDraftMessage(draftId: string) {
@@ -166,7 +238,7 @@ export function createMailboxDataStore(
   }
 
   function resolveFolderForMessage(message: Message | null) {
-    if (!message) return 'inbox';
+    if (!message) return "inbox";
     const folders = get(messageFolders);
     return resolveFolderFromMap(folders, message);
   }
@@ -174,14 +246,16 @@ export function createMailboxDataStore(
   function applyMailboxMove(messageId: string, targetMailbox: string) {
     updateEmailsAndCounts((list) =>
       list.map((entry) =>
-        entry.id === messageId ? { ...entry, labels: mergeLabels(entry.labels || [], targetMailbox) } : entry
-      )
+        entry.id === messageId
+          ? { ...entry, labels: mergeLabelsWithFolder(entry.labels || [], targetMailbox) }
+          : entry,
+      ),
     );
     updateFolderMapping(messageId, targetMailbox);
     updatePlacementForMessage(messageId, targetMailbox);
   }
 
-  function reconcileMailboxMoveResult(payload: MessageMoveResult | MailboxStateSnapshotResult | null) {
+  function reconcileMailboxMoveResult(payload: MessageMoveResult | MailboxStateSnapshot | null) {
     if (!payload) return;
     if (payload.messages) {
       hydrateEmails(payload.messages, payload.effectiveFolders || null);
@@ -210,7 +284,7 @@ export function createMailboxDataStore(
   function updatePlacementForMessage(messageId: string, targetFolderId: string) {
     messagePlacements.update((map) => {
       const next = { ...map };
-      if (!targetFolderId || targetFolderId === 'inbox') {
+      if (!targetFolderId || targetFolderId === "inbox") {
         delete next[messageId];
       } else {
         next[messageId] = targetFolderId;
@@ -237,9 +311,9 @@ export function createMailboxDataStore(
     });
   }
 
-  function revertMailboxMove(messageId: string, labels: string[], previousFolderId = 'inbox') {
+  function revertMailboxMove(messageId: string, labels: string[], previousFolderId = "inbox") {
     updateEmailsAndCounts((list) =>
-      list.map((entry) => (entry.id === messageId ? { ...entry, labels: [...labels] } : entry))
+      list.map((entry) => (entry.id === messageId ? { ...entry, labels: [...labels] } : entry)),
     );
     updateFolderMapping(messageId, previousFolderId);
     updatePlacementForMessage(messageId, deriveFolderFromLabels(labels));
@@ -272,7 +346,10 @@ export function createMailboxDataStore(
     moveErrors.update((map) => ({ ...map, [messageId]: message }));
   }
 
-  function setEffectiveFolders(folderMap: Record<string, string> | null, referenceList: Message[] | null = null) {
+  function setEffectiveFolders(
+    folderMap: Record<string, string> | null,
+    referenceList: Message[] | null = null,
+  ) {
     const reference = Array.isArray(referenceList) ? referenceList : get(emails);
     messageFolders.set(normalizeEffectiveFolderMap(folderMap, reference));
   }
@@ -286,7 +363,7 @@ export function createMailboxDataStore(
       mailboxCounts: { subscribe: mailboxCounts.subscribe },
       messagePlacements: { subscribe: messagePlacements.subscribe },
       pendingMoves: { subscribe: pendingMoves.subscribe },
-      moveErrors: { subscribe: moveErrors.subscribe }
+      moveErrors: { subscribe: moveErrors.subscribe },
     },
     initializeSnapshot,
     hydrateEmails,
@@ -298,93 +375,6 @@ export function createMailboxDataStore(
     markDraftAsSent,
     deleteDraftMessage,
     resolveFolderForMessage,
-    markEmailRead
+    markEmailRead,
   };
-}
-
-function normalizeMessages(list: any[]) {
-  if (!Array.isArray(list)) return [];
-  return list.map((message, index) => (isUiMessage(message) ? message : mapEmailMessage(message, index)));
-}
-
-function isUiMessage(message: any) {
-  return Boolean(message && typeof message.from === 'string' && typeof message.subject === 'string' && 'contentText' in message);
-}
-
-function mergeLabels(existing: string[], targetMailbox: string) {
-  const labels = Array.isArray(existing) ? existing.map((label) => `${label}`.toLowerCase()) : [];
-  const cleaned = labels.filter((label) => !EXCLUSIVE_LABELS.has(label));
-  if (targetMailbox === 'archive') cleaned.push('archive');
-  if (targetMailbox === 'trash') cleaned.push('trash');
-  if (targetMailbox === 'sent') cleaned.push('sent');
-  if (targetMailbox === 'drafts') cleaned.push('drafts');
-  return Array.from(new Set(cleaned));
-}
-
-function deriveFolderFromLabels(labels: string[] = []) {
-  const normalized = labels.map((label) => `${label}`.toLowerCase());
-  if (normalized.some((label) => label === 'trash' || label === 'deleted')) return 'trash';
-  if (normalized.some((label) => label === 'archive' || label === 'archived')) return 'archive';
-  if (normalized.includes('sent')) return 'sent';
-  if (normalized.includes('drafts') || normalized.includes('draft')) return 'drafts';
-  return 'inbox';
-}
-
-function normalizeDraftMessage(draft: any) {
-  const nowIso = new Date().toISOString();
-  const pseudo = {
-    id: draft.id,
-    contextId: draft.id,
-    senderName: 'You',
-    senderEmail: 'you@example.com',
-    recipientName: draft.to || '',
-    recipientEmail: draft.to || '',
-    subject: draft.subject || 'Untitled draft',
-    emailBodyRaw: draft.body || '',
-    emailBodyTransformedText: draft.body || '',
-    emailBodyTransformedMarkdown: draft.body || '',
-    emailBodyHtml: null,
-    llmSummary: null,
-    receivedTimestampIso: nowIso,
-    receivedTimestampDisplay: 'Just now',
-    labels: ['drafts'],
-    contextForAi: null
-  };
-  return mapEmailMessage(pseudo);
-}
-
-const EXCLUSIVE_LABELS = new Set(['archive', 'archived', 'trash', 'deleted', 'sent', 'drafts', 'draft']);
-const SUPPORTED_FOLDERS = new Set(['inbox', 'archive', 'trash', 'sent', 'drafts']);
-
-function normalizeEffectiveFolderMap(folderMap: Record<string, string> | null, referenceList: Message[] = []) {
-  const normalized: Record<string, string> = {};
-  if (folderMap && typeof folderMap === 'object') {
-    for (const [messageId, folderId] of Object.entries(folderMap)) {
-      if (typeof messageId !== 'string' || !messageId) continue;
-      normalized[messageId] = normalizeFolderId(folderId);
-    }
-  }
-  if (Array.isArray(referenceList)) {
-    for (const message of referenceList) {
-      if (!message?.id || normalized[message.id]) continue;
-      normalized[message.id] = deriveFolderFromLabels(message.labels || []);
-    }
-  }
-  return normalized;
-}
-
-export function resolveFolderFromMap(folderMap: Record<string, string>, message: Message) {
-  if (!message || !message.id) return 'inbox';
-  if (folderMap && typeof folderMap === 'object' && folderMap[message.id]) {
-    return normalizeFolderId(folderMap[message.id]);
-  }
-  return deriveFolderFromLabels(message.labels || []);
-}
-
-function normalizeFolderId(folderId: string) {
-  const normalized = typeof folderId === 'string' ? folderId.trim().toLowerCase() : '';
-  if (SUPPORTED_FOLDERS.has(normalized)) {
-    return normalized;
-  }
-  return 'inbox';
 }

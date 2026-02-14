@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @ConfigurationProperties(prefix = "qdrant")
 public class QdrantProperties {
-    
+
     private String host = "localhost";
     private int port = 6333;
     private boolean useTls = false;

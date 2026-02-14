@@ -2,13 +2,12 @@ package com.composerai.api.config;
 
 import com.composerai.api.util.StringUtils;
 import jakarta.annotation.PostConstruct;
+import java.util.Locale;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import org.springframework.context.annotation.Configuration;
-
-import java.util.Locale;
 
 @Getter
 @Setter
@@ -17,12 +16,16 @@ import java.util.Locale;
 public class AppProperties {
 
     private Hsts hsts = new Hsts();
+
     @NestedConfigurationProperty
     private Cors cors = new Cors();
+
     @NestedConfigurationProperty
     private EmailRendering emailRendering = new EmailRendering();
+
     @NestedConfigurationProperty
     private Ledger ledger = new Ledger();
+
     @NestedConfigurationProperty
     private Security security = new Security();
 
@@ -47,7 +50,8 @@ public class AppProperties {
          * Comma-separated list of allowed origins. Example:
          * https://composerai.app,https://dev.composerai.app
          */
-        private String allowedOrigins = "http://localhost:8080,https://composerai.app,https://dev.composerai.app";
+        private String allowedOrigins =
+                "http://localhost:8090,http://localhost:5183,https://composerai.app,https://dev.composerai.app";
     }
 
     @Getter
@@ -76,10 +80,7 @@ public class AppProperties {
             if (trimmed.isEmpty()) {
                 return HTML;
             }
-            String normalized = trimmed
-                .replace('-', '_')
-                .replace(' ', '_')
-                .toUpperCase(Locale.ROOT);
+            String normalized = trimmed.replace('-', '_').replace(' ', '_').toUpperCase(Locale.ROOT);
             return switch (normalized) {
                 case "HTML" -> HTML;
                 case "MARKDOWN", "MD" -> MARKDOWN;

@@ -6,9 +6,8 @@ import com.composerai.api.dto.ChatRequest;
 import com.composerai.api.util.StringUtils;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
-import org.springframework.stereotype.Component;
-
 import java.util.Optional;
+import org.springframework.stereotype.Component;
 
 /**
  * Validates that a {@link ChatRequest} references a catalog-backed AI function/variant and enforces
@@ -50,7 +49,7 @@ public class AiCommandValidator implements ConstraintValidator<AiCommandValid, C
     private void reject(ConstraintValidatorContext context, String property, String message) {
         context.disableDefaultConstraintViolation();
         context.buildConstraintViolationWithTemplate(message)
-            .addPropertyNode(property)
-            .addConstraintViolation();
+                .addPropertyNode(property)
+                .addConstraintViolation();
     }
 }

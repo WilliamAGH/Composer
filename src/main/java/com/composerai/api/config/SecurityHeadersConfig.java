@@ -1,9 +1,11 @@
 package com.composerai.api.config;
 
+import com.composerai.api.controller.UiNonceService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -11,36 +13,39 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
-
 @Slf4j
 @Configuration
 public class SecurityHeadersConfig {
 
     @Bean
     public FilterRegistrationBean<OncePerRequestFilter> hstsHeaderFilter(AppProperties appProperties) {
-        FilterRegistrationBean<OncePerRequestFilter> registrationBean = new FilterRegistrationBean<>(new HstsFilter(appProperties));
+        FilterRegistrationBean<OncePerRequestFilter> registrationBean =
+                new FilterRegistrationBean<>(new HstsFilter(appProperties));
         registrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE);
         return registrationBean;
     }
 
     @Bean
     public FilterRegistrationBean<OncePerRequestFilter> corsErrorLoggingFilter() {
-        FilterRegistrationBean<OncePerRequestFilter> registrationBean = new FilterRegistrationBean<>(new CorsErrorLoggingFilter());
+        FilterRegistrationBean<OncePerRequestFilter> registrationBean =
+                new FilterRegistrationBean<>(new CorsErrorLoggingFilter());
         registrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
         return registrationBean;
     }
 
     @Bean
-    public FilterRegistrationBean<OncePerRequestFilter> apiUiNonceGuardFilter(AppProperties appProperties) {
-        FilterRegistrationBean<OncePerRequestFilter> registrationBean = new FilterRegistrationBean<>(new ApiUiNonceGuardFilter(appProperties));
+    public FilterRegistrationBean<OncePerRequestFilter> apiUiNonceGuardFilter(
+            AppProperties appProperties, UiNonceService uiNonceService) {
+        FilterRegistrationBean<OncePerRequestFilter> registrationBean =
+                new FilterRegistrationBean<>(new ApiUiNonceGuardFilter(appProperties, uiNonceService));
         registrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE + 2);
         return registrationBean;
     }
 
     @Bean
     public FilterRegistrationBean<OncePerRequestFilter> contentSecurityPolicyFilter() {
-        FilterRegistrationBean<OncePerRequestFilter> registrationBean = new FilterRegistrationBean<>(new ContentSecurityPolicyFilter());
+        FilterRegistrationBean<OncePerRequestFilter> registrationBean =
+                new FilterRegistrationBean<>(new ContentSecurityPolicyFilter());
         registrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE + 3);
         return registrationBean;
     }
@@ -57,7 +62,8 @@ public class SecurityHeadersConfig {
         }
 
         @Override
-        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+        protected void doFilterInternal(
+                HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
                 throws ServletException, IOException {
             if (!appProperties.getHsts().isEnabled()) {
                 // Instruct browsers to clear any cached HSTS policy
@@ -73,8 +79,9 @@ public class SecurityHeadersConfig {
     private static class CorsErrorLoggingFilter extends OncePerRequestFilter {
 
         @Override
-        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
+        protected void doFilterInternal(
+                HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+                throws ServletException, IOException {
             try {
                 filterChain.doFilter(request, response);
             } catch (Exception e) {
@@ -82,16 +89,17 @@ public class SecurityHeadersConfig {
                 if (isCorsFailure(request, e)) {
                     // Log full exception for root-cause visibility
                     SecurityHeadersConfig.log.warn(
-                        "CORS rejection: method={}, origin={}, path={}",
-                        request.getMethod(), request.getHeader("Origin"), request.getRequestURI(), e
-                    );
+                            "CORS rejection: method={}, origin={}, path={}",
+                            request.getMethod(),
+                            request.getHeader("Origin"),
+                            request.getRequestURI(),
+                            e);
 
                     // Check if response is already committed before attempting to modify it
                     if (response.isCommitted()) {
                         SecurityHeadersConfig.log.warn(
-                            "Response already committed, cannot send CORS error response for origin={}",
-                            request.getHeader("Origin")
-                        );
+                                "Response already committed, cannot send CORS error response for origin={}",
+                                request.getHeader("Origin"));
                         return;
                     }
 
@@ -127,7 +135,8 @@ public class SecurityHeadersConfig {
     private static class ContentSecurityPolicyFilter extends OncePerRequestFilter {
 
         @Override
-        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+        protected void doFilterInternal(
+                HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
                 throws ServletException, IOException {
 
             // CSP policy aligned to bundled assets (Vite output + inline bootstrap scripts).
@@ -143,19 +152,20 @@ public class SecurityHeadersConfig {
             // - frame-ancestors 'none': Prevent clickjacking (X-Frame-Options alternative)
             // Third-party allowances (minimal):
             // - script-src: cdn.jsdelivr.net for marked + DOMPurify
+            // - style-src: api.fontshare.com for Fontshare CSS
+            // - font-src: cdn.fontshare.com for Fontshare font files
             // - img-src: i.pravatar.cc for avatar fallback images
-            String csp = "default-src 'self'; " +
-                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
-                "style-src 'self' 'unsafe-inline'; " +
-                "font-src 'self'; " +
-                "img-src 'self' https: data: https://i.pravatar.cc; " +
-                "connect-src 'self' https:; " +
-                "frame-src 'none'; " +
-                "object-src 'none'; " +
-                "base-uri 'self'; " +
-                "form-action 'self'; " +
-                "frame-ancestors 'none'; " +
-                "upgrade-insecure-requests";
+            String csp = "default-src 'self'; " + "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                    + "style-src 'self' 'unsafe-inline' https://api.fontshare.com; "
+                    + "font-src 'self' https://cdn.fontshare.com; "
+                    + "img-src 'self' https: data: https://i.pravatar.cc; "
+                    + "connect-src 'self' https:; "
+                    + "frame-src 'none'; "
+                    + "object-src 'none'; "
+                    + "base-uri 'self'; "
+                    + "form-action 'self'; "
+                    + "frame-ancestors 'none'; "
+                    + "upgrade-insecure-requests";
 
             response.setHeader("Content-Security-Policy", csp);
 
@@ -176,10 +186,20 @@ public class SecurityHeadersConfig {
      */
     private static class ApiUiNonceGuardFilter extends OncePerRequestFilter {
 
-        private final AppProperties appProperties;
+        private static final String NONCE_EXPIRED_MESSAGE = "UI nonce expired. Refresh the page and retry the request.";
+        private static final String NONCE_INVALID_MESSAGE =
+                "UI nonce missing or invalid. Refresh the page and retry the request.";
+        private static final String ERROR_JSON_TEMPLATE = "{\"error\":\"%s\"}";
+        private static final String API_PATH_PREFIX = "/api/";
+        private static final String HEALTH_CHECK_PATH = "/api/chat/health";
+        private static final String HEADER_UI_NONCE = "X-UI-Request";
 
-        ApiUiNonceGuardFilter(AppProperties appProperties) {
+        private final AppProperties appProperties;
+        private final UiNonceService uiNonceService;
+
+        ApiUiNonceGuardFilter(AppProperties appProperties, UiNonceService uiNonceService) {
             this.appProperties = appProperties;
+            this.uiNonceService = uiNonceService;
         }
 
         @Override
@@ -190,35 +210,42 @@ public class SecurityHeadersConfig {
             }
             String path = request.getRequestURI();
             if (path == null) return true;
-            if (!path.startsWith("/api/")) return true;
+            if (!path.startsWith(API_PATH_PREFIX)) return true;
             if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
-            if ("GET".equalsIgnoreCase(request.getMethod()) && "/api/chat/health".equals(path)) return true;
+            if ("GET".equalsIgnoreCase(request.getMethod()) && HEALTH_CHECK_PATH.equals(path)) return true;
             return false;
         }
 
         @Override
-        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
+        protected void doFilterInternal(
+                HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+                throws ServletException, IOException {
+            // Narrow try/catch to nonce validation only; downstream exceptions must propagate
+            // to preserve 5xx semantics and avoid masking real server errors (per [RC1a]).
             try {
                 jakarta.servlet.http.HttpSession session = request.getSession(false);
-                String headerNonce = request.getHeader("X-UI-Request");
-                Object sessionNonce = (session == null) ? null : session.getAttribute("UI_NONCE");
+                String headerNonce = request.getHeader(HEADER_UI_NONCE);
+                UiNonceService.UiNonceValidation validation = uiNonceService.validateNonce(session, headerNonce);
 
-                if (session == null || sessionNonce == null || headerNonce == null || headerNonce.isBlank() || !headerNonce.equals(sessionNonce.toString())) {
+                if (!validation.valid()) {
+                    String message = validation.expired() ? NONCE_EXPIRED_MESSAGE : NONCE_INVALID_MESSAGE;
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                     response.setContentType("application/json");
-                    response.getWriter().write("{\"error\":\"Forbidden\"}");
+                    response.getWriter().write(String.format(ERROR_JSON_TEMPLATE, message));
                     return;
                 }
-                filterChain.doFilter(request, response);
             } catch (Exception e) {
-                SecurityHeadersConfig.log.warn("API guard rejection: method={}, path={}", request.getMethod(), request.getRequestURI(), e);
+                SecurityHeadersConfig.log.warn(
+                        "API guard rejection: method={}, path={}", request.getMethod(), request.getRequestURI(), e);
                 if (!response.isCommitted()) {
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                     response.setContentType("application/json");
                     response.getWriter().write("{\"error\":\"Forbidden\"}");
                 }
+                return;
             }
+
+            filterChain.doFilter(request, response);
         }
     }
 }

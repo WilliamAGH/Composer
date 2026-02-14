@@ -11,7 +11,7 @@ This document covers the Spring Boot backend, Svelte/Vite frontend, datasets, bu
                                          v
 +------------------+     ingest via   +----------------------+     exposes      +-----------------------+
 | Mailbox Intakes  +----------------->+  Spring Boot 3 Core  +----------------> | REST (/api/**) Layer  |
-| (Gmail, IMAP, etc)|                 |  (Java 21)           |                 | adapters/in/web       |
+| (Gmail, IMAP, etc)|                 |  (Java 25)           |                 | adapters/in/web       |
 +---------+--------+                 +----------+-----------+                 +----+--------------------+
           |                                   |                                   |
           |                                   |                                   |
@@ -99,26 +99,24 @@ ai.functions.definitions.translate.variants.es.default-args.targetLanguage=Spani
 Each bullet lists a real file (tracked in git) and what it does so you can quickly find the right extension point.
 
 ### Root & Tooling (workspace top level)
-- `.classpath` — Eclipse classpath metadata so IDEs know how to resolve the Maven project.
 - `.editorconfig` — Shared whitespace/casing rules consumed by IDEs and editors.
-- `.factorypath` — Eclipse annotation processing classpath definition used while generating sources.
 - `.gitignore` — Ignore rules covering build artifacts, node_modules, IDE state, and generated assets.
 - `.hintrc` — HTMLHint configuration that enforces conventions on server-rendered templates.
-- `.project` — Eclipse project metadata for importing the Maven module.
-- `.settings/org.eclipse.core.resources.prefs` — Workspace encoding/resource preferences for Eclipse.
 - `.settings/org.eclipse.jdt.apt.core.prefs` — Eclipse APT (annotation processing) configuration toggles.
 - `.settings/org.eclipse.jdt.core.prefs` — Java compiler preferences (warnings, source levels) for Eclipse.
-- `.settings/org.eclipse.m2e.core.prefs` — M2E (Eclipse Maven plugin) metadata that keeps Maven sync stable.
 - `.vscode/settings.json` — VS Code workspace defaults (formatting, TypeScript, Svelte tooling).
 - `.zed/settings.json` — Zed editor workspace preferences.
 - `AGENTS.md` — Operational rulebook for autonomous agents contributing to Composer (non-negotiable guardrails).
-- `ComposerAIFavIcon.png` — Source favicon asset bundled into the Spring static resources.
+- `CONTRIBUTING.md` — How to report issues, run checks, and open PRs.
 - `Dockerfile` — Multi-stage build for packaging the Spring Boot app plus Vite bundle into a container.
-- `Makefile` — Task shortcuts (`make build`, `make run`, `make lint`, etc.) orchestrating Maven + Vite workflows.
+- `LICENSE.md` — License terms for this repository.
+- `Makefile` — Task shortcuts (`make build`, `make run`, `make lint`, etc.) orchestrating Gradle + Vite workflows.
 - `README.md` — High-level project overview, tech stack summary, and quick-start steps.
 - `deploy.sh` — Helper script used during manual deployments to package and push artifacts.
-- `package-lock.json` — Root-level lockfile for any Node tooling that lives outside the frontend package (e.g., repo-level scripts).
-- `pom.xml` — Maven descriptor: declares Spring Boot plugins, Java 21 target, and third-party dependencies (OpenAI SDK, etc.).
+- `build.gradle.kts` — Gradle build script: declares Spring Boot plugins, Java 25 target, and third-party dependencies.
+- `settings.gradle.kts` — Gradle settings: project name and includes.
+- `gradle.properties` — Gradle properties (JVM args, etc.).
+- `gradlew` / `gradle/` — Gradle Wrapper for reproducible builds.
 - `spotbugs-exclude.xml` — Exclusion filters for SpotBugs to ignore intentional patterns during `make lint`.
 
 ### Data Fixtures (`data/`)
@@ -262,7 +260,7 @@ Each bullet lists a real file (tracked in git) and what it does so you can quick
 - `static/apple-touch-icon.png` — Touch icon served for iOS home screen shortcuts.
 - `static/css/chat.css` — Stylesheet for the diagnostics chat tooling surface.
 - `static/css/layout.css` — Styles for legacy Thymeleaf layouts.
-- `static/favicon.ico`, `static/favicon.svg`, `static/favicon-96x96.png` — Favicons delivered by the Spring static handler.
+- `static/favicon.ico`, `static/favicon-96x96.png` — Favicons delivered by the Spring static handler.
 - `static/index.html` — Landing page stub for the static site variant.
 - `static/js/email-renderer.js` — Sandboxed iframe script used to safely render raw email HTML; this is the lone JavaScript file left intentionally outside the TypeScript toolchain.
 - `static/site.webmanifest`, `static/web-app-manifest-192x192.png`, `static/web-app-manifest-512x512.png` — PWA manifest + icons served with the SPA bundle.

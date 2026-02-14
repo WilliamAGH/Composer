@@ -1,73 +1,29 @@
-import App from './App.svelte'
-import './generated/tailwind.css'
+/**
+ * Email client application entry point.
+ * Validates bootstrap data from server and initializes the Svelte app.
+ */
+import { mount } from "svelte";
+import App from "./App.svelte";
+import "./generated/tailwind.css";
 
-type EmailMessage = {
-  id: string
-  contextId: string | null
-  senderName: string | null
-  senderEmail: string | null
-  recipientName: string | null
-  recipientEmail: string | null
-  subject: string
-  emailBodyRaw: string
-  emailBodyTransformedText: string
-  emailBodyTransformedMarkdown: string | null
-  emailBodyHtml: string | null
-  llmSummary: string | null
-  receivedTimestampIso: string | null
-  receivedTimestampDisplay: string | null
-  labels: string[]
-  companyLogoUrl: string | null
-  avatarUrl: string | null
-  starred: boolean
-  read: boolean
-  preview: string
-  contextForAi: string | null
-}
+import {
+  EmailClientBootstrapSchema,
+  type EmailClientBootstrap,
+} from "./lib/schemas/bootstrapSchemas";
+import { validateWithLogging } from "./lib/validation/validatedParse";
 
-type AiFunctionVariantSummary = {
-  key: string
-  label: string
-  defaultInstruction: string | null
-  defaultArgs: Record<string, string>
-}
-
-type AiFunctionSummary = {
-  key: string
-  label: string
-  description: string
-  category: string
-  defaultInstruction: string
-  subjectRequired: boolean
-  contextRequired: boolean
-  outputFormat: string
-  primary: boolean
-  scopes: string[]
-  defaultArgs: Record<string, string>
-  variants: AiFunctionVariantSummary[]
-}
-
-type AiFunctionCatalogDto = {
-  categories: Array<{
-    category: string
-    label: string
-    functionKeys: string[]
-  }>
-  functionsByKey: Record<string, AiFunctionSummary>
-  primaryCommands: string[]
-}
-
-export type EmailClientBootstrap = {
-  uiNonce: string | null
-  messages: EmailMessage[]
-  folderCounts: Record<string, number>
-  effectiveFolders: Record<string, string>
-  aiFunctions: AiFunctionCatalogDto | null
-}
+// Re-export schema types for consumers that need them
+export type { EmailClientBootstrap } from "./lib/schemas/bootstrapSchemas";
+export type { EmailMessage } from "./lib/schemas/emailSchemas";
+export type {
+  AiFunctionCatalogDto,
+  AiFunctionSummary,
+  AiFunctionVariantSummary,
+} from "./lib/schemas/catalogSchemas";
 
 declare global {
   interface Window {
-    __EMAIL_CLIENT_BOOTSTRAP__?: EmailClientBootstrap
+    __EMAIL_CLIENT_BOOTSTRAP__?: unknown;
   }
 }
 
@@ -76,27 +32,46 @@ const defaultBootstrap: EmailClientBootstrap = {
   messages: [],
   folderCounts: {},
   effectiveFolders: {},
-  aiFunctions: null
+  aiFunctions: null,
+};
+
+/**
+ * Validate and extract bootstrap data from the window object.
+ * Falls back to default if missing or invalid.
+ */
+function getValidatedBootstrap(): EmailClientBootstrap {
+  const rawBootstrap = window.__EMAIL_CLIENT_BOOTSTRAP__;
+
+  if (rawBootstrap === undefined) {
+    // No bootstrap data provided - use default (expected in some dev scenarios)
+    return defaultBootstrap;
+  }
+
+  const validationResult = validateWithLogging(
+    EmailClientBootstrapSchema,
+    rawBootstrap,
+    "window.__EMAIL_CLIENT_BOOTSTRAP__",
+  );
+
+  if (!validationResult.success) {
+    // Validation logged full error details - fall back to defaults
+    return defaultBootstrap;
+  }
+
+  return validationResult.data;
 }
 
-const bootstrap = window.__EMAIL_CLIENT_BOOTSTRAP__ ?? defaultBootstrap
+const bootstrap = getValidatedBootstrap();
 
-const target = document.getElementById('email-client-root')
+const target = document.getElementById("email-client-root");
 
 if (!target) {
-  throw new Error('Email client root element is missing from the DOM')
+  throw new Error("Email client root element is missing from the DOM");
 }
 
-const app = new App({
+const app = mount(App, {
   target,
-  props: { bootstrap }
-})
+  props: { bootstrap },
+});
 
-export default app
-
-export type {
-  EmailMessage,
-  AiFunctionCatalogDto,
-  AiFunctionSummary,
-  AiFunctionVariantSummary
-}
+export default app;

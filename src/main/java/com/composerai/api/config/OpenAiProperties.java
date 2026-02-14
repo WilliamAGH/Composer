@@ -1,11 +1,10 @@
 package com.composerai.api.config;
 
+import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
-
-import java.util.List;
 
 /**
  * OpenAI Configuration Properties - Single Source of Truth
@@ -207,7 +206,7 @@ public class OpenAiProperties {
      * Provider routing configuration for OpenRouter.
      * Controls which providers to use and fallback behavior.
      * Only applies when using OpenRouter as the base URL.
-     * 
+     *
      * @see <a href="https://openrouter.ai/docs/features/provider-routing">OpenRouter Provider Routing</a>
      */
     @Getter
@@ -238,11 +237,11 @@ public class OpenAiProperties {
         }
         return providerCapabilities;
     }
-    
+
     /**
      * Checks if the given model supports reasoning capabilities.
      * Reasoning models include: o1, o3, o4, gpt-5 series (configurable).
-     * 
+     *
      * Also checks that the provider supports reasoning features.
      *
      * @param modelId the model identifier to check (e.g., "gpt-4o-mini", "gpt-4")
@@ -252,14 +251,14 @@ public class OpenAiProperties {
         if (modelId == null || reasoning == null || reasoning.supportedModelPrefixes == null) {
             return false;
         }
-        
+
         // First check if provider supports reasoning at all
         if (!getProviderCapabilities().supportsReasoning()) {
             return false;
         }
-        
+
         String lowerModel = modelId.toLowerCase();
         return reasoning.supportedModelPrefixes.stream()
-            .anyMatch(prefix -> lowerModel.startsWith(prefix.toLowerCase()));
+                .anyMatch(prefix -> lowerModel.startsWith(prefix.toLowerCase()));
     }
 }

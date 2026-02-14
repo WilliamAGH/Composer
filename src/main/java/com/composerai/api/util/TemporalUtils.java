@@ -16,7 +16,7 @@ import java.util.Locale;
 public final class TemporalUtils {
 
     private static final DateTimeFormatter HUMAN_READABLE_FORMAT =
-        DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy 'at' h:mm a z", Locale.US);
+            DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy 'at' h:mm a z", Locale.US);
 
     private TemporalUtils() {
         throw new AssertionError("Utility class should not be instantiated");
@@ -192,10 +192,8 @@ public final class TemporalUtils {
      */
     public static String createTemporalContext() {
         return String.format(
-            "Current UTC time: %s%nCurrent Pacific Time: %s",
-            getCurrentUtcFormatted(),
-            getCurrentPacificFormatted()
-        );
+                "Current UTC time: %s%nCurrent Pacific Time: %s",
+                getCurrentUtcFormatted(), getCurrentPacificFormatted());
     }
 
     /**

@@ -7,8 +7,6 @@ import jakarta.validation.constraints.NotBlank;
  * cannot send the X-Mailbox-Session header (e.g., during initial bootstrap).
  */
 public record MessageMoveRequest(
-    @NotBlank(message = "mailboxId is required") String mailboxId,
-    @NotBlank(message = "targetFolderId is required") String targetFolderId,
-    String sessionId
-) {
-}
+        @NotBlank(message = "mailboxId is required") String mailboxId,
+        @NotBlank(message = "targetFolderId is required") String targetFolderId,
+        String sessionId) {}

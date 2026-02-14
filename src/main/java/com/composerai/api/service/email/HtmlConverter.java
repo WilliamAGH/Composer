@@ -1,7 +1,7 @@
 /**
  * HtmlConverter: normalize HTML and convert to plain text or Markdown
  * with URL policies and basic cleanup
- * 
+ *
  * @author William Callahan
  * @since 2025-09-18
  * @version 0.0.1
@@ -19,6 +19,7 @@ import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter;
 import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.parser.ParserEmulationProfile;
 import com.vladsch.flexmark.util.data.MutableDataSet;
+import java.util.regex.Pattern;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -26,8 +27,6 @@ import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
 import org.jsoup.safety.Cleaner;
 import org.jsoup.safety.Safelist;
-
-import java.util.regex.Pattern;
 
 /**
  * HtmlConverter: normalize HTML and convert to plain text or Markdown
@@ -50,7 +49,8 @@ public final class HtmlConverter {
         return convertHtml(html, format, urlsPolicy, true);
     }
 
-    public static String convertHtml(String html, HtmlToText.OutputFormat format, HtmlToText.UrlPolicy urlsPolicy, boolean suppressUtility) {
+    public static String convertHtml(
+            String html, HtmlToText.OutputFormat format, HtmlToText.UrlPolicy urlsPolicy, boolean suppressUtility) {
         if (html == null || html.isBlank()) return "";
 
         String preprocessed = preprocessHtml(html, urlsPolicy, suppressUtility);
@@ -80,9 +80,18 @@ public final class HtmlConverter {
     public static String htmlToPlain(String html) {
         Document doc = Jsoup.parse(html);
         for (Element br : doc.select("br")) br.after("\\n");
-        for (Element p : doc.select("p")) { p.prependText("\n"); p.appendText("\n"); }
-        for (Element li : doc.select("li")) { li.prepend("- "); li.appendText("\n"); }
-        for (Element h : doc.select("h1, h2, h3, h4, h5, h6")) { h.prependText("\n"); h.appendText("\n"); }
+        for (Element p : doc.select("p")) {
+            p.prependText("\n");
+            p.appendText("\n");
+        }
+        for (Element li : doc.select("li")) {
+            li.prepend("- ");
+            li.appendText("\n");
+        }
+        for (Element h : doc.select("h1, h2, h3, h4, h5, h6")) {
+            h.prependText("\n");
+            h.appendText("\n");
+        }
         String text = Jsoup.parse(doc.html()).text();
         text = text.replace("\\n", "\n");
         text = text.replace('\u00A0', ' ');
@@ -127,7 +136,10 @@ public final class HtmlConverter {
         }
 
         // Flatten layout tables to avoid giant Markdown tables
-        for (Element cell : doc.select("th, td")) { cell.appendText("\n"); cell.unwrap(); }
+        for (Element cell : doc.select("th, td")) {
+            cell.appendText("\n");
+            cell.unwrap();
+        }
         for (Element wrapper : doc.select("table, thead, tbody, tfoot, tr")) wrapper.unwrap();
 
         // Insert paragraph breaks around inline emphasis to avoid run-on lines after conversion
@@ -146,18 +158,18 @@ public final class HtmlConverter {
             String href = a.attr("href").toLowerCase();
             String text = a.text().toLowerCase();
             boolean isTrackingHost = href.contains("list-manage.com")
-                || href.contains("campaign-archive.com")
-                || href.contains("mailchimpapp.net")
-                || href.contains("track/click")
-                || href.contains("track/open.php");
+                    || href.contains("campaign-archive.com")
+                    || href.contains("mailchimpapp.net")
+                    || href.contains("track/click")
+                    || href.contains("track/open.php");
             boolean isUtilityText = text.contains("view this email")
-                || text.contains("read in browser")
-                || text.contains("share on twitter")
-                || text.contains("share on facebook")
-                || text.contains("email marketing powered by mailchimp")
-                || text.contains("unsubscribe")
-                || text.contains("update your preferences")
-                || text.contains("add us to your address book");
+                    || text.contains("read in browser")
+                    || text.contains("share on twitter")
+                    || text.contains("share on facebook")
+                    || text.contains("email marketing powered by mailchimp")
+                    || text.contains("unsubscribe")
+                    || text.contains("update your preferences")
+                    || text.contains("add us to your address book");
             if (isTrackingHost && policy != HtmlToText.UrlPolicy.KEEP) {
                 a.remove();
             } else if (suppressUtility && isUtilityText) {
@@ -177,8 +189,8 @@ public final class HtmlConverter {
             String src = img.attr("src").toLowerCase();
             String alt = img.attr("alt");
             boolean isTrackingImg = src.contains("track/open.php")
-                || src.contains("cdn-images.mailchimp.com/monkey_rewards")
-                || src.contains("social_connect_tweet.png");
+                    || src.contains("cdn-images.mailchimp.com/monkey_rewards")
+                    || src.contains("social_connect_tweet.png");
             if (isTrackingImg && policy != HtmlToText.UrlPolicy.KEEP) {
                 if (alt != null && !alt.isBlank()) img.replaceWith(new TextNode(alt));
                 else img.remove();
@@ -199,16 +211,17 @@ public final class HtmlConverter {
         for (Element el : doc.select("p, small, footer")) {
             String t = el.text().toLowerCase();
             for (String key : UTILITY_KEYWORDS) {
-                if (t.contains(key)) { el.remove(); break; }
+                if (t.contains(key)) {
+                    el.remove();
+                    break;
+                }
             }
         }
         for (Element el : doc.select(
-            "div[class*='templateFooter'],div[id*='templateFooter'],div[class*='mcnFooter'],div[id*='mcn-footer'],div[class*='monkey_rewards'],div[class*='unsubscribe'],div[id*='unsubscribe'],div[class*='email-footer'],div[id*='email-footer']"
-        )) {
+                "div[class*='templateFooter'],div[id*='templateFooter'],div[class*='mcnFooter'],div[id*='mcn-footer'],div[class*='monkey_rewards'],div[class*='unsubscribe'],div[id*='unsubscribe'],div[class*='email-footer'],div[id*='email-footer']")) {
             el.remove();
         }
     }
-
 
     private static void wrapTextNodesIntoParagraphs(Document doc, String selectors) {
         for (Element el : doc.select(selectors)) {
@@ -270,8 +283,8 @@ public final class HtmlConverter {
     public static String cleanupOutput(String content, boolean suppressUtility) {
         if (content == null || content.isBlank()) return content;
         content = normalizeInvisible(content)
-            .replaceAll("(?is)<script[^>]*>.*?</script>", " ")
-            .replaceAll("(?i)<br\\s*/?>", "\n");
+                .replaceAll("(?is)<script[^>]*>.*?</script>", " ")
+                .replaceAll("(?i)<br\\s*/?>", "\n");
         String[] lines = content.split("\r?\n", -1);
         StringBuilder sb = new StringBuilder(content.length());
         int blankRun = 0;
@@ -282,11 +295,11 @@ public final class HtmlConverter {
             if (suppressUtility) {
                 if (trimmed.equals("You can or .")) continue;
                 if (lower.contains("you are receiving this email because")
-                    || lower.contains("email marketing powered by mailchimp")
-                    || lower.contains("want to change how you receive these emails")
-                    || lower.contains("our mailing address is:")
-                    || lower.contains("unsubscribe")
-                    || lower.contains("update your preferences")) continue;
+                        || lower.contains("email marketing powered by mailchimp")
+                        || lower.contains("want to change how you receive these emails")
+                        || lower.contains("our mailing address is:")
+                        || lower.contains("unsubscribe")
+                        || lower.contains("update your preferences")) continue;
             }
             line = line.replaceAll(" {10,}", " ");
             if (trimmed.isEmpty()) {
@@ -310,7 +323,8 @@ public final class HtmlConverter {
     }
 
     private static final class MarkdownRenderer {
-        private static final Pattern STRUCTURAL_ELEMENTS = Pattern.compile("pre|code|ul|ol|li|table|thead|tbody|tfoot|tr|th|td");
+        private static final Pattern STRUCTURAL_ELEMENTS =
+                Pattern.compile("pre|code|ul|ol|li|table|thead|tbody|tfoot|tr|th|td");
 
         private final Parser parser;
         private final HtmlRenderer renderer;
@@ -326,19 +340,20 @@ public final class HtmlConverter {
             options.set(HtmlRenderer.SOFT_BREAK, "<br />\n");
             options.set(HtmlRenderer.HARD_BREAK, "<br />\n");
 
-            options.set(Parser.EXTENSIONS, java.util.Arrays.asList(
-                TablesExtension.create(),
-                AutolinkExtension.create(),
-                StrikethroughExtension.create(),
-                TaskListExtension.create()
-            ));
+            options.set(
+                    Parser.EXTENSIONS,
+                    java.util.Arrays.asList(
+                            TablesExtension.create(),
+                            AutolinkExtension.create(),
+                            StrikethroughExtension.create(),
+                            TaskListExtension.create()));
             this.parser = Parser.builder(options).build();
             this.renderer = HtmlRenderer.builder(options)
-                .escapeHtml(true)
-                .percentEncodeUrls(true)
-                // Preserve single newlines as <br> so line breaks render properly
-                .softBreak("<br />\n")
-                .build();
+                    .escapeHtml(true)
+                    .percentEncodeUrls(true)
+                    // Preserve single newlines as <br> so line breaks render properly
+                    .softBreak("<br />\n")
+                    .build();
 
             Safelist safelist = Safelist.basicWithImages();
             safelist.addTags("table", "thead", "tbody", "tfoot", "tr", "th", "td", "pre", "code");

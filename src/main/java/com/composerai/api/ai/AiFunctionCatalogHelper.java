@@ -2,13 +2,12 @@ package com.composerai.api.ai;
 
 import com.composerai.api.config.AiFunctionCatalogProperties;
 import com.composerai.api.dto.AiFunctionCatalogDto;
-import org.springframework.stereotype.Component;
-
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.stereotype.Component;
 
 /**
  * Normalizes configured AI functions and exposes lookup helpers so services, validators, and the
@@ -55,30 +54,30 @@ public class AiFunctionCatalogHelper {
             Map<String, AiFunctionDefinition.AiFunctionVariant> variantMap = new LinkedHashMap<>();
             raw.getVariants().forEach((variantKey, variantProps) -> {
                 String normalizedVariantKey = variantKey.trim().toLowerCase(Locale.ROOT);
-                variantMap.put(normalizedVariantKey, new AiFunctionDefinition.AiFunctionVariant(
-                    normalizedVariantKey,
-                    variantProps.getLabel(),
-                    variantProps.getPromptTemplate(),
-                    variantProps.getDefaultInstruction(),
-                    variantProps.getDefaultArgs()
-                ));
+                variantMap.put(
+                        normalizedVariantKey,
+                        new AiFunctionDefinition.AiFunctionVariant(
+                                normalizedVariantKey,
+                                variantProps.getLabel(),
+                                variantProps.getPromptTemplate(),
+                                variantProps.getDefaultInstruction(),
+                                variantProps.getDefaultArgs()));
             });
 
             AiFunctionDefinition def = new AiFunctionDefinition(
-                key,
-                raw.getLabel(),
-                raw.getCategory(),
-                raw.getDescription(),
-                raw.getPromptTemplate(),
-                raw.getDefaultInstruction(),
-                raw.getOutputFormat(),
-                raw.getSubjectMode(),
-                raw.getContextStrategy(),
-                raw.isPrimary(),
-                raw.getScopes(),
-                raw.getDefaultArgs(),
-                variantMap
-            );
+                    key,
+                    raw.getLabel(),
+                    raw.getCategory(),
+                    raw.getDescription(),
+                    raw.getPromptTemplate(),
+                    raw.getDefaultInstruction(),
+                    raw.getOutputFormat(),
+                    raw.getSubjectMode(),
+                    raw.getContextStrategy(),
+                    raw.isPrimary(),
+                    raw.getScopes(),
+                    raw.getDefaultArgs(),
+                    variantMap);
             map.put(key, def);
         });
         return map;

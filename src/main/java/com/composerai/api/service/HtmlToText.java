@@ -2,11 +2,8 @@
  * HtmlToText: thin CLI/API entrypoint that delegates to EmailPipeline.
  * Provides unified Options and basic I/O (args parsing and file writing).
  */
-
 package com.composerai.api.service;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 import jakarta.mail.MessagingException;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -14,11 +11,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
 public class HtmlToText {
-
 
     public enum OutputFormat {
         PLAIN,
@@ -60,11 +58,13 @@ public class HtmlToText {
                     case "--format" -> {
                         String v = nextArg(args, ++i, "--format requires plain|markdown");
                         if ("plain".equalsIgnoreCase(v)) c.format = OutputFormat.PLAIN;
-                        else if ("markdown".equalsIgnoreCase(v) || "md".equalsIgnoreCase(v)) c.format = OutputFormat.MARKDOWN;
+                        else if ("markdown".equalsIgnoreCase(v) || "md".equalsIgnoreCase(v))
+                            c.format = OutputFormat.MARKDOWN;
                         else throw new IllegalArgumentException("Unsupported --format: " + v);
                     }
                     case "--output-file" -> c.outputFile = nextArg(args, ++i, "--output-file requires a value");
-                    case "--output-dir" -> c.outputDir = java.nio.file.Path.of(nextArg(args, ++i, "--output-dir requires a value"));
+                    case "--output-dir" ->
+                        c.outputDir = java.nio.file.Path.of(nextArg(args, ++i, "--output-dir requires a value"));
                     case "--charset" -> {
                         String v = nextArg(args, ++i, "--charset requires a value");
                         c.charset = Charset.forName(v);
@@ -137,7 +137,7 @@ public class HtmlToText {
     /**
      * Convert HTML string directly to plain text.
      * This is a convenience method for programmatic use when you have HTML content as a string.
-     * 
+     *
      * @param html The HTML content to convert
      * @return Plain text representation of the HTML
      * @throws IOException if conversion fails
@@ -146,14 +146,14 @@ public class HtmlToText {
         if (html == null || html.trim().isEmpty()) {
             return "";
         }
-        
+
         try {
             // Create a temporary file to store the HTML content
             Path tempFile = Files.createTempFile("html-convert-", ".html");
             try {
                 // Write HTML content to temporary file
                 Files.writeString(tempFile, html, StandardCharsets.UTF_8);
-                
+
                 // Create options for conversion
                 Options options = new Options();
                 options.inputFile = tempFile.toString();
@@ -162,10 +162,10 @@ public class HtmlToText {
                 options.urlsPolicy = UrlPolicy.CLEAN_ONLY;
                 options.includeMetadata = false;
                 options.suppressUtility = true;
-                
+
                 // Convert using existing pipeline
                 return convert(options);
-                
+
             } finally {
                 // Clean up temporary file
                 try {
@@ -210,13 +210,13 @@ public class HtmlToText {
     }
 
     private static String usage() {
-        return String.join("\n",
-            "Usage:",
-            "  java -cp <jar> com.composerai.api.service.HtmlToText --input-file <path> [--input-type eml|html] --format plain|markdown [--output-file <path>] [--output-dir <dir>] [--charset UTF-8] [--urls keep|stripAll|cleanOnly] [--metadata true|false] [--json true|false] [--suppress-utility true|false]",
-            "",
-            "Examples:",
-            "  --input-file /path/to/email.eml --format markdown --urls cleanOnly --metadata true --json false --suppress-utility true",
-            "  --input-file /path/to/email.html --input-type html --format plain --output-dir ./data --urls stripAll --metadata false --json true --suppress-utility false"
-        );
+        return String.join(
+                "\n",
+                "Usage:",
+                "  java -cp <jar> com.composerai.api.service.HtmlToText --input-file <path> [--input-type eml|html] --format plain|markdown [--output-file <path>] [--output-dir <dir>] [--charset UTF-8] [--urls keep|stripAll|cleanOnly] [--metadata true|false] [--json true|false] [--suppress-utility true|false]",
+                "",
+                "Examples:",
+                "  --input-file /path/to/email.eml --format markdown --urls cleanOnly --metadata true --json false --suppress-utility true",
+                "  --input-file /path/to/email.html --input-type html --format plain --output-dir ./data --urls stripAll --metadata false --json true --suppress-utility false");
     }
 }

@@ -4,12 +4,11 @@ import com.composerai.api.util.StringUtils;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Getter;
-
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import lombok.Getter;
 
 @Getter
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -21,6 +20,7 @@ public class EmailMessage {
      * placeholder values. They should not be shown to end users as they represent missing data.
      */
     private static final String FALLBACK_RECIPIENT_EMAIL = "user@example.com";
+
     private static final String FALLBACK_RECIPIENT_NAME = "InboxAI User";
 
     private final String id;
@@ -30,22 +30,28 @@ public class EmailMessage {
     private final String recipientName;
     private final String recipientEmail;
     private final String subject;
+
     @JsonIgnore
     private final String emailBodyRaw;
+
     private final String emailBodyTransformedText;
     private final String emailBodyTransformedMarkdown;
     private final String emailBodyHtml;
     private final String llmSummary;
+
     @JsonProperty("receivedTimestampIso")
     private final String receivedTimestampIso;
+
     @JsonProperty("receivedTimestampDisplay")
     private final String receivedTimestampDisplay;
+
     private final List<String> labels;
     private final String companyLogoUrl;
     private final String avatarUrl;
     private final boolean starred;
     private final boolean read;
     private final String preview;
+
     @JsonProperty("contextForAI")
     private final String contextForAi;
 
@@ -206,74 +212,71 @@ public class EmailMessage {
         if (this == o) return true;
         if (!(o instanceof EmailMessage that)) return false;
         return starred == that.starred
-            && read == that.read
-            && Objects.equals(id, that.id)
-            && Objects.equals(contextId, that.contextId)
-            && Objects.equals(senderName, that.senderName)
-            && Objects.equals(senderEmail, that.senderEmail)
-            && Objects.equals(recipientName, that.recipientName)
-            && Objects.equals(recipientEmail, that.recipientEmail)
-            && Objects.equals(subject, that.subject)
-            && Objects.equals(emailBodyRaw, that.emailBodyRaw)
-            && Objects.equals(emailBodyTransformedText, that.emailBodyTransformedText)
-            && Objects.equals(emailBodyTransformedMarkdown, that.emailBodyTransformedMarkdown)
-            && Objects.equals(emailBodyHtml, that.emailBodyHtml)
-            && Objects.equals(llmSummary, that.llmSummary)
-            && Objects.equals(receivedTimestampIso, that.receivedTimestampIso)
-            && Objects.equals(receivedTimestampDisplay, that.receivedTimestampDisplay)
-            && Objects.equals(labels, that.labels)
-            && Objects.equals(companyLogoUrl, that.companyLogoUrl)
-            && Objects.equals(avatarUrl, that.avatarUrl)
-            && Objects.equals(preview, that.preview)
-            && Objects.equals(contextForAi, that.contextForAi);
+                && read == that.read
+                && Objects.equals(id, that.id)
+                && Objects.equals(contextId, that.contextId)
+                && Objects.equals(senderName, that.senderName)
+                && Objects.equals(senderEmail, that.senderEmail)
+                && Objects.equals(recipientName, that.recipientName)
+                && Objects.equals(recipientEmail, that.recipientEmail)
+                && Objects.equals(subject, that.subject)
+                && Objects.equals(emailBodyRaw, that.emailBodyRaw)
+                && Objects.equals(emailBodyTransformedText, that.emailBodyTransformedText)
+                && Objects.equals(emailBodyTransformedMarkdown, that.emailBodyTransformedMarkdown)
+                && Objects.equals(emailBodyHtml, that.emailBodyHtml)
+                && Objects.equals(llmSummary, that.llmSummary)
+                && Objects.equals(receivedTimestampIso, that.receivedTimestampIso)
+                && Objects.equals(receivedTimestampDisplay, that.receivedTimestampDisplay)
+                && Objects.equals(labels, that.labels)
+                && Objects.equals(companyLogoUrl, that.companyLogoUrl)
+                && Objects.equals(avatarUrl, that.avatarUrl)
+                && Objects.equals(preview, that.preview)
+                && Objects.equals(contextForAi, that.contextForAi);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(
-            id,
-            contextId,
-            senderName,
-            senderEmail,
-            recipientName,
-            recipientEmail,
-            subject,
-            emailBodyRaw,
-            emailBodyTransformedText,
-            emailBodyTransformedMarkdown,
-            emailBodyHtml,
-            llmSummary,
-            receivedTimestampIso,
-            receivedTimestampDisplay,
-            labels,
-            companyLogoUrl,
-            avatarUrl,
-            starred,
-            read,
-            preview,
-            contextForAi
-        );
+                id,
+                contextId,
+                senderName,
+                senderEmail,
+                recipientName,
+                recipientEmail,
+                subject,
+                emailBodyRaw,
+                emailBodyTransformedText,
+                emailBodyTransformedMarkdown,
+                emailBodyHtml,
+                llmSummary,
+                receivedTimestampIso,
+                receivedTimestampDisplay,
+                labels,
+                companyLogoUrl,
+                avatarUrl,
+                starred,
+                read,
+                preview,
+                contextForAi);
     }
 
     @Override
     public String toString() {
-        return "EmailMessage{" +
-            "id='" + id + '\'' +
-            ", contextId='" + contextId + '\'' +
-            ", senderName='" + senderName + '\'' +
-            ", senderEmail='" + senderEmail + '\'' +
-            ", recipientName='" + recipientName + '\'' +
-            ", recipientEmail='" + recipientEmail + '\'' +
-            ", subject='" + subject + '\'' +
-            ", read=" + read +
-            ", starred=" + starred +
-            ", contextForAiPresent=" + (contextForAi != null) +
-            '}';
+        return "EmailMessage{" + "id='"
+                + id + '\'' + ", contextId='"
+                + contextId + '\'' + ", senderName='"
+                + senderName + '\'' + ", senderEmail='"
+                + senderEmail + '\'' + ", recipientName='"
+                + recipientName + '\'' + ", recipientEmail='"
+                + recipientEmail + '\'' + ", subject='"
+                + subject + '\'' + ", read="
+                + read + ", starred="
+                + starred + ", contextForAiPresent="
+                + (contextForAi != null) + '}';
     }
 
     public static class Builder extends BuilderBase<Builder> {
-        protected Builder() {
-        }
+        protected Builder() {}
 
         protected Builder(EmailMessage source) {
             super(source);
@@ -289,7 +292,7 @@ public class EmailMessage {
         }
     }
 
-    protected static abstract class BuilderBase<T extends BuilderBase<T>> {
+    protected abstract static class BuilderBase<T extends BuilderBase<T>> {
         private String id;
         private String contextId;
         private String senderName;
@@ -312,8 +315,7 @@ public class EmailMessage {
         private String preview;
         private String contextForAi;
 
-        protected BuilderBase() {
-        }
+        protected BuilderBase() {}
 
         protected BuilderBase(EmailMessage source) {
             this.id = source.id;

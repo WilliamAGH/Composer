@@ -2,8 +2,7 @@
 
 ## Requirements
 
-- JDK 21
-- Maven 3.9+
+- JDK 25
 - Node 20+ (frontend toolchain)
 
 ## Setup
@@ -20,7 +19,7 @@ export OPENAI_API_KEY="..."
 make dev
 ```
 
-Open `http://localhost:5173/app/email-client/`.
+Open `http://localhost:5183/app/email-client/`.
 
 Sample mailbox data lives under `data/eml/`. Drop `.eml` or `.txt` files there, or override `app.email-inbox.directory`.
 
@@ -31,7 +30,7 @@ make build
 make run
 ```
 
-Open `http://localhost:8080/` (redirects to `/email-client-v2`).
+Open `http://localhost:8090/` (redirects to `/email-client-v2`).
 
 ## Build commands
 
@@ -101,7 +100,7 @@ make run
 make fe-dev
 ```
 
-The Vite dev server runs on `:5173` and proxies API calls to Spring on `:8080`.
+The Vite dev server runs on `:5183` and proxies API calls to Spring on `:8090`.
 
 ## Architecture overview
 
@@ -110,3 +109,7 @@ See [00-architectural-entrypoint.md](00-architectural-entrypoint.md) for:
 - Complete file inventory
 - HTTP surface documentation
 - AI function catalog details
+
+## License
+
+See [`../LICENSE.md`](../LICENSE.md).

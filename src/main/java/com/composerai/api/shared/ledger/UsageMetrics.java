@@ -6,12 +6,7 @@ package com.composerai.api.shared.ledger;
  * {@code com.openai.models.chat.completions.ChatCompletion} /
  * {@code com.openai.models.responses.Response}.
  */
-public record UsageMetrics(
-    long promptTokens,
-    long completionTokens,
-    long totalTokens,
-    long latencyMs
-) {
+public record UsageMetrics(long promptTokens, long completionTokens, long totalTokens, long latencyMs) {
     public UsageMetrics {
         if (totalTokens == 0 && (promptTokens > 0 || completionTokens > 0)) {
             totalTokens = promptTokens + completionTokens;

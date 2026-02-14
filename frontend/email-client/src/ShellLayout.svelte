@@ -17,7 +17,7 @@ import MobileTopBar from './lib/MobileTopBar.svelte';
   import AiSummaryMobileSheet from './lib/AiSummaryMobileSheet.svelte';
   import ComingSoonModal from './lib/ComingSoonModal.svelte';
   import WindowNotice from './lib/WindowNotice.svelte';
-  import { Sparkles } from 'lucide-svelte';
+  import { Sparkles, ChevronLeft, ChevronRight } from 'lucide-svelte';
 import OverlayStack from './lib/overlay/OverlayStack.svelte';
 import { createOverlayController } from './lib/overlay/OverlayController';
 import { provideOverlayController } from './lib/overlay/overlayContext';
@@ -29,7 +29,6 @@ import { getFunctionMeta, mergeDefaultArgs, resolveDefaultInstruction } from './
 import { handleAiCommand, deriveHeadline, runComposeWindowAi } from './lib/services/aiCommandHandler';
 import { deriveRecipientContext } from './lib/services/emailContextConstructor';
   import { buildReplyPrefill, buildForwardPrefill } from './lib/services/composePrefill';
-import { ChevronLeft, ChevronRight } from 'lucide-svelte';
 import { MAILBOX_ACTION_FALLBACKS, PRIMARY_TOOLBAR_PREFERENCE } from './lib/constants/catalogActions';
 import { escapeHtmlContent, renderMarkdownContent, formatRelativeTimestamp, formatFullTimestamp } from './lib/services/emailFormatting';
   import { createActionMenuSuggestionsStore } from './lib/stores/actionMenuSuggestionsStore';
@@ -38,6 +37,7 @@ import { createAiPanelStore } from './lib/stores/aiPanelStore';
   import EmailDetailMobileSheet from './lib/EmailDetailMobileSheet.svelte';
 import { processClientWarning, recordClientDiagnostic, showWindowNotice } from './lib/services/clientDiagnosticsService';
 import { CLIENT_WARNING_EVENT } from './lib/services/sessionNonceClient';
+import { pushToast } from './lib/stores/errorStore';
 
   /**
    * ShellLayout consumes provider contexts and drives the interactive shell. Keep it as
@@ -433,7 +433,8 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
     const ready = await ensureCatalog();
     if (!ready) {
       mailboxActionError = 'AI helpers unavailable';
-      alert('AI helpers are unavailable. Please try again.');
+      pushToast('AI helpers are unavailable. Please try again.', { severity: 'warning' });
+      recordClientDiagnostic('warn', 'AI catalog failed to load for mailbox action.');
       return;
     }
     const summaryList = Array.isArray(filtered) ? filtered : [];
@@ -452,7 +453,7 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
       showWindowNotice(`${entry.label || 'Mailbox action'} queued`);
     } catch (error) {
       mailboxActionError = error?.message || 'Unable to run mailbox action.';
-      alert(mailboxActionError);
+      pushToast(mailboxActionError, { severity: 'error' });
       recordClientDiagnostic('error', 'Unable to run mailbox action.', error);
     } finally {
       mailboxCommandPendingKey = null;
@@ -571,7 +572,10 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
   }
 
   function openReply(withAi = true) {
-    if (!selected) return alert('Select an email first.');
+    if (!selected) {
+      pushToast('Select an email first.', { severity: 'warning' });
+      return;
+    }
 
     const prefills = buildReplyPrefill(selected);
     const descriptor = createComposeWindow(selected, {
@@ -593,7 +597,10 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
   }
 
   function openForward() {
-    if (!selected) return alert('Select an email first.');
+    if (!selected) {
+      pushToast('Select an email first.', { severity: 'warning' });
+      return;
+    }
 
     const prefills = buildForwardPrefill(selected);
     const descriptor = createComposeWindow(selected, {
@@ -681,7 +688,7 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
     if (!detail?.id || !detail.command) return;
     const windowConfig = windows.find((win) => win.id === detail.id);
     if (!windowConfig) {
-      alert('Compose window unavailable.');
+      pushToast('Compose window unavailable.', { severity: 'warning' });
       return;
     }
     try {
@@ -697,7 +704,7 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
       });
     } catch (error) {
       recordClientDiagnostic('warn', 'Compose AI request failed.', error);
-      alert(error?.message || 'Unable to complete AI request.');
+      pushToast(error?.message || 'Unable to complete AI request.', { severity: 'error' });
     }
   }
 
@@ -727,7 +734,7 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
     const instructionOverride = typeof request === 'object' ? request?.instructionOverride : null;
     if (!command) return;
     if (!selected) {
-      alert('Select an email first.');
+      pushToast('Select an email first.', { severity: 'warning' });
       return;
     }
     const selectedContextKey = selected ? (selected.contextId || selected.id) : null;
@@ -768,15 +775,13 @@ $: composeAiFunctions = Object.values(aiFunctionsByKey || {})
         showWindowLimitMessage();
         return;
       }
+      // Log all AI command errors for diagnostics
+      recordClientDiagnostic('error', `AI command "${command}" failed.`, error);
       if (!targetsCompose && selectedContextKey) {
         panelStore.recordError(selectedContextKey, error?.message || 'Unable to complete request.');
       }
       if (targetsCompose) {
-        if (error?.message) {
-          alert(error.message);
-        } else {
-          alert('Unable to complete request.');
-        }
+        pushToast(error?.message || 'Unable to complete request.', { severity: 'error' });
       }
     }
   }

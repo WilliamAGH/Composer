@@ -14,10 +14,9 @@ import java.util.Map;
  * {@code com.openai.models.responses} for the serialized payload referenced here.</p>
  */
 public record ConversationEnvelope(
-    String conversationId,
-    Instant createdAt,
-    int version,
-    Map<String, Object> metadata,
-    List<ConversationEvent> events,
-    List<EmailObject> emails
-) {}
+        String conversationId,
+        Instant createdAt,
+        int version,
+        Map<String, Object> metadata,
+        List<ConversationEvent> events,
+        List<EmailObject> emails) {}

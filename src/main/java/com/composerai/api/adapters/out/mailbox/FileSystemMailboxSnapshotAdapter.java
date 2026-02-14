@@ -6,11 +6,10 @@ import com.composerai.api.domain.port.MailboxSnapshotPort;
 import com.composerai.api.domain.service.MailboxFolderTransitionService;
 import com.composerai.api.model.EmailMessage;
 import com.composerai.api.service.email.EmailMessageProvider;
-import org.springframework.stereotype.Component;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.stereotype.Component;
 
 /**
  * Adapts the existing {@link EmailMessageProvider} (which reads .eml files) to the domain snapshot port.
@@ -23,8 +22,8 @@ public class FileSystemMailboxSnapshotAdapter implements MailboxSnapshotPort {
     private final EmailMessageProvider emailMessageProvider;
     private final MailboxFolderTransitionService transitionService;
 
-    public FileSystemMailboxSnapshotAdapter(EmailMessageProvider emailMessageProvider,
-                                            MailboxFolderTransitionService transitionService) {
+    public FileSystemMailboxSnapshotAdapter(
+            EmailMessageProvider emailMessageProvider, MailboxFolderTransitionService transitionService) {
         this.emailMessageProvider = emailMessageProvider;
         this.transitionService = transitionService;
     }

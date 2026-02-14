@@ -5,14 +5,13 @@ import com.composerai.api.dto.AiFunctionCatalogDto;
 import com.composerai.api.dto.SseEventType;
 import com.composerai.api.service.ReasoningStreamAdapter;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-
-import java.util.Arrays;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Global model attributes available to all Thymeleaf templates.
@@ -25,8 +24,10 @@ public class GlobalModelAttributes {
 
     private static final String SITE_NAME = "Composer";
     private static final String DEFAULT_PAGE_TITLE = "Composer - AI email that drafts and manages your mailbox";
-    private static final String DEFAULT_DESCRIPTION = "AI webmail that triages your inbox, summarizes threads, drafts replies, schedules meetings, pulls historical context, and ensures follow-up.";
-    private static final String OG_IMAGE_ALT = "Composer UI showing AI triage labels, thread summary, and one-click reply suggestions.";
+    private static final String DEFAULT_DESCRIPTION =
+            "AI webmail that triages your inbox, summarizes threads, drafts replies, schedules meetings, pulls historical context, and ensures follow-up.";
+    private static final String OG_IMAGE_ALT =
+            "Composer UI showing AI triage labels, thread summary, and one-click reply suggestions.";
     private static final int OG_IMAGE_WIDTH = 1900;
     private static final int OG_IMAGE_HEIGHT = 1000;
     private static final String OG_IMAGE_PATH = "/opengraph.png";
@@ -34,12 +35,12 @@ public class GlobalModelAttributes {
     private final AppProperties appProperties;
     private final AiFunctionCatalogHelper aiFunctionCatalogHelper;
 
-    public GlobalModelAttributes(ObjectProvider<AppProperties> appPropertiesProvider,
-                                 ObjectProvider<AiFunctionCatalogHelper> aiFunctionCatalogHelperProvider) {
+    public GlobalModelAttributes(
+            ObjectProvider<AppProperties> appPropertiesProvider,
+            ObjectProvider<AiFunctionCatalogHelper> aiFunctionCatalogHelperProvider) {
         this.appProperties = appPropertiesProvider.getIfAvailable(AppProperties::new);
         this.aiFunctionCatalogHelper = aiFunctionCatalogHelperProvider.getIfAvailable(
-            () -> new AiFunctionCatalogHelper(new AiFunctionCatalogProperties())
-        );
+                () -> new AiFunctionCatalogHelper(new AiFunctionCatalogProperties()));
     }
 
     @ModelAttribute("siteName")
@@ -80,17 +81,17 @@ public class GlobalModelAttributes {
     @ModelAttribute("ogImageUrl")
     public String ogImageUrl() {
         return ServletUriComponentsBuilder.fromCurrentContextPath()
-            .path(OG_IMAGE_PATH)
-            .build()
-            .toUriString();
+                .path(OG_IMAGE_PATH)
+                .build()
+                .toUriString();
     }
 
     @ModelAttribute("canonicalUrl")
     public String canonicalUrl(HttpServletRequest request) {
         return ServletUriComponentsBuilder.fromRequestUri(request)
-            .replaceQuery(null)
-            .build()
-            .toUriString();
+                .replaceQuery(null)
+                .build()
+                .toUriString();
     }
 
     /**
@@ -101,11 +102,7 @@ public class GlobalModelAttributes {
      */
     @ModelAttribute("sseEvents")
     public Map<String, String> sseEvents() {
-        return Arrays.stream(SseEventType.values())
-            .collect(Collectors.toMap(
-                Enum::name,
-                SseEventType::getEventName
-            ));
+        return Arrays.stream(SseEventType.values()).collect(Collectors.toMap(Enum::name, SseEventType::getEventName));
     }
 
     /**
@@ -116,20 +113,12 @@ public class GlobalModelAttributes {
      */
     @ModelAttribute("reasoningPhases")
     public Map<String, String> reasoningPhases() {
-        return Arrays.stream(ReasoningStreamAdapter.Phase.values())
-            .collect(Collectors.toMap(
-                Enum::name,
-                Enum::name
-            ));
+        return Arrays.stream(ReasoningStreamAdapter.Phase.values()).collect(Collectors.toMap(Enum::name, Enum::name));
     }
 
     @ModelAttribute("emailRenderModes")
     public Map<String, String> emailRenderModes() {
-        return Arrays.stream(AppProperties.EmailRenderMode.values())
-            .collect(Collectors.toMap(
-                Enum::name,
-                Enum::name
-            ));
+        return Arrays.stream(AppProperties.EmailRenderMode.values()).collect(Collectors.toMap(Enum::name, Enum::name));
     }
 
     @ModelAttribute("emailRenderMode")

@@ -3,13 +3,12 @@ package com.composerai.api.controller;
 import com.composerai.api.domain.service.MailboxFolderTransitionService;
 import com.composerai.api.service.email.EmailMessageProvider;
 import jakarta.servlet.http.HttpSession;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
 
 @Controller
 public class WebViewController {
@@ -18,9 +17,10 @@ public class WebViewController {
     private final EmailMessageProvider emailMessageProvider;
     private final MailboxFolderTransitionService mailboxFolderTransitionService;
 
-    public WebViewController(UiNonceService uiNonceService,
-                             EmailMessageProvider emailMessageProvider,
-                             MailboxFolderTransitionService mailboxFolderTransitionService) {
+    public WebViewController(
+            UiNonceService uiNonceService,
+            EmailMessageProvider emailMessageProvider,
+            MailboxFolderTransitionService mailboxFolderTransitionService) {
         this.uiNonceService = uiNonceService;
         this.emailMessageProvider = emailMessageProvider;
         this.mailboxFolderTransitionService = mailboxFolderTransitionService;
@@ -56,9 +56,10 @@ public class WebViewController {
                 continue;
             }
             effectiveFolders.put(
-                emailMessage.id(),
-                mailboxFolderTransitionService.deriveBaselineFolder(emailMessage).value()
-            );
+                    emailMessage.id(),
+                    mailboxFolderTransitionService
+                            .deriveBaselineFolder(emailMessage)
+                            .value());
         }
         model.addAttribute("effectiveFolders", effectiveFolders);
         return "email-client-v2";

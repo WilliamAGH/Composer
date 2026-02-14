@@ -2,14 +2,14 @@ package com.composerai.api.shared.ledger;
 
 import com.composerai.api.model.EmailMessage;
 import com.composerai.api.service.email.EmailMessageProvider;
-import org.springframework.stereotype.Component;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 /**
  * Best-effort resolver that maps a contextId/emailId back to the {@link EmailMessage} that produced
@@ -17,6 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * {@link EmailMessageProvider}; workers should treat the lookup as opportunistic and tolerate
  * misses when the mailbox snapshot is unavailable.
  */
+@Slf4j
 @Component
 public class EmailContextResolver {
 
@@ -52,10 +53,11 @@ public class EmailContextResolver {
     private EmailMessage lookup(String contextId) {
         try {
             return emailMessageProvider.loadEmails().stream()
-                .filter(email -> contextId.equals(email.contextId()) || contextId.equals(email.id()))
-                .findFirst()
-                .orElse(null);
-        } catch (Exception ignored) {
+                    .filter(email -> contextId.equals(email.contextId()) || contextId.equals(email.id()))
+                    .findFirst()
+                    .orElse(null);
+        } catch (Exception ex) {
+            log.warn("Failed to resolve email context for {}", contextId, ex);
             return null;
         }
     }

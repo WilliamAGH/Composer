@@ -7,10 +7,9 @@ import java.util.List;
  * Carries message content, context, history, and configuration flags.
  */
 public record ChatCompletionCommand(
-    String userMessage,
-    String emailContext,
-    List<ConversationTurn> conversationHistory,
-    boolean thinkingEnabled,
-    String thinkingLevel,
-    boolean jsonOutput
-) {}
+        String userMessage,
+        String emailContext,
+        List<ConversationTurn> conversationHistory,
+        boolean thinkingEnabled,
+        String thinkingLevel,
+        boolean jsonOutput) {}

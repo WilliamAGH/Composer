@@ -19,18 +19,18 @@ The desktop web app has floating windows, aiming to behave like a native OS app,
 
 ## Tech stack
 
-Spring Boot 3 (Java 21) · Svelte 5 + Vite · OpenAI-compatible LLM providers · Optional Qdrant vector search
+Spring Boot 3 (Java 25) · Svelte 5 + Vite · OpenAI-compatible LLM providers · Optional Qdrant vector search
 
 ## Quick start
 
-Requires JDK 21, Maven 3.9+, Node 20+.
+Requires JDK 25 and Node 22.17.0 (use `nvm use` to load the pinned version from `.nvmrc`).
 
 ```bash
 export OPENAI_API_KEY="..."
 make dev
 ```
 
-Open `http://localhost:8080`. Sample emails live in `data/eml/`.
+Open `http://localhost:5183/app/email-client/`. Sample emails live in `data/eml/`.
 
 For production builds, alternative providers (OpenRouter, Ollama), and vector search setup, see [docs/getting-started.md](docs/getting-started.md).
 
@@ -41,16 +41,17 @@ For production builds, alternative providers (OpenRouter, Ollama), and vector se
 - [Email Client](docs/email-client-v2.md) – frontend architecture, window system, email safety model
 - [Context & Conversations](docs/email-context-conversation-uuids.md) – how identifiers flow between UI and API
 
-## Routes
+## Contributing
 
-- `/` – Svelte email client
-- `/chat-diagnostics` – server-rendered diagnostics
-- `/qa/diagnostics` – health checks
-- `/qa/email-file-parser` – parse `.eml` uploads
+See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
-## More from William Callahan
+## License
 
-- [Other projects](https://williamcallahan.com/projects)
-- [apple-maps-java](https://github.com/WilliamAGH/apple-maps-java)
-- [TUI4J](https://github.com/WilliamAGH/tui4j)
-- [Brief](https://github.com/WilliamAGH/brief)
+See [`LICENSE.md`](LICENSE.md). Copyright © 2026 William Callahan.
+
+## [Other projects from William Callahan](https://williamcallahan.com/projects)
+
+- [Apple-Maps-Java](https://github.com/WilliamAGH/apple-maps-java) - Library for adding free Apple Maps API access to your Java and Kotlin apps
+- [Java Chat](https://javachat.ai) [(GitHub)](https://github.com/WilliamAGH/java-chat) - Learn programming with AI and access to a library of knowledge on the language
+- [TUI4J](https://github.com/WilliamAGH/tui4j) - Library to build beautiful terminal applications in Java and Kotlin
+- [Brief](https://github.com/WilliamAGH/brief) - Modern terminal application for AI chat with built-in tool calling

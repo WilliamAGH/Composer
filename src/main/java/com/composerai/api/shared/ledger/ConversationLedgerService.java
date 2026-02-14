@@ -2,16 +2,15 @@ package com.composerai.api.shared.ledger;
 
 import com.composerai.api.config.AppProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 /**
  * Persists {@link ConversationEnvelope} snapshots for later replay. When disabled the service
@@ -22,7 +21,7 @@ public class ConversationLedgerService {
 
     private static final Logger logger = LoggerFactory.getLogger(ConversationLedgerService.class);
     private static final DateTimeFormatter FILE_SUFFIX =
-        DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS").withZone(ZoneOffset.UTC);
+            DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS").withZone(ZoneOffset.UTC);
 
     private final ObjectMapper objectMapper;
     private final AppProperties appProperties;

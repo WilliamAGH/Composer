@@ -1,11 +1,11 @@
-import { derived, get, type Readable, type Unsubscriber } from 'svelte/store';
-import type { SvelteComponent } from 'svelte';
-import type { OverlayController } from '../overlay/OverlayController';
-import type { WindowManager } from '../window/windowStore';
-import { WindowKind, WindowMode, type WindowDescriptor } from '../window/windowTypes';
-import type { createAiPanelStore } from '../stores/aiPanelStore';
+import { derived, get, type Readable, type Unsubscriber } from "svelte/store";
+import type { SvelteComponent } from "svelte";
+import type { OverlayController } from "../overlay/OverlayController";
+import type { WindowManager } from "../window/windowStore";
+import { WindowKind, WindowMode, type WindowDescriptor } from "../window/windowTypes";
+import type { createAiPanelStore } from "../stores/aiPanelStore";
 
-export type DockItemType = 'compose' | 'panel';
+export type DockItemType = "compose" | "panel";
 
 export interface DockItem {
   id: string;
@@ -35,7 +35,7 @@ export function createDesktopContentController({
   panelStore,
   overlayController,
   aiPanelTitle,
-  aiPanelIcon = null
+  aiPanelIcon = null,
 }: DesktopContentControllerOptions): DesktopContentController {
   const panelStores = panelStore.stores;
   const panelSessionActiveStore = panelStores.sessionActive;
@@ -48,30 +48,35 @@ export function createDesktopContentController({
       const composeItems = [...$minimizedWindows]
         .filter((win) => win.mode === WindowMode.FLOATING && win.kind === WindowKind.COMPOSE)
         .reverse()
-        .map((win): DockItem => ({
-          id: win.id,
-          type: 'compose',
-          title: win.title,
-          icon: null,
-          closeable: true,
-          onRestore: () => windowManager.focus(win.id),
-          onClose: () => windowManager.close(win.id)
-        }));
-
-      const panelItems = !$panelSessionActive || !$panelMinimized || !$panelActiveKey
-        ? []
-        : [{
-            id: `panel-${$panelActiveKey}`,
-            type: 'panel' as DockItemType,
-            title: aiPanelTitle,
-            icon: aiPanelIcon,
+        .map(
+          (win): DockItem => ({
+            id: win.id,
+            type: "compose",
+            title: win.title,
+            icon: null,
             closeable: true,
-            onRestore: () => panelStore.restoreFromDock(),
-            onClose: () => panelStore.closePanel($panelActiveKey)
-          }];
+            onRestore: () => windowManager.focus(win.id),
+            onClose: () => windowManager.close(win.id),
+          }),
+        );
+
+      const panelItems =
+        !$panelSessionActive || !$panelMinimized || !$panelActiveKey
+          ? []
+          : [
+              {
+                id: `panel-${$panelActiveKey}`,
+                type: "panel" as DockItemType,
+                title: aiPanelTitle,
+                icon: aiPanelIcon,
+                closeable: true,
+                onRestore: () => panelStore.restoreFromDock(),
+                onClose: () => panelStore.closePanel($panelActiveKey),
+              },
+            ];
 
       return [...composeItems, ...panelItems];
-    }
+    },
   );
 
   const unsubscribers: Unsubscriber[] = [];
@@ -79,17 +84,17 @@ export function createDesktopContentController({
   unsubscribers.push(
     windowManager.windows.subscribe((list) => {
       enforceSingleActiveWindow(list);
-    })
+    }),
   );
 
   unsubscribers.push(
     overlayController.overlays.subscribe((stack) => {
-      const modalVisible = stack.some((entry) => entry.presenter === 'modal');
+      const modalVisible = stack.some((entry) => entry.presenter === "modal");
       if (modalVisible) {
         minimizeAllFloatingWindows();
         minimizePanel();
       }
-    })
+    }),
   );
 
   function ensureWindowMinimized(id: string, snapshot?: WindowDescriptor[]) {
@@ -123,7 +128,7 @@ export function createDesktopContentController({
 
   function enforceSingleActiveWindow(windowsSnapshot: WindowDescriptor[]) {
     const floating = windowsSnapshot.filter(
-      (win) => win.mode === WindowMode.FLOATING && win.kind === WindowKind.COMPOSE
+      (win) => win.mode === WindowMode.FLOATING && win.kind === WindowKind.COMPOSE,
     );
     const active = floating.filter((win) => !win.minimized);
     if (active.length <= 1) {
@@ -144,6 +149,6 @@ export function createDesktopContentController({
 
   return {
     dockItems,
-    dispose
+    dispose,
   };
 }

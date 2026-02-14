@@ -1,13 +1,12 @@
 package com.composerai.api.service;
 
 import com.composerai.api.service.email.HtmlConverter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Assembler for streaming markdown content.
@@ -16,7 +15,7 @@ import java.util.Optional;
  */
 final class MarkdownStreamAssembler {
     private static final Logger logger = LoggerFactory.getLogger(MarkdownStreamAssembler.class);
-    
+
     private final boolean debugEnabled;
     private final StringBuilder buffer = new StringBuilder();
     private final StringBuilder lineBuffer = new StringBuilder();
@@ -57,7 +56,10 @@ final class MarkdownStreamAssembler {
         }
         if (debugEnabled && logger.isDebugEnabled() && flushed != null) {
             for (String chunk : flushed) {
-                logger.debug("MarkdownAssembler flush chunk ({} chars): {}", chunk != null ? chunk.length() : 0, preview(chunk));
+                logger.debug(
+                        "MarkdownAssembler flush chunk ({} chars): {}",
+                        chunk != null ? chunk.length() : 0,
+                        preview(chunk));
             }
         }
         return flushed == null ? Collections.emptyList() : flushed;
@@ -78,7 +80,10 @@ final class MarkdownStreamAssembler {
         String chunk = renderMarkdown(markdown);
         insideCodeFence = false;
         if (debugEnabled && logger.isDebugEnabled()) {
-            logger.debug("MarkdownAssembler flush remainder ({} chars): {}", chunk != null ? chunk.length() : 0, preview(chunk));
+            logger.debug(
+                    "MarkdownAssembler flush remainder ({} chars): {}",
+                    chunk != null ? chunk.length() : 0,
+                    preview(chunk));
         }
         return chunk == null || chunk.isBlank() ? Optional.empty() : Optional.of(chunk);
     }

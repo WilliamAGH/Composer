@@ -7,10 +7,9 @@ package com.composerai.api.shared.ledger;
  * depending on {@link #endpoint()}.
  */
 public record LlmCallPayload(
-    String provider,
-    String endpoint,
-    String sdkType,
-    String requestJson,
-    String responseJson,
-    UsageMetrics usage
-) {}
+        String provider,
+        String endpoint,
+        String sdkType,
+        String requestJson,
+        String responseJson,
+        UsageMetrics usage) {}

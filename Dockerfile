@@ -1,15 +1,36 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi9/openjdk-21-runtime:latest
-ARG MAVEN_IMAGE=ghcr.io/carlossg/maven:3.9-eclipse-temurin-21
-ARG NODE_IMAGE=registry.access.redhat.com/ubi9/nodejs-20:latest
+##
+## Multi-stage build for ComposerAI (Svelte frontend + Spring Boot backend)
+## Note: Requires DOCKER_BUILDKIT=1 for cache mount support
+##
+ARG BASE_IMAGE=public.ecr.aws/docker/library/eclipse-temurin:25-jre
+ARG BUILD_IMAGE=public.ecr.aws/docker/library/eclipse-temurin:25-jdk
+ARG NODE_IMAGE=public.ecr.aws/docker/library/node:22.17.0-alpine
 
-# 1) Build frontend (Svelte) into Spring static path
+# ================================
+# 1) FRONTEND BUILD STAGE (Svelte)
+# ================================
 FROM ${NODE_IMAGE} AS fe_builder
 USER root
 WORKDIR /workspace
+
+# Upgrade npm to v10 (LTS) for lockfileVersion 3 compatibility
+# Note: npm 11 has a bug where it fails to find package-lock.json in Docker
+RUN npm install -g npm@10
+
+# Copy package files explicitly (glob patterns can fail in some Docker contexts)
+COPY frontend/email-client/package.json frontend/email-client/package.json
+COPY frontend/email-client/package-lock.json frontend/email-client/package-lock.json
+
+# Install dependencies with cache mount for faster rebuilds
+RUN --mount=type=cache,target=/root/.npm \
+    cd frontend/email-client && npm ci
+
 # Copy entire repo so Vite outDir relative path resolves to src/main/resources/static/...
 COPY . .
 WORKDIR /workspace/frontend/email-client
-RUN npm ci && npm run build && \
+
+# Build frontend
+RUN npm run build && \
     echo "Verifying frontend build output..." && \
     if [ ! -d ../../src/main/resources/static/app/email-client ]; then \
         echo "ERROR: Frontend build output directory missing - check npm build logs"; \
@@ -21,29 +42,70 @@ RUN npm ci && npm run build && \
         ls -la ../../src/main/resources/static/app/email-client/; \
     fi
 
-# 2) Build backend (Spring Boot) with Maven, including built frontend assets
-FROM ${MAVEN_IMAGE} AS builder
+# ================================
+# 2) BACKEND BUILD STAGE (Spring Boot)
+# ================================
+FROM ${BUILD_IMAGE} AS builder
 WORKDIR /workspace
-COPY pom.xml .
-RUN --mount=type=cache,target=/root/.m2 mvn -q -B -DskipTests dependency:go-offline
-COPY src src
-# Overlay built FE assets into resources before packaging so they are bundled in the JAR
-COPY --from=fe_builder /workspace/src/main/resources/static/app/email-client /workspace/src/main/resources/static/app/email-client
-RUN --mount=type=cache,target=/root/.m2 \
-    echo "Verifying frontend assets before Maven build..." && \
-    ls -la /workspace/src/main/resources/static/app/email-client/ && \
-    mvn -q -B -DskipTests package
 
-# 3) Runtime image
+# 1. Gradle wrapper (rarely changes)
+COPY gradlew .
+COPY gradle/ gradle/
+RUN chmod +x gradlew
+
+# 2. Build configuration (changes occasionally)
+COPY build.gradle.kts settings.gradle.kts gradle.properties ./
+
+# 3. Download dependencies with cache mount
+RUN --mount=type=cache,target=/root/.gradle \
+    ./gradlew dependencies --no-daemon --quiet
+
+# 4. Copy source and frontend assets
+COPY src src
+COPY --from=fe_builder /workspace/src/main/resources/static/app/email-client /workspace/src/main/resources/static/app/email-client
+
+# 5. Build JAR with cache mount
+RUN --mount=type=cache,target=/root/.gradle \
+    echo "Verifying frontend assets before Gradle build..." && \
+    ls -la /workspace/src/main/resources/static/app/email-client/ && \
+    ./gradlew bootJar --no-daemon -x test
+
+# ================================
+# 3) RUNTIME STAGE
+# ================================
 FROM ${BASE_IMAGE} AS runtime
+
+# 1. System packages (never changes) - FIRST for maximum cache reuse
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. Create non-root user (never changes)
+RUN groupadd --system app \
+    && useradd --uid 10001 --gid app --home-dir /app --no-create-home --shell /usr/sbin/nologin app
+
 WORKDIR /app
-ENV SPRING_PROFILES_ACTIVE=prod
-ENV JAVA_OPTS=""
-# Copy application JAR
-COPY --from=builder /workspace/target/*.jar /app/app.jar
-# Copy static assets (also present inside the JAR) for optional external serving
-COPY --from=builder /workspace/src/main/resources/static /app/static
-# Copy bundled sample email data for the email client view
+
+# 3. Static data (rarely changes)
 COPY data /app/data
-EXPOSE 8080
-ENTRYPOINT ["/bin/sh","-c","java ${JAVA_OPTS} -jar /app/app.jar"]
+
+# 4. Environment (rarely changes)
+ENV SPRING_PROFILES_ACTIVE=prod
+ENV PORT=8090
+ENV JAVA_OPTS=""
+
+# 5. Application JAR (changes every build) - LAST for optimal caching
+COPY --from=builder /workspace/build/libs/*.jar /app/app.jar
+
+# 6. Copy static assets (also present inside the JAR) for optional external serving
+COPY --from=builder /workspace/src/main/resources/static /app/static
+
+# 7. Finalize permissions
+RUN chown -R app:app /app
+USER app
+
+EXPOSE 8090
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -fsS --connect-timeout 2 --max-time 3 http://localhost:${PORT}/actuator/health || exit 1
+
+ENTRYPOINT ["/bin/sh","-c","exec java ${JAVA_OPTS} -jar /app/app.jar"]

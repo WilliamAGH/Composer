@@ -8,8 +8,4 @@ import com.composerai.api.model.EmailMessage;
  * up the same markdown shown in the OpenAI request ({@code com.openai.models.chat.completions.
  * ChatCompletionCreateParams}).
  */
-public record EmailObject(
-    String emailId,
-    String storageKey,
-    EmailMessage snapshot
-) {}
+public record EmailObject(String emailId, String storageKey, EmailMessage snapshot) {}

@@ -290,15 +290,6 @@
     transition: color 0.15s ease;
   }
 
-  .nav-pill:hover {
-    background: rgba(0, 0, 0, 0.04);
-  }
-
-  .nav-pill:hover .nav-pill-icon,
-  .nav-pill:hover .nav-pill-label {
-    color: #1c1917;
-  }
-
   /**
    * Active state - subtle warm highlight
    */
@@ -313,6 +304,15 @@
   .nav-pill--active .nav-pill-label {
     color: #1c1917;
     font-weight: 500;
+  }
+
+  .nav-pill:not(.nav-pill--active):hover {
+    background: rgba(0, 0, 0, 0.04);
+  }
+
+  .nav-pill:not(.nav-pill--active):hover .nav-pill-icon,
+  .nav-pill:not(.nav-pill--active):hover .nav-pill-label {
+    color: #1c1917;
   }
 
   /**

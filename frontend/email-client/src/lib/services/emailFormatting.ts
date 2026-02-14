@@ -14,17 +14,17 @@ declare global {
 }
 
 export function escapeHtmlContent(value: string | null | undefined) {
-  const safeValue = isNil(value) ? '' : String(value);
+  const safeValue = isNil(value) ? "" : String(value);
   if (window.Composer?.escapeHtml) {
     return window.Composer.escapeHtml(safeValue);
   }
   // Fallback escaping to prevent XSS
   return safeValue
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 /**
@@ -32,7 +32,7 @@ export function escapeHtmlContent(value: string | null | undefined) {
  * Falls back to safe HTML escaping to prevent XSS when the helper is unavailable.
  */
 export function renderMarkdownContent(markdown: string | null | undefined) {
-  const safeMarkdown = isNil(markdown) ? '' : String(markdown);
+  const safeMarkdown = isNil(markdown) ? "" : String(markdown);
   if (window.Composer?.renderMarkdown) {
     return window.Composer.renderMarkdown(safeMarkdown);
   }
@@ -40,7 +40,7 @@ export function renderMarkdownContent(markdown: string | null | undefined) {
   return escapeHtmlContent(safeMarkdown);
 }
 
-const relativeTimeFormatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 
 function parseDate(value: string | Date | null | undefined) {
   if (!value) return null;
@@ -51,9 +51,12 @@ function parseDate(value: string | Date | null | undefined) {
 /**
  * Returns a friendly “x minutes ago” string or falls back to the provided label.
  */
-export function formatRelativeTimestamp(primary?: string | Date | null, fallback?: string | Date | null) {
+export function formatRelativeTimestamp(
+  primary?: string | Date | null,
+  fallback?: string | Date | null,
+) {
   const date = parseDate(primary) || parseDate(fallback);
-  if (!date) return escapeHtmlContent(fallback ? String(fallback) : '');
+  if (!date) return escapeHtmlContent(fallback ? String(fallback) : "");
   const now = new Date();
   const diffMs = date.getTime() - now.getTime();
   const minute = 60 * 1000;
@@ -62,27 +65,30 @@ export function formatRelativeTimestamp(primary?: string | Date | null, fallback
   const month = 30 * day;
   const year = 365 * day;
   const absMs = Math.abs(diffMs);
-  if (absMs < minute) return 'just now';
-  if (absMs < hour) return relativeTimeFormatter.format(Math.round(diffMs / minute), 'minute');
-  if (absMs < day) return relativeTimeFormatter.format(Math.round(diffMs / hour), 'hour');
-  if (absMs < month) return relativeTimeFormatter.format(Math.round(diffMs / day), 'day');
-  if (absMs < year) return relativeTimeFormatter.format(Math.round(diffMs / month), 'month');
-  return relativeTimeFormatter.format(Math.round(diffMs / year), 'year');
+  if (absMs < minute) return "just now";
+  if (absMs < hour) return relativeTimeFormatter.format(Math.round(diffMs / minute), "minute");
+  if (absMs < day) return relativeTimeFormatter.format(Math.round(diffMs / hour), "hour");
+  if (absMs < month) return relativeTimeFormatter.format(Math.round(diffMs / day), "day");
+  if (absMs < year) return relativeTimeFormatter.format(Math.round(diffMs / month), "month");
+  return relativeTimeFormatter.format(Math.round(diffMs / year), "year");
 }
 
 /**
  * Formats a full timestamp for the email detail header.
  */
-export function formatFullTimestamp(primary?: string | Date | null, fallback?: string | Date | null) {
+export function formatFullTimestamp(
+  primary?: string | Date | null,
+  fallback?: string | Date | null,
+) {
   const date = parseDate(primary) || parseDate(fallback);
-  if (!date) return escapeHtmlContent(fallback ? String(fallback) : '');
+  if (!date) return escapeHtmlContent(fallback ? String(fallback) : "");
   return date.toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-    hour: 'numeric',
-    minute: '2-digit',
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "numeric",
+    minute: "2-digit",
     hour12: true,
-    timeZoneName: 'short'
+    timeZoneName: "short",
   });
 }

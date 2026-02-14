@@ -1,7 +1,6 @@
 package com.composerai.api.domain.model;
 
 import com.composerai.api.model.EmailMessage;
-
 import java.util.List;
 import java.util.Map;
 
@@ -11,10 +10,7 @@ import java.util.Map;
  * cheaply derive per-session overrides without re-reading from disk.
  */
 public record MailboxSnapshot(
-    String mailboxId,
-    List<EmailMessage> messages,
-    Map<MailFolderIdentifier, Integer> baselineCounts
-) {
+        String mailboxId, List<EmailMessage> messages, Map<MailFolderIdentifier, Integer> baselineCounts) {
 
     public MailboxSnapshot {
         if (mailboxId == null || mailboxId.isBlank()) {

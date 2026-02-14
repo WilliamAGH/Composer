@@ -34,15 +34,8 @@ public class MailboxFolderTransitionService {
     private static final MailFolderIdentifier SENT = MailFolderIdentifier.of("sent");
     private static final MailFolderIdentifier DRAFTS = MailFolderIdentifier.of("drafts");
 
-    private static final Set<String> EXCLUSIVE_LABELS = Set.of(
-        "archive",
-        "archived",
-        "trash",
-        "deleted",
-        "sent",
-        "drafts",
-        "draft"
-    );
+    private static final Set<String> EXCLUSIVE_LABELS =
+            Set.of("archive", "archived", "trash", "deleted", "sent", "drafts", "draft");
     private static final Set<String> SUPPORTED_FOLDERS = Set.of("inbox", "archive", "trash", "sent", "drafts");
 
     /**
@@ -88,9 +81,7 @@ public class MailboxFolderTransitionService {
      * Applies any stored placements to the snapshot and returns a new resolved list of emails.
      */
     public List<EmailMessage> applyPlacements(
-        MailboxSnapshot snapshot,
-        Map<MessageId, MessageFolderPlacement> placements
-    ) {
+            MailboxSnapshot snapshot, Map<MessageId, MessageFolderPlacement> placements) {
         Objects.requireNonNull(snapshot, "snapshot is required");
         Map<MessageId, MessageFolderPlacement> placementMap = placements == null ? Map.of() : placements;
 
@@ -158,15 +149,10 @@ public class MailboxFolderTransitionService {
         if (placements == null || placements.isEmpty()) {
             return Map.of();
         }
-        return placements
-            .entrySet()
-            .stream()
-            .collect(
-                Collectors.toUnmodifiableMap(
-                    entry -> entry.getKey().toString(), 
-                    entry -> entry.getValue().folderIdentifier().value()
-                )
-            );
+        return placements.entrySet().stream()
+                .collect(Collectors.toUnmodifiableMap(
+                        entry -> entry.getKey().toString(),
+                        entry -> entry.getValue().folderIdentifier().value()));
     }
 
     /**
@@ -176,11 +162,9 @@ public class MailboxFolderTransitionService {
         if (effectiveFolders == null || effectiveFolders.values().isEmpty()) {
             return Map.of();
         }
-        return effectiveFolders
-            .values()
-            .entrySet()
-            .stream()
-            .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, entry -> entry.getValue().value()));
+        return effectiveFolders.values().entrySet().stream()
+                .collect(Collectors.toUnmodifiableMap(
+                        Map.Entry::getKey, entry -> entry.getValue().value()));
     }
 
     /**
@@ -205,16 +189,13 @@ public class MailboxFolderTransitionService {
     }
 
     public EffectiveFoldersMap deriveEffectiveFolders(
-        MailboxSnapshot snapshot,
-        Map<MessageId, MessageFolderPlacement> placements
-    ) {
+            MailboxSnapshot snapshot, Map<MessageId, MessageFolderPlacement> placements) {
         Map<String, MailFolderIdentifier> folderMap = new HashMap<>();
         Map<MessageId, MessageFolderPlacement> safePlacements = placements == null ? Map.of() : placements;
         for (EmailMessage message : snapshot.messages()) {
             MessageFolderPlacement placement = safePlacements.get(new MessageId(message.id()));
-            MailFolderIdentifier effective = placement != null
-                ? placement.folderIdentifier()
-                : deriveBaselineFolder(message);
+            MailFolderIdentifier effective =
+                    placement != null ? placement.folderIdentifier() : deriveBaselineFolder(message);
             folderMap.put(message.id(), effective);
         }
         return new EffectiveFoldersMap(folderMap);
@@ -224,13 +205,11 @@ public class MailboxFolderTransitionService {
         if (message == null || message.labels() == null) {
             return List.of();
         }
-        return message
-            .labels()
-            .stream()
-            .filter(Objects::nonNull)
-            .map(label -> label.trim().toLowerCase(Locale.US))
-            .filter(label -> !label.isBlank())
-            .collect(Collectors.toCollection(ArrayList::new));
+        return message.labels().stream()
+                .filter(Objects::nonNull)
+                .map(label -> label.trim().toLowerCase(Locale.US))
+                .filter(label -> !label.isBlank())
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     private boolean isArchiveLabel(String label) {

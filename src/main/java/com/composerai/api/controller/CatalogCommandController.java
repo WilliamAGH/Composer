@@ -37,8 +37,8 @@ public class CatalogCommandController {
      * {@link ChatService}. The path parameter acts as the source of truth for the selected command.
      */
     @PostMapping("/{commandKey}/execute")
-    public ResponseEntity<ChatResponse> executeCatalogCommand(@PathVariable String commandKey,
-                                                              @Valid @RequestBody ChatRequest request) {
+    public ResponseEntity<ChatResponse> executeCatalogCommand(
+            @PathVariable String commandKey, @Valid @RequestBody ChatRequest request) {
         String normalizedKey = StringUtils.safe(commandKey).trim();
         if (normalizedKey.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "commandKey is required");
@@ -59,12 +59,11 @@ public class CatalogCommandController {
     }
 
     public record DraftContextRequest(
-        @NotBlank(message = "contextId is required")
-        @Size(max = 200, message = "contextId cannot exceed 200 characters")
-        String contextId,
+            @NotBlank(message = "contextId is required")
+            @Size(max = 200, message = "contextId cannot exceed 200 characters")
+            String contextId,
 
-        @NotBlank(message = "content is required")
-        @Size(max = 20000, message = "content cannot exceed 20000 characters")
-        String content
-    ) {}
+            @NotBlank(message = "content is required")
+            @Size(max = 20000, message = "content cannot exceed 20000 characters")
+            String content) {}
 }

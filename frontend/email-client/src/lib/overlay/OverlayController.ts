@@ -1,5 +1,11 @@
-import { derived, type Readable } from 'svelte/store';
-import { createOverlayRegistry, type OverlayDefinition, type OverlayInstance, type OverlayPresenter, type OverlaySourceConfig } from './OverlayRegistry';
+import { derived, type Readable } from "svelte/store";
+import {
+  createOverlayRegistry,
+  type OverlayDefinition,
+  type OverlayInstance,
+  type OverlayPresenter,
+  type OverlaySourceConfig,
+} from "./OverlayRegistry";
 
 export interface OverlayStackItem extends OverlayInstance {
   key: string;
@@ -26,16 +32,15 @@ export function createOverlayController(): OverlayController {
             ...instance,
             key: entry.key,
             presenter: entry.presenter,
-            priority: entry.priority
-          })
-        )
-      )
+            priority: entry.priority,
+          }),
+        ),
+      ),
   );
 
   return {
     registerOverlay: registry.register,
     unregisterOverlay: registry.unregister,
-    overlays
+    overlays,
   };
 }
-

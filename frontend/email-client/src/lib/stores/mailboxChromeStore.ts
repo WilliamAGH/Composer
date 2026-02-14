@@ -1,10 +1,11 @@
-import { derived, writable, get, type Readable } from 'svelte/store';
-import type { MailboxDataStore } from './mailboxDataStore';
+import { derived, writable, get, type Readable } from "svelte/store";
+import type { MailboxDataStore } from "./mailboxDataStore";
+import type { FrontendEmailMessage } from "./mailboxFolderLabels";
 
 export interface MailboxChromeStore {
   stores: {
     selectedEmailId: Readable<string | null>;
-    selectedEmail: Readable<any>;
+    selectedEmail: Readable<FrontendEmailMessage | null>;
     sidebarOpen: Readable<boolean>;
     drawerMode: Readable<boolean>;
     drawerVisible: Readable<boolean>;
@@ -24,9 +25,12 @@ interface Options {
   defaultSidebarOpen?: boolean;
 }
 
-export function createMailboxChromeStore({ dataStore, defaultSidebarOpen = true }: Options): MailboxChromeStore {
+export function createMailboxChromeStore({
+  dataStore,
+  defaultSidebarOpen = true,
+}: Options): MailboxChromeStore {
   if (!dataStore) {
-    throw new Error('mailboxDataStore is required to build the chrome store');
+    throw new Error("mailboxDataStore is required to build the chrome store");
   }
 
   const selectedEmailId = writable<string | null>(null);
@@ -34,10 +38,13 @@ export function createMailboxChromeStore({ dataStore, defaultSidebarOpen = true 
   const drawerMode = writable<boolean>(false);
   const drawerVisible = writable<boolean>(false);
 
-  const selectedEmail = derived([selectedEmailId, dataStore.stores.emails], ([$selectedId, $emails]) => {
-    if (!$selectedId || !Array.isArray($emails)) return null;
-    return $emails.find((email) => email.id === $selectedId) || null;
-  });
+  const selectedEmail = derived(
+    [selectedEmailId, dataStore.stores.emails],
+    ([$selectedId, $emails]) => {
+      if (!$selectedId || !Array.isArray($emails)) return null;
+      return $emails.find((email) => email.id === $selectedId) || null;
+    },
+  );
 
   function selectEmailById(id: string | null) {
     selectedEmailId.set(id || null);
@@ -94,7 +101,7 @@ export function createMailboxChromeStore({ dataStore, defaultSidebarOpen = true 
       selectedEmail,
       sidebarOpen: { subscribe: sidebarOpen.subscribe },
       drawerMode: { subscribe: drawerMode.subscribe },
-      drawerVisible: { subscribe: drawerVisible.subscribe }
+      drawerVisible: { subscribe: drawerVisible.subscribe },
     },
     selectEmailById,
     clearSelection,
@@ -103,7 +110,6 @@ export function createMailboxChromeStore({ dataStore, defaultSidebarOpen = true 
     setDrawerMode,
     setDrawerVisible,
     openDrawer,
-    closeDrawer
+    closeDrawer,
   };
 }
-

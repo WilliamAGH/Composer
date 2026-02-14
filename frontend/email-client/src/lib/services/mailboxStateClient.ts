@@ -1,30 +1,17 @@
-import { getJsonWithNonce, postJsonWithNonce } from './sessionNonceClient';
-import { ensureMailboxSessionToken, getMailboxSessionToken } from './mailboxSessionService';
-import type { EmailMessage } from '../../main';
+/**
+ * Mailbox state API client with Zod-validated responses.
+ * All responses are validated at runtime - validation failures are logged with full context.
+ */
 
-export interface MailboxStateSnapshotResult {
-  mailboxId: string;
-  messages: EmailMessage[];
-  folderCounts: Record<string, number>;
-  placements: Record<string, string>;
-  effectiveFolders: Record<string, string>;
-  selectedEmailId?: string | null;
-  emails?: EmailMessage[];
-}
-
-export interface MessageMoveResult {
-  mailboxId: string;
-  messageId: string;
-  previousFolderId: string | null;
-  currentFolderId: string | null;
-  updatedMessage: EmailMessage | null;
-  folderCounts: Record<string, number>;
-  placements: Record<string, string>;
-  messages: EmailMessage[];
-  effectiveFolders: Record<string, string>;
-  selectedEmailId?: string | null;
-  emails?: EmailMessage[];
-}
+import { getJsonValidated, postJsonValidated } from "./sessionNonceClient";
+import { ensureMailboxSessionToken, getMailboxSessionToken } from "./mailboxSessionService";
+import {
+  MailboxStateSnapshotSchema,
+  MessageMoveResultSchema,
+  type MailboxStateSnapshot,
+  type MessageMoveResult,
+} from "../schemas/mailboxSchemas";
+import type { ValidationResult } from "../validation/result";
 
 interface MoveMailboxMessageParams {
   mailboxId?: string;
@@ -34,25 +21,42 @@ interface MoveMailboxMessageParams {
 
 function withSessionParam(url: string) {
   const session = ensureMailboxSessionToken();
-  const delimiter = url.includes('?') ? '&' : '?';
+  const delimiter = url.includes("?") ? "&" : "?";
   const param = `session=${encodeURIComponent(session)}`;
   return `${url}${delimiter}${param}`;
 }
 
-export async function fetchMailboxStateSnapshot(mailboxId?: string | null) {
-  const mailbox = mailboxId || 'primary';
+/**
+ * Fetches mailbox state with Zod validation.
+ * Returns discriminated union - callers MUST check success before using data.
+ */
+export async function fetchMailboxStateSnapshot(
+  mailboxId?: string | null,
+): Promise<ValidationResult<MailboxStateSnapshot>> {
+  const mailbox = mailboxId || "primary";
   const baseUrl = `/api/mailboxes/${encodeURIComponent(mailbox)}/state`;
   const url = withSessionParam(baseUrl);
-  return getJsonWithNonce<MailboxStateSnapshotResult>(url);
+  return getJsonValidated(url, MailboxStateSnapshotSchema, `mailbox-state:${mailbox}`);
 }
 
-export async function moveMailboxMessage({ mailboxId, messageId, targetFolderId }: MoveMailboxMessageParams) {
-  const mailbox = mailboxId || 'primary';
+/**
+ * Moves a message to a target folder with Zod validation.
+ * Returns discriminated union - callers MUST check success before using data.
+ */
+export async function moveMailboxMessage({
+  mailboxId,
+  messageId,
+  targetFolderId,
+}: MoveMailboxMessageParams): Promise<ValidationResult<MessageMoveResult>> {
+  const mailbox = mailboxId || "primary";
   const sessionId = getMailboxSessionToken() || ensureMailboxSessionToken();
   const url = `/api/mailboxes/${encodeURIComponent(mailbox)}/messages/${encodeURIComponent(messageId)}/move`;
-  return postJsonWithNonce<MessageMoveResult>(url, {
+  return postJsonValidated(url, MessageMoveResultSchema, `move-message:${messageId}`, {
     mailboxId: mailbox,
     targetFolderId,
-    sessionId
+    sessionId,
   });
 }
+
+// Re-export types for callers
+export type { MailboxStateSnapshot, MessageMoveResult };

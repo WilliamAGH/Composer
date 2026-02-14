@@ -1,12 +1,11 @@
 package com.composerai.api.controller;
 
+import java.time.LocalDateTime;
+import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.time.LocalDateTime;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
@@ -24,9 +23,11 @@ public class SystemController {
 
     private Map<String, String> statusBody(String statusValue) {
         return Map.of(
-            "status", statusValue,
-            "service", "Composer API",
-            "timestamp", LocalDateTime.now().toString()
-        );
+                "status",
+                statusValue,
+                "service",
+                "Composer API",
+                "timestamp",
+                LocalDateTime.now().toString());
     }
 }

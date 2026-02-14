@@ -1,17 +1,86 @@
 {
-  "rules": {
-    "no-debugger": "error",
-    "no-console": "warn",
-    "no-unused-vars": "warn",
-    "no-unused-expressions": "warn",
-    "no-unused-labels": "error",
-    "no-unused-private-class-members": "warn",
-    "no-unreachable": "error",
-    "eqeqeq": "error"
-  },
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
   "env": {
     "browser": true,
     "es2021": true,
     "node": true
-  }
+  },
+  "rules": {
+    "typescript/no-unsafe-type-assertion": "off",
+    "typescript/no-redundant-type-constituents": "warn",
+    "typescript/no-unnecessary-type-assertion": "warn",
+    "typescript/no-unnecessary-type-arguments": "warn",
+    "typescript/no-floating-promises": "off",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_",
+        "ignoreRestSiblings": true
+      }
+    ],
+    "typescript/no-misused-promises": "error",
+    "no-unused-vars": "off",
+    "no-unused-labels": "error",
+    "no-unused-private-class-members": "error",
+    "no-unused-expressions": [
+      "error",
+      {
+        "allowShortCircuit": true,
+        "allowTernary": true,
+        "allowTaggedTemplates": true
+      }
+    ],
+    "no-unreachable": "error",
+    "no-empty": ["error", { "allowEmptyCatch": false }],
+    "no-empty-pattern": "error",
+    "default-param-last": "error",
+    "prefer-rest-params": "error",
+    "prefer-const": "error",
+    "eqeqeq": ["error", "always", { "null": "ignore" }],
+    "no-debugger": "error",
+    "no-console": "warn",
+    "no-var": "error",
+    "no-return-await": "error",
+    "no-throw-literal": "error",
+    "import/order": "error",
+    "import/no-unassigned-import": "warn",
+    "import/no-mutable-exports": "error",
+    "import/no-duplicates": "error",
+    "import/no-empty-named-blocks": "error",
+    "import/no-cycle": "warn",
+    "import/no-self-import": "error",
+    "unicorn/no-useless-length-check": "error",
+    "unicorn/no-useless-spread": "error",
+    "unicorn/no-unnecessary-await": "error",
+    "unicorn/prefer-array-find": "error",
+    "unicorn/prefer-array-flat": "error",
+    "unicorn/prefer-array-flat-map": "error",
+    "unicorn/prefer-includes": "error",
+    "unicorn/prefer-string-starts-ends-with": "error",
+    "promise/catch-or-return": "error",
+    "promise/no-return-wrap": "error",
+    "promise/param-names": "error"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.svelte"],
+      "rules": {
+        "import/no-mutable-exports": "off"
+      }
+    },
+    {
+      "files": ["src/main.ts", "src/App.svelte"],
+      "rules": {
+        "import/no-unassigned-import": "off"
+      }
+    }
+  ],
+  "ignorePatterns": [
+    "node_modules/**",
+    "dist/**",
+    "src/generated/**"
+  ]
 }

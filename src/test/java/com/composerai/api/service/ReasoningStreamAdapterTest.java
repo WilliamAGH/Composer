@@ -1,13 +1,12 @@
 package com.composerai.api.service;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.openai.models.responses.ResponseReasoningSummaryTextDeltaEvent;
 import com.openai.models.responses.ResponseReasoningTextDeltaEvent;
 import com.openai.models.responses.ResponseStreamEvent;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 class ReasoningStreamAdapterTest {
 
@@ -21,12 +20,12 @@ class ReasoningStreamAdapterTest {
     @Test
     void extractMapsSummaryTextDelta() {
         ResponseReasoningSummaryTextDeltaEvent deltaEvent = ResponseReasoningSummaryTextDeltaEvent.builder()
-            .delta("Step 1: gather context.")
-            .itemId("item-1")
-            .outputIndex(0L)
-            .sequenceNumber(1L)
-            .summaryIndex(0L)
-            .build();
+                .delta("Step 1: gather context.")
+                .itemId("item-1")
+                .outputIndex(0L)
+                .sequenceNumber(1L)
+                .summaryIndex(0L)
+                .build();
 
         ResponseStreamEvent streamEvent = ResponseStreamEvent.ofReasoningSummaryTextDelta(deltaEvent);
 
@@ -44,7 +43,7 @@ class ReasoningStreamAdapterTest {
         assertTrue(message.payload() instanceof ReasoningStreamAdapter.SummaryTextPayload);
 
         ReasoningStreamAdapter.SummaryTextPayload payload =
-            (ReasoningStreamAdapter.SummaryTextPayload) message.payload();
+                (ReasoningStreamAdapter.SummaryTextPayload) message.payload();
         assertEquals("item-1", payload.itemId());
         assertEquals(1L, payload.sequenceNumber());
         assertEquals(0L, payload.summaryIndex());
@@ -54,12 +53,12 @@ class ReasoningStreamAdapterTest {
     @Test
     void extractMapsReasoningTextDelta() {
         ResponseReasoningTextDeltaEvent textDeltaEvent = ResponseReasoningTextDeltaEvent.builder()
-            .contentIndex(0L)
-            .delta("Evaluating the email tone.")
-            .itemId("item-2")
-            .outputIndex(0L)
-            .sequenceNumber(2L)
-            .build();
+                .contentIndex(0L)
+                .delta("Evaluating the email tone.")
+                .itemId("item-2")
+                .outputIndex(0L)
+                .sequenceNumber(2L)
+                .build();
 
         ResponseStreamEvent streamEvent = ResponseStreamEvent.ofReasoningTextDelta(textDeltaEvent);
 
@@ -76,8 +75,7 @@ class ReasoningStreamAdapterTest {
         assertEquals(Long.valueOf(2L), message.step());
         assertTrue(message.payload() instanceof ReasoningStreamAdapter.TextPayload);
 
-        ReasoningStreamAdapter.TextPayload payload =
-            (ReasoningStreamAdapter.TextPayload) message.payload();
+        ReasoningStreamAdapter.TextPayload payload = (ReasoningStreamAdapter.TextPayload) message.payload();
         assertEquals("item-2", payload.itemId());
         assertEquals(2L, payload.sequenceNumber());
         assertEquals("Evaluating the email tone.", payload.content());
@@ -86,12 +84,12 @@ class ReasoningStreamAdapterTest {
     @Test
     void thinkingPhaseIncludesEffortLabelWhenProvided() {
         ResponseReasoningSummaryTextDeltaEvent partAddedEvent = ResponseReasoningSummaryTextDeltaEvent.builder()
-            .delta("Brainstorming next step")
-            .itemId("item-5")
-            .outputIndex(0L)
-            .sequenceNumber(3L)
-            .summaryIndex(1L)
-            .build();
+                .delta("Brainstorming next step")
+                .itemId("item-5")
+                .outputIndex(0L)
+                .sequenceNumber(3L)
+                .summaryIndex(1L)
+                .build();
 
         var extracted = ReasoningStreamAdapter.extract(ResponseStreamEvent.ofReasoningSummaryTextDelta(partAddedEvent));
         assertEquals(1, extracted.size());
@@ -101,5 +99,4 @@ class ReasoningStreamAdapterTest {
         assertEquals(ReasoningStreamAdapter.Phase.THINKING, message.phase());
         assertNull(message.step());
     }
-
 }

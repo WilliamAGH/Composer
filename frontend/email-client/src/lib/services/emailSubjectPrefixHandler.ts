@@ -10,24 +10,24 @@
 
 /** Build a normalized reply subject: one "Re:" first, keep one "Fwd:" if it existed. */
 export function normalizeReplySubject(original: string | null | undefined) {
-  return buildNormalizedSubject(original, 're');
+  return buildNormalizedSubject(original, "re");
 }
 
 /** Build a normalized forward subject: one "Fwd:" first, keep one "Re:" if it existed. */
 export function normalizeForwardSubject(original: string | null | undefined) {
-  return buildNormalizedSubject(original, 'fwd');
+  return buildNormalizedSubject(original, "fwd");
 }
 
 function buildNormalizedSubject(original: string | null | undefined, target: string) {
-  const base = typeof original === 'string' ? original.trim() : '';
-  if (!base) return '';
+  const base = typeof original === "string" ? original.trim() : "";
+  if (!base) return "";
   const { tokens, subject } = extractLeadingPrefixes(base);
   const normalized = dedupe(tokens.map(normalizeToken));
   const targetNorm = normalizeToken(target);
 
   // Rebuild chain: target first, then other unique tokens (excluding target)
   const finalTokens = [targetNorm, ...normalized.filter((t) => t !== targetNorm)];
-  return `${finalTokens.map(toLabel).join(' ')} ${subject}`.trim();
+  return `${finalTokens.map(toLabel).join(" ")} ${subject}`.trim();
 }
 
 function extractLeadingPrefixes(text: string) {
@@ -45,20 +45,20 @@ function extractLeadingPrefixes(text: string) {
     s = s.slice(m[0].length);
   }
   // Trim any leading separators left behind (defensive)
-  s = s.replace(/^(\s*[:-])+\s*/, '');
+  s = s.replace(/^(\s*[:-])+\s*/, "");
   return { tokens, subject: s.trim() };
 }
 
 function normalizeToken(t: string) {
-  const v = String(t || '').toLowerCase();
-  if (v === 're' || v === 'r') return 're';
-  if (v === 'fw' || v === 'fwd') return 'fwd';
+  const v = String(t || "").toLowerCase();
+  if (v === "re" || v === "r") return "re";
+  if (v === "fw" || v === "fwd") return "fwd";
   return v;
 }
 
 function toLabel(t: string) {
-  if (t === 're') return 'Re:';
-  if (t === 'fwd') return 'Fwd:';
+  if (t === "re") return "Re:";
+  if (t === "fwd") return "Fwd:";
   return `${t}:`;
 }
 

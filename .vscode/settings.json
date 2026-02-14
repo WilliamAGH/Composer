@@ -8,18 +8,15 @@
   ],
   "java.configuration.updateBuildConfiguration": "automatic",
   "java.compile.nullAnalysis.mode": "disabled",
-  "java.import.maven.enabled": true,
   "java.configuration.runtimes": [
     {
-      "name": "JavaSE-21",
-      "path": "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home",
+      "name": "JavaSE-25",
+      "path": "/Library/Java/JavaVirtualMachines/jdk-25.jdk/Contents/Home",
       "default": true
     }
   ],
   "java.server.launchMode": "Standard",
   "java.autobuild.enabled": true,
-  "maven.view": "hierarchical",
-  "maven.pomfile.autoUpdateEffectivePOM": true,
   "spring-boot.ls.problem.version-validation.UPDATE_LATEST_MINOR_VERSION": "IGNORE",
   "spring-boot.ls.problem.version-validation.UPDATE_LATEST_PATCH_VERSION": "IGNORE",
   "markdownlint.ignorePatterns": [
