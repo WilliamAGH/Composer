@@ -89,9 +89,8 @@ class VectorSearchServiceTest {
                 Futures.immediateFailedFuture(new RuntimeException("boom"));
         when(qdrantClient.searchAsync(any(SearchPoints.class))).thenReturn(failedFuture);
 
-        IllegalStateException thrown = assertThrows(
-                IllegalStateException.class,
-                () -> service.searchSimilarEmails(new float[] {0.2f}, 5));
+        IllegalStateException thrown =
+                assertThrows(IllegalStateException.class, () -> service.searchSimilarEmails(new float[] {0.2f}, 5));
 
         assertNotNull(thrown.getCause());
         assertEquals("boom", thrown.getCause().getMessage());
