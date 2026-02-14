@@ -81,7 +81,7 @@ lint:
 	@echo "📦 SpotBugs (Java static analysis)..."
 	@./gradlew spotbugsMain
 	@if [ -f build/reports/spotbugs/main.xml ]; then \
-		BUGS=$$(grep -o "total_bugs='[0-9]*'" build/reports/spotbugs/main.xml | grep -o "[0-9]*" | head -1); \
+		BUGS=$$(grep -oE "total_bugs=['\\\"][0-9]+['\\\"]" build/reports/spotbugs/main.xml | grep -oE "[0-9]+" | head -1); \
 		echo "   SpotBugs report: $$BUGS issues (see build/reports/spotbugs/main.xml)"; \
 	else \
 		echo "   ⚠️  No SpotBugs report generated"; \
