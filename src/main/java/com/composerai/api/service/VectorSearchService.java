@@ -81,19 +81,18 @@ public class VectorSearchService {
             log.info("Found {} similar emails for query", emailContexts.size());
             return emailContexts;
 
-        } catch (InterruptedException e) {
-            log.warn("Qdrant search interrupted", e);
+        } catch (InterruptedException interruptedException) {
             Thread.currentThread().interrupt();
-            return List.of();
-        } catch (TimeoutException e) {
-            log.warn("Qdrant search timed out after {} seconds", SEARCH_TIMEOUT_SECONDS);
-            return List.of();
-        } catch (ExecutionException e) {
-            log.warn("Qdrant search failed", e.getCause() != null ? e.getCause() : e);
-            return List.of();
-        } catch (Exception e) {
-            log.warn("Qdrant search error", e);
-            return List.of();
+            throw new IllegalStateException("Qdrant search interrupted", interruptedException);
+        } catch (TimeoutException timeoutException) {
+            throw new IllegalStateException(
+                    "Qdrant search timed out after " + SEARCH_TIMEOUT_SECONDS + " seconds", timeoutException);
+        } catch (ExecutionException executionException) {
+            Throwable failureCause =
+                    executionException.getCause() != null ? executionException.getCause() : executionException;
+            throw new IllegalStateException("Qdrant search failed", failureCause);
+        } catch (Exception unexpectedException) {
+            throw new IllegalStateException("Qdrant search error", unexpectedException);
         }
     }
 
