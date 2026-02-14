@@ -1,12 +1,15 @@
 {
   "ignores": [
+    "glob",
     "lucide-svelte",
     "postcss",
     "postcss-html",
     "stylelint",
     "stylelint-config-html",
     "stylelint-config-standard",
+    "oxfmt",
     "oxlint",
+    "oxlint-tsgolint",
     "@tailwindcss/forms",
     "@tailwindcss/postcss",
     "@tailwindcss/typography",
