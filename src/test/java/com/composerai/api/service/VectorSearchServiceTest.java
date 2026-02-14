@@ -2,6 +2,7 @@ package com.composerai.api.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -80,7 +81,7 @@ class VectorSearchServiceTest {
     }
 
     @Test
-    void searchSimilarEmails_whenSearchFails_returnsEmptyList() {
+    void searchSimilarEmails_whenSearchFails_throwsIllegalStateException() {
         properties.setEnabled(true);
         VectorSearchService service = new VectorSearchService(qdrantClient, properties);
 
@@ -88,9 +89,12 @@ class VectorSearchServiceTest {
                 Futures.immediateFailedFuture(new RuntimeException("boom"));
         when(qdrantClient.searchAsync(any(SearchPoints.class))).thenReturn(failedFuture);
 
-        List<?> result = service.searchSimilarEmails(new float[] {0.2f}, 5);
+        IllegalStateException thrown = assertThrows(
+                IllegalStateException.class,
+                () -> service.searchSimilarEmails(new float[] {0.2f}, 5));
 
-        assertTrue(result.isEmpty());
+        assertNotNull(thrown.getCause());
+        assertEquals("boom", thrown.getCause().getMessage());
     }
 
     @Test
