@@ -112,12 +112,26 @@ spotless {
     }
 }
 
-// Spotbugs configuration
+// SpotBugs configuration
+// TODO: After the Java 25/toolchain migration stabilizes, consider setting ignoreFailures=false again.
+// Keeping ignoreFailures=true for now, while still using excludeFilter=spotbugs-exclude.xml for known noise.
 spotbugs {
     ignoreFailures.set(true)
     effort.set(com.github.spotbugs.snom.Effort.MAX)
     reportLevel.set(com.github.spotbugs.snom.Confidence.HIGH)
     excludeFilter.set(file("spotbugs-exclude.xml"))
+}
+
+tasks.named<com.github.spotbugs.snom.SpotBugsTask>("spotbugsMain") {
+    reports.maybeCreate("xml").apply {
+        required.set(true)
+        outputLocation.set(layout.buildDirectory.file("reports/spotbugs/main.xml"))
+    }
+
+    // Reduce noise and keep the Makefile bug-count extraction stable.
+    reports.maybeCreate("html").required.set(false)
+    reports.maybeCreate("sarif").required.set(false)
+    reports.maybeCreate("text").required.set(false)
 }
 
 // Java 25 preview support if needed, though most things should just work with 25
