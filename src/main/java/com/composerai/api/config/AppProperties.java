@@ -46,12 +46,14 @@ public class AppProperties {
     @Getter
     @Setter
     public static class Cors {
+        private static final String DEFAULT_ALLOWED_ORIGINS =
+                "http://localhost:8090,http://localhost:5183,https://composer.email,https://dev.composer.email";
+
         /**
          * Comma-separated list of allowed origins. Example:
          * https://composer.email,https://dev.composer.email
          */
-        private String allowedOrigins =
-                "http://localhost:8090,http://localhost:5183,https://composer.email,https://dev.composer.email";
+        private String allowedOrigins = DEFAULT_ALLOWED_ORIGINS;
     }
 
     @Getter
