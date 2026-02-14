@@ -81,7 +81,7 @@ build/
 
 # Spring Boot specific
 application-local.properties
-ComposerAI.*
+Composer.*
 Code/email-backend.html.backup
 email-test.html
 

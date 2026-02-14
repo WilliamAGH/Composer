@@ -49,7 +49,7 @@
         "provider": "openai",
         "endpoint": "chat.completions",
         "sdk_type": "ChatCompletionCreateParams",
-        "request_json": "{\"model\":\"gpt-4.1-mini\",\"messages\":[{\"role\":\"system\",\"content\":\"You are ComposerAI. Cite email IDs when referencing messages.\"},{\"role\":\"user\",\"content\":\"Summarize the latest hiring update email. Email msg-001: === Email Metadata === ...\"}],\"temperature\":0.2}",
+        "request_json": "{\"model\":\"gpt-4.1-mini\",\"messages\":[{\"role\":\"system\",\"content\":\"You are Composer. Cite email IDs when referencing messages.\"},{\"role\":\"user\",\"content\":\"Summarize the latest hiring update email. Email msg-001: === Email Metadata === ...\"}],\"temperature\":0.2}",
         "response_json": "{\"id\":\"chatcmpl-abc\",\"created\":1737024013,\"choices\":[{\"index\":0,\"finish_reason\":\"stop\",\"message\":{\"role\":\"assistant\",\"content\":\"Email msg-001 highlights: offer accepted, VP interviews next week, CFO approval pending.\"}}],\"usage\":{\"prompt_tokens\":180,\"completion_tokens\":60,\"total_tokens\":240}}",
         "usage": {
           "prompt_tokens": 180,

@@ -112,7 +112,7 @@ public class UiSessionController {
 
     /**
      * Normalize origin/referer to scheme://host:port format for exact matching.
-     * Prevents prefix attacks like "https://composerai.app.evil.com" matching "https://composerai.app".
+     * Prevents prefix attacks like "https://composer.email.evil.com" matching "https://composer.email".
      */
     private String normalizeOrigin(String candidateOrigin) {
         if (StringUtils.isBlank(candidateOrigin)) {

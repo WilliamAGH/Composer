@@ -14,7 +14,7 @@ const CHAT_HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000;
 const DEFAULT_API_ERROR_MESSAGE = "Request failed";
 const SESSION_EXPIRED_MESSAGE = "Session expired";
 const RELOAD_ACTION_LABEL = "Reload page";
-const DEFAULT_RELOAD_URL = "https://composerai.app";
+const DEFAULT_RELOAD_URL = "https://composer.email";
 
 function extractErrorMessage(raw: unknown, status: number): string {
   if (typeof raw === "object" && raw !== null) {

@@ -1,5 +1,5 @@
 {
-  // Project-specific Zed settings for ComposerAI
+  // Project-specific Zed settings for Composer
   // Uses oxlint for JavaScript/Svelte linting
 
   "languages": {

@@ -1,4 +1,4 @@
-APP_NAME ?= composerai-api
+APP_NAME ?= composer-api
 TAG ?= local
 PORT ?= 8090
 PROFILE ?= local
