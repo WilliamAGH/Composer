@@ -79,7 +79,7 @@ dependencies {
 
     // Spotbugs
     spotbugs("com.github.spotbugs:spotbugs:4.9.8")
-    spotbugs("com.h3xstream.findsecbugs:findsecbugs-plugin:1.13.0")
+    spotbugsPlugins("com.h3xstream.findsecbugs:findsecbugs-plugin:1.13.0")
 }
 
 tasks.withType<Test> {
