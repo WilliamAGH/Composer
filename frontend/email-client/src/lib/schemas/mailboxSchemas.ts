@@ -22,7 +22,7 @@ export const MailboxStateSnapshotSchema = z
     selectedEmailId: z.string().nullish(),
     emails: z.array(EmailMessageSchema).optional(),
   })
-  .refine((data) => (data.messages?.length ?? 0) > 0 || (data.emails?.length ?? 0) > 0, {
+  .refine((data) => data.messages !== undefined || data.emails !== undefined, {
     message: "Expected messages or emails in mailbox snapshot",
   });
 
@@ -47,7 +47,7 @@ export const MessageMoveResultSchema = z
     selectedEmailId: z.string().nullish(),
     emails: z.array(EmailMessageSchema).optional(),
   })
-  .refine((data) => (data.messages?.length ?? 0) > 0 || (data.emails?.length ?? 0) > 0, {
+  .refine((data) => data.messages !== undefined || data.emails !== undefined, {
     message: "Expected messages or emails in message move result",
   });
 
