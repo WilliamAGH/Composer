@@ -180,7 +180,10 @@ public class VectorSearchService {
         try {
             return Optional.of(OffsetDateTime.parse(timestampStr).toLocalDateTime());
         } catch (DateTimeParseException e) {
-            log.trace("Timestamp '{}' is not OffsetDateTime format, trying LocalDateTime: {}", timestampStr, e.getMessage());
+            log.trace(
+                    "Timestamp '{}' is not OffsetDateTime format, trying LocalDateTime: {}",
+                    timestampStr,
+                    e.getMessage());
         }
 
         // Try LocalDateTime (handles "2025-01-15T09:30:00")
