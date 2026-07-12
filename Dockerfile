@@ -13,9 +13,8 @@ FROM ${NODE_IMAGE} AS fe_builder
 USER root
 WORKDIR /workspace
 
-# Upgrade npm to v10 (LTS) for lockfileVersion 3 compatibility
-# Note: npm 11 has a bug where it fails to find package-lock.json in Docker
-RUN npm install -g npm@10
+# Upgrade npm to match the version used to generate the lock file
+RUN npm install -g npm@11
 
 # Copy package files explicitly (glob patterns can fail in some Docker contexts)
 COPY frontend/email-client/package.json frontend/email-client/package.json

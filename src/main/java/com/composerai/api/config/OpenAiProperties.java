@@ -7,10 +7,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * OpenAI Configuration Properties - Single Source of Truth
+ * Typed binding for OpenAI-compatible configuration.
  *
- * All default values are defined here. Override via application.properties or environment variables.
- * Example: LLM_MODEL=gpt-4o or openai.model.chat=gpt-4o
+ * Chat endpoint and model fallbacks are defined in application.properties. Environment variables and
+ * other Spring property sources can override them.
  *
  * Configuration structure:
  *   openai:
@@ -69,23 +69,21 @@ public class OpenAiProperties {
 
     /**
      * OpenAI API credentials and connection settings.
-     * Default base URL: https://api.openai.com/v1
      */
     @Getter
     @Setter
     public static class Api {
         private String key;
-        private String baseUrl = "https://api.openai.com/v1";
+        private String baseUrl;
     }
 
     /**
      * Chat completion model configuration.
-     * Default: gpt-4o-mini (fast, cost-effective chat model)
      */
     @Getter
     @Setter
     public static class Model {
-        private String chat = "gpt-4o-mini";
+        private String chat;
         private Double temperature = 0.5; // Default temperature for all requests
         private Long maxOutputTokens = null; // null = use model default
         private Double topP = null; // null = use model default

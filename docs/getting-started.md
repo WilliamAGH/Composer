@@ -52,8 +52,10 @@ Spring loads environment variables and supports optional dotenv-style files via 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `OPENAI_API_KEY` | Yes | API key for OpenAI or compatible provider |
-| `OPENAI_BASE_URL` | No | Provider endpoint (default: `https://api.openai.com/v1`) |
-| `LLM_MODEL` | No | Model identifier (default: `gpt-4o-mini`) |
+| `OPENAI_BASE_URL` | No | Provider endpoint (default: `https://api.llm-gateway.iocloudhost.net/v1`) |
+| `LLM_MODEL` | No | Model identifier (default: `gemma-4-26b-a4b`) |
+
+By default, chat requests use the queued LLM gateway and its `gemma-4-26b-a4b` model. Set the variables above to use another OpenAI-compatible provider or model.
 
 ### OpenRouter
 
@@ -82,9 +84,9 @@ Qdrant integration enables semantic retrieval for richer context.
 
 ### Source of truth
 
-Configuration is bound via Spring `@ConfigurationProperties`:
+Chat fallback values and environment-variable mappings are defined in `src/main/resources/application.properties`. Spring binds the resolved configuration via `@ConfigurationProperties`:
 
-- `src/main/java/com/composerai/api/config/OpenAiProperties.java` – LLM settings
+- `src/main/java/com/composerai/api/config/OpenAiProperties.java` – typed LLM configuration binding
 - `src/main/java/com/composerai/api/config/QdrantProperties.java` – Vector search settings
 - `src/main/java/com/composerai/api/config/AiFunctionCatalogProperties.java` – AI command catalog
 

@@ -1,7 +1,12 @@
 package com.composerai.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.composerai.api.config.OpenAiProperties;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.env.Environment;
 import org.springframework.test.context.TestPropertySource;
 
 @SpringBootTest
@@ -24,8 +29,22 @@ import org.springframework.test.context.TestPropertySource;
         })
 class ComposerAiApiApplicationTests {
 
+    @Autowired
+    private OpenAiProperties openAiProperties;
+
+    @Autowired
+    private Environment environment;
+
     @Test
     void contextLoads() {
         // Test that the Spring Boot application context loads successfully
+    }
+
+    @Test
+    void bindsChatConfigurationFromSpringEnvironment() {
+        assertThat(openAiProperties.getApi().getBaseUrl())
+                .isEqualTo(environment.getRequiredProperty("openai.api.base-url"));
+        assertThat(openAiProperties.getModel().getChat())
+                .isEqualTo(environment.getRequiredProperty("openai.model.chat"));
     }
 }

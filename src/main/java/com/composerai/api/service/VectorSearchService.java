@@ -8,6 +8,7 @@ import io.qdrant.client.grpc.Points.ScoredPoint;
 import io.qdrant.client.grpc.Points.SearchPoints;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -178,14 +179,17 @@ public class VectorSearchService {
         // Try OffsetDateTime first (handles "2025-01-15T09:30:00Z" or "2025-01-15T09:30:00+00:00")
         try {
             return Optional.of(OffsetDateTime.parse(timestampStr).toLocalDateTime());
-        } catch (Exception ignored) {
-            // Fall through to LocalDateTime parsing
+        } catch (DateTimeParseException e) {
+            log.trace(
+                    "Timestamp '{}' is not OffsetDateTime format, trying LocalDateTime: {}",
+                    timestampStr,
+                    e.getMessage());
         }
 
         // Try LocalDateTime (handles "2025-01-15T09:30:00")
         try {
             return Optional.of(LocalDateTime.parse(timestampStr));
-        } catch (Exception e) {
+        } catch (DateTimeParseException e) {
             log.warn("Failed to parse timestamp '{}' from Qdrant payload: {}", timestampStr, e.getMessage());
             return Optional.empty();
         }
