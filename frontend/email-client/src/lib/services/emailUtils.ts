@@ -12,7 +12,7 @@
  * For NEW functionality, create a specifically-named file that describes its purpose.
  * See AGENTS.md for guidance on avoiding generic "utils" files.
  */
-import type { EmailMessage } from "../../main";
+import type { EmailMessage } from "../schemas/emailSchemas";
 
 export type FrontendEmailMessage = ReturnType<typeof mapEmailMessage>;
 

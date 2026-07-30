@@ -1,0 +1,18 @@
+pre-commit:
+  parallel: true
+  commands:
+    spotless-apply:
+      glob: "*.{java,kts}"
+      run: ./gradlew spotlessApply
+      stage_fixed: true
+    frontend-format:
+      root: "frontend/email-client/"
+      glob: "*.{js,ts,svelte}"
+      run: npx oxfmt --write {staged_files}
+      stage_fixed: true
+
+pre-push:
+  piped: true
+  commands:
+    build-and-test:
+      run: make build && make test

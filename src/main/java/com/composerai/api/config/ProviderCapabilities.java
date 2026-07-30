@@ -5,10 +5,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Detects OpenAI-compatible provider type and defines their capabilities.
+ * Detects OpenAI-compatible provider type and defines non-generation capabilities.
  *
  * Providers include: OpenAI (official), OpenRouter, Groq, LM Studio, vLLM, llama.cpp, etc.
- * Different providers support different features (tracing, reasoning, embeddings).
+ * Different providers support different auxiliary features such as tracing and embeddings.
  */
 public class ProviderCapabilities {
 
@@ -23,6 +23,8 @@ public class ProviderCapabilities {
     public enum ProviderType {
         /** Official OpenAI API - full feature support */
         OPENAI,
+        /** Composer's shared OpenAI-compatible gateway */
+        SHARED_GATEWAY,
         /** OpenRouter - multi-model router, supports embeddings */
         OPENROUTER,
         /** Groq - fast inference, basic chat only */
@@ -57,7 +59,9 @@ public class ProviderCapabilities {
         String normalized = baseUrl.toLowerCase(Locale.ROOT);
         ProviderType type;
 
-        if (normalized.contains("api.openai.com")) {
+        if (normalized.contains("api.llm-gateway.iocloudhost.net")) {
+            type = ProviderType.SHARED_GATEWAY;
+        } else if (normalized.contains("api.openai.com")) {
             type = ProviderType.OPENAI;
         } else if (normalized.contains("openrouter.ai")) {
             type = ProviderType.OPENROUTER;
@@ -89,26 +93,6 @@ public class ProviderCapabilities {
      * @return true if tracing is supported
      */
     public boolean supportsTracing() {
-        return type == ProviderType.OPENAI;
-    }
-
-    /**
-     * Whether this provider supports reasoning models (o1, o3, o4 series).
-     * OpenAI and OpenRouter support reasoning models with effort parameters.
-     *
-     * @return true if reasoning is supported
-     */
-    public boolean supportsReasoning() {
-        return type == ProviderType.OPENAI || type == ProviderType.OPENROUTER;
-    }
-
-    /**
-     * Whether this provider supports "minimal" reasoning effort level.
-     * Only OpenAI supports "minimal" - other providers use "low", "medium", "high".
-     *
-     * @return true if "minimal" effort is supported
-     */
-    public boolean supportsMinimalReasoning() {
         return type == ProviderType.OPENAI;
     }
 
@@ -152,12 +136,7 @@ public class ProviderCapabilities {
     @Override
     public String toString() {
         return String.format(
-                "ProviderCapabilities{type=%s, baseUrl=%s, tracing=%s, reasoning=%s, minimalReasoning=%s, embeddings=%s}",
-                type,
-                baseUrl,
-                supportsTracing(),
-                supportsReasoning(),
-                supportsMinimalReasoning(),
-                supportsEmbeddings());
+                "ProviderCapabilities{type=%s, baseUrl=%s, tracing=%s, embeddings=%s}",
+                type, baseUrl, supportsTracing(), supportsEmbeddings());
     }
 }

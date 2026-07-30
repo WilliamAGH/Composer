@@ -12,15 +12,6 @@ import {
 } from "./lib/schemas/bootstrapSchemas";
 import { validateWithLogging } from "./lib/validation/validatedParse";
 
-// Re-export schema types for consumers that need them
-export type { EmailClientBootstrap } from "./lib/schemas/bootstrapSchemas";
-export type { EmailMessage } from "./lib/schemas/emailSchemas";
-export type {
-  AiFunctionCatalogDto,
-  AiFunctionSummary,
-  AiFunctionVariantSummary,
-} from "./lib/schemas/catalogSchemas";
-
 declare global {
   interface Window {
     __EMAIL_CLIENT_BOOTSTRAP__?: unknown;

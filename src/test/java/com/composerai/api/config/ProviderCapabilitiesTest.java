@@ -1,29 +1,36 @@
 package com.composerai.api.config;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
 
 class ProviderCapabilitiesTest {
 
     @Test
-    void openAiSupportsReasoning() {
+    void detectsOpenAiEndpoint() {
         ProviderCapabilities capabilities = ProviderCapabilities.detect("https://api.openai.com/v1");
-        assertTrue(capabilities.supportsReasoning());
-        assertTrue(capabilities.supportsMinimalReasoning());
+
+        assertEquals(ProviderCapabilities.ProviderType.OPENAI, capabilities.getType());
     }
 
     @Test
-    void openRouterSupportsReasoningButNotMinimal() {
+    void detectsOpenRouterEndpoint() {
         ProviderCapabilities capabilities = ProviderCapabilities.detect("https://openrouter.ai/api/v1");
-        assertTrue(capabilities.supportsReasoning(), "OpenRouter should support reasoning");
-        assertFalse(capabilities.supportsMinimalReasoning(), "OpenRouter should not support 'minimal' effort");
+
+        assertEquals(ProviderCapabilities.ProviderType.OPENROUTER, capabilities.getType());
     }
 
     @Test
-    void groqDoesNotSupportReasoning() {
+    void detectsSharedGatewayEndpoint() {
+        ProviderCapabilities capabilities = ProviderCapabilities.detect("https://api.llm-gateway.iocloudhost.net/v1");
+
+        assertEquals(ProviderCapabilities.ProviderType.SHARED_GATEWAY, capabilities.getType());
+    }
+
+    @Test
+    void detectsGroqEndpoint() {
         ProviderCapabilities capabilities = ProviderCapabilities.detect("https://api.groq.com/openai/v1");
-        assertFalse(capabilities.supportsReasoning());
-        assertFalse(capabilities.supportsMinimalReasoning());
+
+        assertEquals(ProviderCapabilities.ProviderType.GROQ, capabilities.getType());
     }
 }

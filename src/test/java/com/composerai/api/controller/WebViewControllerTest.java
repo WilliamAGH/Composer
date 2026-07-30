@@ -1,14 +1,18 @@
 package com.composerai.api.controller;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.composerai.api.domain.model.ReasoningEffortLevel;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -54,7 +58,16 @@ class WebViewControllerTest {
         mockMvc.perform(get("/chat-diagnostics"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("chat"))
-                .andExpect(model().attributeExists("uiNonce"));
+                .andExpect(model().attributeExists("uiNonce"))
+                .andExpect(content().string(containsString("/js/chat/composer-chat.js")));
+    }
+
+    @ParameterizedTest
+    @EnumSource(ReasoningEffortLevel.class)
+    void chatDiagnostics_ShouldProjectEveryCanonicalReasoningEffort(ReasoningEffortLevel effort) throws Exception {
+        mockMvc.perform(get("/chat-diagnostics"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-reasoning-effort=\"" + effort.externalName() + "\"")));
     }
 
     @Test

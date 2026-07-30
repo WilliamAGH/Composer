@@ -26,20 +26,22 @@
     "lint:css": "stylelint '**/*.{css,svelte}'",
     "lint:css:fix": "stylelint '**/*.{css,svelte}' --fix",
     "lint:all": "npm run lint && npm run lint:css",
-    "validate": "npm run format && npm run lint:all"
+    "lint:boundaries": "ast-grep scan -c sgconfig.yml",
+    "validate": "npm run format && npm run lint:all && npm run lint:boundaries"
   },
   "dependencies": {
     "lucide-svelte": "^0.453.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "glob": "10.5.0",
+    "@ast-grep/cli": "^0.41.0",
     "@sveltejs/vite-plugin-svelte": "^6.2.4",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/typography": "^0.5.11",
     "@tsconfig/svelte": "^5.0.6",
     "@types/node": "^25.0.9",
     "autoprefixer": "^10.4.22",
+    "glob": "10.5.0",
     "oxfmt": "^0.27.0",
     "oxlint": "^1.42.0",
     "oxlint-tsgolint": "^0.11.3",

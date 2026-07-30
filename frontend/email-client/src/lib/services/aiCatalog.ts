@@ -4,9 +4,12 @@
  * helper handles fetching/merging in the browser.
  */
 import { writable, get, type Writable } from "svelte/store";
-import type { AiFunctionCatalogDto, AiFunctionSummary, AiFunctionVariantSummary } from "../../main";
-export type { AiFunctionCatalogDto, AiFunctionSummary, AiFunctionVariantSummary } from "../../main";
-import { AiFunctionCatalogDtoSchema } from "../schemas/catalogSchemas";
+import {
+  AiFunctionCatalogDtoSchema,
+  type AiFunctionCatalogDto,
+  type AiFunctionSummary,
+  type AiFunctionVariantSummary,
+} from "../schemas/catalogSchemas";
 import { dispatchClientWarning, getJsonValidated } from "./sessionNonceClient";
 
 const catalog: Writable<AiFunctionCatalogDto | null> = writable(null);
@@ -89,6 +92,6 @@ export async function ensureCatalogLoaded(initialValue?: AiFunctionCatalogDto | 
     return loaded;
   } catch (error) {
     dispatchClientWarning({ message: "Unable to load AI function catalog.", error });
-    return false;
+    throw error;
   }
 }

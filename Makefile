@@ -3,7 +3,7 @@ TAG ?= local
 PORT ?= 8090
 PROFILE ?= local
 
-.PHONY: help run dev build build-vite build-java java-compile test clean lint docker-build docker-run-local docker-run-prod fe-dev clean-frontend
+.PHONY: help run dev build build-vite build-java java-compile test clean lint lint-ast hooks docker-build docker-run-local docker-run-prod fe-dev clean-frontend
 
 help:
 	@echo "Targets:"
@@ -73,7 +73,7 @@ clean: clean-frontend
 test:
 	./gradlew test
 
-lint:
+lint: lint-ast
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "🔍 Running linters for Java, JavaScript, Svelte..."
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -102,9 +102,20 @@ lint:
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "✅ Linting complete"
 
+lint-ast: ## Run ast-grep rules for Java naming and type safety
+	@ast-grep scan -c sgconfig.yml src/main/java/
+
 format:
 	@echo "Applying code formatting..."
 	@./gradlew spotlessApply
+
+hooks: ## Install git hooks via lefthook
+	@if command -v lefthook >/dev/null 2>&1; then \
+		lefthook install -f; \
+	else \
+		echo "lefthook not found — install with: brew install lefthook"; \
+		echo "Skipping hook installation; commits/pushes will proceed without gates."; \
+	fi
 
 # Docker
 

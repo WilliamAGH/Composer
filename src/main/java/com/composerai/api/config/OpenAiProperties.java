@@ -25,7 +25,6 @@ import org.springframework.context.annotation.Configuration;
  *       timeout-seconds: ${OPENAI_STREAM_TIMEOUT}
  *       heartbeat-interval-seconds: ${OPENAI_STREAM_HEARTBEAT}
  *     reasoning:
- *       supported-model-prefixes: ${OPENAI_REASONING_MODELS}
  *       default-effort: ${OPENAI_REASONING_EFFORT}
  *     intent:
  *       default-category: ${OPENAI_INTENT_DEFAULT}
@@ -125,15 +124,13 @@ public class OpenAiProperties {
     }
 
     /**
-     * Reasoning/thinking model configuration.
-     * Default supported prefixes: o1, o3, o4, gpt-5
-     * Default effort level: minimal
+     * Reasoning/thinking request configuration.
+     * A configured default is optional; explicit enablement falls back to the canonical domain default.
      */
     @Getter
     @Setter
     public static class Reasoning {
-        private List<String> supportedModelPrefixes = List.of("o1", "o3", "o4", "gpt-5");
-        private String defaultEffort = "low"; // Changed from "minimal" - OpenRouter compatible default
+        private String defaultEffort;
     }
 
     /**
@@ -190,14 +187,14 @@ public class OpenAiProperties {
 
     /**
      * Default values for chat requests.
-     * Defaults: 5 search results, 4000 char limit, thinking disabled
+     * Defaults: 5 search results, 4000 char limit, thinking unspecified
      */
     @Getter
     @Setter
     public static class Defaults {
         private int maxSearchResults = 5;
         private int maxMessageLength = 4000;
-        private boolean thinkingEnabled = false;
+        private Boolean thinkingEnabled;
     }
 
     /**
@@ -234,29 +231,5 @@ public class OpenAiProperties {
             providerCapabilities = ProviderCapabilities.detect(api.getBaseUrl());
         }
         return providerCapabilities;
-    }
-
-    /**
-     * Checks if the given model supports reasoning capabilities.
-     * Reasoning models include: o1, o3, o4, gpt-5 series (configurable).
-     *
-     * Also checks that the provider supports reasoning features.
-     *
-     * @param modelId the model identifier to check (e.g., "gpt-4o-mini", "gpt-4")
-     * @return true if the model AND provider support reasoning, false otherwise
-     */
-    public boolean supportsReasoning(String modelId) {
-        if (modelId == null || reasoning == null || reasoning.supportedModelPrefixes == null) {
-            return false;
-        }
-
-        // First check if provider supports reasoning at all
-        if (!getProviderCapabilities().supportsReasoning()) {
-            return false;
-        }
-
-        String lowerModel = modelId.toLowerCase();
-        return reasoning.supportedModelPrefixes.stream()
-                .anyMatch(prefix -> lowerModel.startsWith(prefix.toLowerCase()));
     }
 }
