@@ -4,7 +4,9 @@
 ##
 ARG BASE_IMAGE=public.ecr.aws/docker/library/eclipse-temurin:25-jre
 ARG BUILD_IMAGE=public.ecr.aws/docker/library/eclipse-temurin:25-jdk
-ARG NODE_IMAGE=public.ecr.aws/docker/library/node:22.17.0-alpine
+# ast-grep's native CLI publishes glibc builds, not musl builds. Keep the
+# build-only frontend stage on Debian so npm can install the lint dependency.
+ARG NODE_IMAGE=public.ecr.aws/docker/library/node:22.17.0-bookworm-slim
 
 # ================================
 # 1) FRONTEND BUILD STAGE (Svelte)
