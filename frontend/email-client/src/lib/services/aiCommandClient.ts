@@ -4,9 +4,8 @@ import {
   getFunctionMeta,
   mergeDefaultArgs,
   resolveDefaultInstruction,
-  type AiFunctionSummary,
-  type AiFunctionVariantSummary,
 } from "./aiCatalog";
+import type { AiFunctionSummary, AiFunctionVariantSummary } from "../schemas/catalogSchemas";
 import {
   buildEmailContextString,
   deriveRecipientContext,
@@ -16,14 +15,14 @@ import { parseSubjectAndBody, type FrontendEmailMessage } from "./emailUtils";
 import { deriveHeadline } from "./aiCommandHandler";
 import { sanitizeHtml } from "./sanitizeHtml";
 import { executeCatalogCommand } from "./catalogCommandClient";
-import type { ChatRequestPayload } from "./catalogCommandClient";
+import type { CatalogCommandInvocation } from "./catalogCommandClient";
 import { createConversationLedger } from "./conversationLedger";
 import { createAiJourneyStore } from "./aiJourneyStore";
 
 export type CatalogEnsureFn = () => Promise<boolean> | boolean;
 
-/** Payload shape for compose window context passed to AI prefill. */
-interface ComposeWindowPayload {
+/** Compose window context passed to AI prefill. */
+interface ComposePrefillContext {
   quotedContext?: string;
   to?: string;
   subject?: string;
@@ -67,7 +66,7 @@ interface PrefillOptions {
     isReply?: boolean;
   };
   windowId: string;
-  windowPayload?: ComposeWindowPayload;
+  windowPayload?: ComposePrefillContext;
   selectedEmail?: FrontendEmailMessage | null;
   relatedEmail?: FrontendEmailMessage | null;
 }
@@ -134,7 +133,7 @@ export function createAiCommandClient({
     const conversationKey =
       ledger.resolveKey({ journeyScope, journeyScopeTarget, contextId }) ?? null;
     const scopedConversationId = conversationKey ? ledger.read(conversationKey) : null;
-    const payload: ChatRequestPayload = {
+    const payload: CatalogCommandInvocation = {
       instruction,
       message: instruction,
       conversationId: scopedConversationId,
@@ -144,7 +143,6 @@ export function createAiCommandClient({
       journeyLabel: journeyLabel || null,
       journeyHeadline,
       maxResults: 5,
-      thinkingEnabled: false,
       jsonOutput: false,
     };
     const journeyToken = beginJourney({

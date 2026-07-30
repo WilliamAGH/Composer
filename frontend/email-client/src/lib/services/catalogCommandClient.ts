@@ -7,15 +7,13 @@ import { postJsonValidated, postJsonVoid } from "./sessionNonceClient";
 import { ChatResponsePayloadSchema, type ChatResponsePayload } from "../schemas/catalogSchemas";
 import type { ValidationResult } from "../validation/result";
 
-export interface ChatRequestPayload {
+export interface CatalogCommandInvocation {
   message: string;
   instruction?: string | null;
   conversationId?: string | null;
   maxResults?: number;
   emailContext?: string | null;
   contextId?: string | null;
-  thinkingEnabled?: boolean;
-  thinkingLevel?: "minimal" | "low" | "medium" | "high";
   jsonOutput?: boolean;
   aiCommand?: string | null;
   commandVariant?: string | null;
@@ -30,7 +28,7 @@ export interface ChatRequestPayload {
   targetLabel?: string | null;
 }
 
-export interface DraftContextPayload {
+export interface DraftContextUpload {
   contextId: string;
   content: string;
 }
@@ -41,7 +39,7 @@ export interface DraftContextPayload {
  */
 export async function executeCatalogCommand(
   commandKey: string,
-  payload: ChatRequestPayload,
+  payload: CatalogCommandInvocation,
 ): Promise<ValidationResult<ChatResponsePayload>> {
   if (!commandKey) {
     throw new Error("commandKey is required");
@@ -58,7 +56,7 @@ export async function executeCatalogCommand(
  * Uploads draft context for AI processing.
  * Uses postJsonVoid since response is empty (202 Accepted).
  */
-export async function uploadDraftContext(payload: DraftContextPayload): Promise<void> {
+export async function uploadDraftContext(payload: DraftContextUpload): Promise<void> {
   if (!payload?.contextId) {
     throw new Error("contextId is required");
   }

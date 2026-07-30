@@ -5,18 +5,16 @@ import {
   type ComposeWindowDescriptor,
 } from "../window/windowTypes";
 import type { WindowManager } from "../window/windowStore";
-import {
-  mergeDefaultArgs,
-  resolveDefaultInstruction,
-  getFunctionMeta,
-  type AiFunctionSummary,
-  type AiFunctionVariantSummary,
-} from "./aiCatalog";
+import { mergeDefaultArgs, resolveDefaultInstruction, getFunctionMeta } from "./aiCatalog";
 import { parseSubjectAndBody } from "./emailUtils";
 import { normalizeReplySubject } from "./emailSubjectPrefixHandler";
 import { deriveRecipientContext, buildEmailContextString } from "./emailContextConstructor";
 import type { Readable } from "svelte/store";
-import type { AiFunctionCatalogDto } from "../../main";
+import type {
+  AiFunctionCatalogDto,
+  AiFunctionSummary,
+  AiFunctionVariantSummary,
+} from "../schemas/catalogSchemas";
 import { uploadDraftContext, type ChatResponsePayload } from "./catalogCommandClient";
 import type { FrontendEmailMessage } from "./emailUtils";
 
@@ -106,7 +104,7 @@ export async function handleAiCommand({
     throw new Error("Select an email first.");
   }
 
-  const data = await callAiCommand(command, instruction, {
+  const commandResponse = await callAiCommand(command, instruction, {
     contextId: selectedEmail.contextId,
     subject: selectedEmail.subject,
     journeyScope: "panel",
@@ -117,11 +115,11 @@ export async function handleAiCommand({
     commandArgs,
   });
   const html =
-    (data?.response && window.Composer?.renderMarkdown
-      ? window.Composer.renderMarkdown(data.response)
+    (commandResponse?.response && window.Composer?.renderMarkdown
+      ? window.Composer.renderMarkdown(commandResponse.response)
       : "") ||
-    data?.sanitizedHtml ||
-    data?.sanitizedHTML ||
+    commandResponse?.sanitizedHtml ||
+    commandResponse?.sanitizedHTML ||
     "" ||
     '<div class="text-sm text-slate-500">No response received.</div>';
   const contextId = selectedEmail.contextId || selectedEmail.id || null;
@@ -132,7 +130,7 @@ export async function handleAiCommand({
     title,
     command,
     commandLabel: title,
-    raw: data,
+    raw: commandResponse,
   };
 }
 
@@ -174,7 +172,7 @@ async function draftWithAi({
   recipientContext?: { name?: string; email?: string } | null;
 }) {
   const instruction = instructionOverride || resolveDefaultInstruction(fn, variant);
-  const data = await callAiCommand(command, instruction, {
+  const draftResponse = await callAiCommand(command, instruction, {
     contextId: selectedEmail.contextId,
     subject: descriptor.payload.subject,
     journeyScope: "compose",
@@ -185,8 +183,8 @@ async function draftWithAi({
     commandArgs,
     recipientContext,
   });
-  let draftText = (data?.response && data.response.trim()) || "";
-  const htmlContent = data?.sanitizedHtml || data?.sanitizedHTML;
+  let draftText = (draftResponse?.response && draftResponse.response.trim()) || "";
+  const htmlContent = draftResponse?.sanitizedHtml || draftResponse?.sanitizedHTML;
   if (!draftText && htmlContent) {
     const temp = document.createElement("div");
     temp.innerHTML = htmlContent;
@@ -388,7 +386,7 @@ export async function runComposeWindowAi({
   });
   const contextIdForCommand = draftContextId || relatedEmail?.contextId || relatedEmail?.id || null;
 
-  const data = await callAiCommand(detail.command, instruction, {
+  const composeResponse = await callAiCommand(detail.command, instruction, {
     contextId: contextIdForCommand,
     subject: effectiveSubject || relatedEmail?.subject,
     journeyScope: "compose",
@@ -398,8 +396,8 @@ export async function runComposeWindowAi({
     commandArgs,
     recipientContext,
   });
-  let draftText = (data?.response && data.response.trim()) || "";
-  const htmlContent = data?.sanitizedHtml || data?.sanitizedHTML;
+  let draftText = (composeResponse?.response && composeResponse.response.trim()) || "";
+  const htmlContent = composeResponse?.sanitizedHtml || composeResponse?.sanitizedHTML;
   if (!draftText && htmlContent) {
     const temp = document.createElement("div");
     temp.innerHTML = htmlContent;
@@ -429,5 +427,5 @@ export async function runComposeWindowAi({
       });
     }
   }
-  return data;
+  return composeResponse;
 }

@@ -27,6 +27,12 @@ interface ActionMenuStoreConfig {
   callCatalogCommand: CallCatalogCommandFn;
 }
 
+type GeneratedActionMenuOption = ActionMenuOption & { aiGenerated: boolean };
+
+type ActionMenuParseResult =
+  | { success: true; options: GeneratedActionMenuOption[] }
+  | { success: false; error: unknown };
+
 /**
  * Generates mailbox action menu suggestions per selected email and caches results by context key.
  * Keeps App.svelte unaware of throttling, JSON parsing, and pending states.
@@ -35,12 +41,11 @@ export function createActionMenuSuggestionsStore({
   ensureCatalogReady,
   callCatalogCommand,
 }: ActionMenuStoreConfig) {
-  const optionsStore: Writable<(ActionMenuOption & { aiGenerated: boolean })[]> =
-    writable(cloneDefaults());
+  const optionsStore: Writable<GeneratedActionMenuOption[]> = writable(cloneDefaults());
   const loadingStore = writable(false);
   const errorStore = writable("");
 
-  const cache: Record<string, (ActionMenuOption & { aiGenerated: boolean })[]> = {};
+  const cache: Record<string, GeneratedActionMenuOption[]> = {};
   const inflight: Record<string, boolean> = {};
 
   async function loadSuggestions(
@@ -59,7 +64,7 @@ export function createActionMenuSuggestionsStore({
       const ready = await ensureCatalogReady();
       if (!ready) return;
       const instruction = buildInstruction(email);
-      const data = await callCatalogCommand(ACTION_MENU_COMMAND_KEY, instruction, {
+      const catalogResponse = await callCatalogCommand(ACTION_MENU_COMMAND_KEY, instruction, {
         contextId: email.contextId,
         subject: email.subject,
         journeyScope: "panel",
@@ -67,8 +72,9 @@ export function createActionMenuSuggestionsStore({
         journeyLabel: email.subject || email.from || "Selected email",
         journeyHeadline: "Curating action ideas",
       });
-      const parsed = parseResponse(data);
-      const nextOptions = parsed.length ? parsed : cloneDefaults();
+      const parseResult = parseResponse(catalogResponse);
+      const nextOptions =
+        parseResult.success && parseResult.options.length ? parseResult.options : cloneDefaults();
       cache[cacheKey] = nextOptions;
       optionsStore.set(nextOptions);
     } catch (error) {
@@ -95,26 +101,31 @@ export function createActionMenuSuggestionsStore({
     return `Subject: ${subject}\nFrom: ${from}\nPreview: ${preview || "No preview provided."}\nFocus on concise, high-value actions.`;
   }
 
-  function parseResponse(data: ChatResponsePayload | null) {
-    const raw = typeof data?.response === "string" ? data.response : null;
-    const fallbackHtml = typeof data?.sanitizedHtml === "string" ? data.sanitizedHtml : null;
+  function parseResponse(catalogResponse: ChatResponsePayload | null): ActionMenuParseResult {
+    const raw = typeof catalogResponse?.response === "string" ? catalogResponse.response : null;
+    const fallbackHtml =
+      typeof catalogResponse?.sanitizedHtml === "string" ? catalogResponse.sanitizedHtml : null;
     const jsonBlock = extractJsonBlock(raw || fallbackHtml);
-    if (!jsonBlock) return [];
+    if (!jsonBlock) return { success: true, options: [] };
     try {
       const parsed = JSON.parse(jsonBlock);
-      const actions = Array.isArray(parsed?.options) ? parsed.options : [];
-      return actions.map(sanitizeOption).filter(Boolean).slice(0, 3);
+      const actions: unknown[] = Array.isArray(parsed?.options) ? parsed.options : [];
+      const options = actions
+        .map(sanitizeOption)
+        .filter((option): option is GeneratedActionMenuOption => option !== null)
+        .slice(0, 3);
+      return { success: true, options };
     } catch (error) {
       dispatchClientWarning({
         message: "Failed to parse action menu response.",
         error,
         silent: true,
       });
-      return [];
+      return { success: false, error };
     }
   }
 
-  function sanitizeOption(option: unknown) {
+  function sanitizeOption(option: unknown): GeneratedActionMenuOption | null {
     if (!option || typeof option !== "object") return null;
     const optionRecord = option as Record<string, unknown>;
     const rawLabel = typeof optionRecord.label === "string" ? optionRecord.label.trim() : "";

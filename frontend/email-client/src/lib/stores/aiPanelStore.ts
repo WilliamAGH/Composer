@@ -1,6 +1,14 @@
 import { writable, get, type Writable } from "svelte/store";
 
-type PanelResponseMap = Record<string, unknown>;
+type PanelResponse = {
+  html: string;
+  title: string;
+  commandKey: string;
+  commandLabel: string;
+  updatedAt: number;
+};
+
+type PanelResponseMap = { [contextKey: string]: PanelResponse };
 type PanelErrorMap = Record<string, string>;
 
 /**
@@ -53,7 +61,7 @@ export function createAiPanelStore() {
     clearEntry(target);
   }
 
-  function recordResponse(key: string | null, payload: unknown) {
+  function recordResponse(key: string | null, payload: PanelResponse) {
     if (!key) return;
     responses.update((map) => ({ ...map, [key]: payload }));
     clearError(key);

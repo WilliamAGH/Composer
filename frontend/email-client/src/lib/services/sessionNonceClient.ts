@@ -33,7 +33,10 @@ function extractErrorMessage(raw: unknown, status: number): string {
  * @param fallbackMessage - Message to show if error has no message
  * @returns The toast ID (can be used to dismiss early)
  */
-export function showApiErrorToast(error: unknown, fallbackMessage = DEFAULT_API_ERROR_MESSAGE): string {
+export function showApiErrorToast(
+  error: unknown,
+  fallbackMessage = DEFAULT_API_ERROR_MESSAGE,
+): string {
   const message = error instanceof Error ? error.message : fallbackMessage;
   return pushToast(message, { severity: "error" });
 }
@@ -118,8 +121,7 @@ async function fetchWithNonce(url: string, init: JsonRequestInit = {}, allowRetr
     try {
       await refreshUiNonce();
     } catch (refreshError) {
-      const actionHref =
-        typeof window !== "undefined" ? window.location.href : DEFAULT_RELOAD_URL;
+      const actionHref = typeof window !== "undefined" ? window.location.href : DEFAULT_RELOAD_URL;
       pushToast(SESSION_EXPIRED_MESSAGE, {
         severity: "error",
         actionLabel: RELOAD_ACTION_LABEL,
@@ -136,7 +138,7 @@ async function fetchWithNonce(url: string, init: JsonRequestInit = {}, allowRetr
  * POST helper that JSON-serializes the body and retries once when the nonce expires.
  * @deprecated Use postJsonValidated with a Zod schema for type-safe responses.
  */
-export async function postJsonWithNonce<T = unknown>(
+export async function postJsonWithNonce<T>(
   url: string,
   body?: unknown,
   init: JsonRequestInit = {},
@@ -146,24 +148,30 @@ export async function postJsonWithNonce<T = unknown>(
     method: "POST",
     body: JSON.stringify(body ?? null),
   });
-  const data = await response.json().catch(() => null);
+  const responsePayload = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error((data && (data.message || data.error)) || `HTTP ${response.status}`);
+    throw new Error(
+      (responsePayload && (responsePayload.message || responsePayload.error)) ||
+        `HTTP ${response.status}`,
+    );
   }
-  return data as T;
+  return responsePayload as T;
 }
 
 /**
  * GET helper used by heartbeat endpoints.
  * @deprecated Use getJsonValidated with a Zod schema for type-safe responses.
  */
-export async function getJsonWithNonce<T = unknown>(url: string, init: JsonRequestInit = {}) {
+export async function getJsonWithNonce<T>(url: string, init: JsonRequestInit = {}) {
   const response = await fetchWithNonce(url, { ...init, method: "GET" });
-  const data = await response.json().catch(() => null);
+  const responsePayload = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error((data && (data.message || data.error)) || `HTTP ${response.status}`);
+    throw new Error(
+      (responsePayload && (responsePayload.message || responsePayload.error)) ||
+        `HTTP ${response.status}`,
+    );
   }
-  return data as T;
+  return responsePayload as T;
 }
 
 /**

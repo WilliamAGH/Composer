@@ -95,10 +95,7 @@ export function clearFatalError(): void {
 /**
  * Convenience: push error from catch block, extracting message from Error objects.
  */
-export function pushErrorToast(
-  error: unknown,
-  fallbackMessage = DEFAULT_ERROR_MESSAGE,
-): string {
+export function pushErrorToast(error: unknown, fallbackMessage = DEFAULT_ERROR_MESSAGE): string {
   const message = error instanceof Error ? error.message : fallbackMessage;
   const detail = error instanceof Error ? error.stack?.split("\n")[1]?.trim() : undefined;
   return pushToast(message, { detail, severity: "error" });

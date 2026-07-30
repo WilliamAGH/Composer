@@ -10,6 +10,6 @@ public record ChatCompletionCommand(
         String userMessage,
         String emailContext,
         List<ConversationTurn> conversationHistory,
-        boolean thinkingEnabled,
-        String thinkingLevel,
+        Boolean thinkingEnabled,
+        ReasoningEffortLevel thinkingLevel,
         boolean jsonOutput) {}

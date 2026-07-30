@@ -1,11 +1,12 @@
 package com.composerai.api.config;
 
 import com.composerai.api.ai.AiFunctionCatalogHelper;
+import com.composerai.api.domain.model.ReasoningEffortLevel;
 import com.composerai.api.dto.AiFunctionCatalogDto;
 import com.composerai.api.dto.SseEventType;
-import com.composerai.api.service.ReasoningStreamAdapter;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.ObjectProvider;
@@ -105,15 +106,14 @@ public class GlobalModelAttributes {
         return Arrays.stream(SseEventType.values()).collect(Collectors.toMap(Enum::name, SseEventType::getEventName));
     }
 
-    /**
-     * Exposes reasoning phase names to all templates.
-     * Maps enum names to their string representation (e.g., THINKING → "THINKING").
-     *
-     * @return map of reasoning phases (THINKING, PROGRESS, STREAMING, FAILED)
-     */
-    @ModelAttribute("reasoningPhases")
-    public Map<String, String> reasoningPhases() {
-        return Arrays.stream(ReasoningStreamAdapter.Phase.values()).collect(Collectors.toMap(Enum::name, Enum::name));
+    @ModelAttribute("reasoningEfforts")
+    public List<ReasoningEffortLevel> reasoningEfforts() {
+        return List.of(ReasoningEffortLevel.values());
+    }
+
+    @ModelAttribute("disabledReasoningEffort")
+    public String disabledReasoningEffort() {
+        return ReasoningEffortLevel.NONE.externalName();
     }
 
     @ModelAttribute("emailRenderModes")

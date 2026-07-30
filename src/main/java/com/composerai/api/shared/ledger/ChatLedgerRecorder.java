@@ -1,8 +1,8 @@
 package com.composerai.api.shared.ledger;
 
+import com.composerai.api.adapters.out.openai.OpenAiChatClient;
+import com.composerai.api.application.dto.ChatRequest;
 import com.composerai.api.config.OpenAiProperties;
-import com.composerai.api.dto.ChatRequest;
-import com.composerai.api.service.OpenAiChatService;
 import com.composerai.api.util.IdGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,7 +47,7 @@ public class ChatLedgerRecorder {
     public void recordChatCompletion(
             ChatRequest request,
             String conversationId,
-            OpenAiChatService.Invocation invocation,
+            OpenAiChatClient.Invocation invocation,
             String assistantContent) {
         boolean shouldPersist = ledgerService.enabled();
         boolean shouldLog = openAiProperties.isLocalDebugEnabled();
@@ -149,12 +149,12 @@ public class ChatLedgerRecorder {
         return refs;
     }
 
-    private String serialize(@Nullable Object value) {
-        if (value == null) {
+    private String serialize(@Nullable Object ledgerPayload) {
+        if (ledgerPayload == null) {
             return null;
         }
         try {
-            return objectMapper.writeValueAsString(value);
+            return objectMapper.writeValueAsString(ledgerPayload);
         } catch (JsonProcessingException ignored) {
             return null;
         }
