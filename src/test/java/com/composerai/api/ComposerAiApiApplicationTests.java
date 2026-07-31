@@ -22,7 +22,7 @@ import org.springframework.test.context.TestPropertySource;
             "openai.defaults.thinking-enabled=",
             "openai.defaults.max-message-length=4000",
             "openai.defaults.max-search-results=5",
-            "openai.intent.max-output-tokens=10",
+            "openai.intent.max-output-tokens=512",
             "openai.intent.default-category=question",
             "openai.stream.heartbeat-interval-seconds=10",
             "openai.stream.timeout-seconds=120",

@@ -118,6 +118,9 @@ class UniversalReasoningContractTest {
         assertEquals(
                 "xhigh",
                 request.reasoning().orElseThrow().effort().orElseThrow().asString());
+        assertEquals(
+                properties.getIntent().getMaxOutputTokens(),
+                request.maxOutputTokens().orElseThrow());
         assertEquals(List.of(INTERACTIVE_GATEWAY_TIER), request._headers().values(GATEWAY_TIER_HEADER));
     }
 

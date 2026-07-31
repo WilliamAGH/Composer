@@ -107,7 +107,7 @@ public class OpenAiChatClient {
      *
      * Configuration source of truth: OpenAiProperties.java
      * Default category: {@link OpenAiProperties.Intent#getDefaultCategory()} - "question"
-     * Max tokens: {@link OpenAiProperties.Intent#getMaxOutputTokens()} - 10
+     * Max tokens: {@link OpenAiProperties.Intent#getMaxOutputTokens()} - 512
      */
     public String analyzeIntent(String userMessage) {
         String defaultCategory = openAiProperties.getIntent().getDefaultCategory();

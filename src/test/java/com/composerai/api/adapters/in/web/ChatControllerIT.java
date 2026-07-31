@@ -222,6 +222,62 @@ class ChatControllerIT {
                         any(ChatStreamCallbacks.class));
     }
 
+    @Test
+    void streamEndpoint_ShouldSurfaceUnpreservableReasoningIntent() throws Exception {
+        var streamConfig = new com.composerai.api.config.OpenAiProperties.Stream();
+        streamConfig.setTimeoutSeconds(120);
+        Mockito.when(openAiProperties.getStream()).thenReturn(streamConfig);
+        Mockito.when(errorMessagesProperties.getStream())
+                .thenReturn(new com.composerai.api.config.ErrorMessagesProperties.Stream());
+
+        java.util.concurrent.ScheduledFuture<?> mockFuture = Mockito.mock(java.util.concurrent.ScheduledFuture.class);
+        Mockito.<java.util.concurrent.ScheduledFuture<?>>when(sseHeartbeatExecutor.scheduleAtFixedRate(
+                        any(Runnable.class),
+                        org.mockito.ArgumentMatchers.anyLong(),
+                        org.mockito.ArgumentMatchers.anyLong(),
+                        any(java.util.concurrent.TimeUnit.class)))
+                .thenReturn(mockFuture);
+
+        doAnswer(invocation -> {
+                    Runnable runnable = invocation.getArgument(0);
+                    runnable.run();
+                    return null;
+                })
+                .when(chatStreamExecutor)
+                .execute(any(Runnable.class));
+
+        com.openai.errors.UnprocessableEntityException upstream =
+                com.openai.errors.UnprocessableEntityException.builder()
+                        .headers(com.openai.core.http.Headers.builder().build())
+                        .error(com.openai.models.ErrorObject.builder()
+                                .message("no candidate provider can preserve the requested reasoning effort")
+                                .code("unpreservable_reasoning_intent")
+                                .param(java.util.Optional.empty())
+                                .type("invalid_request_error")
+                                .build())
+                        .build();
+        doAnswer(invocation -> {
+                    ChatStreamCallbacks callbacks = invocation.getArgument(3);
+                    callbacks.onError().accept(new RuntimeException(upstream.getMessage(), upstream));
+                    return null;
+                })
+                .when(streamChatUseCase)
+                .execute(
+                        any(ChatRequest.class),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        any(ChatStreamCallbacks.class));
+
+        ChatRequest request = new ChatRequest("Summarize", null, 5);
+
+        mockMvc.perform(post(CHAT_ENDPOINT + "/stream")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("event:error")))
+                .andExpect(content().string(containsString("reasoning effort is not supported")));
+    }
+
     @TestConfiguration
     static class TestConfig {
         @Bean

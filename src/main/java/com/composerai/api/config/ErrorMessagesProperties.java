@@ -40,5 +40,7 @@ public class ErrorMessagesProperties {
     public static class Stream {
         private String error = "Stream error - connection may have been lost";
         private String timeout = "Request timed out - please try again";
+        private String reasoningEffortUnsupported =
+                "The selected reasoning effort is not supported for this model. Choose a lower thinking level and try again.";
     }
 }
