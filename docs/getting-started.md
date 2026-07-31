@@ -61,6 +61,8 @@ By default, chat requests use the queued LLM gateway and its `gemma-4-26b-a4b` m
 
 `thinkingLevel` follows the canonical [ReasoningEffortLevel](../src/main/java/com/composerai/api/domain/model/ReasoningEffortLevel.java) contract. Composer forwards every valid effort unchanged to any configured OpenAI-compatible generation endpoint without inspecting the model alias or provider type. An explicit `thinkingLevel` wins; when the level is absent, `thinkingEnabled: false` maps to the intentional `none` effort. Omitting both fields preserves any configured default, including configured `none`, and otherwise uses the enum's canonical reasoning-on default. Unsupported combinations fail explicitly at the upstream endpoint.
 
+The UI's "None" thinking option is honored only for GENERAL-class gateway keys; other key classes are clamped to reasoning-ON by the gateway.
+
 ### OpenRouter
 
 To use [OpenRouter](https://openrouter.ai), set `OPENAI_BASE_URL=https://openrouter.ai/api/v1` and your OpenRouter API key.

@@ -1,5 +1,6 @@
 package com.composerai.api.adapters.in.web;
 
+import com.composerai.api.adapters.out.openai.ReasoningIntentRejection;
 import com.composerai.api.application.dto.ChatRequest;
 import com.composerai.api.application.usecase.chat.ChatPromptComposer;
 import com.composerai.api.application.usecase.chat.ChatStreamCallbacks;
@@ -202,7 +203,7 @@ public class ChatController {
     }
 
     private void handleError(StreamContext context, Throwable error) {
-        String safeMessage = errorMessages.getStream().getError();
+        String safeMessage = streamErrorMessage(error);
         try {
             context.emitter()
                     .send(SseEmitter.event()
@@ -215,6 +216,14 @@ public class ChatController {
         context.completed().set(true);
         context.heartbeatTask().cancel(false);
         context.emitter().complete();
+    }
+
+    private String streamErrorMessage(Throwable error) {
+        // Deterministic and non-retryable: no candidate provider can preserve the requested effort.
+        if (ReasoningIntentRejection.isUnpreservable(error)) {
+            return errorMessages.getStream().getReasoningEffortUnsupported();
+        }
+        return errorMessages.getStream().getError();
     }
 
     private void handleStartupError(SseEmitter emitter, Exception e) {

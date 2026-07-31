@@ -135,13 +135,16 @@ public class OpenAiProperties {
 
     /**
      * Intent analysis configuration.
-     * Defaults: "question" category, 10 max tokens, standard categories
+     * Defaults: "question" category, 512 max tokens, standard categories.
+     * Token budget must cover reasoning plus the category token: reasoning draws from
+     * the same max_output_tokens budget on some upstreams, so a tiny cap can starve
+     * the visible answer.
      */
     @Getter
     @Setter
     public static class Intent {
         private String defaultCategory = "question";
-        private long maxOutputTokens = 10L;
+        private long maxOutputTokens = 512L;
         private String categories = "search, compose, summarize, analyze, question, or other";
     }
 
