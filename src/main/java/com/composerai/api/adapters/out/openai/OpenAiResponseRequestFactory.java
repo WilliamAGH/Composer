@@ -15,9 +15,11 @@ import com.openai.core.JsonValue;
 import com.openai.models.ChatModel;
 import com.openai.models.Reasoning;
 import com.openai.models.ReasoningEffort;
+import com.openai.models.ResponseFormatJsonObject;
 import com.openai.models.responses.EasyInputMessage;
 import com.openai.models.responses.ResponseCreateParams;
 import com.openai.models.responses.ResponseInputItem;
+import com.openai.models.responses.ResponseTextConfig;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -52,6 +54,12 @@ final class OpenAiResponseRequestFactory {
                         command.userMessage(),
                         command.conversationHistory(),
                         command.jsonOutput()));
+        if (command.jsonOutput()) {
+            // Declared on the wire so the LLM gateway routes only to JSON-capable bindings.
+            builder.text(ResponseTextConfig.builder()
+                    .format(ResponseFormatJsonObject.builder().build())
+                    .build());
+        }
         applyConfiguredModelDefaults(builder);
 
         ReasoningEffortLevel reasoningEffort =
