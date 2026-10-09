@@ -18,9 +18,11 @@ import com.openai.models.embeddings.Embedding;
 import com.openai.models.embeddings.EmbeddingCreateParams;
 import com.openai.models.responses.Response;
 import com.openai.models.responses.ResponseCreateParams;
+import com.openai.models.responses.ResponseFormatTextConfig;
 import com.openai.models.responses.ResponseOutputItem;
 import com.openai.models.responses.ResponseOutputMessage;
 import com.openai.models.responses.ResponseOutputText;
+import com.openai.models.responses.ResponseTextConfig;
 import com.openai.models.responses.Tool;
 import com.openai.models.responses.ToolChoiceOptions;
 import java.util.List;
@@ -191,6 +193,28 @@ class OpenAiChatClientTest {
 
         assertTrue(serialized.contains("JSON output mode"));
         assertTrue(serialized.contains("best-estimate schema"));
+    }
+
+    @Test
+    void generateResponse_declaresJsonObjectFormatOnlyForJsonOutput() {
+        Response mockResponse = buildResponseWithText("{\"result\":true}");
+        when(openAIClient.responses().create(any(ResponseCreateParams.class))).thenReturn(mockResponse);
+
+        chatClient.generateResponse(
+                new ChatCompletionCommand("Return structured data", "Context payload", List.of(), false, null, true));
+        chatClient.generateResponse(
+                new ChatCompletionCommand("Summarize", "Context payload", List.of(), false, null, false));
+
+        ArgumentCaptor<ResponseCreateParams> captor = ArgumentCaptor.forClass(ResponseCreateParams.class);
+        Mockito.verify(openAIClient.responses(), Mockito.times(2)).create(captor.capture());
+        List<ResponseCreateParams> requests = captor.getAllValues();
+
+        assertTrue(requests.get(0)
+                .text()
+                .flatMap(ResponseTextConfig::format)
+                .map(ResponseFormatTextConfig::isJsonObject)
+                .orElse(false));
+        assertTrue(requests.get(1).text().isEmpty());
     }
 
     @Test

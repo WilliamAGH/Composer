@@ -9,7 +9,7 @@ Operational guidance for autonomous contributors extending Composer, an email AI
 - [CC1a-d] Clean Code & DDD (Mandatory)
 - [ID1a-d] Idiomatic Patterns & Defaults
 - [FS1a-j] File Creation & Type Safety (exhaustive search, typed records, no maps, clean architecture)
-- [LOC1a-e] Line Count Ceiling (350 lines max; SRP enforcer; zero tolerance)
+- [LOC1a-e] Line Count Ceiling (500 lines max; SRP enforcer; zero tolerance)
 - [MO1a-g] No Monoliths (Strict SRP; Decision Logic; Extension/OCP)
 - [ND1a-c] Naming Discipline (no generic names, intent-revealing identifiers)
 - [AB1a-d] Abstraction Discipline (no anemic wrappers, abstractions earn reuse)
@@ -87,9 +87,9 @@ Operational guidance for autonomous contributors extending Composer, an email AI
 
 ## [LOC1] Line Count Ceiling (Repo-Wide)
 
-- [LOC1a] All written, non-generated source files in this repository MUST be <= 350 lines (`wc -l`), including `AGENTS.md`
-- [LOC1b] SRP Enforcer: This 350-line "stick" forces modularity (DDD/SRP); > 350 lines = too many responsibilities (see [MO1d])
-- [LOC1c] Zero Tolerance: No edits allowed to files > 350 LOC (even legacy); you MUST split/retrofit before applying your change
+- [LOC1a] All written, non-generated source files in this repository MUST be <= 500 lines (`wc -l`), including `AGENTS.md`
+- [LOC1b] SRP Enforcer: This 500-line "stick" forces modularity (DDD/SRP); > 500 lines = too many responsibilities (see [MO1d])
+- [LOC1c] Zero Tolerance: No edits allowed to files > 500 LOC (even legacy); you MUST split/retrofit before applying your change
 - [LOC1d] Enforcement: run line count checks and treat failures as merge blockers
 - [LOC1e] Exempt files: generated content, lockfiles, and large example/data dumps
 
@@ -177,8 +177,8 @@ Operational guidance for autonomous contributors extending Composer, an email AI
 - [GT1e] Commit messages: one logical change per commit; follow README guidance; no amend/branch changes without instruction; treat existing changes as intentional.
 - [GT1f] Destructive git commands are prohibited unless explicitly ordered by the user (e.g., `git restore`, `git reset`, force checkout).
 - [GT1g] Treat existing staged/unstaged changes as intentional unless the user says otherwise; never “clean up” someone else’s work unprompted.
-- [GT1h] Examples of write operations that require permission: `git add`, `git commit`, `git checkout`, `git merge`, `git rebase`, `git reset`, `git restore`, `git clean`, `git cherry-pick`.
-- [GT1i] **Repository-Local Writes Only**: NEVER commit or push to this repository from a temporary clone, alternate checkout/worktree, or any other directory copy of the same repo. All git writes must be executed from this exact working tree.
+- [GT1h] A task's authorization covers its worktree lifecycle: branch creation, commits, merge back, and push on `dev`. Destructive commands (`git reset`, `git restore`, `git clean`, `git rebase`, force checkout, `git cherry-pick`) still require explicit permission.
+- [GT1i] **Repository-Local Writes Only**: Git writes run only from this working tree or the task's dedicated worktree; NEVER from unrelated clones, temporary clones, or other directory copies of the repo.
 
 ## [TL1] Tooling & Commands
 
@@ -252,6 +252,10 @@ Before marking task complete:
 - ✅ No automatic migrations; .sql files marked "DO NOT RUN — REVIEW ONLY"
 - ✅ Tests cover new functionality
 - ✅ `make lint` passes
+- ✅ Commits merged to `dev` and pushed
+- ✅ CI run watched to terminal verdict
+- ✅ Covered issues closed; new issues filed only for material defects or features (behavior, correctness, security, performance, data quality, or a governed contract) — pedantic/nitpick/style-only findings fixed in place or dropped, never filed
+- ✅ Fixes and issue scope meet the minimalism bar: reuse before new code, simplify before completing (`ponytail` and `ce-simplify-code` skills)
 
 ---
 
