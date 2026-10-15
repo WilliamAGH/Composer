@@ -62,6 +62,7 @@ final class ChatRequestPreparation {
         String modelMessage = promptComposer.compose(request, mergedContext);
         List<ConversationTurn> history = isolatedCommand ? List.of() : conversationRegistry.history(conversationId);
         ChatCompletionCommand completionCommand = new ChatCompletionCommand(
+                promptComposer.workload(request),
                 modelMessage,
                 mergedContext,
                 history,
@@ -88,7 +89,7 @@ final class ChatRequestPreparation {
         if (ChatPromptComposer.INSIGHTS_TRIGGER.equals(message)) {
             return new ChatContext(List.of(), "");
         }
-        float[] queryVector = openAiChatClient.generateEmbedding(message);
+        float[] queryVector = openAiChatClient.generateEmailSearchQueryEmbedding(message);
         List<EmailContext> emailContext = queryVector == null || queryVector.length == 0
                 ? List.of()
                 : vectorSearchService.searchSimilarEmails(queryVector, maxSearchResults);

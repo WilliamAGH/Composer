@@ -160,6 +160,7 @@ class OpenAiChatClientStreamingTest {
     }
 
     private ChatCompletionCommand command(ReasoningEffortLevel reasoningEffort, Boolean thinkingEnabled) {
-        return new ChatCompletionCommand("What is new?", "Context", List.of(), thinkingEnabled, reasoningEffort, false);
+        return new ChatCompletionCommand(
+                "composer:test-chat", "What is new?", "Context", List.of(), thinkingEnabled, reasoningEffort, false);
     }
 }

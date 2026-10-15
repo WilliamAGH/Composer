@@ -63,7 +63,8 @@ class ExecuteChatUseCaseTest {
             """);
 
         float[] embedding = new float[] {0.2f, 0.5f};
-        Mockito.when(openAiChatClient.generateEmbedding("Review email")).thenReturn(embedding);
+        Mockito.when(openAiChatClient.generateEmailSearchQueryEmbedding("Review email"))
+                .thenReturn(embedding);
         ChatResponse.EmailContext emailContext = new ChatResponse.EmailContext(
                 "email-1",
                 "Quarterly Update",

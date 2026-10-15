@@ -48,6 +48,7 @@ final class OpenAiResponseRequestFactory {
 
     PreparedRequest prepareResponseRequest(ChatCompletionCommand command) {
         ResponseCreateParams.Builder builder = ResponseCreateParams.builder()
+                .putAdditionalHeader("X-User-ID", command.workload())
                 .model(resolveChatModel())
                 .inputOfResponse(buildEmailAssistantMessages(
                         command.emailContext(),
@@ -71,6 +72,7 @@ final class OpenAiResponseRequestFactory {
 
     PreparedRequest prepareIntentRequest(String userMessage) {
         ResponseCreateParams.Builder builder = ResponseCreateParams.builder()
+                .putAdditionalHeader("X-User-ID", "composer:intent-analysis")
                 .model(resolveChatModel())
                 .inputOfResponse(buildIntentAnalysisMessages(userMessage))
                 .maxOutputTokens(openAiProperties.getIntent().getMaxOutputTokens());

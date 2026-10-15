@@ -7,9 +7,16 @@ import java.util.List;
  * Carries message content, context, history, and configuration flags.
  */
 public record ChatCompletionCommand(
+        String workload,
         String userMessage,
         String emailContext,
         List<ConversationTurn> conversationHistory,
         Boolean thinkingEnabled,
         ReasoningEffortLevel thinkingLevel,
-        boolean jsonOutput) {}
+        boolean jsonOutput) {
+    public ChatCompletionCommand {
+        if (workload == null || workload.isBlank()) {
+            throw new IllegalArgumentException("Chat workload is required");
+        }
+    }
+}

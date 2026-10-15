@@ -38,8 +38,8 @@ class UniversalReasoningContractTest {
         OpenAIClient client = configuredClient();
         OpenAiChatClient chatClient = authenticatedClient(client, GENERIC_COMPATIBLE_URL, "partner/non-gpt-reasoner");
 
-        chatClient.invokeChatResponse(
-                new ChatCompletionCommand("Review", "Context", List.of(), false, ReasoningEffortLevel.MAX, false));
+        chatClient.invokeChatResponse(new ChatCompletionCommand(
+                "composer:test-chat", "Review", "Context", List.of(), false, ReasoningEffortLevel.MAX, false));
 
         ResponseCreateParams request = capturedRequest(client);
         assertEquals(
@@ -52,8 +52,8 @@ class UniversalReasoningContractTest {
         OpenAIClient client = configuredClient();
         OpenAiChatClient chatClient = authenticatedClient(client, OPENROUTER_URL, "anthropic/claude-sonnet-4");
 
-        chatClient.invokeChatResponse(
-                new ChatCompletionCommand("Review", "Context", List.of(), false, ReasoningEffortLevel.MINIMAL, false));
+        chatClient.invokeChatResponse(new ChatCompletionCommand(
+                "composer:test-chat", "Review", "Context", List.of(), false, ReasoningEffortLevel.MINIMAL, false));
 
         ResponseCreateParams request = capturedRequest(client);
         assertEquals(
@@ -67,8 +67,8 @@ class UniversalReasoningContractTest {
         OpenAIClient client = configuredClient();
         OpenAiChatClient chatClient = authenticatedClient(client, GENERIC_COMPATIBLE_URL, "partner/atlas-reasoner");
 
-        chatClient.invokeChatResponse(
-                new ChatCompletionCommand("Review", "Context", List.of(), false, ReasoningEffortLevel.NONE, false));
+        chatClient.invokeChatResponse(new ChatCompletionCommand(
+                "composer:test-chat", "Review", "Context", List.of(), false, ReasoningEffortLevel.NONE, false));
 
         ResponseCreateParams request = capturedRequest(client);
         assertEquals(
@@ -80,7 +80,8 @@ class UniversalReasoningContractTest {
         OpenAIClient client = configuredClient();
         OpenAiChatClient chatClient = authenticatedClient(client, SHARED_GATEWAY_URL, "gemma-4-26b-a4b");
 
-        chatClient.invokeChatResponse(new ChatCompletionCommand("Review", "Context", List.of(), false, null, false));
+        chatClient.invokeChatResponse(
+                new ChatCompletionCommand("composer:test-chat", "Review", "Context", List.of(), false, null, false));
 
         ResponseCreateParams request = capturedRequest(client);
         assertEquals(
@@ -95,7 +96,8 @@ class UniversalReasoningContractTest {
         properties.getReasoning().setDefaultEffort(null);
         OpenAiChatClient chatClient = authenticatedClient(client, properties);
 
-        chatClient.invokeChatResponse(new ChatCompletionCommand("Review", "Context", List.of(), null, null, false));
+        chatClient.invokeChatResponse(
+                new ChatCompletionCommand("composer:test-chat", "Review", "Context", List.of(), null, null, false));
 
         ResponseCreateParams request = capturedRequest(client);
         assertEquals(
@@ -147,7 +149,8 @@ class UniversalReasoningContractTest {
         properties.getReasoning().setDefaultEffort("none");
         OpenAiChatClient chatClient = authenticatedClient(client, properties);
 
-        chatClient.invokeChatResponse(new ChatCompletionCommand("Review", "Context", List.of(), null, null, false));
+        chatClient.invokeChatResponse(
+                new ChatCompletionCommand("composer:test-chat", "Review", "Context", List.of(), null, null, false));
 
         ResponseCreateParams request = capturedRequest(client);
         assertEquals(
@@ -164,7 +167,7 @@ class UniversalReasoningContractTest {
         IllegalStateException observed = assertThrows(
                 IllegalStateException.class,
                 () -> chatClient.invokeChatResponse(new ChatCompletionCommand(
-                        "Review", "Context", List.of(), true, ReasoningEffortLevel.MAX, false)));
+                        "composer:test-chat", "Review", "Context", List.of(), true, ReasoningEffortLevel.MAX, false)));
 
         assertSame(rejection, observed);
     }

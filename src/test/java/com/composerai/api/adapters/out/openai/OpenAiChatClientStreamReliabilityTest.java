@@ -96,6 +96,7 @@ class OpenAiChatClientStreamReliabilityTest {
     }
 
     private ChatCompletionCommand command(ReasoningEffortLevel reasoningEffort, Boolean thinkingEnabled) {
-        return new ChatCompletionCommand("Analyze", "Context", List.of(), thinkingEnabled, reasoningEffort, false);
+        return new ChatCompletionCommand(
+                "composer:test-chat", "Analyze", "Context", List.of(), thinkingEnabled, reasoningEffort, false);
     }
 }
