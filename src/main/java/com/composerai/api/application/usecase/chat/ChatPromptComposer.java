@@ -50,6 +50,15 @@ Response craft:
         return INSIGHTS_TRIGGER.equals(request.getMessage());
     }
 
+    String workload(ChatRequest request) {
+        if (isInsightsRequest(request)) {
+            return "composer:email-insights";
+        }
+        return findCommandDefinition(request)
+                .map(definition -> "composer:" + definition.key())
+                .orElse("composer:email-chat");
+    }
+
     boolean isIsolatedCommand(ChatRequest request) {
         return findCommandDefinition(request)
                 .map(definition -> definition.category() == AiFunctionDefinition.Category.SUMMARY

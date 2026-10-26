@@ -17,7 +17,7 @@ Contributions and feedback are welcome, and Pull Requests (PRs) are encouraged.
 
 Requirements:
 - JDK 25
-- Node 22.17.0 (see `.nvmrc`)
+- Node 24.22.1 (see `.nvmrc`)
 - `npm` (the only supported JS package manager for this repo)
 
 Common commands:

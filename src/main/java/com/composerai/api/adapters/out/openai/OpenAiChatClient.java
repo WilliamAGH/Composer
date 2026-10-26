@@ -204,7 +204,7 @@ public class OpenAiChatClient {
      *
      * Note: Not all providers support embeddings. Returns empty array if provider doesn't support it.
      */
-    public float[] generateEmbedding(String text) {
+    public float[] generateEmailSearchQueryEmbedding(String text) {
         if (text == null || text.isBlank()) {
             return new float[0];
         }
@@ -227,6 +227,7 @@ public class OpenAiChatClient {
             List<Embedding> embeddings = openAiClient
                     .embeddings()
                     .create(EmbeddingCreateParams.builder()
+                            .putAdditionalHeader("X-User-ID", "composer:email-search-query")
                             .model(EmbeddingModel.of(
                                     openAiProperties.getEmbedding().getModel()))
                             .input(text)

@@ -72,7 +72,7 @@ class OpenAiChatClientTest {
 
     @Test
     void generateEmbedding_withBlankInput_returnsEmptyVector() {
-        float[] embeddingVector = chatClient.generateEmbedding("   ");
+        float[] embeddingVector = chatClient.generateEmailSearchQueryEmbedding("   ");
 
         assertEquals(0, embeddingVector.length);
         verifyNoInteractions(openAIClient);
@@ -83,7 +83,7 @@ class OpenAiChatClientTest {
         when(openAIClient.embeddings().create(any(EmbeddingCreateParams.class)))
                 .thenThrow(new RuntimeException("OpenAI down"));
 
-        float[] embeddingVector = chatClient.generateEmbedding("email body");
+        float[] embeddingVector = chatClient.generateEmailSearchQueryEmbedding("email body");
 
         assertEquals(0, embeddingVector.length);
     }
@@ -106,7 +106,7 @@ class OpenAiChatClientTest {
 
         when(openAIClient.embeddings().create(any(EmbeddingCreateParams.class))).thenReturn(response);
 
-        float[] embeddingVector = chatClient.generateEmbedding("test text");
+        float[] embeddingVector = chatClient.generateEmailSearchQueryEmbedding("test text");
 
         assertEquals(3, embeddingVector.length);
         assertEquals(0.1f, embeddingVector[0]);
@@ -119,7 +119,8 @@ class OpenAiChatClientTest {
         Response mockResponse = buildResponseWithText("**Hello** <script>alert('x')</script> world");
         when(openAIClient.responses().create(any(ResponseCreateParams.class))).thenReturn(mockResponse);
 
-        ChatCompletionCommand command = new ChatCompletionCommand("Hi", "Context", List.of(), false, null, false);
+        ChatCompletionCommand command =
+                new ChatCompletionCommand("composer:test-chat", "Hi", "Context", List.of(), false, null, false);
         OpenAiChatClient.ChatCompletion completion = chatClient.generateResponse(command);
 
         assertEquals("**Hello** <script>alert('x')</script> world", completion.rawText());
@@ -138,7 +139,7 @@ class OpenAiChatClientTest {
         when(openAIClient.responses().create(any(ResponseCreateParams.class))).thenReturn(mockResponse);
 
         OpenAiChatClient.ChatCompletion completion = customModelClient.generateResponse(
-                new ChatCompletionCommand("Test", "Context", List.of(), false, null, false));
+                new ChatCompletionCommand("composer:test-chat", "Test", "Context", List.of(), false, null, false));
 
         assertEquals("Custom model response", completion.rawText());
         Mockito.verify(openAIClient.responses()).create(any(ResponseCreateParams.class));
@@ -152,7 +153,7 @@ class OpenAiChatClientTest {
         IllegalStateException misconfiguration = assertThrows(
                 IllegalStateException.class,
                 () -> nullClient.generateResponse(new ChatCompletionCommand(
-                        "Hi", "Context", List.of(), true, ReasoningEffortLevel.MINIMAL, false)));
+                        "composer:test-chat", "Hi", "Context", List.of(), true, ReasoningEffortLevel.MINIMAL, false)));
 
         assertTrue(misconfiguration.getMessage().contains("not configured"));
     }
@@ -165,8 +166,8 @@ class OpenAiChatClientTest {
         List<ConversationTurn> history =
                 List.of(ConversationTurn.user("Earlier question"), ConversationTurn.assistant("Earlier answer"));
 
-        chatClient.generateResponse(
-                new ChatCompletionCommand("What about now?", "Context data", history, false, null, false));
+        chatClient.generateResponse(new ChatCompletionCommand(
+                "composer:test-chat", "What about now?", "Context data", history, false, null, false));
 
         ArgumentCaptor<ResponseCreateParams> captor = ArgumentCaptor.forClass(ResponseCreateParams.class);
         Mockito.verify(openAIClient.responses()).create(captor.capture());
@@ -184,8 +185,8 @@ class OpenAiChatClientTest {
         Response mockResponse = buildResponseWithText("{\"result\":true}");
         when(openAIClient.responses().create(any(ResponseCreateParams.class))).thenReturn(mockResponse);
 
-        chatClient.generateResponse(
-                new ChatCompletionCommand("Return structured data", "Context payload", List.of(), false, null, true));
+        chatClient.generateResponse(new ChatCompletionCommand(
+                "composer:test-chat", "Return structured data", "Context payload", List.of(), false, null, true));
 
         ArgumentCaptor<ResponseCreateParams> captor = ArgumentCaptor.forClass(ResponseCreateParams.class);
         Mockito.verify(openAIClient.responses()).create(captor.capture());
@@ -200,10 +201,10 @@ class OpenAiChatClientTest {
         Response mockResponse = buildResponseWithText("{\"result\":true}");
         when(openAIClient.responses().create(any(ResponseCreateParams.class))).thenReturn(mockResponse);
 
-        chatClient.generateResponse(
-                new ChatCompletionCommand("Return structured data", "Context payload", List.of(), false, null, true));
-        chatClient.generateResponse(
-                new ChatCompletionCommand("Summarize", "Context payload", List.of(), false, null, false));
+        chatClient.generateResponse(new ChatCompletionCommand(
+                "composer:test-chat", "Return structured data", "Context payload", List.of(), false, null, true));
+        chatClient.generateResponse(new ChatCompletionCommand(
+                "composer:test-chat", "Summarize", "Context payload", List.of(), false, null, false));
 
         ArgumentCaptor<ResponseCreateParams> captor = ArgumentCaptor.forClass(ResponseCreateParams.class);
         Mockito.verify(openAIClient.responses(), Mockito.times(2)).create(captor.capture());
