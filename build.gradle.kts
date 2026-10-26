@@ -1,8 +1,8 @@
 // Gradle build script for Composer API
-// Configures Spring Boot 3.5.10, Java 25, Spotless, and SpotBugs
+// Configures Spring Boot 3.5.16, Java 25, Spotless, and SpotBugs
 plugins {
     java
-    id("org.springframework.boot") version "3.5.10"
+    id("org.springframework.boot") version "3.5.16"
     id("io.spring.dependency-management") version "1.1.7"
     id("com.diffplug.spotless") version "8.1.0"
     id("com.github.spotbugs") version "6.4.8"
@@ -10,6 +10,12 @@ plugins {
 
 group = "com.composerai"
 version = "0.0.2-SNAPSHOT"
+
+// Security patches above Spring Boot 3.5.16's managed versions, same release lines.
+extra["jackson-bom.version"] = "2.21.8"
+extra["netty.version"] = "4.1.139.Final"
+extra["tomcat.version"] = "10.1.61"
+extra["logback.version"] = "1.5.38"
 
 java {
     toolchain {
