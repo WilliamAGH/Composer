@@ -23,7 +23,7 @@ Spring Boot 3 (Java 25) · Svelte 5 + Vite · OpenAI-compatible LLM providers ·
 
 ## Quick start
 
-Requires JDK 25 and Node 22.17.0 (use `nvm use` to load the pinned version from `.nvmrc`).
+Requires JDK 25 and Node 24.22.1 (use `nvm use` to load the pinned version from `.nvmrc`).
 
 ```bash
 export OPENAI_API_KEY="..."
